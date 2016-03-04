@@ -39,6 +39,7 @@
         <module>components/org.wso2.carbon.identity.oauth.endpoint</module>
         <module>components/org.wso2.carbon.identity.oauth.ui</module>
         <module>components/org.wso2.carbon.identity.oauth.stub</module>
+        <module>components/org.wso2.carbon.identity.oidc.session</module>
 
         <module>features/org.wso2.carbon.identity.oauth.common.feature</module>
         <module>features/org.wso2.carbon.identity.oauth.feature</module>

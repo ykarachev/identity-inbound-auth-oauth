@@ -36,6 +36,7 @@
         <dependency>
             <groupId>org.wso2.carbon.identity</groupId>
             <artifactId>org.wso2.carbon.identity.oauth.common</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.wso2.orbit.org.apache.oltu.oauth2</groupId>

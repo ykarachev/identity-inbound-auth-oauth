@@ -36,6 +36,7 @@
         <dependency>
             <groupId>org.wso2.carbon.identity</groupId>
             <artifactId>org.wso2.carbon.identity.oauth</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.gdata.wso2</groupId>
@@ -56,6 +57,7 @@
         <dependency>
             <groupId>org.wso2.carbon.identity</groupId>
             <artifactId>org.wso2.carbon.identity.oauth.endpoint</artifactId>
+            <version>${project.version}</version>
             <type>war</type>
         </dependency>
         <dependency>

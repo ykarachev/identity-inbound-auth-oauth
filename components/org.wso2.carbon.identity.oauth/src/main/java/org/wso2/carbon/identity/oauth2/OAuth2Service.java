@@ -312,8 +312,9 @@ public class OAuth2Service extends AbstractAdmin {
                             refreshTokenDO.getAuthorizedUser().toString());
 
                 } else if (accessTokenDO != null) {
+                    if(revokeRequestDTO.getConsumerKey().equals(accessTokenDO.getConsumerKey())){
                         OAuthUtil.clearOAuthCache(revokeRequestDTO.getConsumerKey(), accessTokenDO.getAuthzUser(),
-                                        OAuth2Util.buildScopeString(accessTokenDO.getScope()));
+                                OAuth2Util.buildScopeString(accessTokenDO.getScope()));
                         OAuthUtil.clearOAuthCache(revokeRequestDTO.getConsumerKey(), accessTokenDO.getAuthzUser());
                         OAuthUtil.clearOAuthCache(revokeRequestDTO.getToken());
                         tokenMgtDAO.revokeTokens(new String[] { revokeRequestDTO.getToken() });
@@ -321,6 +322,9 @@ public class OAuth2Service extends AbstractAdmin {
                                 revokeRequestDTO.getToken(),
                                 accessTokenDO.getRefreshToken(),
                                 accessTokenDO.getAuthzUser().toString());
+                    }else {
+                        throw new InvalidOAuthClientException("Unauthorized Client");
+                    }
                 }
 
                 return revokeResponseDTO;

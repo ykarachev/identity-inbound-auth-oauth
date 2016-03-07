@@ -30,7 +30,6 @@ import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationResultCacheEntry;
-import org.wso2.carbon.identity.application.authentication.framework.config.ConfigurationFacade;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticationResult;
 import org.wso2.carbon.identity.application.authentication.framework.model.CommonAuthRequestWrapper;
@@ -57,10 +56,13 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2ClientValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.model.CarbonOAuthAuthzRequest;
 import org.wso2.carbon.identity.oauth2.model.OAuth2Parameters;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.identity.oidc.session.OIDCSessionState;
+import org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtil;
 import org.wso2.carbon.registry.core.utils.UUIDGenerator;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
@@ -208,6 +210,7 @@ public class OAuth2AuthzEndpoint {
                     removeAuthenticationResult(request, sessionDataKeyFromLogin);
 
                     String redirectURL = null;
+                    boolean isOIDCRequest = OAuth2Util.isOIDCAuthzRequest(oauth2Params.getScopes());
                     if (authnResult.isAuthenticated()) {
                         AuthenticatedUser authenticatedUser = authnResult.getSubject();
                         if (authenticatedUser.getUserAttributes() != null) {
@@ -217,7 +220,17 @@ public class OAuth2AuthzEndpoint {
                         sessionDataCacheEntry.setLoggedInUser(authenticatedUser);
                         sessionDataCacheEntry.setAuthenticatedIdPs(authnResult.getAuthenticatedIdPs());
                         SessionDataCache.getInstance().addToCache(cacheKey, sessionDataCacheEntry);
-                        redirectURL = doUserAuthz(request, sessionDataKeyFromLogin, sessionDataCacheEntry);
+
+                        OIDCSessionState sessionState = new OIDCSessionState();
+                        redirectURL =
+                                doUserAuthz(request, sessionDataKeyFromLogin, sessionDataCacheEntry, sessionState);
+
+                        if (isOIDCRequest) {
+                            redirectURL = manageOIDCSessionState(request, response, sessionState, oauth2Params,
+                                                                 authenticatedUser.getAuthenticatedSubjectIdentifier(),
+                                                                 redirectURL);
+                        }
+
                         return Response.status(HttpServletResponse.SC_FOUND).location(new URI(redirectURL)).build();
 
                     } else {
@@ -228,7 +241,13 @@ public class OAuth2AuthzEndpoint {
                                 .error(oauthException).location(oauth2Params.getRedirectURI())
                                 .setState(oauth2Params.getState()).buildQueryMessage()
                                 .getLocationUri();
-
+                        if (isOIDCRequest) {
+                            Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);
+                            redirectURL = OIDCSessionManagementUtil.addSessionStateToURL(redirectURL,
+                                                                                         oauth2Params.getClientId(),
+                                                                                         oauth2Params.getRedirectURI(),
+                                                                                         opBrowserStateCookie);
+                        }
                     }
                     return Response.status(HttpServletResponse.SC_FOUND).location(new URI(redirectURL)).build();
 
@@ -248,8 +267,10 @@ public class OAuth2AuthzEndpoint {
 
             } else if (resultFromConsent != null) { // Consent submission
 
-                sessionDataCacheEntry = ((SessionDataCacheEntry) resultFromConsent);
+                sessionDataCacheEntry = resultFromConsent;
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
+                boolean isOIDCRequest = OAuth2Util.isOIDCAuthzRequest(oauth2Params.getScopes());
+
                 String consent = request.getParameter("consent");
                 if (consent != null) {
 
@@ -261,10 +282,19 @@ public class OAuth2AuthzEndpoint {
                                 .setError(OAuth2ErrorCodes.ACCESS_DENIED)
                                 .location(oauth2Params.getRedirectURI()).setState(oauth2Params.getState())
                                 .buildQueryMessage().getLocationUri();
+
+                        if (isOIDCRequest) {
+                            Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);
+                            denyResponse = OIDCSessionManagementUtil
+                                    .addSessionStateToURL(denyResponse, oauth2Params.getClientId(),
+                                                          oauth2Params.getRedirectURI(), opBrowserStateCookie);
+                        }
                         return Response.status(HttpServletResponse.SC_FOUND).location(new URI(denyResponse)).build();
                     }
 
-                    String redirectURL = handleUserConsent(request, consent, oauth2Params, sessionDataCacheEntry);
+                    OIDCSessionState sessionState = new OIDCSessionState();
+                    String redirectURL =
+                            handleUserConsent(request, consent, oauth2Params, sessionDataCacheEntry, sessionState);
 
                     String authenticatedIdPs = sessionDataCacheEntry.getAuthenticatedIdPs();
 
@@ -276,6 +306,14 @@ public class OAuth2AuthzEndpoint {
                             //this exception should not occur
                             log.error("Error while encoding the url", e);
                         }
+                    }
+
+                    if (isOIDCRequest) {
+                        sessionState.setAddSessionState(true);
+                        redirectURL = manageOIDCSessionState(request, response, sessionState, oauth2Params,
+                                                             sessionDataCacheEntry.getLoggedInUser()
+                                                                                  .getAuthenticatedSubjectIdentifier(),
+                                                             redirectURL);
                     }
 
                     return Response.status(HttpServletResponse.SC_FOUND).location(new URI(redirectURL)).build();
@@ -392,7 +430,8 @@ public class OAuth2AuthzEndpoint {
      * @throws OAuthSystemException
      */
     private String handleUserConsent(HttpServletRequest request, String consent, OAuth2Parameters oauth2Params,
-                                     SessionDataCacheEntry sessionDataCacheEntry) throws OAuthSystemException {
+                                     SessionDataCacheEntry sessionDataCacheEntry, OIDCSessionState sessionState)
+            throws OAuthSystemException {
 
         String applicationName = sessionDataCacheEntry.getoAuth2Parameters().getApplicationName();
         AuthenticatedUser loggedInUser = sessionDataCacheEntry.getLoggedInUser();
@@ -438,6 +477,8 @@ public class OAuth2AuthzEndpoint {
             String redirectURL = authzRespDTO.getCallbackURI();
             oauthResponse = builder.location(redirectURL).buildQueryMessage();
 
+            sessionState.setAuthenticated(true);
+
         } else if (authzRespDTO != null && authzRespDTO.getErrorCode() != null) {
             // Authorization failure due to various reasons
             String errorMsg;
@@ -451,6 +492,8 @@ public class OAuth2AuthzEndpoint {
             oauthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND).error(oauthProblemException)
                     .location(oauth2Params.getRedirectURI()).setState(oauth2Params.getState())
                     .buildQueryMessage();
+
+            sessionState.setAuthenticated(false);
         } else {
             // Authorization failure due to various reasons
             String errorCode = OAuth2ErrorCodes.SERVER_ERROR;
@@ -460,6 +503,8 @@ public class OAuth2AuthzEndpoint {
             oauthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND).error(oauthProblemException)
                     .location(oauth2Params.getRedirectURI()).setState(oauth2Params.getState())
                     .buildQueryMessage();
+
+            sessionState.setAuthenticated(false);
         }
 
         return oauthResponse.getLocationUri();
@@ -692,7 +737,7 @@ public class OAuth2AuthzEndpoint {
      * @throws OAuthSystemException
      */
     private String doUserAuthz(HttpServletRequest request, String sessionDataKey,
-                               SessionDataCacheEntry sessionDataCacheEntry)
+                               SessionDataCacheEntry sessionDataCacheEntry, OIDCSessionState sessionState)
             throws OAuthSystemException {
 
         OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
@@ -724,8 +769,24 @@ public class OAuth2AuthzEndpoint {
             if (sessionDataCacheEntry.getLoggedInUser() == null) {
                 return errorResponse;
             } else {
+                sessionState.setAddSessionState(true);
                 if (skipConsent || hasUserApproved) {
-                    return handleUserConsent(request, APPROVE, oauth2Params, sessionDataCacheEntry);
+                    /**
+                     * Recommended Parameter : id_token_hint
+                     * As per the specification https://openid.net/specs/openid-connect-session-1_0.html#RFC6454,
+                     * it's recommended to expect id_token_hint parameter to determine which RP initiated the request.
+                     */
+
+                    /**
+                     * todo: At the moment we do not persist id_token issued for clients, thus we could not retrieve
+                     * todo: the RP that a specific id_token has been issued.
+                     * todo: Should validate the RP against the id_token_hint received.
+                     */
+
+                    String redirectUrl =
+                            handleUserConsent(request, APPROVE, oauth2Params, sessionDataCacheEntry, sessionState);
+                    sessionState.setAuthenticated(false);
+                    return redirectUrl;
                 } else {
                     return errorResponse;
                 }
@@ -733,7 +794,8 @@ public class OAuth2AuthzEndpoint {
 
         } else if (((OAuthConstants.Prompt.LOGIN).equals(oauth2Params.getPrompt()) || StringUtils.isBlank(oauth2Params.getPrompt()))) {
             if (skipConsent || hasUserApproved) {
-                return handleUserConsent(request, APPROVE, oauth2Params, sessionDataCacheEntry);
+                sessionState.setAddSessionState(true);
+                return handleUserConsent(request, APPROVE, oauth2Params, sessionDataCacheEntry, sessionState);
             } else {
                 return consentUrl;
             }
@@ -893,6 +955,64 @@ public class OAuth2AuthzEndpoint {
             return authorize(requestWrapper, responseWrapper);
         }
         return null;
+    }
+
+    private String manageOIDCSessionState(HttpServletRequest request, HttpServletResponse response,
+                                          OIDCSessionState sessionStateObj, OAuth2Parameters oAuth2Parameters,
+                                          String authenticatedUser, String redirectURL) {
+        Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);
+        if (sessionStateObj.isAuthenticated()) { // successful user authentication
+            if (opBrowserStateCookie == null) { // new browser session
+                opBrowserStateCookie = OIDCSessionManagementUtil.addOPBrowserStateCookie(response);
+
+                sessionStateObj.setAuthenticatedUser(authenticatedUser);
+                sessionStateObj.addSessionParticipant(oAuth2Parameters.getClientId());
+                OIDCSessionManagementUtil.getSessionManager()
+                                         .storeOIDCSessionState(opBrowserStateCookie.getValue(), sessionStateObj);
+            } else { // browser session exists
+                OIDCSessionState previousSessionState =
+                        OIDCSessionManagementUtil.getSessionManager()
+                                                 .getOIDCSessionState(opBrowserStateCookie.getValue());
+                if (previousSessionState != null) {
+                    if (previousSessionState.getAuthenticatedUser().equals(authenticatedUser)) {
+
+                        if (!previousSessionState.getSessionParticipants().contains(oAuth2Parameters.getClientId())) {
+                            // User is authenticated to a new client. Restore browser session state
+                            String oldOPBrowserStateCookieId = opBrowserStateCookie.getValue();
+                            opBrowserStateCookie = OIDCSessionManagementUtil.addOPBrowserStateCookie(response);
+                            String newOPBrowserStateCookieId = opBrowserStateCookie.getValue();
+                            previousSessionState.addSessionParticipant(oAuth2Parameters.getClientId());
+                            OIDCSessionManagementUtil.getSessionManager()
+                                                     .restoreOIDCSessionState(oldOPBrowserStateCookieId,
+                                                                              newOPBrowserStateCookieId,
+                                                                              previousSessionState);
+                        }
+                    } else {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Existing session is not authenticated for the given user " + authenticatedUser);
+                        }
+                        redirectURL = EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.ACCESS_DENIED,
+                                                                   "No valid session found for the authenticated user " +
+                                                                   authenticatedUser,
+                                                                   oAuth2Parameters.getApplicationName(), null);
+                        sessionStateObj.setAddSessionState(false);
+                    }
+                } else {
+                    log.warn("No session state found for the received Session ID : " + opBrowserStateCookie.getValue());
+                }
+            }
+        }
+
+        if (sessionStateObj.isAddSessionState()) {
+            String sessionStateParam = OIDCSessionManagementUtil.getSessionStateParam(oAuth2Parameters.getClientId(),
+                                                                                      oAuth2Parameters.getRedirectURI(),
+                                                                                      opBrowserStateCookie == null ?
+                                                                                      null :
+                                                                                      opBrowserStateCookie.getValue());
+            redirectURL = OIDCSessionManagementUtil.addSessionStateToURL(redirectURL, sessionStateParam);
+        }
+
+        return redirectURL;
     }
 
 }

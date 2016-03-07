@@ -27,7 +27,6 @@ import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.core.AbstractAdmin;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.model.User;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
@@ -37,9 +36,12 @@ import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO;
+import org.wso2.carbon.identity.oauth.event.OauthEventListener;
+import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -136,6 +138,7 @@ public class OAuthAdminService extends AbstractAdmin {
      * @throws Exception Error when reading application information from persistence store.
      */
     public OAuthConsumerAppDTO getOAuthApplicationData(String consumerKey) throws IdentityOAuthAdminException {
+
         OAuthConsumerAppDTO dto = new OAuthConsumerAppDTO();
         OAuthAppDAO dao = new OAuthAppDAO();
         try {
@@ -163,6 +166,7 @@ public class OAuthAdminService extends AbstractAdmin {
      * @throws Exception Error when reading application information from persistence store.
      */
     public OAuthConsumerAppDTO getOAuthApplicationDataByAppName(String appName) throws IdentityOAuthAdminException {
+
         OAuthConsumerAppDTO dto = new OAuthConsumerAppDTO();
         OAuthAppDAO dao = new OAuthAppDAO();
         try {
@@ -176,7 +180,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 dto.setGrantTypes(app.getGrantTypes());
             }
             return dto;
-        }catch (InvalidOAuthClientException | IdentityOAuth2Exception e){
+        } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
             throw new IdentityOAuthAdminException("Error while retrieving the app information by app name", e);
         }
     }
@@ -187,7 +191,8 @@ public class OAuthAdminService extends AbstractAdmin {
      * @param application <code>OAuthConsumerAppDTO</code> with application information
      * @throws Exception Error when persisting the application information to the persistence store
      */
-    public void registerOAuthApplicationData(OAuthConsumerAppDTO application) throws IdentityOAuthAdminException{
+    public void registerOAuthApplicationData(OAuthConsumerAppDTO application) throws IdentityOAuthAdminException {
+
         String userName = CarbonContext.getThreadLocalCarbonContext().getUsername();
         if (userName != null) {
             String tenantUser = MultitenantUtils.getTenantAwareUsername(userName);
@@ -240,7 +245,7 @@ public class OAuthAdminService extends AbstractAdmin {
                     List<String> allowedGrants = new ArrayList<>(Arrays.asList(getAllowedGrantTypes()));
                     String[] requestGrants = application.getGrantTypes().split("\\s");
                     for (String requestedGrant : requestGrants) {
-                        if (StringUtils.isBlank(requestedGrant)){
+                        if (StringUtils.isBlank(requestedGrant)) {
                             continue;
                         }
                         if (!allowedGrants.contains(requestedGrant)) {
@@ -264,6 +269,7 @@ public class OAuthAdminService extends AbstractAdmin {
      * @throws IdentityOAuthAdminException Error when updating the underlying identity persistence store.
      */
     public void updateConsumerApplication(OAuthConsumerAppDTO consumerAppDTO) throws IdentityOAuthAdminException {
+
         String userName = CarbonContext.getThreadLocalCarbonContext().getUsername();
         String tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(userName);
         int tenantId = CarbonContext.getThreadLocalCarbonContext().getTenantId();
@@ -305,6 +311,7 @@ public class OAuthAdminService extends AbstractAdmin {
      * @throws Exception Error when removing the consumer information from the database.
      */
     public void removeOAuthApplicationData(String consumerKey) throws IdentityOAuthAdminException {
+
         OAuthAppDAO dao = new OAuthAppDAO();
         dao.removeConsumerApplication(consumerKey);
         // remove client credentials from cache
@@ -373,7 +380,7 @@ public class OAuthAdminService extends AbstractAdmin {
                     try {
                         scopedToken = tokenMgtDAO.retrieveLatestAccessToken(
                                 clientId, authenticatedUser, userStoreDomain, scopeString, true);
-                        if(scopedToken != null && !distinctClientUserScopeCombo.contains(clientId+":"+username)){
+                        if (scopedToken != null && !distinctClientUserScopeCombo.contains(clientId + ":" + username)) {
                             OAuthConsumerAppDTO appDTO = new OAuthConsumerAppDTO();
                             OAuthAppDO appDO;
                             try {
@@ -393,7 +400,7 @@ public class OAuthAdminService extends AbstractAdmin {
                                 log.error(errorMsg, e);
                                 throw new IdentityOAuthAdminException(errorMsg);
                             }
-                            distinctClientUserScopeCombo.add(clientId+":"+username);
+                            distinctClientUserScopeCombo.add(clientId + ":" + username);
 
                         }
                     } catch (IdentityOAuth2Exception e) {
@@ -416,6 +423,18 @@ public class OAuthAdminService extends AbstractAdmin {
      */
     public OAuthRevocationResponseDTO revokeAuthzForAppsByResoureOwner(
             OAuthRevocationRequestDTO revokeRequestDTO) throws IdentityOAuthAdminException {
+
+        List<OauthEventListener> oauthListeners = OAuthComponentServiceHolder.getInstance().getOauthEventListeners();
+
+        for (OauthEventListener listener : oauthListeners) {
+            try {
+                listener.onPreTokenRevocationByResourceOwner(revokeRequestDTO);
+            } catch (IdentityOAuth2Exception e) {
+                throw new IdentityOAuthAdminException("Error occured with Oauth pre-revoke listner " + listener
+                        .getClass().getName(), e);
+            }
+        }
+
 
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         if (revokeRequestDTO.getApps() != null && revokeRequestDTO.getApps().length > 0) {
@@ -486,13 +505,15 @@ public class OAuthAdminService extends AbstractAdmin {
                                     throw new IdentityOAuthAdminException(errorMsg, e);
                                 }
                             }
+                            triggerPostRevokeListeners(oauthListeners, revokeRequestDTO, new OAuthRevocationResponseDTO
+                                    (), accessTokenDOs.toArray(new AccessTokenDO[accessTokenDOs.size()]));
                         }
 
                         try {
                             tokenMgtDAO.revokeOAuthConsentByApplicationAndUser(userName, appName);
                         } catch (IdentityOAuth2Exception e) {
                             String errorMsg = "Error occurred while removing OAuth Consent of Application " + appName +
-                                              " of user " + userName;
+                                    " of user " + userName;
                             log.error(errorMsg, e);
                             throw new IdentityOAuthAdminException(errorMsg, e);
                         }
@@ -504,12 +525,31 @@ public class OAuthAdminService extends AbstractAdmin {
             revokeRespDTO.setError(true);
             revokeRespDTO.setErrorCode(OAuth2ErrorCodes.INVALID_REQUEST);
             revokeRespDTO.setErrorMsg("Invalid revocation request");
+
+            //passing a single element array with null element to make sure listeners are triggered at least once
+            triggerPostRevokeListeners(oauthListeners, revokeRequestDTO, revokeRespDTO, new AccessTokenDO[]{null});
             return revokeRespDTO;
         }
         return new OAuthRevocationResponseDTO();
     }
 
+    private void triggerPostRevokeListeners(List<OauthEventListener> oauthListeners,
+                                            OAuthRevocationRequestDTO revokeRequestDTO,
+                                            OAuthRevocationResponseDTO revokeRespDTO, AccessTokenDO[] accessTokenDOs) {
+
+        for (AccessTokenDO accessTokenDO : accessTokenDOs) {
+            for (OauthEventListener listener : oauthListeners) {
+                try {
+                    listener.onPostTokenRevocationByResourceOwner(revokeRequestDTO, revokeRespDTO, accessTokenDO);
+                } catch (IdentityOAuth2Exception e) {
+                    log.error("Error occurred with post revocation listener " + listener.getClass().getName(), e);
+                }
+            }
+        }
+    }
+
     public String[] getAllowedGrantTypes() {
+
         if (allowedGrants == null) {
             synchronized (OAuthAdminService.class) {
                 if (allowedGrants == null) {

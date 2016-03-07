@@ -98,7 +98,7 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
         if (!isEnable()) {
             return true;
         }
-        return revokeTokensOfLockedUser(userName, userStoreManager);
+        return revokeTokensOfLockedUser(userName, userStoreManager) && revokeTokensOfDisabledUser(userName, userStoreManager);
     }
 
     @Override
@@ -108,14 +108,24 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
         if (!isEnable()) {
             return true;
         }
-        return revokeTokensOfLockedUser(userName, userStoreManager);
+        return revokeTokensOfLockedUser(userName, userStoreManager) && revokeTokensOfDisabledUser(userName, userStoreManager);
     }
 
-    private boolean revokeTokensOfLockedUser(String userName, UserStoreManager userStoreManager){
+    private boolean revokeTokensOfLockedUser(String userName, UserStoreManager userStoreManager) {
 
         IdentityErrorMsgContext errorContext = IdentityUtil.getIdentityErrorMsg();
 
-        if (errorContext != null && errorContext.getErrorCode() == UserCoreConstants.ErrorCode.USER_IS_LOCKED){
+        if (errorContext != null && errorContext.getErrorCode() == UserCoreConstants.ErrorCode.USER_IS_LOCKED) {
+            return revokeTokens(userName, userStoreManager);
+        }
+        return true;
+    }
+
+    private boolean revokeTokensOfDisabledUser(String userName, UserStoreManager userStoreManager) {
+
+        IdentityErrorMsgContext errorContext = IdentityUtil.getIdentityErrorMsg();
+
+        if (errorContext != null && errorContext.getErrorCode() == IdentityCoreConstants.USER_ACCOUNT_DISABLED_ERROR_CODE) {
             return revokeTokens(userName, userStoreManager);
         }
         return true;

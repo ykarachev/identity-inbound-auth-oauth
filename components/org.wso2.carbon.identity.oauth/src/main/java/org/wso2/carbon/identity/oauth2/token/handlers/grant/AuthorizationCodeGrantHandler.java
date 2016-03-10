@@ -250,6 +250,23 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                 challenge_method = "plain";
             }
 
+            //if app with no PKCE code verifier arrives
+            if ((codeVerifier == null || codeVerifier.trim().length() == 0)) {
+                //if pkce is mandatory, throw error
+                if(oAuthAppDO.isPkceMandatory()) {
+                    throw new IdentityOAuth2Exception("No PKCE code verifier found.PKCE is mandatory for this " +
+                            "oAuth 2.0 application.");
+                } else {
+                    //PKCE is optional, see if the authz code was requested with a PKCE challenge
+                    if(referenceCodeChallenge == null || referenceCodeChallenge.trim().length() == 0) {
+                        //since no PKCE challenge was provided
+                        return true;
+                    } else {
+                        throw new IdentityOAuth2Exception("Empty PKCE code_verifier sent. This authorization code " +
+                                "requires a PKCE verification to obtain an access token.");
+                    }
+                }
+            }
             //verify that the code verifier is upto spec as per RFC 7636
             if(!codeVerifier.matches("[\\w\\-\\._~]+") || (codeVerifier.length() < 43 || codeVerifier.length() > 128)) {
                 throw new IdentityOAuth2Exception("Code verifier used is not up to RFC 7636 specifications.");

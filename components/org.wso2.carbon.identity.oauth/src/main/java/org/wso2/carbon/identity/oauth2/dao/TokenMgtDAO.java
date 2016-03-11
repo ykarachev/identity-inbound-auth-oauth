@@ -179,6 +179,23 @@ public class TokenMgtDAO {
         }
     }
 
+    public void deactivateAuthorizationCode(String authzCode, String tokenId) throws IdentityOAuth2Exception {
+
+        if (!enablePersist) {
+            return;
+        }
+
+        if (maxPoolSize > 0) {
+            authContextTokenQueue.push(new AuthContextTokenDO(authzCode, tokenId));
+        } else {
+            AuthzCodeDO authzCodeDO = new AuthzCodeDO();
+            authzCodeDO.setAuthorizationCode(authzCode);
+            authzCodeDO.setOauthTokenId(tokenId);
+            List<AuthzCodeDO> authzCodeDOList = new ArrayList<>(Arrays.asList(authzCodeDO));
+            deactivateAuthorizationCode(authzCodeDOList);
+        }
+    }
+
     public void storeAccessToken(String accessToken, String consumerKey,
                                  AccessTokenDO accessTokenDO, Connection connection,
                                  String userStoreDomain) throws IdentityOAuth2Exception {

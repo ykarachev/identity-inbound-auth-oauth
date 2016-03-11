@@ -186,9 +186,22 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         // get the token from the OAuthTokenReqMessageContext which is stored while validating
         // the authorization code.
         String authzCode = (String) tokReqMsgCtx.getProperty(AUTHZ_CODE);
+        boolean existingTokenUsed = false;
+        if (tokReqMsgCtx.getProperty(EXISTING_TOKEN_ISSUED) != null) {
+            existingTokenUsed = (Boolean) tokReqMsgCtx.getProperty(EXISTING_TOKEN_ISSUED);
+        }
         // if it's not there (which is unlikely), recalculate it.
         if (authzCode == null) {
             authzCode = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getAuthorizationCode();
+        }
+
+        try {
+            if (existingTokenUsed){
+                //has given an already issued access token. So the authorization code is not deactivated yet
+                tokenMgtDAO.deactivateAuthorizationCode(authzCode, tokenRespDTO.getTokenId());
+            }
+        } catch (IdentityException e) {
+            throw new IdentityOAuth2Exception("Error occurred while deactivating authorization code", e);
         }
 
         // Clear the cache entry

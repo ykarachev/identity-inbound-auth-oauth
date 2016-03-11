@@ -21,8 +21,9 @@ package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.base.IdentityException;
-import org.wso2.carbon.identity.oauth.cache.CacheKey;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
@@ -75,6 +76,24 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         // authz Code is not available in cache. check the database
         if (authzCodeDO == null) {
             authzCodeDO = tokenMgtDAO.validateAuthorizationCode(clientId, authorizationCode);
+        }
+
+        if (authzCodeDO != null && OAuthConstants.AuthorizationCodeState.INACTIVE.equals(authzCodeDO.getState())){
+            String scope = OAuth2Util.buildScopeString(authzCodeDO.getScope());
+            String authorizedUser = authzCodeDO.getAuthorizedUser().toString();
+            boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
+            String cacheKeyString;
+            if (isUsernameCaseSensitive) {
+                cacheKeyString = clientId + ":" + authorizedUser + ":" + scope;
+            } else {
+                cacheKeyString = clientId + ":" + authorizedUser.toLowerCase() + ":" + scope;
+            }
+            OAuthCacheKey cacheKey = new OAuthCacheKey(cacheKeyString);
+            oauthCache.clearCacheEntry(cacheKey);
+            if (log.isDebugEnabled()) {
+                log.debug("Invalid access token request with inactive authorization code for Client Id : " + clientId);
+            }
+            return false;
         }
 
         //Check whether it is a valid grant

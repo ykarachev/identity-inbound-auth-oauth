@@ -161,7 +161,7 @@ public class TokenMgtDAO {
             prepStmt.setString(3, callbackUrl);
             prepStmt.setString(4, OAuth2Util.buildScopeString(authzCodeDO.getScope()));
             prepStmt.setString(5, authzCodeDO.getAuthorizedUser().getUserName());
-            prepStmt.setString(6, authzCodeDO.getAuthorizedUser().getUserStoreDomain());
+            prepStmt.setString(6, getSanitizedUserStoreDomain(authzCodeDO.getAuthorizedUser().getUserStoreDomain()));
             int tenantId = OAuth2Util.getTenantId(authzCodeDO.getAuthorizedUser().getTenantDomain());
             prepStmt.setInt(7, tenantId);
             prepStmt.setTimestamp(8, authzCodeDO.getIssuedTime(),
@@ -187,10 +187,12 @@ public class TokenMgtDAO {
             return;
         }
 
+        userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
         PreparedStatement prepStmt = null;
 
         String accessTokenStoreTable = "IDN_OAUTH2_ACCESS_TOKEN";
-        if (StringUtils.isNotBlank(userStoreDomain)) {
+        if (StringUtils.isNotBlank(userStoreDomain) &&
+                !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
             accessTokenStoreTable = accessTokenStoreTable + "_" + userStoreDomain;
         }
 
@@ -210,7 +212,7 @@ public class TokenMgtDAO {
             prepStmt.setString(3, accessTokenDO.getAuthzUser().getUserName());
             int tenantId = OAuth2Util.getTenantId(accessTokenDO.getAuthzUser().getTenantDomain());
             prepStmt.setInt(4, tenantId);
-            prepStmt.setString(5, accessTokenDO.getAuthzUser().getUserStoreDomain());
+            prepStmt.setString(5, getSanitizedUserStoreDomain(accessTokenDO.getAuthzUser().getUserStoreDomain()));
             prepStmt.setTimestamp(6, accessTokenDO.getIssuedTime(), Calendar.getInstance(TimeZone.getTimeZone(UTC)));
             prepStmt.setTimestamp(7, accessTokenDO.getRefreshTokenIssuedTime(), Calendar.getInstance(TimeZone
                     .getTimeZone(UTC)));
@@ -260,6 +262,9 @@ public class TokenMgtDAO {
         if (!enablePersist) {
             return;
         }
+
+        userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
+
         if (maxPoolSize > 0) {
             accessContextTokenQueue.push(new AccessContextTokenDO(accessToken, consumerKey, newAccessTokenDO
                     , existingAccessTokenDO, userStoreDomain));
@@ -274,6 +279,9 @@ public class TokenMgtDAO {
         if (!enablePersist) {
             return false;
         }
+
+        userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
+
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         try {
             if (existingAccessTokenDO != null) {
@@ -312,10 +320,8 @@ public class TokenMgtDAO {
         String tenantDomain = authzUser.getTenantDomain();
         int tenantId = OAuth2Util.getTenantId(tenantDomain);
         String tenantAwareUsernameWithNoUserDomain = authzUser.getUserName();
-        String userDomain = authzUser.getUserStoreDomain();
-        if ((userDomain != null)){
-            userDomain.toUpperCase();
-        }
+        String userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
+        userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
 
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
@@ -342,7 +348,8 @@ public class TokenMgtDAO {
                 sql = SQLQueries.RETRIEVE_LATEST_ACCESS_TOKEN_BY_CLIENT_ID_USER_SCOPE_ORACLE;
             }
 
-            if (StringUtils.isNotEmpty(userStoreDomain)) {
+            if (StringUtils.isNotEmpty(userStoreDomain) &&
+                    !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
                 //logic to store access token into different tables when multiple user stores are configured.
                 sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
             }
@@ -440,10 +447,8 @@ public class TokenMgtDAO {
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(userName.toString());
         String tenantDomain = userName.getTenantDomain();
         String tenantAwareUsernameWithNoUserDomain = userName.getUserName();
-        String userDomain = userName.getUserStoreDomain();
-        if ((userDomain != null)){
-            userDomain.toUpperCase();
-        }
+        String userDomain = getSanitizedUserStoreDomain(userName.getUserStoreDomain());
+        userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
 
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
@@ -454,7 +459,8 @@ public class TokenMgtDAO {
             if (includeExpired) {
                 sql = SQLQueries.RETRIEVE_ACTIVE_EXPIRED_ACCESS_TOKEN_BY_CLIENT_ID_USER;
             }
-            if (StringUtils.isNotEmpty(userStoreDomain)) {
+            if (StringUtils.isNotEmpty(userStoreDomain) &&
+                    !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
                 sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
             }
             if (!isUsernameCaseSensitive) {
@@ -643,7 +649,8 @@ public class TokenMgtDAO {
             }
 
             String accessTokenStoreTable = "IDN_OAUTH2_ACCESS_TOKEN";
-            if (StringUtils.isNotBlank(userStoreDomain)) {
+            if (StringUtils.isNotBlank(userStoreDomain) &&
+                    !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
                 accessTokenStoreTable = accessTokenStoreTable + "_" + userStoreDomain;
             }
 
@@ -765,7 +772,8 @@ public class TokenMgtDAO {
                 sql = SQLQueries.RETRIEVE_ACTIVE_ACCESS_TOKEN;
             }
 
-            if (StringUtils.isNotBlank(userStoreDomain)) {
+            if (StringUtils.isNotBlank(userStoreDomain) &&
+                    !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
                 sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
             }
 
@@ -850,7 +858,8 @@ public class TokenMgtDAO {
 		try {
 
 			String sql = SQLQueries.UPDATE_TOKE_STATE;
-			if (StringUtils.isNotBlank(userStoreDomain)) {
+			if (StringUtils.isNotBlank(userStoreDomain) &&
+                    !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
 				sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
 			}
 			prepStmt = connection.prepareStatement(sql);
@@ -1130,10 +1139,8 @@ public class TokenMgtDAO {
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
         String tenantAwareUsernameWithNoUserDomain = authzUser.getUserName();
-        String userDomain = authzUser.getUserStoreDomain();
-        if ((userDomain != null)){
-            userDomain.toUpperCase();
-        }
+        String userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
+
         try {
             int tenantId = OAuth2Util.getTenantId(tenantDomain);
             if (OAuth2Util.checkAccessTokenPartitioningEnabled() &&
@@ -1344,9 +1351,7 @@ public class TokenMgtDAO {
         //we do not support access token partitioning here
         Connection connection = IdentityDatabaseUtil.getDBConnection();
 
-        if ((userStoreDomain != null)){
-            userStoreDomain.toUpperCase();
-        }
+        userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
         PreparedStatement prepStmt = null;
         ResultSet resultSet =  null;
         Map<String, AccessTokenDO> accessTokenDOMap = new HashMap<>();
@@ -1409,13 +1414,15 @@ public class TokenMgtDAO {
         //we do not support access token partitioning here
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
+        currentUserStoreDomain = getSanitizedUserStoreDomain(currentUserStoreDomain);
+        newUserStoreDomain = getSanitizedUserStoreDomain(newUserStoreDomain);
         try {
 
             String sqlQuery = SQLQueries.RENAME_USER_STORE_IN_ACCESS_TOKENS_TABLE;
             ps = connection.prepareStatement(sqlQuery);
-            ps.setString(1, newUserStoreDomain.toUpperCase());
+            ps.setString(1, newUserStoreDomain);
             ps.setInt(2, tenantId);
-            ps.setString(3, currentUserStoreDomain.toUpperCase());
+            ps.setString(3, currentUserStoreDomain);
             int count = ps.executeUpdate();
             if (log.isDebugEnabled()) {
                 log.debug("Number of rows being updated : " + count);
@@ -1479,13 +1486,14 @@ public class TokenMgtDAO {
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         ResultSet rs = null;
+        String userStoreDomain = getSanitizedUserStoreDomain(userStorDomain);
 
         List<AuthzCodeDO> latestAuthzCodes = new ArrayList<>();
         try {
             String sqlQuery = SQLQueries.LIST_LATEST_AUTHZ_CODES_IN_USER_DOMAIN;
             ps = connection.prepareStatement(sqlQuery);
             ps.setInt(1, tenantId);
-            ps.setString(2, userStorDomain.toUpperCase());
+            ps.setString(2, userStoreDomain);
             rs = ps.executeQuery();
             while (rs.next()) {
                 String authzCodeId = rs.getString(1);
@@ -1499,7 +1507,7 @@ public class TokenMgtDAO {
 
                 AuthenticatedUser user = new AuthenticatedUser();
                 user.setUserName(authzUser);
-                user.setUserStoreDomain(userStorDomain);
+                user.setUserStoreDomain(userStoreDomain);
                 user.setTenantDomain(OAuth2Util.getTenantDomain(tenantId));
                 latestAuthzCodes.add(new AuthzCodeDO(user, scope, issuedTime, validityPeriodInMillis, callbackUrl,
                         consumerKey, authzCode, authzCodeId));
@@ -1508,7 +1516,7 @@ public class TokenMgtDAO {
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollBack(connection);
             throw new IdentityOAuth2Exception("Error occurred while retrieving latest authorization codes of user " +
-                    "store : " + userStorDomain + " in tenant :" + tenantId, e);
+                    "store : " + userStoreDomain + " in tenant :" + tenantId, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
         }
@@ -1521,12 +1529,14 @@ public class TokenMgtDAO {
         //we do not support access token partitioning here
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
+        currentUserStoreDomain = getSanitizedUserStoreDomain(currentUserStoreDomain);
+        newUserStoreDomain = getSanitizedUserStoreDomain(newUserStoreDomain);
         try {
             String sqlQuery = SQLQueries.RENAME_USER_STORE_IN_AUTHORIZATION_CODES_TABLE;
             ps = connection.prepareStatement(sqlQuery);
-            ps.setString(1, newUserStoreDomain.toUpperCase());
+            ps.setString(1, newUserStoreDomain);
             ps.setInt(2, tenantId);
-            ps.setString(3, currentUserStoreDomain.toUpperCase());
+            ps.setString(3, currentUserStoreDomain);
             int count = ps.executeUpdate();
             if (log.isDebugEnabled()) {
                 log.debug("Number of rows being updated : " + count);
@@ -1716,6 +1726,16 @@ public class TokenMgtDAO {
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
         }
+    }
+
+
+    private String getSanitizedUserStoreDomain(String userStoreDomain){
+        if(userStoreDomain != null){
+            userStoreDomain = userStoreDomain.toUpperCase();
+        } else{
+            userStoreDomain = IdentityUtil.getPrimaryDomainName();
+        }
+        return userStoreDomain;
     }
 
 }

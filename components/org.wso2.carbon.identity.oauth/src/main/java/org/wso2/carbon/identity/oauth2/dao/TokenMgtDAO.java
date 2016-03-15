@@ -168,7 +168,10 @@ public class TokenMgtDAO {
                                   Calendar.getInstance(TimeZone.getTimeZone(UTC)));
             prepStmt.setLong(9, authzCodeDO.getValidityPeriod());
             prepStmt.setString(10, authzCodeDO.getAuthorizedUser().getAuthenticatedSubjectIdentifier());
-            prepStmt.setString(11, persistenceProcessor.getProcessedClientId(consumerKey));
+            prepStmt.setString(11, authzCodeDO.getPkceCodeChallenge());
+            prepStmt.setString(12, authzCodeDO.getPkceCodeChallengeMethod());
+            prepStmt.setString(13, persistenceProcessor.getProcessedClientId(consumerKey));
+
             prepStmt.execute();
             connection.commit();
         } catch (SQLException e) {

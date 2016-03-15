@@ -30,6 +30,7 @@ import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationResultCacheEntry;
+import org.wso2.carbon.identity.application.authentication.framework.config.ConfigurationFacade;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticationResult;
 import org.wso2.carbon.identity.application.authentication.framework.model.CommonAuthRequestWrapper;
@@ -181,7 +182,10 @@ public class OAuth2AuthzEndpoint {
 
             if (clientId != null && sessionDataKeyFromLogin == null && sessionDataKeyFromConsent == null) {
                 // Authz request from client
-                String redirectURL = handleOAuthAuthorizationRequest(clientId, request);
+                String redirectURL = null;
+
+                redirectURL = handleOAuthAuthorizationRequest(clientId, request);
+
                 String type = OAuthConstants.Scope.OAUTH2;
                 String scopes = request.getParameter(OAuthConstants.OAuth10AParams.SCOPE);
                 if (scopes != null && scopes.contains(OAuthConstants.Scope.OPENID)) {
@@ -525,8 +529,16 @@ public class OAuth2AuthzEndpoint {
             claimMapping.setRemoteClaim(claim);
             sessionDataCacheEntry.getLoggedInUser().getUserAttributes().put(claimMapping, sub);
         }
+        //PKCE
+        String[] pkceCodeChallengeArray = sessionDataCacheEntry.getParamMap().get(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE);
+        String pkceCodeChallenge = null;
+        if(pkceCodeChallengeArray != null && pkceCodeChallengeArray.length > 0){
+            pkceCodeChallenge = pkceCodeChallengeArray[0];
+        }
+
         authorizationGrantCacheEntry.setNonceValue(sessionDataCacheEntry.getoAuth2Parameters().getNonce());
         authorizationGrantCacheEntry.setCodeId(codeId);
+        authorizationGrantCacheEntry.setPkceCodeChallenge(pkceCodeChallenge);
         AuthorizationGrantCache.getInstance().addToCacheByCode(authorizationGrantCacheKey, authorizationGrantCacheEntry);
     }
 
@@ -558,6 +570,8 @@ public class OAuth2AuthzEndpoint {
 
         OAuth2ClientValidationResponseDTO clientDTO = null;
         String redirectUri = req.getParameter("redirect_uri");
+        String pkceChallengeCode = null;
+        String pkceChallengeMethod = null;
         if (StringUtils.isBlank(clientId)) {
             if (log.isDebugEnabled()) {
                 log.debug("Client Id is not present in the authorization request");
@@ -593,6 +607,17 @@ public class OAuth2AuthzEndpoint {
         }
         params.setState(oauthRequest.getState());
         params.setApplicationName(clientDTO.getApplicationName());
+
+        pkceChallengeCode = req.getParameter(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE);
+        pkceChallengeMethod = req.getParameter(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE_METHOD);
+        if(clientDTO.isPkceMandatory()) {
+            if(pkceChallengeCode == null || pkceChallengeCode.trim().length() == 0) {
+                return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "PKCE Challenge is not present " +
+                        "in the authorization request", null, null);
+            }
+        }
+        params.setPkceCodeChallenge(pkceChallengeCode);
+        params.setPkceCodeChallengeMethod(pkceChallengeMethod);
 
         // OpenID Connect specific request parameters
         params.setNonce(oauthRequest.getParam(OAuthConstants.OAuth20Params.NONCE));
@@ -822,6 +847,8 @@ public class OAuth2AuthzEndpoint {
         authzReqDTO.setUser(sessionDataCacheEntry.getLoggedInUser());
         authzReqDTO.setACRValues(oauth2Params.getACRValues());
         authzReqDTO.setNonce(oauth2Params.getNonce());
+        authzReqDTO.setPkceCodeChallenge(oauth2Params.getPkceCodeChallenge());
+        authzReqDTO.setPkceCodeChallengeMethod(oauth2Params.getPkceCodeChallengeMethod());
         return EndpointUtil.getOAuth2Service().authorize(authzReqDTO);
     }
 

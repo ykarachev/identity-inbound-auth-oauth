@@ -33,7 +33,7 @@ import java.util.concurrent.BlockingDeque;
  */
 public class AuthPersistenceTask implements Runnable {
 
-    private static Log log = LogFactory.getLog(TokenPersistenceTask.class);
+    private static Log log = LogFactory.getLog(AuthPersistenceTask.class);
     private BlockingDeque<AuthContextTokenDO> authContextTokenQueue;
 
     public AuthPersistenceTask(BlockingDeque<AuthContextTokenDO> authContextTokenQueue) {

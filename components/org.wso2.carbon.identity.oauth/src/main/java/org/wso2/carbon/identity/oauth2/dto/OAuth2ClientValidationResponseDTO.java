@@ -24,6 +24,8 @@ public class OAuth2ClientValidationResponseDTO {
     private String errorCode;
     private String errorMsg;
     private String callbackURL;
+    private boolean pkceMandatory;
+    private boolean pkceSupportPlain;
 
     public boolean isValidClient() {
         return validClient;
@@ -63,5 +65,21 @@ public class OAuth2ClientValidationResponseDTO {
 
     public void setCallbackURL(String callbackURL) {
         this.callbackURL = callbackURL;
+    }
+
+    public boolean isPkceSupportPlain() {
+        return pkceSupportPlain;
+    }
+
+    public void setPkceSupportPlain(boolean pkceSupportPlain) {
+        this.pkceSupportPlain = pkceSupportPlain;
+    }
+
+    public boolean isPkceMandatory() {
+        return pkceMandatory;
+    }
+
+    public void setPkceMandatory(boolean pkceMandatory) {
+        this.pkceMandatory = pkceMandatory;
     }
 }

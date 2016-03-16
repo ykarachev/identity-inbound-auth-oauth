@@ -21,9 +21,15 @@ package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.base.IdentityException;
-import org.wso2.carbon.identity.oauth.cache.CacheKey;
+import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
@@ -31,6 +37,11 @@ import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import org.apache.commons.codec.binary.Base64;
 
 /**
  * Implements the AuthorizationGrantHandler for the Grant Type : authorization_code.
@@ -41,11 +52,16 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
     private static final String AUTHZ_CODE = "AuthorizationCode";
 
     private static Log log = LogFactory.getLog(AuthorizationCodeGrantHandler.class);
+    private static AppInfoCache appInfoCache;
+
+    public AuthorizationCodeGrantHandler() {
+        appInfoCache = AppInfoCache.getInstance();
+    }
 
     @Override
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
 
-        if(!super.validateGrant(tokReqMsgCtx)){
+        if (!super.validateGrant(tokReqMsgCtx)) {
             return false;
         }
 
@@ -55,13 +71,22 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         String clientId = oAuth2AccessTokenReqDTO.getClientId();
 
         AuthzCodeDO authzCodeDO = null;
+        OAuthAppDO oAuthAppDO = null;
         // if cache is enabled, check in the cache first.
         if (cacheEnabled) {
             OAuthCacheKey cacheKey = new OAuthCacheKey(OAuth2Util.buildCacheKeyStringForAuthzCode(
                     clientId, authorizationCode));
             authzCodeDO = (AuthzCodeDO) oauthCache.getValueFromCache(cacheKey);
         }
-
+        oAuthAppDO = appInfoCache.getValueFromCache(clientId);
+        if (oAuthAppDO != null) {
+            try {
+                oAuthAppDO = new OAuthAppDAO().getAppInformation(clientId);
+            } catch (InvalidOAuthClientException e) {
+                throw new IdentityOAuth2Exception("Invalid OAuth client", e);
+            }
+            appInfoCache.addToCache(clientId, oAuthAppDO);
+        }
         if (log.isDebugEnabled()) {
             if (authzCodeDO != null) {
                 log.debug("Authorization Code Info was available in cache for client id : "
@@ -75,6 +100,24 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         // authz Code is not available in cache. check the database
         if (authzCodeDO == null) {
             authzCodeDO = tokenMgtDAO.validateAuthorizationCode(clientId, authorizationCode);
+        }
+
+        if (authzCodeDO != null && OAuthConstants.AuthorizationCodeState.INACTIVE.equals(authzCodeDO.getState())){
+            String scope = OAuth2Util.buildScopeString(authzCodeDO.getScope());
+            String authorizedUser = authzCodeDO.getAuthorizedUser().toString();
+            boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
+            String cacheKeyString;
+            if (isUsernameCaseSensitive) {
+                cacheKeyString = clientId + ":" + authorizedUser + ":" + scope;
+            } else {
+                cacheKeyString = clientId + ":" + authorizedUser.toLowerCase() + ":" + scope;
+            }
+            OAuthCacheKey cacheKey = new OAuthCacheKey(cacheKeyString);
+            oauthCache.clearCacheEntry(cacheKey);
+            if (log.isDebugEnabled()) {
+                log.debug("Invalid access token request with inactive authorization code for Client Id : " + clientId);
+            }
+            return false;
         }
 
         //Check whether it is a valid grant
@@ -144,6 +187,17 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
             return false;
         }
 
+
+        //Perform PKCE Validation for "Authorization Code" Grant Type
+        String PKCECodeChallenge = authzCodeDO.getPkceCodeChallenge();
+        String PKCECodeChallengeMethod = authzCodeDO.getPkceCodeChallengeMethod();
+        String codeVerifier = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getPkceCodeVerifier();
+        if (!doPKCEValidation(PKCECodeChallenge, codeVerifier, PKCECodeChallengeMethod, oAuthAppDO)) {
+            //possible malicious oAuthRequest
+            log.warn("Failed PKCE Verification for oAuth 2.0 request");
+            return false;
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("Found an Authorization Code, " +
                     "Client : " + clientId +
@@ -167,9 +221,22 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         // get the token from the OAuthTokenReqMessageContext which is stored while validating
         // the authorization code.
         String authzCode = (String) tokReqMsgCtx.getProperty(AUTHZ_CODE);
+        boolean existingTokenUsed = false;
+        if (tokReqMsgCtx.getProperty(EXISTING_TOKEN_ISSUED) != null) {
+            existingTokenUsed = (Boolean) tokReqMsgCtx.getProperty(EXISTING_TOKEN_ISSUED);
+        }
         // if it's not there (which is unlikely), recalculate it.
         if (authzCode == null) {
             authzCode = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getAuthorizationCode();
+        }
+
+        try {
+            if (existingTokenUsed){
+                //has given an already issued access token. So the authorization code is not deactivated yet
+                tokenMgtDAO.deactivateAuthorizationCode(authzCode, tokenRespDTO.getTokenId());
+            }
+        } catch (IdentityException e) {
+            throw new IdentityOAuth2Exception("Error occurred while deactivating authorization code", e);
         }
 
         // Clear the cache entry
@@ -208,5 +275,66 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                     "Error occurred while storing new access token", e);
         }
     }
+    private boolean doPKCEValidation(String referenceCodeChallenge, String codeVerifier, String challenge_method, OAuthAppDO oAuthAppDO) throws IdentityOAuth2Exception {
+        if(oAuthAppDO.isPkceMandatory() || referenceCodeChallenge != null){
 
+            //As per RFC 7636 Fallback to 'plain' if no code_challenge_method parameter is sent
+            if(challenge_method == null || challenge_method.trim().length() == 0) {
+                challenge_method = "plain";
+            }
+
+            //if app with no PKCE code verifier arrives
+            if ((codeVerifier == null || codeVerifier.trim().length() == 0)) {
+                //if pkce is mandatory, throw error
+                if(oAuthAppDO.isPkceMandatory()) {
+                    throw new IdentityOAuth2Exception("No PKCE code verifier found.PKCE is mandatory for this " +
+                            "oAuth 2.0 application.");
+                } else {
+                    //PKCE is optional, see if the authz code was requested with a PKCE challenge
+                    if(referenceCodeChallenge == null || referenceCodeChallenge.trim().length() == 0) {
+                        //since no PKCE challenge was provided
+                        return true;
+                    } else {
+                        throw new IdentityOAuth2Exception("Empty PKCE code_verifier sent. This authorization code " +
+                                "requires a PKCE verification to obtain an access token.");
+                    }
+                }
+            }
+            //verify that the code verifier is upto spec as per RFC 7636
+            if(!codeVerifier.matches("[\\w\\-\\._~]+") || (codeVerifier.length() < 43 || codeVerifier.length() > 128)) {
+                throw new IdentityOAuth2Exception("Code verifier used is not up to RFC 7636 specifications.");
+            }
+            if (OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(challenge_method)) {
+                //if the current applicatoin explicitly doesn't support plain, throw exception
+                if(!oAuthAppDO.isPkceSupportPlain()) {
+                    throw new IdentityOAuth2Exception("This application does not allow 'plain' transformation algorithm.");
+                }
+                if (!referenceCodeChallenge.equals(codeVerifier)) {
+                    return false;
+                }
+            } else if (OAuthConstants.OAUTH_PKCE_S256_CHALLENGE.equals(challenge_method)) {
+
+                try {
+                    MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+
+                    byte[] hash = messageDigest.digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
+                    String referencePKCECodeChallenge = new String(new Base64().encode(hash));
+                    if (!referencePKCECodeChallenge.equals(referenceCodeChallenge)) {
+                        return false;
+                    }
+                } catch (NoSuchAlgorithmException e) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Failed to create SHA256 Message Digest.");
+                    }
+                    return false;
+                }
+            } else {
+                //Invalid OAuth2 token response
+                throw new IdentityOAuth2Exception("Invalid OAuth2 Token Response. Invalid PKCE Code Challenge Method '"
+                        + challenge_method + "'. Server only supports plain, S256 transformation algorithms.");
+            }
+        }
+        //pkce validation sucessfull
+        return true;
+    }
 }

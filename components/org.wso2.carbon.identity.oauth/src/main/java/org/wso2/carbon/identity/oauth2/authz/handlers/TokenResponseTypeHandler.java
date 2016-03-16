@@ -301,13 +301,13 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             // set refresh token issued time.this is needed by downstream handlers.
             oauthAuthzMsgCtx.setRefreshTokenIssuedTime(refreshTokenIssuedTime.getTime());
 
-            try {
-                accessToken = oauthIssuerImpl.accessToken();
+	    try {
+		accessToken = oauthIssuerImpl.accessToken(oauthAuthzMsgCtx);
 
-                // regenerate only if refresh token is null
-                if (refreshToken == null) {
-                    refreshToken = oauthIssuerImpl.refreshToken();
-                }
+		// regenerate only if refresh token is null
+		if (refreshToken == null) {
+		    refreshToken = oauthIssuerImpl.refreshToken(oauthAuthzMsgCtx);
+		}
 
             } catch (OAuthSystemException e) {
                 throw new IdentityOAuth2Exception("Error occurred while generating access token and refresh token", e);

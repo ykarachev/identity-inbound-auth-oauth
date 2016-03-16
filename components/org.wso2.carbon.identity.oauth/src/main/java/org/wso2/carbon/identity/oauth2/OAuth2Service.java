@@ -144,6 +144,8 @@ public class OAuth2Service extends AbstractAdmin {
                 validationResponseDTO.setValidClient(true);
                 validationResponseDTO.setCallbackURL(appDO.getCallbackUrl());
                 validationResponseDTO.setApplicationName(appDO.getApplicationName());
+                validationResponseDTO.setPkceMandatory(appDO.isPkceMandatory());
+                validationResponseDTO.setPkceSupportPlain(appDO.isPkceSupportPlain());
                 return validationResponseDTO;
             }
 
@@ -157,6 +159,8 @@ public class OAuth2Service extends AbstractAdmin {
                 validationResponseDTO.setValidClient(true);
                 validationResponseDTO.setApplicationName(appDO.getApplicationName());
                 validationResponseDTO.setCallbackURL(callbackURI);
+                validationResponseDTO.setPkceMandatory(appDO.isPkceMandatory());
+                validationResponseDTO.setPkceSupportPlain(appDO.isPkceSupportPlain());
                 return validationResponseDTO;
             } else {    // Provided callback URL does not match the registered callback url.
                 log.warn("Provided Callback URL does not match with the provided one.");

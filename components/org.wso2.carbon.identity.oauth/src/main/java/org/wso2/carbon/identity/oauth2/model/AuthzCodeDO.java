@@ -19,7 +19,6 @@
 package org.wso2.carbon.identity.oauth2.model;
 
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
-import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 
 import java.sql.Timestamp;
@@ -49,6 +48,12 @@ public class AuthzCodeDO extends CacheEntry {
 
     private String authzCodeId;
 
+    private String state;
+
+    private String pkceCodeChallenge;
+
+    private String pkceCodeChallengeMethod;
+
     public AuthzCodeDO(AuthenticatedUser authorizedUser, String[] scope, Timestamp issuedTime, long validityPeriod, String
             callbackUrl, String consumerKey, String authorizationCode, String authzCodeId) {
         this.authorizedUser = authorizedUser;
@@ -61,6 +66,25 @@ public class AuthzCodeDO extends CacheEntry {
         this.authzCodeId = authzCodeId;
     }
 
+    public AuthzCodeDO(AuthenticatedUser authorizedUser, String[] scope, Timestamp issuedTime, long validityPeriod, String
+            callbackUrl, String consumerKey, String authorizationCode, String authzCodeId, String state) {
+        this.authorizedUser = authorizedUser;
+        this.scope = scope;
+        this.issuedTime = issuedTime;
+        this.validityPeriod = validityPeriod;
+        this.callbackUrl = callbackUrl;
+        this.consumerKey = consumerKey;
+        this.authorizationCode = authorizationCode;
+        this.authzCodeId = authzCodeId;
+        this.state = state;
+    }
+
+    public AuthzCodeDO(AuthenticatedUser authorizedUser, String[] scope, Timestamp issuedTime, long validityPeriod, String
+            callbackUrl, String consumerKey, String authorizationCode, String authzCodeId, String pkceCodeChallenge, String pkceCodeChallengeMethod) {
+        this(authorizedUser, scope, issuedTime, validityPeriod, callbackUrl, consumerKey,authorizationCode,authzCodeId);
+        this.pkceCodeChallenge = pkceCodeChallenge;
+        this.pkceCodeChallengeMethod = pkceCodeChallengeMethod;
+    }
     public AuthzCodeDO() {
     }
 
@@ -110,5 +134,29 @@ public class AuthzCodeDO extends CacheEntry {
 
     public void setAuthorizationCode(String authorizationCode) {
         this.authorizationCode = authorizationCode;
+    }
+
+    public String getState() {
+        return state;
+    }
+
+    public void setState(String state) {
+        this.state = state;
+    }
+
+    public String getPkceCodeChallenge() {
+        return pkceCodeChallenge;
+    }
+
+    public void setPkceCodeChallenge(String pkceCodeChallenge) {
+        this.pkceCodeChallenge = pkceCodeChallenge;
+    }
+
+    public String getPkceCodeChallengeMethod() {
+        return pkceCodeChallengeMethod;
+    }
+
+    public void setPkceCodeChallengeMethod(String pkceCodeChallengeMethod) {
+        this.pkceCodeChallengeMethod = pkceCodeChallengeMethod;
     }
 }

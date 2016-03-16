@@ -41,7 +41,7 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
+import org.apache.commons.codec.binary.Base64;
 
 /**
  * Implements the AuthorizationGrantHandler for the Grant Type : authorization_code.
@@ -192,7 +192,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         String PKCECodeChallenge = authzCodeDO.getPkceCodeChallenge();
         String PKCECodeChallengeMethod = authzCodeDO.getPkceCodeChallengeMethod();
         String codeVerifier = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getPkceCodeVerifier();
-        if(!doPKCEValidation(PKCECodeChallenge,codeVerifier,PKCECodeChallengeMethod,oAuthAppDO)) {
+        if (!doPKCEValidation(PKCECodeChallenge, codeVerifier, PKCECodeChallengeMethod, oAuthAppDO)) {
             //possible malicious oAuthRequest
             log.warn("Failed PKCE Verification for oAuth 2.0 request");
             return false;
@@ -318,7 +318,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                     MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
 
                     byte[] hash = messageDigest.digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
-                    String referencePKCECodeChallenge = new String(Base64.getEncoder().encode(hash));
+                    String referencePKCECodeChallenge = new String(new Base64().encode(hash));
                     if (!referencePKCECodeChallenge.equals(referenceCodeChallenge)) {
                         return false;
                     }

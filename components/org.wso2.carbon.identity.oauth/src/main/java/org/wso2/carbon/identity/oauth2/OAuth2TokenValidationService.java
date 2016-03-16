@@ -21,7 +21,7 @@ package org.wso2.carbon.identity.oauth2;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.core.AbstractAdmin;
-import org.wso2.carbon.identity.oauth.event.OauthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2ClientApplicationDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2IntrospectionResponseDTO;
@@ -45,17 +45,16 @@ public class OAuth2TokenValidationService extends AbstractAdmin {
     public OAuth2TokenValidationResponseDTO validate(OAuth2TokenValidationRequestDTO validationReqDTO) {
 
         TokenValidationHandler validationHandler = TokenValidationHandler.getInstance();
-        List<OauthEventListener> oauthEventListeners =
-                OAuthComponentServiceHolder.getInstance().getOauthEventListeners();
-        for (OauthEventListener oauthEventListener : oauthEventListeners) {
-            try {
-                oauthEventListener.onPreTokenValidation(validationReqDTO);
-            } catch (IdentityOAuth2Exception e) {
-                OAuth2TokenValidationResponseDTO errRespDTO = new OAuth2TokenValidationResponseDTO();
-                errRespDTO.setValid(false);
-                errRespDTO.setErrorMsg(e.getMessage());
-                return errRespDTO;
-            }
+        List<OAuthEventListener> oAuthEventListeners =
+                OAuthComponentServiceHolder.getInstance().getoAuthEventListeners();
+        //trigger pre listeners
+        try {
+            triggerPreValidationListeners(oAuthEventListeners, validationReqDTO);
+        } catch (IdentityOAuth2Exception e) {
+            OAuth2TokenValidationResponseDTO errRespDTO = new OAuth2TokenValidationResponseDTO();
+            errRespDTO.setValid(false);
+            errRespDTO.setErrorMsg(e.getMessage());
+            return errRespDTO;
         }
         OAuth2TokenValidationResponseDTO responseDTO = null;
         try {
@@ -67,15 +66,31 @@ public class OAuth2TokenValidationService extends AbstractAdmin {
             errRespDTO.setErrorMsg("Server error occurred while validating the OAuth2 access token");
             return errRespDTO;
         }
+        //trigger post listeners
+        triggerPostValidationListeners(oAuthEventListeners, validationReqDTO, responseDTO);
+        return responseDTO;
+    }
 
-        for (OauthEventListener oauthEventListener : oauthEventListeners) {
+    private void triggerPreValidationListeners(List<OAuthEventListener> oAuthEventListeners,
+                                               OAuth2TokenValidationRequestDTO requestDTO)
+            throws IdentityOAuth2Exception {
+
+        for (OAuthEventListener OAuthEventListener : oAuthEventListeners) {
+            OAuthEventListener.onPreTokenValidation(requestDTO);
+        }
+    }
+
+    private void triggerPostValidationListeners(List<OAuthEventListener> oAuthEventListeners,
+                                                OAuth2TokenValidationRequestDTO requestDTO,
+                                                OAuth2TokenValidationResponseDTO responseDTO) {
+
+        for (OAuthEventListener OAuthEventListener : oAuthEventListeners) {
             try {
-                oauthEventListener.onPostTokenValidation(validationReqDTO, responseDTO);
+                OAuthEventListener.onPostTokenValidation(requestDTO, responseDTO);
             } catch (IdentityOAuth2Exception e) {
-                log.error("Oauth post listener " + oauthEventListener.getClass().getName() + " failed.", e);
+                log.error("Oauth post validation listener " + OAuthEventListener.getClass().getName() + " failed.", e);
             }
         }
-        return responseDTO;
     }
 
     /**

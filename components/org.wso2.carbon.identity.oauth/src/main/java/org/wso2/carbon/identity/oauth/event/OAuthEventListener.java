@@ -31,7 +31,7 @@ import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.RefreshTokenValidationDataDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 
-public interface OauthEventListener {
+public interface OAuthEventListener {
 
     /**
      * Called prior to issuing tokens.

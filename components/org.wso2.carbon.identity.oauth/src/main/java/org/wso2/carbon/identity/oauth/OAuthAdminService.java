@@ -40,7 +40,7 @@ import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO;
-import org.wso2.carbon.identity.oauth.event.OauthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
@@ -436,17 +436,9 @@ public class OAuthAdminService extends AbstractAdmin {
     public OAuthRevocationResponseDTO revokeAuthzForAppsByResoureOwner(
             OAuthRevocationRequestDTO revokeRequestDTO) throws IdentityOAuthAdminException {
 
-        List<OauthEventListener> oauthListeners = OAuthComponentServiceHolder.getInstance().getOauthEventListeners();
+        List<OAuthEventListener> oauthListeners = OAuthComponentServiceHolder.getInstance().getoAuthEventListeners();
 
-        for (OauthEventListener listener : oauthListeners) {
-            try {
-                listener.onPreTokenRevocationByResourceOwner(revokeRequestDTO);
-            } catch (IdentityOAuth2Exception e) {
-                throw new IdentityOAuthAdminException("Error occured with Oauth pre-revoke listner " + listener
-                        .getClass().getName(), e);
-            }
-        }
-
+        triggerPreRevokeListeners(oauthListeners, revokeRequestDTO);
 
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         if (revokeRequestDTO.getApps() != null && revokeRequestDTO.getApps().length > 0) {
@@ -545,12 +537,25 @@ public class OAuthAdminService extends AbstractAdmin {
         return new OAuthRevocationResponseDTO();
     }
 
-    private void triggerPostRevokeListeners(List<OauthEventListener> oauthListeners,
+    private void triggerPreRevokeListeners(List<OAuthEventListener> oauthListeners, OAuthRevocationRequestDTO
+            revokeRequestDTO) throws IdentityOAuthAdminException {
+
+        for (OAuthEventListener listener : oauthListeners) {
+            try {
+                listener.onPreTokenRevocationByResourceOwner(revokeRequestDTO);
+            } catch (IdentityOAuth2Exception e) {
+                throw new IdentityOAuthAdminException("Error occurred with Oauth pre-revoke listener " + listener
+                        .getClass().getName(), e);
+            }
+        }
+    }
+
+    private void triggerPostRevokeListeners(List<OAuthEventListener> oauthListeners,
                                             OAuthRevocationRequestDTO revokeRequestDTO,
                                             OAuthRevocationResponseDTO revokeRespDTO, AccessTokenDO[] accessTokenDOs) {
 
         for (AccessTokenDO accessTokenDO : accessTokenDOs) {
-            for (OauthEventListener listener : oauthListeners) {
+            for (OAuthEventListener listener : oauthListeners) {
                 try {
                     listener.onPostTokenRevocationByResourceOwner(revokeRequestDTO, revokeRespDTO, accessTokenDO);
                 } catch (IdentityOAuth2Exception e) {

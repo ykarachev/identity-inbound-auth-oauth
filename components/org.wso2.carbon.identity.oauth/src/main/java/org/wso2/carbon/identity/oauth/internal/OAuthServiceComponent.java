@@ -24,7 +24,7 @@ import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentContext;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.event.OauthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
 import org.wso2.carbon.identity.oauth.listener.IdentityOathEventListener;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.user.core.listener.UserOperationEventListener;
@@ -36,8 +36,8 @@ import org.wso2.carbon.user.core.service.RealmService;
  * interface="org.wso2.carbon.registry.core.service.RegistryService"
  * cardinality="1..1" policy="dynamic" bind="setRegistryService"
  * unbind="unsetRegistryService"
- * @scr.reference name="org.wso2.carbon.identity.oauth.event.OauthEventListener"
- * interface="org.wso2.carbon.identity.oauth.event.OauthEventListener"
+ * @scr.reference name="org.wso2.carbon.identity.oauth.event.OAuthEventListener"
+ * interface="org.wso2.carbon.identity.oauth.event.OAuthEventListener"
  * cardinality="0..n" policy="dynamic"
  * bind="setOauthEventListener"
  * unbind="unsetOauthEventListener"
@@ -46,6 +46,7 @@ import org.wso2.carbon.user.core.service.RealmService;
  * policy="dynamic" bind="setRealmService" unbind="unsetRealmService"
  */
 public class OAuthServiceComponent {
+
     private static Log log = LogFactory.getLog(OAuthServiceComponent.class);
     private static IdentityOathEventListener listener = null;
     private ServiceRegistration serviceRegistration = null;
@@ -76,6 +77,7 @@ public class OAuthServiceComponent {
     }
 
     protected void deactivate(ComponentContext context) {
+
         if (serviceRegistration != null) {
             serviceRegistration.unregister();
         }
@@ -85,6 +87,7 @@ public class OAuthServiceComponent {
     }
 
     protected void setRegistryService(RegistryService registryService) {
+
         if (log.isDebugEnabled()) {
             log.debug("RegistryService set in Identity OAuth bundle");
         }
@@ -92,6 +95,7 @@ public class OAuthServiceComponent {
     }
 
     protected void unsetRegistryService(RegistryService registryService) {
+
         if (log.isDebugEnabled()) {
             log.debug("RegistryService unset in Identity OAuth bundle");
         }
@@ -99,6 +103,7 @@ public class OAuthServiceComponent {
     }
 
     protected void setRealmService(RealmService realmService) {
+
         if (log.isDebugEnabled()) {
             log.debug("Setting the Realm Service");
         }
@@ -106,35 +111,36 @@ public class OAuthServiceComponent {
     }
 
     protected void unsetRealmService(RealmService realmService) {
+
         if (log.isDebugEnabled()) {
             log.debug("Unsetting the Realm Service");
         }
         OAuthComponentServiceHolder.getInstance().setRealmService(null);
     }
 
-    protected void setOauthEventListener(OauthEventListener oauthEventListener) {
+    protected void setOauthEventListener(OAuthEventListener oAuthEventListener) {
 
-        if (oauthEventListener == null) {
-            log.warn("Null OauthEventListener received, hence not registering");
+        if (oAuthEventListener == null) {
+            log.warn("Null OAuthEventListener received, hence not registering");
             return;
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("Setting OauthEventListener :" + oauthEventListener.getClass().getName());
+            log.debug("Setting OAuthEventListener :" + oAuthEventListener.getClass().getName());
         }
-        OAuthComponentServiceHolder.getInstance().addOauthEventListener(oauthEventListener);
+        OAuthComponentServiceHolder.getInstance().addOauthEventListener(oAuthEventListener);
     }
 
-    protected void unsetOauthEventListener(OauthEventListener oauthEventListener) {
+    protected void unsetOauthEventListener(OAuthEventListener oAuthEventListener) {
 
-        if (oauthEventListener == null) {
-            log.warn("Null OauthEventListener received, hence not unregistering");
+        if (oAuthEventListener == null) {
+            log.warn("Null oAuthEventListener received, hence not unregistering");
             return;
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("Unsetting OauthEventListener :" + oauthEventListener.getClass().getName());
+            log.debug("Unsetting oAuthEventListener :" + oAuthEventListener.getClass().getName());
         }
-        OAuthComponentServiceHolder.getInstance().removeOauthEventListener(oauthEventListener);
+        OAuthComponentServiceHolder.getInstance().removeOauthEventListener(oAuthEventListener);
     }
 }

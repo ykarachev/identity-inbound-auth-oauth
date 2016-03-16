@@ -30,7 +30,7 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.event.OauthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
@@ -53,12 +53,9 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
     public OAuth2AuthorizeRespDTO issue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx)
             throws IdentityOAuth2Exception {
 
-        List<OauthEventListener> oauthListeners = OAuthComponentServiceHolder.getInstance().getOauthEventListeners();
+        List<OAuthEventListener> oauthListeners = OAuthComponentServiceHolder.getInstance().getoAuthEventListeners();
 
-        for (OauthEventListener oauthListener : oauthListeners) {
-            oauthListener.onPreTokenIssue(oauthAuthzMsgCtx);
-        }
-
+        triggerPreListeners(oauthListeners, oauthAuthzMsgCtx);
 
         OAuth2AuthorizeRespDTO respDTO = new OAuth2AuthorizeRespDTO();
         OAuth2AuthorizeReqDTO authorizationReqDTO = oauthAuthzMsgCtx.getAuthorizationReqDTO();
@@ -136,7 +133,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                         respDTO.setScope(oauthAuthzMsgCtx.getApprovedScope());
                         respDTO.setTokenType(accessTokenDO.getTokenType());
                         buildIdToken(oauthAuthzMsgCtx, respDTO);
-                        triggerPostListeners(oauthListeners,oauthAuthzMsgCtx,accessTokenDO,respDTO);
+                        triggerPostListeners(oauthListeners, oauthAuthzMsgCtx, accessTokenDO, respDTO);
                         return respDTO;
                     } else {
 
@@ -301,13 +298,13 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             // set refresh token issued time.this is needed by downstream handlers.
             oauthAuthzMsgCtx.setRefreshTokenIssuedTime(refreshTokenIssuedTime.getTime());
 
-	    try {
-		accessToken = oauthIssuerImpl.accessToken(oauthAuthzMsgCtx);
+            try {
+                accessToken = oauthIssuerImpl.accessToken(oauthAuthzMsgCtx);
 
-		// regenerate only if refresh token is null
-		if (refreshToken == null) {
-		    refreshToken = oauthIssuerImpl.refreshToken(oauthAuthzMsgCtx);
-		}
+                // regenerate only if refresh token is null
+                if (refreshToken == null) {
+                    refreshToken = oauthIssuerImpl.refreshToken(oauthAuthzMsgCtx);
+                }
 
             } catch (OAuthSystemException e) {
                 throw new IdentityOAuth2Exception("Error occurred while generating access token and refresh token", e);
@@ -384,10 +381,19 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         return respDTO;
     }
 
-    private void triggerPostListeners(List<OauthEventListener> oauthListeners, OAuthAuthzReqMessageContext
+    private void triggerPreListeners(List<OAuthEventListener> oauthListeners, OAuthAuthzReqMessageContext
+            oauthAuthzMsgCtx) throws IdentityOAuth2Exception {
+
+        for (OAuthEventListener oauthListener : oauthListeners) {
+            oauthListener.onPreTokenIssue(oauthAuthzMsgCtx);
+        }
+
+    }
+
+    private void triggerPostListeners(List<OAuthEventListener> oauthListeners, OAuthAuthzReqMessageContext
             oauthAuthzMsgCtx, AccessTokenDO tokenDO, OAuth2AuthorizeRespDTO respDTO) {
 
-        for (OauthEventListener oauthListener : oauthListeners) {
+        for (OAuthEventListener oauthListener : oauthListeners) {
             try {
                 oauthListener.onPostTokenIssue(oauthAuthzMsgCtx, tokenDO, respDTO);
             } catch (IdentityOAuth2Exception e) {

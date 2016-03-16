@@ -20,7 +20,7 @@ package org.wso2.carbon.identity.oauth.internal;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.oauth.event.OauthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
 import org.wso2.carbon.registry.api.RegistryService;
 import org.wso2.carbon.user.core.service.RealmService;
 
@@ -32,10 +32,10 @@ public class OAuthComponentServiceHolder {
     private static OAuthComponentServiceHolder instance = new OAuthComponentServiceHolder();
     private RegistryService registryService;
     private RealmService realmService;
-    private List<OauthEventListener> oauthEventListeners;
+    private List<OAuthEventListener> oAuthEventListeners;
     private static Log log = LogFactory.getLog(OAuthComponentServiceHolder.class);
 
-    private OAuthComponentServiceHolder(){
+    private OAuthComponentServiceHolder() {
 
     }
 
@@ -64,29 +64,29 @@ public class OAuthComponentServiceHolder {
         this.realmService = realmService;
     }
 
-    public void addOauthEventListener(OauthEventListener oauthEventListener) {
+    public void addOauthEventListener(OAuthEventListener oAuthEventListener) {
 
-        if (oauthEventListeners == null) {
-            oauthEventListeners = new ArrayList<>();
+        if (oAuthEventListeners == null) {
+            oAuthEventListeners = new ArrayList<>();
         }
-        oauthEventListeners.add(oauthEventListener);
+        oAuthEventListeners.add(oAuthEventListener);
     }
 
-    public void removeOauthEventListener(OauthEventListener oauthEventListener) {
+    public void removeOauthEventListener(OAuthEventListener OAuthEventListener) {
 
-        if (oauthEventListeners != null && oauthEventListener != null) {
-            boolean isRemoved = oauthEventListeners.remove(oauthEventListener);
+        if (oAuthEventListeners != null && OAuthEventListener != null) {
+            boolean isRemoved = oAuthEventListeners.remove(OAuthEventListener);
             if (!isRemoved) {
-                log.warn(oauthEventListener.getClass().getName() + " had not been registered as a listener");
+                log.warn(OAuthEventListener.getClass().getName() + " had not been registered as a listener");
             }
         }
     }
 
-    public List<OauthEventListener> getOauthEventListeners() {
+    public List<OAuthEventListener> getoAuthEventListeners() {
 
-        if (oauthEventListeners == null) {
-            oauthEventListeners = new ArrayList<>();
+        if (oAuthEventListeners == null) {
+            oAuthEventListeners = new ArrayList<>();
         }
-        return oauthEventListeners;
+        return oAuthEventListeners;
     }
 }

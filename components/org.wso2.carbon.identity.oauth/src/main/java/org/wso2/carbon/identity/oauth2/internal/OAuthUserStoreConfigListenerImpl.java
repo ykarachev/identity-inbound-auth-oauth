@@ -18,13 +18,13 @@
 
 package org.wso2.carbon.identity.oauth2.internal;
 
+import org.wso2.carbon.identity.core.AbstractUserStoreConfigListener;
 import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
-import org.wso2.carbon.identity.user.store.configuration.listener.UserStoreConfigListener;
 import org.wso2.carbon.user.api.UserStoreException;
 
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class OAuthUserStoreConfigListenerImpl implements UserStoreConfigListener {
+public class OAuthUserStoreConfigListenerImpl extends AbstractUserStoreConfigListener {
     @Override
     public void onUserStoreNamePreUpdate(int tenantId, String currentUserStoreName, String newUserStoreName) throws
             UserStoreException {
@@ -53,12 +53,6 @@ public class OAuthUserStoreConfigListenerImpl implements UserStoreConfigListener
             throw new UserStoreException("Error occurred while renaming user store : " + currentUserStoreName +
                     " in tenant :" + tenantId, e);
         }
-    }
-
-    @Override
-    public void onUserStoreNamePostUpdate(int tenantId, String currentUserStoreName, String newUserStoreName) throws
-            UserStoreException {
-
     }
 
     @Override
@@ -102,10 +96,5 @@ public class OAuthUserStoreConfigListenerImpl implements UserStoreConfigListener
             throw new UserStoreException("Error occurred while revoking Access Token of user store : " +
                     userStoreName + " in tenant :" + tenantId, e);
         }
-    }
-
-    @Override
-    public void onUserStorePostDelete(int tenantId, String userStoreName) throws UserStoreException {
-
     }
 }

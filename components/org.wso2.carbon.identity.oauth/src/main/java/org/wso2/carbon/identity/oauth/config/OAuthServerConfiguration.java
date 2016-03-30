@@ -1230,6 +1230,17 @@ public class OAuthServerConfiguration {
                 if (responseTypeName != null && !"".equals(responseTypeName) &&
                         responseTypeHandlerImplClass != null && !"".equals(responseTypeHandlerImplClass)) {
                     supportedResponseTypeClassNames.put(responseTypeName, responseTypeHandlerImplClass);
+                    OMElement responseTypeValidatorClassNameElement = supportedResponseTypeElement
+                            .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.RESPONSE_TYPE_VALIDATOR_IMPL_CLASS));
+
+                    String responseTypeValidatorImplClass = null;
+                    if (responseTypeValidatorClassNameElement != null) {
+                        responseTypeValidatorImplClass = responseTypeValidatorClassNameElement.getText();
+                    }
+
+                    if (!StringUtils.isEmpty(responseTypeValidatorImplClass)) {
+                        supportedResponseTypeValidatorNames.put(responseTypeName, responseTypeValidatorImplClass);
+                    }
                 }
             }
         } else {
@@ -1531,6 +1542,7 @@ public class OAuthServerConfiguration {
         private static final String GRANT_TYPE_NAME = "GrantTypeName";
         private static final String GRANT_TYPE_HANDLER_IMPL_CLASS = "GrantTypeHandlerImplClass";
         private static final String GRANT_TYPE_VALIDATOR_IMPL_CLASS = "GrantTypeValidatorImplClass";
+        private static final String RESPONSE_TYPE_VALIDATOR_IMPL_CLASS = "ResponseTypeValidatorImplClass";
         // Supported Client Authentication Methods
         private static final String CLIENT_AUTH_HANDLERS = "ClientAuthHandlers";
         private static final String CLIENT_AUTH_HANDLER_IMPL_CLASS = "ClientAuthHandler";

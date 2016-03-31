@@ -122,10 +122,10 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                                 values.add(attributeValue);
                             }
                         }
+                        jwtClaimsSet.setClaim(entry.getKey(), values);
                     } else {
-                        values.add(value);
+                        jwtClaimsSet.setClaim(entry.getKey(), value);
                     }
-                    jwtClaimsSet.setClaim(entry.getKey(), values.toJSONString());
                 }
             } catch (OAuthSystemException e) {
                 log.error("Error occurred while adding claims of " + requestMsgCtx.getAuthorizedUser() +

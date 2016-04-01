@@ -222,7 +222,8 @@ public class OAuth2Service extends AbstractAdmin {
                     tokenReqDTO.getGrantType(), e);
             OAuth2AccessTokenRespDTO tokenRespDTO = new OAuth2AccessTokenRespDTO();
             tokenRespDTO.setError(true);
-            if (e.getCause().getCause() instanceof SQLIntegrityConstraintViolationException) {
+            if (e.getCause() != null && e.getCause().getCause() != null &&
+                    e.getCause().getCause() instanceof SQLIntegrityConstraintViolationException) {
                 tokenRespDTO.setErrorCode("sql_error");
             } else {
                 tokenRespDTO.setErrorCode(OAuth2ErrorCodes.SERVER_ERROR);

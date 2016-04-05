@@ -624,7 +624,7 @@ public class OAuth2AuthzEndpoint {
         params.setDisplay(oauthRequest.getParam(OAuthConstants.OAuth20Params.DISPLAY));
         params.setIDTokenHint(oauthRequest.getParam(OAuthConstants.OAuth20Params.ID_TOKEN_HINT));
         params.setLoginHint(oauthRequest.getParam(OAuthConstants.OAuth20Params.LOGIN_HINT));
-        if(oauthRequest.getParam(OAuthConstants.OAuth20Params.TENANT_DOMAIN) != null) {
+        if(StringUtils.isNotEmpty(oauthRequest.getParam(OAuthConstants.OAuth20Params.TENANT_DOMAIN))) {
             params.setTenantDomain(oauthRequest.getParam(OAuthConstants.OAuth20Params.TENANT_DOMAIN));
         } else {
             params.setTenantDomain(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME);

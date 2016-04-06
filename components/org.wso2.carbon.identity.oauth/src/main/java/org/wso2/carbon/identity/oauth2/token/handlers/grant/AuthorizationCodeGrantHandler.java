@@ -32,7 +32,6 @@ import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
-import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
@@ -282,8 +281,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         }
     }
     private boolean doPKCEValidation(String referenceCodeChallenge, String codeVerifier, String challenge_method, OAuthAppDO oAuthAppDO) throws IdentityOAuth2Exception {
-        if(OAuth2ServiceComponentHolder.isPkceEnabled() &&
-                (oAuthAppDO.isPkceMandatory() || referenceCodeChallenge != null)){
+        if(oAuthAppDO.isPkceMandatory() || referenceCodeChallenge != null){
 
             //As per RFC 7636 Fallback to 'plain' if no code_challenge_method parameter is sent
             if(challenge_method == null || challenge_method.trim().length() == 0) {
@@ -344,8 +342,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                         + challenge_method + "'. Server only supports plain, S256 transformation algorithms.");
             }
         }
-        //PKCE was disabled or PKCE validation was successful or PKCE is not mandatory and no PKCE parameters were sent
-        //by the client.
+        //pkce validation sucessfull
         return true;
     }
 }

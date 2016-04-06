@@ -34,6 +34,7 @@ public class OAuth2AuthorizeReqDTO {
     private String nonce;
     private String pkceCodeChallenge;
     private String pkceCodeChallengeMethod;
+    private String tenantDomain;
 
     private Properties properties = new Properties();
 
@@ -124,5 +125,13 @@ public class OAuth2AuthorizeReqDTO {
 
     public void setPkceCodeChallengeMethod(String pkceCodeChallengeMethod) {
         this.pkceCodeChallengeMethod = pkceCodeChallengeMethod;
+    }
+
+    public String getTenantDomain() {
+        return tenantDomain;
+    }
+
+    public void setTenantDomain(String tenantDomain) {
+        this.tenantDomain = tenantDomain;
     }
 }

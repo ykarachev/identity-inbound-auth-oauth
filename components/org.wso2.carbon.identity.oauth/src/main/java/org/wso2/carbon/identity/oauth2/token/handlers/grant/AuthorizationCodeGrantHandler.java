@@ -26,13 +26,13 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
-import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
+import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
@@ -41,6 +41,9 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.apache.commons.codec.binary.Base64;
 
 /**
@@ -53,6 +56,9 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
 
     private static Log log = LogFactory.getLog(AuthorizationCodeGrantHandler.class);
     private static AppInfoCache appInfoCache;
+
+    //Precompile PKCE Regex pattern for performance improvement
+    private static Pattern pkceCodeVerifierPattern = Pattern.compile("[\\w\\-\\._~]+");
 
     public AuthorizationCodeGrantHandler() {
         appInfoCache = AppInfoCache.getInstance();
@@ -276,7 +282,8 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         }
     }
     private boolean doPKCEValidation(String referenceCodeChallenge, String codeVerifier, String challenge_method, OAuthAppDO oAuthAppDO) throws IdentityOAuth2Exception {
-        if(oAuthAppDO.isPkceMandatory() || referenceCodeChallenge != null){
+        if(OAuth2ServiceComponentHolder.isPkceEnabled() &&
+                (oAuthAppDO.isPkceMandatory() || referenceCodeChallenge != null)){
 
             //As per RFC 7636 Fallback to 'plain' if no code_challenge_method parameter is sent
             if(challenge_method == null || challenge_method.trim().length() == 0) {
@@ -301,7 +308,8 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                 }
             }
             //verify that the code verifier is upto spec as per RFC 7636
-            if(!codeVerifier.matches("[\\w\\-\\._~]+") || (codeVerifier.length() < 43 || codeVerifier.length() > 128)) {
+            Matcher pkceCodeVerifierMatcher = pkceCodeVerifierPattern.matcher(codeVerifier);
+            if(!pkceCodeVerifierMatcher.matches() || (codeVerifier.length() < 43 || codeVerifier.length() > 128)) {
                 throw new IdentityOAuth2Exception("Code verifier used is not up to RFC 7636 specifications.");
             }
             if (OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(challenge_method)) {
@@ -318,7 +326,9 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                     MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
 
                     byte[] hash = messageDigest.digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
-                    String referencePKCECodeChallenge = new String(new Base64().encode(hash));
+                    //Trim the base64 string to remove trailing CR LF characters.
+                    String referencePKCECodeChallenge = new String(Base64.encodeBase64URLSafe(hash),
+                            StandardCharsets.UTF_8).trim();
                     if (!referencePKCECodeChallenge.equals(referenceCodeChallenge)) {
                         return false;
                     }
@@ -334,7 +344,8 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                         + challenge_method + "'. Server only supports plain, S256 transformation algorithms.");
             }
         }
-        //pkce validation sucessfull
+        //PKCE was disabled or PKCE validation was successful or PKCE is not mandatory and no PKCE parameters were sent
+        //by the client.
         return true;
     }
 }

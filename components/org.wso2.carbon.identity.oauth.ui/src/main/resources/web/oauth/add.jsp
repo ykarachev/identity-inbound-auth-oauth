@@ -42,6 +42,8 @@
     ResourceBundle resourceBundle = ResourceBundle.getBundle(BUNDLE, request.getLocale());
     String applicationSPName = request.getParameter("spName");
     session.setAttribute("application-sp-name", applicationSPName);
+
+    OAuthAdminClient client = null;
 %>
 
 <jsp:include page="../dialog/display_messages.jsp"/>
@@ -204,7 +206,7 @@
                                             ConfigurationContext configContext =
                                                     (ConfigurationContext) config.getServletContext()
                                                             .getAttribute(CarbonConstants.CONFIGURATION_CONTEXT);
-                                            OAuthAdminClient client = new OAuthAdminClient(cookie, backendServerURL, configContext);
+                                            client = new OAuthAdminClient(cookie, backendServerURL, configContext);
                                             List<String> allowedGrants = new ArrayList<String>(Arrays.asList(client.getAllowedOAuthGrantTypes()));
                                             if(allowedGrants.contains("authorization_code")){
                                                 %><tr><label><input type="checkbox" id="grant_code" name="grant_code" value="authorization_code" checked="checked" onclick="toggleCallback()"/>Code</label></tr><%
@@ -250,6 +252,7 @@
 		                        </table>   
 		                        </td>
 		                    </tr>
+                            <%if(client.isPKCESupportedEnabled()) {%>
                             <tr id="pkce_enable">
                                 <td class="leftcol-small">
                                     <fmt:message key='pkce.mandatory'/>
@@ -272,6 +275,7 @@
                                     </div>
                                 </td>
                             </tr>
+                            <% } %>
 				</table>
 			</td>
 		    </tr>
@@ -280,7 +284,7 @@
                             <input name="addprofile" type="button" class="button" value="<fmt:message key='add'/>" onclick="onClickAdd();"/>
                             
                             <%
-                            
+
                             boolean applicationComponentFound = CarbonUIUtil.isContextRegistered(config, "/application/");
                             if (applicationComponentFound) {                            
                             %>

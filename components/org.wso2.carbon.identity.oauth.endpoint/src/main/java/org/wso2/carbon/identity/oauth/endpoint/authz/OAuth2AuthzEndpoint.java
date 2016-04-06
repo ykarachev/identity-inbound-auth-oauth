@@ -531,14 +531,20 @@ public class OAuth2AuthzEndpoint {
         }
         //PKCE
         String[] pkceCodeChallengeArray = sessionDataCacheEntry.getParamMap().get(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE);
+        String[] pkceCodeChallengeMethodArray = sessionDataCacheEntry.getParamMap().get(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE_METHOD);
         String pkceCodeChallenge = null;
+        String pkceCodeChallengeMethod = null;
+
         if(pkceCodeChallengeArray != null && pkceCodeChallengeArray.length > 0){
             pkceCodeChallenge = pkceCodeChallengeArray[0];
         }
-
+        if(pkceCodeChallengeMethodArray != null && pkceCodeChallengeMethodArray.length > 0) {
+            pkceCodeChallengeMethod = pkceCodeChallengeMethodArray[0];
+        }
         authorizationGrantCacheEntry.setNonceValue(sessionDataCacheEntry.getoAuth2Parameters().getNonce());
         authorizationGrantCacheEntry.setCodeId(codeId);
         authorizationGrantCacheEntry.setPkceCodeChallenge(pkceCodeChallenge);
+        authorizationGrantCacheEntry.setPkceCodeChallengeMethod(pkceCodeChallengeMethod);
         AuthorizationGrantCache.getInstance().addToCacheByCode(authorizationGrantCacheKey, authorizationGrantCacheEntry);
     }
 

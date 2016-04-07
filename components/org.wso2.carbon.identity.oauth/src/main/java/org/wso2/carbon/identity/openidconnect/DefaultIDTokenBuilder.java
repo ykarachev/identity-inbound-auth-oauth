@@ -375,7 +375,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             throws IdentityOAuth2Exception {
         try {
 
-            String tenantDomain = request.getAuthorizationReqDTO().getTenantDomain();
+            String tenantDomain = (String) request.getProperty(OAuthConstants.OAuth20Params.TENANT_DOMAIN);
 
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
 

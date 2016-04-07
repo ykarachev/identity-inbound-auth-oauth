@@ -612,12 +612,13 @@ public class OAuth2AuthzEndpoint {
         // Validate PKCE parameters
         // Check if PKCE is mandatory for the application
         if (clientDTO.isPkceMandatory()) {
-            if (pkceChallengeCode == null || pkceChallengeCode.trim().length() == 0) {
-                return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "PKCE Challenge is not present " +
-                        "in the authorization request", null, null);
+            if (pkceChallengeCode == null || OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
+                return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "PKCE is mandatory for this application. " +
+                        "PKCE Challenge is not provided " +
+                        "or is not upto RFC 7636 specification.", null, null);
             }
         }
-        //Check if the code challenge value is neither "plain" or "s256", if so return error
+        //Check if the code challenge method value is neither "plain" or "s256", if so return error
         if (pkceChallengeCode != null && pkceChallengeMethod != null) {
             if (!OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(pkceChallengeMethod) &&
                     !OAuthConstants.OAUTH_PKCE_S256_CHALLENGE.equals(pkceChallengeMethod)) {
@@ -625,6 +626,7 @@ public class OAuth2AuthzEndpoint {
                         , null, null);
             }
         }
+
         // Check if "plain" transformation algorithm is disabled for the application
         if(pkceChallengeCode != null && !clientDTO.isPkceSupportPlain()) {
             if(pkceChallengeMethod == null || OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(pkceChallengeMethod)) {
@@ -633,6 +635,12 @@ public class OAuth2AuthzEndpoint {
             }
         }
 
+        // If PKCE challenge code was sent, check if the code challenge is upto specifications
+        if(pkceChallengeCode != null && !OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
+            return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Code challenge used is not up to " +
+                            "RFC 7636 specifications."
+                    , null, null);
+        }
 
         params.setPkceCodeChallenge(pkceChallengeCode);
         params.setPkceCodeChallengeMethod(pkceChallengeMethod);

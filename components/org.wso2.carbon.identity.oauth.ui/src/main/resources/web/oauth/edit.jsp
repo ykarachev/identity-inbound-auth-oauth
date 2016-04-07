@@ -147,30 +147,24 @@
                         if (callbackUrl.trim() == '') {
                             CARBON.showWarningDialog('<fmt:message key="callback.is.required"/>');
                             return false;
-                        }else{
-                            var isValidated = doValidateInputToConfirm(document.getElementById('callback'), "<fmt:message key='callback.is.not.https'/>",
-                                    validate, null, null);
-                            if (isValidated) {
-                                validate();
-                            }
+                        } else {
+                            validate();
                         }
                     }
+
                     if($(jQuery("#grant_code"))[0].checked || $(jQuery("#grant_implicit"))[0].checked) {
                          callbackUrl = document.getElementById('callback').value;
                         if (callbackUrl.trim() == '') {
                             CARBON.showWarningDialog('<fmt:message key="callback.is.required"/>');
                             return false;
                         } else {
-                            var isValidated = doValidateInputToConfirm(document.getElementById('callback'), "<fmt:message key='callback.is.not.https'/>",
-                                    validate, null, null);
-                            if (isValidated) {
-                                validate();
-                            }
+                            validate();
                         }
                     } else {
                         validate();
                     }
                 }
+
                 function validate() {
                     var callbackUrl = document.getElementById('callback').value;
                     var value = document.getElementsByName("application")[0].value;
@@ -183,13 +177,15 @@
                         if (!$(jQuery("#grant_code"))[0].checked && !$(jQuery("#grant_implicit"))[0].checked) {
                             document.getElementsByName("callback")[0].value = '';
                         } else {
-                            if (!isWhiteListed(callbackUrl, "url")) {
+                            if (!isWhiteListed(callbackUrl, ["url"]) || !isNotBlackListed(callbackUrl,
+                                            ["uri-unsafe-exists"])) {
                                 CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
                                 return false;
                             }
                         }
                     } else {
-                        if (!isWhiteListed(callbackUrl, "url")) {
+                        if (!isWhiteListed(callbackUrl, ["url"]) || !isNotBlackListed(callbackUrl,
+                                        ["uri-unsafe-exists"])) {
                             CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
                             return false;
                         }
@@ -256,8 +252,7 @@
 		                    <tr id="callback_row">
 		                        <td class="leftCol-small"><fmt:message key='callback'/><span class="required">*</span></td>
                                 <td><input class="text-box-big" id="callback" name="callback"
-                                           type="text" value="<%=Encode.forHtmlAttribute(app.getCallbackUrl())%>"
-                                           white-list-patterns="https-url"/></td>
+                                           type="text" value="<%=Encode.forHtmlAttribute(app.getCallbackUrl())%>"/></td>
 		                    </tr>
                             <script>
                                 if(<%=app.getOAuthVersion().equals(OAuthConstants.OAuthVersions.VERSION_1A)%> || <%=codeGrant%> || <%=implicitGrant%>){

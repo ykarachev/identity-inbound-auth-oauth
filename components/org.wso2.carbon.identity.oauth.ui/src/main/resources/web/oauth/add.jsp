@@ -69,11 +69,7 @@
                             CARBON.showWarningDialog('<fmt:message key="callback.is.required"/>');
                             return false;
                         } else {
-                            var isValidated = doValidateInputToConfirm(document.getElementById('callback'), "<fmt:message key='callback.is.not.https'/>",
-                                    validate, null, null);
-                            if (isValidated) {
-                                validate();
-                            }
+                            validate();
                         }
                     } else {
                         var callbackUrl = document.getElementsByName("callback")[0].value;
@@ -81,23 +77,17 @@
                             if (callbackUrl.trim() == '') {
                                 CARBON.showWarningDialog('<fmt:message key="callback.is.required"/>');
                                 return false;
-                            } else {
-                                var isValidated = doValidateInputToConfirm(document.getElementById('callback'), "<fmt:message key='callback.is.not.https'/>",
-                                        validate, null, null);
-                                if (isValidated) {
-                                    validate();
-                                }
                             }
-
-                        } else {
-                            validate();
                         }
+                        validate();
                     }
                 }
+
                 function validate() {
                     var callbackUrl = document.getElementById('callback').value;
                     if ($(jQuery("#grant_code"))[0].checked || $(jQuery("#grant_implicit"))[0].checked) {
-                        if (!isWhiteListed(callbackUrl, "url")) {
+                        if (!isWhiteListed(callbackUrl, ["url"]) || !isNotBlackListed(callbackUrl,
+                                        ["uri-unsafe-exists"])) {
                             CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
                             return false;
                         }
@@ -113,7 +103,8 @@
                             document.getElementsByName("callback")[0].value = '';
                         }
                     } else {
-                        if (!isWhiteListed(callbackUrl, "url")) {
+                        if (!isWhiteListed(callbackUrl, ["url"]) || !isNotBlackListed(callbackUrl,
+                                        ["uri-unsafe-exists"])) {
                             CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
                             return false;
 

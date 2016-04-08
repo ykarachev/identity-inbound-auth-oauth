@@ -91,6 +91,8 @@ public final class OAuthConstants {
     //Response types
     public static final String NONE = "none";
 
+    //Constants used for OAuth/OpenID Connect Configuration UI
+    public static final String CALLBACK_URL_REGEXP_PREFIX = "regexp=";
 
     public static class GrantTypes {
         public static final String IMPLICIT = "implicit";

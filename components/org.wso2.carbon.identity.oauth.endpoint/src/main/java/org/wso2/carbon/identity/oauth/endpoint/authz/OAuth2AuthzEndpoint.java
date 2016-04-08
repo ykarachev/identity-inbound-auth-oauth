@@ -612,7 +612,7 @@ public class OAuth2AuthzEndpoint {
         // Validate PKCE parameters
         // Check if PKCE is mandatory for the application
         if (clientDTO.isPkceMandatory()) {
-            if (pkceChallengeCode == null || OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
+            if (pkceChallengeCode == null || !OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
                 return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "PKCE is mandatory for this application. " +
                         "PKCE Challenge is not provided " +
                         "or is not upto RFC 7636 specification.", null, null);

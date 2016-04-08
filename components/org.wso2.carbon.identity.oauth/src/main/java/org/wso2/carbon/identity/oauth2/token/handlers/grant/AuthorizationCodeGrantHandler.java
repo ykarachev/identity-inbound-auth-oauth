@@ -32,7 +32,6 @@ import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
-import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
@@ -57,8 +56,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
     private static Log log = LogFactory.getLog(AuthorizationCodeGrantHandler.class);
     private static AppInfoCache appInfoCache;
 
-    //Precompile PKCE Regex pattern for performance improvement
-    private static Pattern pkceCodeVerifierPattern = Pattern.compile("[\\w\\-\\._~]+");
+
 
     public AuthorizationCodeGrantHandler() {
         appInfoCache = AppInfoCache.getInstance();
@@ -198,7 +196,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         String PKCECodeChallenge = authzCodeDO.getPkceCodeChallenge();
         String PKCECodeChallengeMethod = authzCodeDO.getPkceCodeChallengeMethod();
         String codeVerifier = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getPkceCodeVerifier();
-        if (!doPKCEValidation(PKCECodeChallenge, codeVerifier, PKCECodeChallengeMethod, oAuthAppDO)) {
+        if (!OAuth2Util.doPKCEValidation(PKCECodeChallenge, codeVerifier, PKCECodeChallengeMethod, oAuthAppDO)) {
             //possible malicious oAuthRequest
             log.warn("Failed PKCE Verification for oAuth 2.0 request");
             return false;
@@ -281,73 +279,5 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                     "Error occurred while storing new access token", e);
         }
     }
-    private boolean doPKCEValidation(String referenceCodeChallenge, String codeVerifier, String challenge_method, OAuthAppDO oAuthAppDO) throws IdentityOAuth2Exception {
-        if(OAuth2ServiceComponentHolder.isPkceEnabled() &&
-                (oAuthAppDO.isPkceMandatory() || referenceCodeChallenge != null)){
 
-            //As per RFC 7636 Fallback to 'plain' if no code_challenge_method parameter is sent
-            if(challenge_method == null || challenge_method.trim().length() == 0) {
-                challenge_method = "plain";
-            }
-
-            //if app with no PKCE code verifier arrives
-            if ((codeVerifier == null || codeVerifier.trim().length() == 0)) {
-                //if pkce is mandatory, throw error
-                if(oAuthAppDO.isPkceMandatory()) {
-                    throw new IdentityOAuth2Exception("No PKCE code verifier found.PKCE is mandatory for this " +
-                            "oAuth 2.0 application.");
-                } else {
-                    //PKCE is optional, see if the authz code was requested with a PKCE challenge
-                    if(referenceCodeChallenge == null || referenceCodeChallenge.trim().length() == 0) {
-                        //since no PKCE challenge was provided
-                        return true;
-                    } else {
-                        throw new IdentityOAuth2Exception("Empty PKCE code_verifier sent. This authorization code " +
-                                "requires a PKCE verification to obtain an access token.");
-                    }
-                }
-            }
-            //verify that the code verifier is upto spec as per RFC 7636
-            Matcher pkceCodeVerifierMatcher = pkceCodeVerifierPattern.matcher(codeVerifier);
-            if(!pkceCodeVerifierMatcher.matches() || (codeVerifier.length() < 43 || codeVerifier.length() > 128)) {
-                throw new IdentityOAuth2Exception("Code verifier used is not up to RFC 7636 specifications.");
-            }
-            if (OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(challenge_method)) {
-                //if the current applicatoin explicitly doesn't support plain, throw exception
-                if(!oAuthAppDO.isPkceSupportPlain()) {
-                    throw new IdentityOAuth2Exception("This application does not allow 'plain' transformation algorithm.");
-                }
-                if (!referenceCodeChallenge.equals(codeVerifier)) {
-                    return false;
-                }
-            } else if (OAuthConstants.OAUTH_PKCE_S256_CHALLENGE.equals(challenge_method)) {
-
-                try {
-                    MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-
-                    byte[] hash = messageDigest.digest(codeVerifier.getBytes(StandardCharsets.US_ASCII));
-                    //Trim the base64 string to remove trailing CR LF characters.
-                    String referencePKCECodeChallenge = new String(Base64.encodeBase64URLSafe(hash),
-                            StandardCharsets.UTF_8).trim();
-                    if (!referencePKCECodeChallenge.equals(referenceCodeChallenge)) {
-                        return false;
-                    }
-                } catch (NoSuchAlgorithmException e) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("Failed to create SHA256 Message Digest.");
-                    }
-                    return false;
-                }
-            } else {
-                //Invalid OAuth2 token response
-                throw new IdentityOAuth2Exception("Invalid OAuth2 Token Response. Invalid PKCE Code Challenge Method '"
-                        + challenge_method + "'. Server only supports plain, S256 transformation algorithms.");
-            }
-        }
-        //We are here if
-        //PKCE verification succeeded
-        //PKCE support is disabled
-        //No PKCE parameters were sent and PKCE is not mandatory for the application
-        return true;
-    }
 }

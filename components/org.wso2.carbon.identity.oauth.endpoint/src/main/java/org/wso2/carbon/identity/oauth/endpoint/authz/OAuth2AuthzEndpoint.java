@@ -30,7 +30,6 @@ import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationResultCacheEntry;
-import org.wso2.carbon.identity.application.authentication.framework.config.ConfigurationFacade;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticationResult;
 import org.wso2.carbon.identity.application.authentication.framework.model.CommonAuthRequestWrapper;
@@ -578,6 +577,7 @@ public class OAuth2AuthzEndpoint {
         String redirectUri = req.getParameter("redirect_uri");
         String pkceChallengeCode = null;
         String pkceChallengeMethod = null;
+        boolean isPKCESupportEnabled = EndpointUtil.getOAuth2Service().isPKCESupportEnabled();
         if (StringUtils.isBlank(clientId)) {
             if (log.isDebugEnabled()) {
                 log.debug("Client Id is not present in the authorization request");
@@ -616,13 +616,43 @@ public class OAuth2AuthzEndpoint {
 
         pkceChallengeCode = req.getParameter(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE);
         pkceChallengeMethod = req.getParameter(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE_METHOD);
-        if(clientDTO.isPkceMandatory()) {
-            if(pkceChallengeCode == null || pkceChallengeCode.trim().length() == 0) {
-                return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "PKCE Challenge is not present " +
-                        "in the authorization request", null, null);
+        // Validate PKCE parameters
+        if(isPKCESupportEnabled) {
+            // Check if PKCE is mandatory for the application
+            if (clientDTO.isPkceMandatory()) {
+                if (pkceChallengeCode == null || !OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
+                    return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "PKCE is mandatory for this application. " +
+                            "PKCE Challenge is not provided " +
+                            "or is not upto RFC 7636 specification.", null, null);
+                }
             }
+            //Check if the code challenge method value is neither "plain" or "s256", if so return error
+            if (pkceChallengeCode != null && pkceChallengeMethod != null) {
+                if (!OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(pkceChallengeMethod) &&
+                        !OAuthConstants.OAUTH_PKCE_S256_CHALLENGE.equals(pkceChallengeMethod)) {
+                    return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Unsupported PKCE Challenge Method"
+                            , null, null);
+                }
+            }
+
+            // Check if "plain" transformation algorithm is disabled for the application
+            if(pkceChallengeCode != null && !clientDTO.isPkceSupportPlain()) {
+                if(pkceChallengeMethod == null || OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(pkceChallengeMethod)) {
+                    return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "This application does not " +
+                            "support \"plain\" transformation algorithm.",null, null);
+                }
+            }
+
+            // If PKCE challenge code was sent, check if the code challenge is upto specifications
+            if(pkceChallengeCode != null && !OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
+                return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Code challenge used is not up to " +
+                                "RFC 7636 specifications."
+                        , null, null);
+            }
+
+
         }
-        params.setPkceCodeChallenge(pkceChallengeCode);
+                params.setPkceCodeChallenge(pkceChallengeCode);
         params.setPkceCodeChallengeMethod(pkceChallengeMethod);
 
         // OpenID Connect specific request parameters

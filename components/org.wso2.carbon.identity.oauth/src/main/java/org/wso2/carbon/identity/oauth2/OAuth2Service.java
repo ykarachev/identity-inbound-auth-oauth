@@ -540,7 +540,9 @@ public class OAuth2Service extends AbstractAdmin {
         return allClaims;
     }
 
-
+    public boolean isPKCESupportEnabled() {
+        return OAuth2Util.isPKCESupportEnabled();
+    }
     private void addRevokeResponseHeaders(OAuthRevocationResponseDTO revokeResponseDTP, String accessToken,
                                           String refreshToken, String authorizedUser) {
 
@@ -559,4 +561,5 @@ public class OAuth2Service extends AbstractAdmin {
         respHeaders.add(header);
         revokeResponseDTP.setResponseHeaders(respHeaders.toArray(new ResponseHeader[respHeaders.size()]));
     }
+
 }

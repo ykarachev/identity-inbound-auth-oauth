@@ -617,7 +617,7 @@ public class OAuth2AuthzEndpoint {
         pkceChallengeCode = req.getParameter(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE);
         pkceChallengeMethod = req.getParameter(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE_METHOD);
         // Validate PKCE parameters
-        if(isPKCESupportEnabled) {
+        if (isPKCESupportEnabled) {
             // Check if PKCE is mandatory for the application
             if (clientDTO.isPkceMandatory()) {
                 if (pkceChallengeCode == null || !OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
@@ -636,15 +636,15 @@ public class OAuth2AuthzEndpoint {
             }
 
             // Check if "plain" transformation algorithm is disabled for the application
-            if(pkceChallengeCode != null && !clientDTO.isPkceSupportPlain()) {
-                if(pkceChallengeMethod == null || OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(pkceChallengeMethod)) {
+            if (pkceChallengeCode != null && !clientDTO.isPkceSupportPlain()) {
+                if (pkceChallengeMethod == null || OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(pkceChallengeMethod)) {
                     return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "This application does not " +
-                            "support \"plain\" transformation algorithm.",null, null);
+                            "support \"plain\" transformation algorithm.", null, null);
                 }
             }
 
             // If PKCE challenge code was sent, check if the code challenge is upto specifications
-            if(pkceChallengeCode != null && !OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
+            if (pkceChallengeCode != null && !OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
                 return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Code challenge used is not up to " +
                                 "RFC 7636 specifications."
                         , null, null);

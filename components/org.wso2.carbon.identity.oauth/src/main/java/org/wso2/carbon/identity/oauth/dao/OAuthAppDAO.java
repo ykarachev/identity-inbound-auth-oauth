@@ -234,7 +234,7 @@ public class OAuthAppDAO {
         OAuthAppDO oauthApp = null;
         boolean isPKCESupportEnabled = OAuth2ServiceComponentHolder.isPkceEnabled();
         try {
-            if(isPKCESupportEnabled) {
+            if (isPKCESupportEnabled) {
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_APP_INFO_WITH_PKCE);
             } else {
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_APP_INFO);
@@ -267,7 +267,7 @@ public class OAuthAppDAO {
                     oauthApp.setUser(authenticatedUser);
                     oauthApp.setGrantTypes(rSet.getString(8));
                     oauthApp.setId(rSet.getInt(9));
-                    if(isPKCESupportEnabled) {
+                    if (isPKCESupportEnabled) {
                         oauthApp.setPkceMandatory("0".equals(rSet.getString(10)) ? false : true);
                         oauthApp.setPkceSupportPlain("0".equals(rSet.getString(11)) ? false : true);
                     }
@@ -300,7 +300,7 @@ public class OAuthAppDAO {
         boolean isPKCESupportEnabled = OAuth2ServiceComponentHolder.isPkceEnabled();
         try {
             int tenantID = CarbonContext.getThreadLocalCarbonContext().getTenantId();
-            if(isPKCESupportEnabled) {
+            if (isPKCESupportEnabled) {
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_APP_INFO_BY_APP_NAME_WITH_PKCE);
             } else {
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_APP_INFO_BY_APP_NAME);
@@ -367,7 +367,7 @@ public class OAuthAppDAO {
         PreparedStatement prepStmt = null;
 
         try {
-            if(OAuth2ServiceComponentHolder.isPkceEnabled()) {
+            if (OAuth2ServiceComponentHolder.isPkceEnabled()) {
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.UPDATE_CONSUMER_APP_WITH_PKCE);
             } else {
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.UPDATE_CONSUMER_APP);

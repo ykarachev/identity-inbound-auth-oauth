@@ -100,14 +100,10 @@ public class OAuth2ServiceComponent {
         }
         if(checkPKCESupport()) {
             OAuth2ServiceComponentHolder.setPkceEnabled(true);
-            if(log.isInfoEnabled()) {
-                log.info("PKCE Support enabled.");
-            }
+            log.info("PKCE Support enabled.");
         } else {
             OAuth2ServiceComponentHolder.setPkceEnabled(false);
-            if(log.isInfoEnabled()) {
-                log.info("PKCE Support is disabled.");
-            }
+            log.info("PKCE Support is disabled.");
         }
     }
 

@@ -652,7 +652,7 @@ public class OAuth2AuthzEndpoint {
 
 
         }
-                params.setPkceCodeChallenge(pkceChallengeCode);
+        params.setPkceCodeChallenge(pkceChallengeCode);
         params.setPkceCodeChallengeMethod(pkceChallengeMethod);
 
         // OpenID Connect specific request parameters

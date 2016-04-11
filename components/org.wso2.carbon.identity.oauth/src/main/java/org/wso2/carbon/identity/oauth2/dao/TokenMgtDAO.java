@@ -259,7 +259,7 @@ public class TokenMgtDAO {
                     .getTimeZone(UTC)));
             prepStmt.setLong(8, accessTokenDO.getValidityPeriodInMillis());
             prepStmt.setLong(9, accessTokenDO.getRefreshTokenValidityPeriodInMillis());
-            prepStmt.setString(10, OAuth2Util.hashScopes(accessTokenDO.getScope()));
+                prepStmt.setString(10, OAuth2Util.hashScopes(accessTokenDO.getScope()));
             prepStmt.setString(11, accessTokenDO.getTokenState());
             prepStmt.setString(12, accessTokenDO.getTokenType());
             prepStmt.setString(13, accessTokenDO.getTokenId());
@@ -591,7 +591,7 @@ public class TokenMgtDAO {
             Timestamp issuedTime = null;
             long validityPeriod = 0;
             int tenantId;
-            if(OAuth2ServiceComponentHolder.isPkceEnabled()) {
+            if (OAuth2ServiceComponentHolder.isPkceEnabled()) {
 
                 prepStmt = connection.prepareStatement(SQLQueries.VALIDATE_AUTHZ_CODE_WITH_PKCE);
                 prepStmt.setString(1, persistenceProcessor.getProcessedClientId(consumerKey));
@@ -659,14 +659,13 @@ public class TokenMgtDAO {
                         String tokenId = resultSet.getString(9);
                         revokeToken(tokenId, authorizedUser);
                     }
-
                 }
-                return new AuthzCodeDO(user, OAuth2Util.buildScopeArray(scopeString), issuedTime, validityPeriod,
-                        callbackUrl, consumerKey, authorizationKey, codeId, codeState, pkceCodeChallenge, pkceCodeChallengeMethod);
-
             }
-            connection.commit();
 
+            connection.commit();
+            return new AuthzCodeDO(user, OAuth2Util.buildScopeArray(scopeString), issuedTime, validityPeriod,
+                    callbackUrl, consumerKey, authorizationKey, codeId, codeState, pkceCodeChallenge,
+                    pkceCodeChallengeMethod);
 
         } catch (SQLException e) {
             throw new IdentityOAuth2Exception("Error when validating an authorization code", e);
@@ -674,7 +673,6 @@ public class TokenMgtDAO {
             IdentityDatabaseUtil.closeAllConnections(connection, resultSet, prepStmt);
         }
 
-        return null;
     }
 
     public void expireAuthzCode(String authzCode) throws IdentityOAuth2Exception {

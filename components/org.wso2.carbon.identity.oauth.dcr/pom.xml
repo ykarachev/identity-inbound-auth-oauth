@@ -53,9 +53,11 @@
                             org.wso2.carbon.identity.oauth.dcr.*;version="${carbon.identity.package.export.version}"
                         </Export-Package>
                         <Import-Package>
+                            javax.servlet.*; version="${imp.pkg.version.javax.servlet}",
                             org.apache.commons.logging,
                             org.json,
                             org.json.simple,
+                            org.json.simple.parser,
                             org.osgi.framework,
                             org.osgi.service.component,
                             org.wso2.carbon.context,
@@ -70,7 +72,8 @@
                             org.wso2.carbon.identity.sso.saml.dto,
                             org.wso2.carbon.registry.api,
                             org.wso2.carbon.registry.core,
-                            org.wso2.carbon.utils.multitenancy
+                            org.wso2.carbon.utils.multitenancy,
+                            org.wso2.carbon.identity.application.authentication.framework.*,
                         </Import-Package>
                     </instructions>
                 </configuration>
@@ -113,6 +116,10 @@
             <artifactId>org.wso2.carbon.identity.sso.saml</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.identity</groupId>
+            <artifactId>org.wso2.carbon.identity.application.authentication.framework</artifactId>
         </dependency>
     </dependencies>
 

@@ -17,10 +17,15 @@
  */
 package org.wso2.carbon.identity.oauth.dcr.util;
 
+import java.util.regex.Pattern;
+
 /**
  * This class holds the constants used by DynamicClientRegistration component.
  */
 public final class DCRConstants {
+    public static final Pattern DCR_ENDPOINT_URL_PATTERN = Pattern.compile(".+/register/?");
+    public static final Pattern DCR_ENDPOINT_REGISTER_URL_PATTERN = Pattern.compile(".+/register/?");
+    public static final Pattern DCR_ENDPOINT_UNREGISTER_URL_PATTERN = Pattern.compile(".+/register/(.+)");
 
     public static class ClientMetadata {
         private ClientMetadata() {
@@ -53,6 +58,8 @@ public final class DCRConstants {
         public static final String OAUTH_CLIENT_USERNAME = "username";
         public static final String OAUTH_CLIENT_APPLICATION = "application";
         public static final String VALIDITY_PERIOD = "validityPeriod";
+
+
     }
 
 }

@@ -21,7 +21,11 @@ package org.wso2.carbon.identity.oauth.dcr.internal;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.ComponentContext;
+import org.wso2.carbon.identity.application.authentication.framework.inbound.InboundProcessor;
+import org.wso2.carbon.identity.application.authentication.framework.inbound.InboundRequestFactory;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
+import org.wso2.carbon.identity.oauth.dcr.DCRInboundRequestFactory;
+import org.wso2.carbon.identity.oauth.dcr.DCRRegisterRequestProcessor;
 import org.wso2.carbon.identity.oauth.dcr.DynamicClientRegistrationService;
 import org.wso2.carbon.identity.oauth.dcr.impl.DynamicClientRegistrationServiceImpl;
 
@@ -43,8 +47,13 @@ public class DynamicClientRegistrationServiceComponent {
         if (log.isDebugEnabled()) {
             log.debug("Starting DynamicClientRegistrationServiceComponent");
         }
+
         componentContext.getBundleContext().registerService(DynamicClientRegistrationService.class.getName(),
                 new DynamicClientRegistrationServiceImpl(), null);
+        componentContext.getBundleContext().registerService(InboundRequestFactory.class.getName(),
+                new DCRInboundRequestFactory(), null);
+        componentContext.getBundleContext().registerService(InboundProcessor.class.getName(),
+                new DCRRegisterRequestProcessor(), null);
     }
 
     @SuppressWarnings("unused")

@@ -48,11 +48,13 @@ public class PasswordGrantHandler extends AbstractAuthorizationGrantHandler {
 
     private static Log log = LogFactory.getLog(PasswordGrantHandler.class);
 
+    private static final String DEFAULT_SP_NAME = "default";
+
     @Override
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
             throws IdentityOAuth2Exception {
 
-        if(!super.validateGrant(tokReqMsgCtx)){
+        if (!super.validateGrant(tokReqMsgCtx)) {
             return false;
         }
 
@@ -69,8 +71,21 @@ public class PasswordGrantHandler extends AbstractAuthorizationGrantHandler {
             throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
                     clientId, e);
         }
-        if(!serviceProvider.isSaasApp() && !userTenantDomain.equals(tenantDomain)){
-            if(log.isDebugEnabled()) {
+
+        String serviceProviderName = serviceProvider.getApplicationName();
+        // FIX for IDENTITY-4531
+        // if the service provider name is returned as "default" it means that a valid service provider for
+        // the given client ID was not found in the tenantDomain sent in the request
+        if (DEFAULT_SP_NAME.equals(serviceProviderName)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Valid Service provider not found for client id " + clientId +
+                        " and tenant domain '" + tenantDomain + "'");
+            }
+            return false;
+        }
+
+        if (!serviceProvider.isSaasApp() && !userTenantDomain.equals(tenantDomain)) {
+            if (log.isDebugEnabled()) {
                 log.debug("Non-SaaS service provider tenant domain is not same as user tenant domain; " +
                         tenantDomain + " != " + userTenantDomain);
             }

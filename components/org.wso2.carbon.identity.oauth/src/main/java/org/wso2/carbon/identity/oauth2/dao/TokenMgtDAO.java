@@ -1076,6 +1076,7 @@ public class TokenMgtDAO {
             }
             ps.setString(2,Integer.toString(OAuth2Util.getTenantId(authenticatedUser.getTenantDomain())));
             ps.setString(3, authenticatedUser.getUserStoreDomain());
+            ps.setString(4, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
             rs = ps.executeQuery();
             while (rs.next()){
                 authorizationCodes.add(rs.getString(1));

@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
@@ -177,8 +178,14 @@ public class AccessTokenIssuer {
 
         // loading the stored application data
         OAuthAppDO oAuthAppDO = getAppInformation(tokenReqDTO);
+        AuthenticatedUser appDeveloper = oAuthAppDO.getUser();
+
+        // set the tenantDomain of the SP in the tokenReqDTO
+        // indirectly we can say that the tenantDomain of the SP is the tenantDomain of the user who created SP
+        tokReqMsgCtx.getOauth2AccessTokenReqDTO().setTenantDomain(appDeveloper.getTenantDomain());
+
         if (!authzGrantHandler.isOfTypeApplicationUser()) {
-            tokReqMsgCtx.setAuthorizedUser(oAuthAppDO.getUser());
+            tokReqMsgCtx.setAuthorizedUser(appDeveloper);
         }
 
         boolean isValidGrant = false;

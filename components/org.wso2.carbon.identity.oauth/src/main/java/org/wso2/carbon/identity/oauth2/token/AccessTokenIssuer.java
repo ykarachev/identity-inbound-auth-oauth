@@ -118,6 +118,15 @@ public class AccessTokenIssuer {
 
         AuthorizationGrantHandler authzGrantHandler = authzGrantHandlers.get(grantType);
 
+        // loading the stored application data
+        OAuthAppDO oAuthAppDO = getAppInformation(tokenReqDTO);
+        AuthenticatedUser appDeveloper = oAuthAppDO.getUser();
+
+        // set the tenantDomain of the SP in the tokenReqDTO
+        // indirectly we can say that the tenantDomain of the SP is the tenantDomain of the user who created SP
+        // this is done to avoid having to send the tenantDomain as a query param to the token endpoint
+        tokenReqDTO.setTenantDomain(appDeveloper.getTenantDomain());
+
         OAuthTokenReqMessageContext tokReqMsgCtx = new OAuthTokenReqMessageContext(tokenReqDTO);
         boolean isRefreshRequest = GrantType.REFRESH_TOKEN.toString().equals(grantType);
 
@@ -175,15 +184,6 @@ public class AccessTokenIssuer {
                     isRefreshRequest);
             return tokenRespDTO;
         }
-
-        // loading the stored application data
-        OAuthAppDO oAuthAppDO = getAppInformation(tokenReqDTO);
-        AuthenticatedUser appDeveloper = oAuthAppDO.getUser();
-
-        // set the tenantDomain of the SP in the tokenReqDTO
-        // indirectly we can say that the tenantDomain of the SP is the tenantDomain of the user who created SP
-        tokReqMsgCtx.getOauth2AccessTokenReqDTO().setTenantDomain(appDeveloper.getTenantDomain());
-
         if (!authzGrantHandler.isOfTypeApplicationUser()) {
             tokReqMsgCtx.setAuthorizedUser(appDeveloper);
         }

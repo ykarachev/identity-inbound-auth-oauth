@@ -62,32 +62,20 @@ public class PasswordGrantHandler extends AbstractAuthorizationGrantHandler {
         String username = oAuth2AccessTokenReqDTO.getResourceOwnerUsername();
         String userTenantDomain = MultitenantUtils.getTenantDomain(username);
         String clientId = oAuth2AccessTokenReqDTO.getClientId();
-        String tenantDomain = oAuth2AccessTokenReqDTO.getTenantDomain();
+        String spTenantDomain = oAuth2AccessTokenReqDTO.getTenantDomain();
         ServiceProvider serviceProvider = null;
         try {
             serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().getServiceProviderByClientId(
-                    clientId, "oauth2", tenantDomain);
+                    clientId, "oauth2", spTenantDomain);
         } catch (IdentityApplicationManagementException e) {
             throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
                     clientId, e);
         }
 
-        String serviceProviderName = serviceProvider.getApplicationName();
-        // FIX for IDENTITY-4531
-        // if the service provider name is returned as "default" it means that a valid service provider for
-        // the given client ID was not found in the tenantDomain sent in the request
-        if (DEFAULT_SP_NAME.equals(serviceProviderName)) {
-            if (log.isDebugEnabled()) {
-                log.debug("Valid Service provider not found for client id " + clientId +
-                        " and tenant domain '" + tenantDomain + "'");
-            }
-            return false;
-        }
-
-        if (!serviceProvider.isSaasApp() && !userTenantDomain.equals(tenantDomain)) {
+        if (!serviceProvider.isSaasApp() && !userTenantDomain.equals(spTenantDomain)) {
             if (log.isDebugEnabled()) {
                 log.debug("Non-SaaS service provider tenant domain is not same as user tenant domain; " +
-                        tenantDomain + " != " + userTenantDomain);
+                        spTenantDomain + " != " + userTenantDomain);
             }
             return false;
 

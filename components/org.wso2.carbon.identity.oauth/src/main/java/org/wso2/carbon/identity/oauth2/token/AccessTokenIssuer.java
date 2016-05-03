@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
@@ -117,6 +118,15 @@ public class AccessTokenIssuer {
 
         AuthorizationGrantHandler authzGrantHandler = authzGrantHandlers.get(grantType);
 
+        // loading the stored application data
+        OAuthAppDO oAuthAppDO = getAppInformation(tokenReqDTO);
+        AuthenticatedUser appDeveloper = oAuthAppDO.getUser();
+
+        // set the tenantDomain of the SP in the tokenReqDTO
+        // indirectly we can say that the tenantDomain of the SP is the tenantDomain of the user who created SP
+        // this is done to avoid having to send the tenantDomain as a query param to the token endpoint
+        tokenReqDTO.setTenantDomain(appDeveloper.getTenantDomain());
+
         OAuthTokenReqMessageContext tokReqMsgCtx = new OAuthTokenReqMessageContext(tokenReqDTO);
         boolean isRefreshRequest = GrantType.REFRESH_TOKEN.toString().equals(grantType);
 
@@ -174,11 +184,8 @@ public class AccessTokenIssuer {
                     isRefreshRequest);
             return tokenRespDTO;
         }
-
-        // loading the stored application data
-        OAuthAppDO oAuthAppDO = getAppInformation(tokenReqDTO);
         if (!authzGrantHandler.isOfTypeApplicationUser()) {
-            tokReqMsgCtx.setAuthorizedUser(oAuthAppDO.getUser());
+            tokReqMsgCtx.setAuthorizedUser(appDeveloper);
         }
 
         boolean isValidGrant = false;

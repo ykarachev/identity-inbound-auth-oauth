@@ -155,6 +155,8 @@ public class OAuthServerConfiguration {
     private OAuth2ScopeValidator oAuth2ScopeValidator;
     // property added to fix IDENTITY-4492 in backward compatible manner
     private boolean isJWTSignedWithSPKey = false;
+    // property added to fix IDENTITY-4534 in backward compatible manner
+    private boolean isImplicitErrorFragment = true;
 
     private OAuthServerConfiguration() {
         buildOAuthServerConfiguration();
@@ -242,6 +244,9 @@ public class OAuthServerConfiguration {
 
         // parse OAuth 2.0 token generator
         parseOAuthTokenGeneratorConfig(oauthElem);
+
+        // parse OAuth2 implicit grant error in fragment property for backward compatibility
+        parseImplicitErrorFragment(oauthElem);
 
         // parse identity OAuth 2.0 token generator
         parseOAuthTokenIssuerConfig(oauthElem);
@@ -769,6 +774,10 @@ public class OAuthServerConfiguration {
 
     public boolean isJWTSignedWithSPKey() {
         return isJWTSignedWithSPKey;
+    }
+
+    public boolean isImplicitErrorFragment() {
+        return isImplicitErrorFragment;
     }
 
     private void parseOAuthCallbackHandlers(OMElement callbackHandlersElem) {
@@ -1385,6 +1394,20 @@ public class OAuthServerConfiguration {
         }
     }
 
+    private void parseImplicitErrorFragment(OMElement oauthConfigElem) {
+
+        OMElement implicitErrorFragmentElem =
+                oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.IMPLICIT_ERROR_FRAGMENT));
+        if (implicitErrorFragmentElem != null) {
+            isImplicitErrorFragment =
+                    Boolean.parseBoolean(implicitErrorFragmentElem.getText());
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("ImplicitErrorFragment was set to : " + isImplicitErrorFragment);
+        }
+    }
+
     private void parseOpenIDConnectConfig(OMElement oauthConfigElem) {
 
         OMElement openIDConnectConfigElem =
@@ -1531,6 +1554,7 @@ public class OAuthServerConfiguration {
         private static final String SCOPE_VALIDATOR = "OAuthScopeValidator";
         private static final String SCOPE_CLASS_ATTR = "class";
         private static final String SKIP_SCOPE_ATTR = "scopesToSkip";
+        private static final String IMPLICIT_ERROR_FRAGMENT = "ImplicitErrorFragment";
         // Default timestamp skew
         private static final String TIMESTAMP_SKEW = "TimestampSkew";
         // Default validity periods

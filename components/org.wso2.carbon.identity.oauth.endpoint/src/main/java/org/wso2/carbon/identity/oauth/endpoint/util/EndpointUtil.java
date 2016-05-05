@@ -171,8 +171,14 @@ public class EndpointUtil {
             errorPageUrl = OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl();
         }
         try {
-            errorPageUrl += "#" + OAuthConstants.OAUTH_ERROR_CODE + "=" + URLEncoder.encode(errorCode, "UTF-8") + "&"
-                    + OAuthConstants.OAUTH_ERROR_MESSAGE + "=" + URLEncoder.encode(errorMessage, "UTF-8");
+            if(OAuthServerConfiguration.getInstance().isImplicitErrorFragment()) {
+                errorPageUrl += "#" + OAuthConstants.OAUTH_ERROR_CODE + "=" + URLEncoder.encode(errorCode, "UTF-8") +
+                        "&" + OAuthConstants.OAUTH_ERROR_MESSAGE + "=" + URLEncoder.encode(errorMessage, "UTF-8");
+            } else {
+                errorPageUrl += "?" + OAuthConstants.OAUTH_ERROR_CODE + "=" + URLEncoder.encode(errorCode, "UTF-8") +
+                        "&" + OAuthConstants.OAUTH_ERROR_MESSAGE + "=" + URLEncoder.encode(errorMessage, "UTF-8");
+            }
+
         } catch (UnsupportedEncodingException e) {
             //ignore
             if (log.isDebugEnabled()){

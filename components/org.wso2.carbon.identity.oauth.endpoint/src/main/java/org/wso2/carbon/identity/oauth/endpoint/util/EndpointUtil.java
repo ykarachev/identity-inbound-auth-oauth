@@ -270,13 +270,15 @@ public class EndpointUtil {
                     append("?").
                     append(FrameworkConstants.SESSION_DATA_KEY).
                     append("=").
-                    append(sessionDataKey).
+                    append(URLEncoder.encode(sessionDataKey, "UTF-8")).
                     append("&").
                     append(FrameworkConstants.RequestParams.TYPE).
                     append("=").
                     append(type);
 
             return queryStringBuilder.toString();
+        } catch (UnsupportedEncodingException e) {
+            throw new IdentityOAuth2Exception("Error encoding the session key : ", e);
         } finally {
             OAuth2Util.clearClientTenantId();
         }

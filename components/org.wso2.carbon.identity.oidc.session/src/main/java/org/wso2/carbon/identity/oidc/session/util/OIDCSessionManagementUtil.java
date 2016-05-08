@@ -33,7 +33,6 @@ import org.wso2.carbon.identity.oidc.session.config.OIDCSessionManagementConfigu
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.xml.ws.Endpoint;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URI;

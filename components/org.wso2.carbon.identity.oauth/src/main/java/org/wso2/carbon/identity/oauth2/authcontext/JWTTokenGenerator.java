@@ -110,11 +110,14 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
 
     private String userAttributeSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
 
+    private boolean useMultiValueSeparator = true;
+
     //constructor for testing purposes
     public JWTTokenGenerator(boolean includeClaims, boolean enableSigning) {
         this.includeClaims = includeClaims;
         this.enableSigning = enableSigning;
         signatureAlgorithm = new JWSAlgorithm(JWSAlgorithm.NONE.getName());
+
     }
 
     /**
@@ -131,6 +134,7 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
             if(sigAlg != null && !sigAlg.trim().isEmpty()){
                 signatureAlgorithm = mapSignatureAlgorithm(sigAlg);
             }
+            useMultiValueSeparator = OAuthServerConfiguration.getInstance().isUseMultiValueSeparatorForAuthContextToken();
             if(claimsRetrieverImplClass != null){
                 try{
                     claimsRetriever = (ClaimsRetriever)Class.forName(claimsRetrieverImplClass).newInstance();
@@ -237,7 +241,7 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
 
             if(isExistingUser) {
                 String claimSeparator = getMultiAttributeSeparator(authzUser, tenantID);
-                if (StringUtils.isBlank(claimSeparator)) {
+                if (StringUtils.isNotBlank(claimSeparator)) {
                     userAttributeSeparator = claimSeparator;
                 }
             }
@@ -248,7 +252,8 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
                     String claimURI = it.next();
                     String claimVal = claimValues.get(claimURI);
                     List<String> claimList = new ArrayList<String>();
-                    if (userAttributeSeparator != null && claimVal.contains(userAttributeSeparator)) {
+                    if (useMultiValueSeparator && userAttributeSeparator != null &&
+                            claimVal.contains(userAttributeSeparator)) {
                         StringTokenizer st = new StringTokenizer(claimVal, userAttributeSeparator);
                         while (st.hasMoreElements()) {
                             String attValue = st.nextElement().toString();

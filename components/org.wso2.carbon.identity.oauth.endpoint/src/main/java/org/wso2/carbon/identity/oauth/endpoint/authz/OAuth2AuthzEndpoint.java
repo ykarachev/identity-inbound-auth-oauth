@@ -243,11 +243,10 @@ public class OAuth2AuthzEndpoint {
                         redirectURL = EndpointUtil.getErrorRedirectURL(oauthException, oauth2Params);
                         if (isOIDCRequest) {
                             Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);
-                            redirectURL = OIDCSessionManagementUtil.addSessionStateToURL(redirectURL,
-                                                                                         oauth2Params.getClientId(),
-                                                                                         oauth2Params.getRedirectURI(),
-                                                                                         opBrowserStateCookie,
-                                    oauth2Params.getResponseType());
+                            redirectURL = OIDCSessionManagementUtil
+                                    .addSessionStateToURL(redirectURL, oauth2Params.getClientId(),
+                                                          oauth2Params.getRedirectURI(), opBrowserStateCookie,
+                                                          oauth2Params.getResponseType());
                         }
                     }
                     return Response.status(HttpServletResponse.SC_FOUND).location(new URI(redirectURL)).build();
@@ -287,7 +286,7 @@ public class OAuth2AuthzEndpoint {
                             denyResponse = OIDCSessionManagementUtil
                                     .addSessionStateToURL(denyResponse, oauth2Params.getClientId(),
                                                           oauth2Params.getRedirectURI(), opBrowserStateCookie,
-                                            oauth2Params.getResponseType());
+                                                          oauth2Params.getResponseType());
                         }
                         return Response.status(HttpServletResponse.SC_FOUND).location(new URI(denyResponse)).build();
                     }
@@ -1061,7 +1060,7 @@ public class OAuth2AuthzEndpoint {
                                                                                       null :
                                                                                       opBrowserStateCookie.getValue());
             redirectURL = OIDCSessionManagementUtil.addSessionStateToURL(redirectURL, sessionStateParam,
-                    oAuth2Parameters.getResponseType());
+                                                                         oAuth2Parameters.getResponseType());
         }
 
         return redirectURL;

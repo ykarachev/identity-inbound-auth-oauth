@@ -28,6 +28,8 @@ import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.opensaml.saml2.core.Assertion;
 import org.opensaml.saml2.core.Attribute;
 import org.opensaml.saml2.core.AttributeStatement;
+import org.opensaml.xml.XMLObject;
+import org.w3c.dom.Element;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.claim.mgt.ClaimManagementException;
 import org.wso2.carbon.claim.mgt.ClaimManagerHandler;
@@ -46,13 +48,14 @@ import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.user.api.RealmConfiguration;
-import org.wso2.carbon.user.core.UserRealm;
-import org.wso2.carbon.user.core.UserStoreException;
-import org.wso2.carbon.user.core.UserStoreManager;
+import org.wso2.carbon.user.api.UserRealm;
+import org.wso2.carbon.user.api.UserStoreException;
+import org.wso2.carbon.user.api.UserStoreManager;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
@@ -73,7 +76,20 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private final static String INBOUND_AUTH2_TYPE = "oauth2";
     private final static String SP_DIALECT = "http://wso2.org/oidc/claim";
 
-    private String userAttributeSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
+    private static String userAttributeSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
+
+    static {
+        UserRealm realm;
+        try {
+            realm = OAuthComponentServiceHolder.getInstance().getRealmService().getTenantUserRealm
+                    (MultitenantConstants.SUPER_TENANT_ID);
+            UserStoreManager userStoreManager = realm.getUserStoreManager();
+            userAttributeSeparator = ((org.wso2.carbon.user.core.UserStoreManager)userStoreManager)
+                    .getRealmConfiguration().getUserStoreProperty(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);
+        } catch (UserStoreException e) {
+            log.warn("Error while reading MultiAttributeSeparator value from primary user store ", e);
+        }
+    }
 
     @Override
     public void handleCustomClaims(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext requestMsgCtx) {
@@ -81,16 +97,37 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         Assertion assertion = (Assertion) requestMsgCtx.getProperty(OAuthConstants.OAUTH_SAML2_ASSERTION);
 
         if (assertion != null) {
-            List<AttributeStatement> list = assertion.getAttributeStatements();
-            if (CollectionUtils.isNotEmpty(list)) {
-                Iterator<Attribute> attributeIterator = list.get(0).getAttributes()
-                        .iterator();
-                while (attributeIterator.hasNext()) {
-                    Attribute attribute = attributeIterator.next();
-                    String value = attribute.getAttributeValues().get(0).getDOM().getTextContent();
-                    jwtClaimsSet.setClaim(attribute.getName(), value);
-                    if (log.isDebugEnabled()) {
-                        log.debug("Attribute: " + attribute.getName() + ", Value: " + value);
+
+            if (assertion.getSubject() != null) {
+                String subject = assertion.getSubject().getNameID().getValue();
+                if (log.isDebugEnabled()){
+                    log.debug("NameID in Assertion " + subject);
+                }
+                jwtClaimsSet.setSubject(subject);
+            }
+
+            List<AttributeStatement> attributeStatementList = assertion.getAttributeStatements();
+            if (CollectionUtils.isNotEmpty(attributeStatementList)) {
+                for (AttributeStatement statement : attributeStatementList) {
+                    List<Attribute> attributesList = statement.getAttributes();
+                    for (Attribute attribute : attributesList) {
+                        List<XMLObject> values = attribute.getAttributeValues();
+                        String attributeValues = null;
+                        if (values != null) {
+                            for (int i = 0; i < values.size(); i++) {
+                                Element value = attribute.getAttributeValues().get(i).getDOM();
+                                String attributeValue = value.getTextContent();
+                                if (log.isDebugEnabled()) {
+                                    log.debug("Attribute: " + attribute.getName() + ", Value: " + attributeValue);
+                                }
+                                if (StringUtils.isBlank(attributeValues)) {
+                                    attributeValues = attributeValue;
+                                } else {
+                                    attributeValues += userAttributeSeparator + attributeValue;
+                                }
+                                jwtClaimsSet.setClaim(attribute.getName(), attributeValues);
+                            }
+                        }
                     }
                 }
             } else {
@@ -293,8 +330,8 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             }
 
             String domain = IdentityUtil.extractDomainFromName(username);
-            RealmConfiguration realmConfiguration = userStoreManager.getSecondaryUserStoreManager(domain)
-                    .getRealmConfiguration();
+            RealmConfiguration realmConfiguration = ((org.wso2.carbon.user.core.UserStoreManager)userStoreManager)
+                    .getSecondaryUserStoreManager(domain).getRealmConfiguration();
 
             String claimSeparator = realmConfiguration.getUserStoreProperty(
                     IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);
@@ -387,8 +424,8 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 }
             }
 
-            RealmConfiguration realmConfiguration = userStoreManager.getSecondaryUserStoreManager(user.getUserStoreDomain())
-                    .getRealmConfiguration();
+            RealmConfiguration realmConfiguration = ((org.wso2.carbon.user.core.UserStoreManager)userStoreManager)
+                    .getSecondaryUserStoreManager(user.getUserStoreDomain()).getRealmConfiguration();
 
             String claimSeparator = realmConfiguration.getUserStoreProperty(
                     IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);

@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.oidc.session.OIDCSessionConstants;
 import org.wso2.carbon.identity.oidc.session.OIDCSessionManager;
 import org.wso2.carbon.identity.oidc.session.config.OIDCSessionManagementConfiguration;
@@ -93,19 +94,30 @@ public class OIDCSessionManagementUtil {
     }
 
     /**
-     * Add the provided session state to the url as a query parameter
+     * Add the provided session state to the url.
+     * It may be added as a query parameter or a fragment component,
+     * depending on the whether the response type is code or token.
      *
      * @param url
      * @param sessionState
+     * @param responseType
      * @return url with the session state parameter
      */
-    public static String addSessionStateToURL(String url, String sessionState) {
+    public static String addSessionStateToURL(String url, String sessionState, String responseType) {
 
         if (StringUtils.isNotBlank(url) && StringUtils.isNotBlank(sessionState)) {
-            if (url.indexOf('?') > 0) {
-                return url + "&" + OIDCSessionConstants.OIDC_SESSION_STATE_PARAM + "=" + sessionState;
+            if(OAuth2Util.isImplicitResponseType(responseType)) {
+                if (url.indexOf('#') > 0) {
+                    return url + "&" + OIDCSessionConstants.OIDC_SESSION_STATE_PARAM + "=" + sessionState;
+                } else {
+                    return url + "#" + OIDCSessionConstants.OIDC_SESSION_STATE_PARAM + "=" + sessionState;
+                }
             } else {
-                return url + "?" + OIDCSessionConstants.OIDC_SESSION_STATE_PARAM + "=" + sessionState;
+                if (url.indexOf('?') > 0) {
+                    return url + "&" + OIDCSessionConstants.OIDC_SESSION_STATE_PARAM + "=" + sessionState;
+                } else {
+                    return url + "?" + OIDCSessionConstants.OIDC_SESSION_STATE_PARAM + "=" + sessionState;
+                }
             }
         }
 
@@ -120,14 +132,15 @@ public class OIDCSessionManagementUtil {
      * @param clientId
      * @param rpCallBackUrl
      * @param opBrowserStateCookie
+     * @param responseType
      * @return
      */
     public static String addSessionStateToURL(String url, String clientId, String rpCallBackUrl,
-                                              Cookie opBrowserStateCookie) {
+                                              Cookie opBrowserStateCookie, String responseType) {
 
         String sessionStateParam = getSessionStateParam(clientId, rpCallBackUrl, opBrowserStateCookie == null ? null :
                                                                                  opBrowserStateCookie.getValue());
-        return addSessionStateToURL(url, sessionStateParam);
+        return addSessionStateToURL(url, sessionStateParam, responseType);
     }
 
     /**

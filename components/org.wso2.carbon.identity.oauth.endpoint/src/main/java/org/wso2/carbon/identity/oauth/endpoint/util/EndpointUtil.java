@@ -22,7 +22,11 @@ import org.apache.commons.io.Charsets;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.oltu.oauth2.as.response.OAuthASResponse;
+import org.apache.oltu.oauth2.common.OAuth;
+import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
+import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.wso2.carbon.base.ServerConfiguration;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationRequestCacheEntry;
@@ -42,6 +46,7 @@ import org.wso2.carbon.identity.oauth2.OAuth2TokenValidationService;
 import org.wso2.carbon.identity.oauth2.model.OAuth2Parameters;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Map;
@@ -162,23 +167,12 @@ public class EndpointUtil {
      * @param appName
      * @return
      */
-    public static String getErrorPageURL(String errorCode, String errorMessage, String appName, String redirectUri) {
+    public static String getErrorPageURL(String errorCode, String errorMessage, String appName) {
 
-        String errorPageUrl;
-        if (StringUtils.isNotBlank(redirectUri)) {
-            errorPageUrl = redirectUri;
-        } else {
-            errorPageUrl = OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl();
-        }
+        String errorPageUrl = OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl();
         try {
-            if(OAuthServerConfiguration.getInstance().isImplicitErrorFragment()) {
-                errorPageUrl += "#" + OAuthConstants.OAUTH_ERROR_CODE + "=" + URLEncoder.encode(errorCode, "UTF-8") +
-                        "&" + OAuthConstants.OAUTH_ERROR_MESSAGE + "=" + URLEncoder.encode(errorMessage, "UTF-8");
-            } else {
-                errorPageUrl += "?" + OAuthConstants.OAUTH_ERROR_CODE + "=" + URLEncoder.encode(errorCode, "UTF-8") +
-                        "&" + OAuthConstants.OAUTH_ERROR_MESSAGE + "=" + URLEncoder.encode(errorMessage, "UTF-8");
-            }
-
+            errorPageUrl += "?" + OAuthConstants.OAUTH_ERROR_CODE + "=" + URLEncoder.encode(errorCode, "UTF-8") +
+                    "&" + OAuthConstants.OAUTH_ERROR_MESSAGE + "=" + URLEncoder.encode(errorMessage, "UTF-8");
         } catch (UnsupportedEncodingException e) {
             //ignore
             if (log.isDebugEnabled()){
@@ -198,6 +192,45 @@ public class EndpointUtil {
         }
 
         return errorPageUrl;
+    }
+
+    public static String getErrorRedirectURL(OAuthProblemException ex, OAuth2Parameters params) {
+
+        String redirectURL = null;
+        try {
+            if (params != null) {
+                if (StringUtils.isNotBlank(params.getRedirectURI())) {
+                    if (OAuth2Util.isImplicitResponseType(params.getResponseType())) {
+                        if (OAuthServerConfiguration.getInstance().isImplicitErrorFragment()) {
+                            redirectURL = OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND)
+                                    .error(ex).location(params.getRedirectURI())
+                                    .setState(params.getState()).setParam(OAuth.OAUTH_ACCESS_TOKEN, null)
+                                    .buildQueryMessage().getLocationUri();
+                        }
+                    }
+                    if (StringUtils.isBlank(redirectURL)) {
+                        redirectURL = OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND)
+                                .error(ex).location(params.getRedirectURI())
+                                .setState(params.getState()).buildQueryMessage()
+                                .getLocationUri();
+                    }
+                } else {
+                    redirectURL = getErrorPageURL(ex.getError(), ex.getMessage(), params.getApplicationName());
+                }
+            } else {
+                redirectURL = getErrorPageURL(ex.getError(), ex.getMessage(), null);
+            }
+        } catch (OAuthSystemException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Server error occurred while building error redirect url", e);
+            }
+            if(params != null) {
+                redirectURL = getErrorPageURL(ex.getError(), ex.getMessage(), params.getApplicationName());
+            } else {
+                redirectURL = getErrorPageURL(ex.getError(), ex.getMessage(), null);
+            }
+        }
+        return redirectURL;
     }
 
     /**

@@ -24,6 +24,7 @@ import org.apache.commons.io.Charsets;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -861,5 +862,13 @@ public class OAuth2Util {
 
     public static boolean isPKCESupportEnabled() {
         return OAuth2ServiceComponentHolder.isPkceEnabled();
+    }
+
+    public static boolean isImplicitResponseType(String responseType) {
+        if(StringUtils.isNotBlank(responseType) && (responseType.contains(ResponseType.TOKEN.toString()) ||
+                responseType.contains(OAuthConstants.ID_TOKEN))) {
+            return true;
+        }
+        return false;
     }
 }

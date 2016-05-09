@@ -138,6 +138,9 @@ public class OAuthServerConfiguration {
     private String consumerDialectURI = "http://wso2.org/claims";
     private String signatureAlgorithm = "SHA256withRSA";
     private String authContextTTL = "15L";
+    // property added to fix IDENTITY-4551 in backward compatible manner
+    private boolean useMultiValueSeparatorForAuthContextToken = true;
+
     // OpenID Connect configurations
     private String openIDConnectIDTokenBuilderClassName = "org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilder";
     private String openIDConnectIDTokenCustomClaimsHanlderClassName = "org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallback";
@@ -641,6 +644,10 @@ public class OAuthServerConfiguration {
 
     public String getAuthorizationContextTTL() {
         return authContextTTL;
+    }
+
+    public boolean isUseMultiValueSeparatorForAuthContextToken() {
+        return useMultiValueSeparatorForAuthContextToken;
     }
 
     public TokenPersistenceProcessor getPersistenceProcessor() throws IdentityOAuth2Exception {
@@ -1382,6 +1389,12 @@ public class OAuthServerConfiguration {
                                 authContextTokGenConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.SECURITY_CONTEXT_TTL))
                                         .getText().trim();
                     }
+                    if (authContextTokGenConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
+                            ConfigElements.AUTH_CONTEXT_TOKEN_USE_MULTIVALUE_SEPARATOR)) != null) {
+                        useMultiValueSeparatorForAuthContextToken =
+                                Boolean.parseBoolean(authContextTokGenConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
+                                        ConfigElements.AUTH_CONTEXT_TOKEN_USE_MULTIVALUE_SEPARATOR)).getText().trim());
+                    }
                 }
             }
         }
@@ -1520,6 +1533,8 @@ public class OAuthServerConfiguration {
         public static final String CONSUMER_DIALECT_URI = "ConsumerDialectURI";
         public static final String SIGNATURE_ALGORITHM = "SignatureAlgorithm";
         public static final String SECURITY_CONTEXT_TTL = "AuthorizationContextTTL";
+        private static final String AUTH_CONTEXT_TOKEN_USE_MULTIVALUE_SEPARATOR = "UseMultiValueSeparator";
+
         public static final String ENABLE_ASSERTIONS = "EnableAssertions";
         public static final String ENABLE_ASSERTIONS_USERNAME = "UserName";
         public static final String ENABLE_ACCESS_TOKEN_PARTITIONING = "EnableAccessTokenPartitioning";
@@ -1555,6 +1570,7 @@ public class OAuthServerConfiguration {
         private static final String SCOPE_CLASS_ATTR = "class";
         private static final String SKIP_SCOPE_ATTR = "scopesToSkip";
         private static final String IMPLICIT_ERROR_FRAGMENT = "ImplicitErrorFragment";
+
         // Default timestamp skew
         private static final String TIMESTAMP_SKEW = "TimestampSkew";
         // Default validity periods

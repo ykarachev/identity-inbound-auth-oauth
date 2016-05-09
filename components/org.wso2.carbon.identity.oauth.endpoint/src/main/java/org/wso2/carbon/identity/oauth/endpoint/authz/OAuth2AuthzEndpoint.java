@@ -141,7 +141,7 @@ public class OAuth2AuthzEndpoint {
             }
             return Response.status(HttpServletResponse.SC_FOUND).location(new URI(
                     EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Invalid authorization request",
-                            null, null))).build();
+                            null))).build();
 
         } else if (clientId == null && resultFromLogin == null && resultFromConsent == null) {
 
@@ -151,14 +151,14 @@ public class OAuth2AuthzEndpoint {
             }
             return Response.status(HttpServletResponse.SC_FOUND).location(new URI(
                     EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Invalid authorization request",
-                            null, null))).build();
+                            null))).build();
 
         } else if (sessionDataKeyFromLogin != null && resultFromLogin == null) {
             if (log.isDebugEnabled()) {
                 log.debug("Session data not found in SessionDataCache for " + sessionDataKeyFromLogin);
             }
             return Response.status(HttpServletResponse.SC_FOUND).location(new URI(
-                    EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.ACCESS_DENIED, "Session Timed Out", null, null)))
+                    EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.ACCESS_DENIED, "Session Timed Out", null)))
                     .build();
 
         } else if (sessionDataKeyFromConsent != null && resultFromConsent == null) {
@@ -168,7 +168,7 @@ public class OAuth2AuthzEndpoint {
                     log.debug("Session data not found in SessionDataCache for " + sessionDataKeyFromConsent);
                 }
                 return Response.status(HttpServletResponse.SC_FOUND).location(new URI(
-                        EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.ACCESS_DENIED, "Session Timed Out", null, null)))
+                        EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.ACCESS_DENIED, "Session Timed Out", null)))
                         .build();
             } else {
                 sessionDataKeyFromConsent = null;
@@ -240,16 +240,13 @@ public class OAuth2AuthzEndpoint {
 
                         OAuthProblemException oauthException = OAuthProblemException.error(
                                 OAuth2ErrorCodes.ACCESS_DENIED, "Authentication required");
-                        redirectURL = OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND)
-                                .error(oauthException).location(oauth2Params.getRedirectURI())
-                                .setState(oauth2Params.getState()).buildQueryMessage()
-                                .getLocationUri();
+                        redirectURL = EndpointUtil.getErrorRedirectURL(oauthException, oauth2Params);
                         if (isOIDCRequest) {
                             Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);
-                            redirectURL = OIDCSessionManagementUtil.addSessionStateToURL(redirectURL,
-                                                                                         oauth2Params.getClientId(),
-                                                                                         oauth2Params.getRedirectURI(),
-                                                                                         opBrowserStateCookie);
+                            redirectURL = OIDCSessionManagementUtil
+                                    .addSessionStateToURL(redirectURL, oauth2Params.getClientId(),
+                                                          oauth2Params.getRedirectURI(), opBrowserStateCookie,
+                                                          oauth2Params.getResponseType());
                         }
                     }
                     return Response.status(HttpServletResponse.SC_FOUND).location(new URI(redirectURL)).build();
@@ -264,7 +261,7 @@ public class OAuth2AuthzEndpoint {
                     }
                     return Response.status(HttpServletResponse.SC_FOUND).location(new URI(EndpointUtil
                             .getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Invalid authorization request",
-                                    appName, null))).build();
+                                    appName))).build();
 
                 }
 
@@ -281,16 +278,15 @@ public class OAuth2AuthzEndpoint {
                         OpenIDConnectUserRPStore.getInstance().putUserRPToStore(resultFromConsent.getLoggedInUser(),
                                 resultFromConsent.getoAuth2Parameters().getApplicationName(), false, oauth2Params.getClientId());
                         // return an error if user denied
-                        String denyResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND)
-                                .setError(OAuth2ErrorCodes.ACCESS_DENIED)
-                                .location(oauth2Params.getRedirectURI()).setState(oauth2Params.getState())
-                                .buildQueryMessage().getLocationUri();
+                        OAuthProblemException ex = OAuthProblemException.error(OAuth2ErrorCodes.ACCESS_DENIED);
+                        String denyResponse = EndpointUtil.getErrorRedirectURL(ex, oauth2Params);
 
                         if (isOIDCRequest) {
                             Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);
                             denyResponse = OIDCSessionManagementUtil
                                     .addSessionStateToURL(denyResponse, oauth2Params.getClientId(),
-                                                          oauth2Params.getRedirectURI(), opBrowserStateCookie);
+                                                          oauth2Params.getRedirectURI(), opBrowserStateCookie,
+                                                          oauth2Params.getResponseType());
                         }
                         return Response.status(HttpServletResponse.SC_FOUND).location(new URI(denyResponse)).build();
                     }
@@ -329,7 +325,7 @@ public class OAuth2AuthzEndpoint {
                     }
                     return Response.status(HttpServletResponse.SC_FOUND).location(new URI(
                             EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Invalid authorization " +
-                                    "request", appName, null)))
+                                    "request", appName)))
                             .build();
                 }
 
@@ -339,7 +335,7 @@ public class OAuth2AuthzEndpoint {
                 }
 
                 return Response.status(HttpServletResponse.SC_FOUND).location(new URI(EndpointUtil.getErrorPageURL
-                        (OAuth2ErrorCodes.INVALID_REQUEST, "Invalid authorization request", null, null))).build();
+                        (OAuth2ErrorCodes.INVALID_REQUEST, "Invalid authorization request", null))).build();
             }
 
         } catch (OAuthProblemException e) {
@@ -348,27 +344,22 @@ public class OAuth2AuthzEndpoint {
                 log.debug(e.getError(), e);
             }
             return Response.status(HttpServletResponse.SC_FOUND).location(new URI(
-                    EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, e.getMessage(), null, null)))
+                    EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, e.getMessage(), null)))
                     .build();
 
         } catch (OAuthSystemException e) {
 
-            String redirectUri = null;
+            OAuth2Parameters params = null;
             if (sessionDataCacheEntry != null) {
-                redirectUri = sessionDataCacheEntry.getoAuth2Parameters().getRedirectURI();
+                params = sessionDataCacheEntry.getoAuth2Parameters();
             }
             if (log.isDebugEnabled()) {
                 log.debug("Server error occurred while performing authorization", e);
             }
-            if (StringUtils.isNotEmpty(redirectUri)) {
-                return Response.status(HttpServletResponse.SC_FOUND).location(new URI(EndpointUtil.getErrorPageURL
-                        (OAuth2ErrorCodes.SERVER_ERROR, "Server error occurred while performing authorization", null,
-                                redirectUri))).build();
-            } else {
-                return Response.status(HttpServletResponse.SC_FOUND).location(new URI(EndpointUtil.getErrorPageURL
-                        (OAuth2ErrorCodes.SERVER_ERROR, "Server error occurred while performing authorization", null,
-                                null))).build();
-            }
+            OAuthProblemException ex = OAuthProblemException.error(OAuth2ErrorCodes.SERVER_ERROR,
+                    "Server error occurred while performing authorization");
+            return Response.status(HttpServletResponse.SC_FOUND).location(new URI(
+                    EndpointUtil.getErrorRedirectURL(ex, params))).build();
 
         } finally {
             if (sessionDataKeyFromConsent != null) {
@@ -484,6 +475,7 @@ public class OAuth2AuthzEndpoint {
 
         } else if (authzRespDTO != null && authzRespDTO.getErrorCode() != null) {
             // Authorization failure due to various reasons
+            sessionState.setAuthenticated(false);
             String errorMsg;
             if (authzRespDTO.getErrorMsg() != null) {
                 errorMsg = authzRespDTO.getErrorMsg();
@@ -492,22 +484,16 @@ public class OAuth2AuthzEndpoint {
             }
             OAuthProblemException oauthProblemException = OAuthProblemException.error(
                     authzRespDTO.getErrorCode(), errorMsg);
-            oauthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND).error(oauthProblemException)
-                    .location(oauth2Params.getRedirectURI()).setState(oauth2Params.getState())
-                    .buildQueryMessage();
+            return EndpointUtil.getErrorRedirectURL(oauthProblemException, oauth2Params);
 
-            sessionState.setAuthenticated(false);
         } else {
             // Authorization failure due to various reasons
+            sessionState.setAuthenticated(false);
             String errorCode = OAuth2ErrorCodes.SERVER_ERROR;
             String errorMsg = "Error occurred while processing the request";
             OAuthProblemException oauthProblemException = OAuthProblemException.error(
                     errorCode, errorMsg);
-            oauthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND).error(oauthProblemException)
-                    .location(oauth2Params.getRedirectURI()).setState(oauth2Params.getState())
-                    .buildQueryMessage();
-
-            sessionState.setAuthenticated(false);
+            return EndpointUtil.getErrorRedirectURL(oauthProblemException, oauth2Params);
         }
 
         return oauthResponse.getLocationUri();
@@ -583,19 +569,19 @@ public class OAuth2AuthzEndpoint {
                 log.debug("Client Id is not present in the authorization request");
             }
             return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Client Id is not present in the " +
-                    "authorization request", null, null);
+                    "authorization request", null);
         } else if (StringUtils.isBlank(redirectUri)) {
             if (log.isDebugEnabled()) {
                 log.debug("Redirect URI is not present in the authorization request");
             }
             return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Redirect URI is not present in the" +
-                    " authorization request", null, null);
+                    " authorization request", null);
         } else {
             clientDTO = validateClient(clientId, redirectUri);
         }
 
         if (!clientDTO.isValidClient()) {
-            return EndpointUtil.getErrorPageURL(clientDTO.getErrorCode(), clientDTO.getErrorMsg(), null, null);
+            return EndpointUtil.getErrorPageURL(clientDTO.getErrorCode(), clientDTO.getErrorMsg(), null);
         }
 
         // Now the client is valid, redirect him to the authorization page.
@@ -623,7 +609,7 @@ public class OAuth2AuthzEndpoint {
                 if (pkceChallengeCode == null || !OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
                     return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "PKCE is mandatory for this application. " +
                             "PKCE Challenge is not provided " +
-                            "or is not upto RFC 7636 specification.", null, null);
+                            "or is not upto RFC 7636 specification.", null);
                 }
             }
             //Check if the code challenge method value is neither "plain" or "s256", if so return error
@@ -631,7 +617,7 @@ public class OAuth2AuthzEndpoint {
                 if (!OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(pkceChallengeMethod) &&
                         !OAuthConstants.OAUTH_PKCE_S256_CHALLENGE.equals(pkceChallengeMethod)) {
                     return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Unsupported PKCE Challenge Method"
-                            , null, null);
+                            , null);
                 }
             }
 
@@ -639,7 +625,7 @@ public class OAuth2AuthzEndpoint {
             if (pkceChallengeCode != null && !clientDTO.isPkceSupportPlain()) {
                 if (pkceChallengeMethod == null || OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE.equals(pkceChallengeMethod)) {
                     return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "This application does not " +
-                            "support \"plain\" transformation algorithm.", null, null);
+                            "support \"plain\" transformation algorithm.", null);
                 }
             }
 
@@ -647,7 +633,7 @@ public class OAuth2AuthzEndpoint {
             if (pkceChallengeCode != null && !OAuth2Util.validatePKCECodeChallenge(pkceChallengeCode, pkceChallengeMethod)) {
                 return EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, "Code challenge used is not up to " +
                                 "RFC 7636 specifications."
-                        , null, null);
+                        , null);
             }
 
 
@@ -721,11 +707,9 @@ public class OAuth2AuthzEndpoint {
                     log.debug("Invalid prompt variable combination. The value 'none' cannot be used with others " +
                             "prompts. Prompt: " + prompt);
                 }
-                return OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND)
-                        .setError(OAuth2ErrorCodes.INVALID_REQUEST)
-                        .setErrorDescription("Invalid prompt variable combination. The value \'none\' cannot be used " +
-                                "with others prompts.").location(params.getRedirectURI())
-                        .setState(params.getState()).buildQueryMessage().getLocationUri();
+                OAuthProblemException ex = OAuthProblemException.error(OAuth2ErrorCodes.INVALID_REQUEST,
+                        "Invalid prompt variable combination. The value \'none\' cannot be used with others prompts.");
+                return EndpointUtil.getErrorRedirectURL(ex, params);
             }
         }
 
@@ -817,11 +801,8 @@ public class OAuth2AuthzEndpoint {
         boolean hasUserApproved = OpenIDConnectUserRPStore.getInstance().hasUserApproved(user, appName,
                 oauth2Params.getClientId());
         String consentUrl;
-        String errorResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_FOUND)
-                .setError(OAuth2ErrorCodes.ACCESS_DENIED)
-                .location(oauth2Params.getRedirectURI())
-                .setState(oauth2Params.getState()).buildQueryMessage()
-                .getLocationUri();
+        OAuthProblemException ex = OAuthProblemException.error(OAuth2ErrorCodes.ACCESS_DENIED);
+        String errorResponse = EndpointUtil.getErrorRedirectURL(ex, oauth2Params);
 
         consentUrl = EndpointUtil.getUserConsentURL(oauth2Params, loggedInUser, sessionDataKey,
                 OAuth2Util.isOIDCAuthzRequest(oauth2Params.getScopes()) ? true : false);
@@ -1063,7 +1044,7 @@ public class OAuth2AuthzEndpoint {
                         redirectURL = EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.ACCESS_DENIED,
                                                                    "No valid session found for the authenticated user " +
                                                                    authenticatedUser,
-                                                                   oAuth2Parameters.getApplicationName(), null);
+                                                                   oAuth2Parameters.getApplicationName());
                         sessionStateObj.setAddSessionState(false);
                     }
                 } else {
@@ -1078,7 +1059,8 @@ public class OAuth2AuthzEndpoint {
                                                                                       opBrowserStateCookie == null ?
                                                                                       null :
                                                                                       opBrowserStateCookie.getValue());
-            redirectURL = OIDCSessionManagementUtil.addSessionStateToURL(redirectURL, sessionStateParam);
+            redirectURL = OIDCSessionManagementUtil.addSessionStateToURL(redirectURL, sessionStateParam,
+                                                                         oAuth2Parameters.getResponseType());
         }
 
         return redirectURL;

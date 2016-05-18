@@ -23,9 +23,9 @@ import org.apache.axis2.util.JavaUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.oltu.oauth2.as.issuer.MD5Generator;
 import org.apache.oltu.oauth2.as.issuer.OAuthIssuer;
 import org.apache.oltu.oauth2.as.issuer.OAuthIssuerImpl;
+import org.apache.oltu.oauth2.as.issuer.UUIDValueGenerator;
 import org.apache.oltu.oauth2.as.validator.AuthorizationCodeValidator;
 import org.apache.oltu.oauth2.as.validator.ClientCredentialValidator;
 import org.apache.oltu.oauth2.as.validator.CodeValidator;
@@ -301,14 +301,14 @@ public class OAuthServerConfiguration {
                             log.info("An instance of " + oauthTokenGeneratorClassName
                                 + " is created for OAuth token generation.");
                         } else {
-                            oauthTokenGenerator = new OAuthIssuerImpl(new MD5Generator());
+                            oauthTokenGenerator = new OAuthIssuerImpl(new UUIDValueGenerator());
                             log.info("The default OAuth token issuer will be used. No custom token generator is set.");
                         }
                     } catch (Exception e) {
                         String errorMsg = "Error when instantiating the OAuthIssuer : "
                             + tokenPersistenceProcessorClassName + ". Defaulting to OAuthIssuerImpl";
                         log.error(errorMsg, e);
-                        oauthTokenGenerator = new OAuthIssuerImpl(new MD5Generator());
+                        oauthTokenGenerator = new OAuthIssuerImpl(new UUIDValueGenerator());
                     }
                 }
             }

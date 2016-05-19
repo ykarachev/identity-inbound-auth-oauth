@@ -64,6 +64,10 @@ public class OAuth2IntrospectionEndpoint {
 
         // TODO: sanitize tokentypeHint
 
+        if(tokenTypeHint == null) {
+            tokenTypeHint = DEFAULT_TOKEN_TYPE_HINT;
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("Token type hint: " + tokenTypeHint);
         }

@@ -61,4 +61,25 @@ public class HttpAuthzResponseFactory extends HttpIdentityResponseFactory {
                           OAuth2.HeaderValue.PRAGMA_NO_CACHE);
         return builder;
     }
+
+    @Override
+    public HttpIdentityResponse.HttpIdentityResponseBuilder create(
+            HttpIdentityResponse.HttpIdentityResponseBuilder builder, IdentityResponse identityResponse) {
+
+        AuthzResponse authzResponse = ((AuthzResponse)identityResponse);
+        OAuthResponse response = null;
+        try {
+            response = authzResponse.getBuilder().buildQueryMessage();
+        } catch (OAuthSystemException e) {
+            throw OAuth2RuntimeException.error("Error occurred while building query message for authorization " +
+                                               "response");
+        }
+        builder.setStatusCode(response.getResponseStatus());
+        builder.setHeaders(response.getHeaders());
+        builder.addHeader(OAuth2.Header.CACHE_CONTROL,
+                          OAuth2.HeaderValue.CACHE_CONTROL_NO_STORE);
+        builder.addHeader(OAuth2.Header.PRAGMA,
+                          OAuth2.HeaderValue.PRAGMA_NO_CACHE);
+        return builder;
+    }
 }

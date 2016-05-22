@@ -19,10 +19,12 @@
 package org.wso2.carbon.identity.oidc.processor.authz;
 
 import org.apache.oltu.oauth2.common.OAuth;
+import org.wso2.carbon.identity.application.authentication.framework.inbound.FrameworkLoginResponse;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityMessageContext;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.InboundConstants;
+import org.wso2.carbon.identity.oauth2poc.bean.context.OAuth2AuthzMessageContext;
 import org.wso2.carbon.identity.oauth2poc.processor.authz.AuthzProcessor;
 import org.wso2.carbon.identity.oauth2poc.util.OAuth2Util;
 import org.wso2.carbon.identity.oidc.OIDC;
@@ -68,13 +70,14 @@ public class OIDCAuthzProcessor extends AuthzProcessor {
      * @param messageContext The runtime message context
      * @return OAuth2 authorization endpoint
      */
-    protected IdentityResponse.IdentityResponseBuilder buildResponseForFrameworkLogin(IdentityMessageContext messageContext) {
+    protected FrameworkLoginResponse.FrameworkLoginResponseBuilder initializeResourceOwnerAuthentication(
+            OAuth2AuthzMessageContext messageContext) {
 
         boolean isLoginRequired = ((OIDCAuthzRequest)messageContext.getRequest()).isLoginRequired();
         messageContext.addParameter(InboundConstants.ForceAuth, isLoginRequired);
         boolean isPromptNone = ((OIDCAuthzRequest)messageContext.getRequest()).isPromptNone();
         messageContext.addParameter(InboundConstants.PassiveAuth, isPromptNone);
-        return buildResponseForFrameworkLogin(messageContext);
+        return super.initializeResourceOwnerAuthentication(messageContext);
     }
 
 }

@@ -83,10 +83,7 @@ public class AuthzProcessor extends OAuth2IdentityRequestProcessor {
 
     protected FrameworkLoginResponse.FrameworkLoginResponseBuilder initializeResourceOwnerAuthentication(
             OAuth2AuthzMessageContext messageContext) {
-        FrameworkLoginResponse.FrameworkLoginResponseBuilder builder =
-                (FrameworkLoginResponse.FrameworkLoginResponseBuilder)
-                        buildResponseForFrameworkLogin(messageContext);
-        return builder;
+        return buildResponseForFrameworkLogin(messageContext);
     }
 
 }

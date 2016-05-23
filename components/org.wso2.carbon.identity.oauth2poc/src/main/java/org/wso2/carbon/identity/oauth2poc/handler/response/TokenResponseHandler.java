@@ -16,14 +16,18 @@
  * under the License.
  */
 
-package org.wso2.carbon.identity.oauth2poc.processor.authz;
+package org.wso2.carbon.identity.oauth2poc.handler.response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.oltu.oauth2.as.response.OAuthASResponse;
+import org.apache.oltu.oauth2.client.request.OAuthClientRequest;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
-import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
-import org.wso2.carbon.identity.oauth2poc.bean.context.OAuth2AuthzMessageContext;
+import org.wso2.carbon.identity.application.authentication.framework.FrameworkHandlerResponse;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.application.authentication.framework.context.IdentityMessageContext;
+import org.wso2.carbon.identity.application.authentication.framework.processor.handler.response.ResponseException;
+import org.wso2.carbon.identity.core.bean.context.MessageContext;
 import org.wso2.carbon.identity.oauth2poc.bean.message.response.authz.AuthzResponse;
 import org.wso2.carbon.identity.oauth2poc.handler.HandlerManager;
 import org.wso2.carbon.identity.oauth2poc.model.AccessToken;
@@ -31,17 +35,33 @@ import org.wso2.carbon.identity.oauth2poc.util.OAuth2Util;
 
 import javax.servlet.http.HttpServletResponse;
 
-public class TokenResponseProcessor extends ROApprovalProcessor {
+public class TokenResponseHandler extends OAuth2ResponseHandler {
 
     public String getName() {
-        return "TokenResponseProcessor";
+        return "TokenResponseHandler";
     }
 
-    public boolean canHandle(IdentityRequest identityRequest) {
-        if(StringUtils.equals(ResponseType.CODE.toString(), identityRequest.getParameter(OAuth.OAUTH_RESPONSE_TYPE))) {
+    public boolean canHandle(MessageContext messageContext) {
+        AuthenticationContext authenticationContext = (AuthenticationContext)messageContext;
+        String responseType = authenticationContext.getInitialAuthenticationRequest()
+                .getParameter(OAuth.OAUTH_RESPONSE_TYPE);
+        if(StringUtils.equals(ResponseType.CODE.toString(), responseType)) {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public FrameworkHandlerResponse buildErrorResponse(IdentityMessageContext messageContext) throws ResponseException {
+        return null;
+    }
+
+    @Override
+    public FrameworkHandlerResponse buildResponse(IdentityMessageContext messageContext) throws ResponseException {
+        AuthzResponse.AuthzResponseBuilder builder = buildAuthzResponse((AuthenticationContext)messageContext);
+        FrameworkHandlerResponse response = FrameworkHandlerResponse.REDIRECT;
+        response.setIdentityResponseBuilder(builder);
+        return response;
     }
 
     /**
@@ -50,7 +70,7 @@ public class TokenResponseProcessor extends ROApprovalProcessor {
      * @param messageContext The runtime message context
      * @return OAuth2 authorization endpoint response
      */
-    protected AuthzResponse.AuthzResponseBuilder buildAuthzResponse(OAuth2AuthzMessageContext messageContext) {
+    protected AuthzResponse.AuthzResponseBuilder buildAuthzResponse(AuthenticationContext messageContext) {
 
         AccessToken accessToken = HandlerManager.getInstance().issueAccessToken(messageContext);
 
@@ -61,7 +81,7 @@ public class TokenResponseProcessor extends ROApprovalProcessor {
             expiry = Long.MAX_VALUE/1000;
         }
 
-        String state = messageContext.getRequest().getState();
+        String state = messageContext.getInitialAuthenticationRequest().getParameter("state");
 
         // read redirect_uri from application.mgt
         String redirectURI = null;
@@ -84,9 +104,4 @@ public class TokenResponseProcessor extends ROApprovalProcessor {
         builder.setOLTUAuthzResponseBuilder(oltuRespBuilder);
         return builder;
     }
-
-    protected boolean issueRefreshToken(OAuth2AuthzMessageContext messageContext) {
-        return false;
-    }
-
 }

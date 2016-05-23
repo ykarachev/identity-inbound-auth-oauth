@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.as.issuer.MD5Generator;
 import org.apache.oltu.oauth2.as.issuer.OAuthIssuerImpl;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.core.bean.context.MessageContext;
 import org.wso2.carbon.identity.oauth2poc.OAuth2;
@@ -57,7 +58,7 @@ public class BearerTokenResponseIssuer extends AccessTokenResponseIssuer {
                                               boolean isRefreshTokenValid, boolean markAccessTokenExpired,
                                               AccessToken prevAccessToken, long accessTokenCallbackValidity,
                                               long refreshTokenCallbackValidity, String grantOrResponseType,
-                                              OAuth2MessageContext messageContext) {
+                                              AuthenticationContext messageContext) {
 
         Timestamp timestamp = new Timestamp(new Date().getTime());
 
@@ -89,7 +90,7 @@ public class BearerTokenResponseIssuer extends AccessTokenResponseIssuer {
         return newAccessToken;
     }
 
-    protected void storeNewAccessToken(AccessToken accessToken, OAuth2MessageContext messageContext) {
+    protected void storeNewAccessToken(AccessToken accessToken, AuthenticationContext messageContext) {
 
         //AuthzCode authzCode = (AuthzCode)messageContext.getParameter(OAuth2.AUTHZ_CODE);
         //boolean markAccessTokenExpired = (Boolean)messageContext.getParameter(MARK_ACCESS_TOKEN_EXPIRED);

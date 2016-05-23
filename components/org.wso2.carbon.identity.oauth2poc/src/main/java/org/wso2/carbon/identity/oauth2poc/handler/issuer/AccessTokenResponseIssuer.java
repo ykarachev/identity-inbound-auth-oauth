@@ -20,11 +20,12 @@ package org.wso2.carbon.identity.oauth2poc.handler.issuer;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.authentication.framework.processor.request.AuthenticationRequest;
 import org.wso2.carbon.identity.core.handler.AbstractIdentityHandler;
 import org.wso2.carbon.identity.oauth2poc.OAuth2;
-import org.wso2.carbon.identity.oauth2poc.bean.context.OAuth2AuthzMessageContext;
-import org.wso2.carbon.identity.oauth2poc.bean.context.OAuth2MessageContext;
+import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.OAuth2AuthzRequest;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2Exception;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 import org.wso2.carbon.identity.oauth2poc.model.AccessToken;
@@ -49,7 +50,7 @@ public abstract class AccessTokenResponseIssuer extends AbstractIdentityHandler 
      * @return Returns the OAuth2 response
      * @throws OAuth2Exception
      */
-    public AccessToken issue(OAuth2MessageContext messageContext) {
+    public AccessToken issue(AuthenticationContext messageContext) {
 
         AccessToken accessToken = validTokenExists(messageContext);
         boolean isAccessTokenValid = (Boolean)messageContext.getParameter(IS_ACCESS_TOKEN_VALID);
@@ -61,25 +62,28 @@ public abstract class AccessTokenResponseIssuer extends AbstractIdentityHandler 
         return accessToken;
     }
 
-    protected AccessToken validTokenExists(OAuth2MessageContext messageContext) {
+    protected AccessToken validTokenExists(AuthenticationContext messageContext) {
 
-        if(messageContext instanceof OAuth2AuthzMessageContext) {
-            return validTokenExists((OAuth2AuthzMessageContext)messageContext);
+        AuthenticationRequest request = messageContext.getInitialAuthenticationRequest();
+        if(request instanceof OAuth2AuthzRequest) {
+            OAuth2AuthzRequest authzRequest = (OAuth2AuthzRequest)request;
+            return validTokenExists(authzRequest, messageContext);
         } else {
-            throw OAuth2RuntimeException.error("Invalid OAuth2MessageContext - unknown sub type");
+            throw OAuth2RuntimeException.error("Invalid AuthenticationRequest - unknown sub type");
         }
     }
 
-    protected AccessToken validTokenExists(OAuth2AuthzMessageContext messageContext) {
+    protected AccessToken validTokenExists(OAuth2AuthzRequest authzRequest, AuthenticationContext messageContext) {
 
-        String clientId = messageContext.getRequest().getClientId();
-        AuthenticatedUser authzUser = messageContext.getAuthzUser();
-        Set<String> scopes = messageContext.getApprovedScopes();
-        return validTokenExists(clientId, authzUser, scopes, messageContext);
+        String clientId = authzRequest.getClientId();
+        // The final authenticated user should be obtained here
+        AuthenticatedUser user = null;
+        Set<String> approvedScopes = (Set<String>)messageContext.getParameter("ApprovedScopes");
+        return validTokenExists(clientId, user, approvedScopes, messageContext);
     }
 
-    protected AccessToken validTokenExists(String clientId, AuthenticatedUser authzUser,
-                                           Set<String> scopes, OAuth2MessageContext messageContext) {
+    protected AccessToken validTokenExists(String clientId, AuthenticatedUser user,
+                                           Set<String> scopes, AuthenticationContext messageContext) {
 
         boolean isAccessTokenValid = false;
         boolean isRefreshTokenValid = false;
@@ -96,27 +100,30 @@ public abstract class AccessTokenResponseIssuer extends AbstractIdentityHandler 
         return accessToken;
     }
 
-    protected AccessToken issueNewAccessToken(OAuth2MessageContext messageContext) {
+    protected AccessToken issueNewAccessToken(AuthenticationContext messageContext) {
 
-        if(messageContext instanceof OAuth2AuthzMessageContext) {
-            return issueNewAccessToken((OAuth2AuthzMessageContext) messageContext);
+        AuthenticationRequest request = messageContext.getInitialAuthenticationRequest();
+        if(request instanceof OAuth2AuthzRequest) {
+            OAuth2AuthzRequest authzRequest = (OAuth2AuthzRequest)request;
+            return issueNewAccessToken(authzRequest, messageContext);
         } else {
-            throw OAuth2RuntimeException.error("Invalid OAuth2MessageContext - unknown sub type");
+            throw OAuth2RuntimeException.error("Invalid AuthenticationRequest - unknown sub type");
         }
     }
 
-    protected AccessToken issueNewAccessToken(OAuth2AuthzMessageContext messageContext) {
+    protected AccessToken issueNewAccessToken(OAuth2AuthzRequest authzRequest, AuthenticationContext messageContext) {
 
         boolean isRefreshTokenValid = (Boolean)messageContext.getParameter(IS_REFRESH_TOKEN_VALID);
         boolean markAccessTokenExpired = (Boolean)messageContext.getParameter(MARK_ACCESS_TOKEN_EXPIRED);
         AccessToken prevAccessToken = (AccessToken)messageContext.getParameter(OAuth2.PREV_ACCESS_TOKEN);
-        String clientId = messageContext.getRequest().getClientId();
-        AuthenticatedUser authzUser = messageContext.getAuthzUser();
-        Set<String> scopes = messageContext.getApprovedScopes();
-        long accessTokenCallbackValidity = messageContext.getValidityPeriod();
-        long refreshTokenCallbackValidity = messageContext.getValidityPeriod();
-        String responseType = messageContext.getRequest().getResponseType();
-        return issueNewAccessToken(clientId, authzUser, scopes, isRefreshTokenValid,
+        String clientId = authzRequest.getClientId();
+        // The final authenticated user should be obtained here
+        AuthenticatedUser user = null;
+        Set<String> approvedScopes = (Set<String>)messageContext.getParameter("ApprovedScopes");
+        long accessTokenCallbackValidity = (Long)messageContext.getParameter("AccessTokenValidityPeriod");
+        long refreshTokenCallbackValidity = (Long)messageContext.getParameter("RefreshTokenValidityPeriod");
+        String responseType = authzRequest.getResponseType();
+        return issueNewAccessToken(clientId, user, approvedScopes, isRefreshTokenValid,
                 markAccessTokenExpired, prevAccessToken, accessTokenCallbackValidity, refreshTokenCallbackValidity,
                 responseType, messageContext);
     }
@@ -125,9 +132,9 @@ public abstract class AccessTokenResponseIssuer extends AbstractIdentityHandler 
                                               boolean isRefreshTokenValid, boolean markAccessTokenExpired,
                                               AccessToken prevAccessToken, long accessTokenCallbackValidity,
                                               long refreshTokenCallbackValidity, String grantOrResponseType,
-                                              OAuth2MessageContext messageContext);
+                                              AuthenticationContext messageContext);
 
-    protected abstract void storeNewAccessToken(AccessToken accessToken, OAuth2MessageContext messageContext);
+    protected abstract void storeNewAccessToken(AccessToken accessToken, AuthenticationContext messageContext);
 
 
 }

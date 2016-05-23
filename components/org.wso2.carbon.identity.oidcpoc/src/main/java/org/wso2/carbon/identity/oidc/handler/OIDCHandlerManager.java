@@ -18,8 +18,8 @@
 
 package org.wso2.carbon.identity.oidc.handler;
 
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.core.handler.HandlerComparator;
-import org.wso2.carbon.identity.oauth2poc.bean.context.OAuth2MessageContext;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 import org.wso2.carbon.identity.oidc.IDTokenBuilder;
 import org.wso2.carbon.identity.oidc.internal.OIDCServiceComponentHolder;
@@ -39,7 +39,7 @@ public class OIDCHandlerManager {
         return instance;
     }
 
-    public IDTokenBuilder buildIDToken(OAuth2MessageContext messageContext) {
+    public IDTokenBuilder buildIDToken(AuthenticationContext messageContext) {
 
         List<IDTokenHandler> handlers = OIDCServiceComponentHolder.getInstance().getIDTokenHandlers();
         Collections.sort(handlers, new HandlerComparator(messageContext));

@@ -18,9 +18,10 @@
 
 package org.wso2.carbon.identity.oidc.handler;
 
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.application.authentication.framework.processor.request.ClientAuthenticationRequest;
 import org.wso2.carbon.identity.core.handler.AbstractIdentityHandler;
-import org.wso2.carbon.identity.oauth2poc.bean.context.OAuth2AuthzMessageContext;
-import org.wso2.carbon.identity.oauth2poc.bean.context.OAuth2MessageContext;
+import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.OAuth2AuthzRequest;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 import org.wso2.carbon.identity.oidc.IDTokenBuilder;
 
@@ -31,16 +32,17 @@ public class IDTokenHandler extends AbstractIdentityHandler {
         return "IDTokenHandler";
     }
 
-    public IDTokenBuilder buildIDToken(OAuth2MessageContext messageContext) {
+    public IDTokenBuilder buildIDToken(AuthenticationContext messageContext) {
 
-        if(messageContext instanceof OAuth2AuthzMessageContext) {
-            return buildIDToken((OAuth2AuthzMessageContext)messageContext);
+        ClientAuthenticationRequest request = (ClientAuthenticationRequest)messageContext.getInitialAuthenticationRequest();
+        if(request instanceof OAuth2AuthzRequest) {
+            return buildIDToken((OAuth2AuthzRequest)request, messageContext);
         } else {
             throw OAuth2RuntimeException.error("Invalid OAuth2MessageContext - unknown sub type");
         }
     }
 
-    protected IDTokenBuilder buildIDToken(OAuth2AuthzMessageContext messageContext) {
+    protected IDTokenBuilder buildIDToken(OAuth2AuthzRequest request, AuthenticationContext messageContext) {
 
         // use IDTokenBuilder to build IDToken
         return null;

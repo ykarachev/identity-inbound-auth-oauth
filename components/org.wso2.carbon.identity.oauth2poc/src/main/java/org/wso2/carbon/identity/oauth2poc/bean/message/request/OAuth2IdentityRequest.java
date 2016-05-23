@@ -18,20 +18,20 @@
 
 package org.wso2.carbon.identity.oauth2poc.bean.message.request;
 
-import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
+import org.wso2.carbon.identity.application.authentication.framework.processor.request.ClientAuthenticationRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-public class OAuth2IdentityRequest extends IdentityRequest {
+public class OAuth2IdentityRequest extends ClientAuthenticationRequest {
 
     private static final long serialVersionUID = 5255384558894431030L;
 
-    protected OAuth2IdentityRequest(IdentityRequestBuilder builder) {
+    protected OAuth2IdentityRequest(OAuth2IdentityRequestBuilder builder) {
         super(builder);
     }
 
-    public static class OAuth2IdentityRequestBuilder extends IdentityRequestBuilder {
+    public static class OAuth2IdentityRequestBuilder extends ClientAuthenticationRequestBuilder {
 
         public OAuth2IdentityRequestBuilder(HttpServletRequest request, HttpServletResponse response) {
             super(request, response);

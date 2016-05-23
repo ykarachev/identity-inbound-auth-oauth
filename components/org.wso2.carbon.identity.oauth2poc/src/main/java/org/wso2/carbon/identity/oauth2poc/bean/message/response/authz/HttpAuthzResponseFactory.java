@@ -20,9 +20,9 @@ package org.wso2.carbon.identity.oauth2poc.bean.message.response.authz;
 
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
-import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
-import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponseFactory;
-import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
+import org.wso2.carbon.identity.application.authentication.framework.HttpIdentityResponse;
+import org.wso2.carbon.identity.application.authentication.framework.HttpIdentityResponseFactory;
+import org.wso2.carbon.identity.application.authentication.framework.IdentityResponse;
 import org.wso2.carbon.identity.oauth2poc.OAuth2;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 
@@ -30,7 +30,7 @@ public class HttpAuthzResponseFactory extends HttpIdentityResponseFactory {
 
     @Override
     public String getName() {
-        return "HttpTokenResponseFactory";
+        return "HttpAuthzResponseFactory";
     }
 
     @Override
@@ -46,12 +46,13 @@ public class HttpAuthzResponseFactory extends HttpIdentityResponseFactory {
 
         AuthzResponse authzResponse = ((AuthzResponse)identityResponse);
         HttpIdentityResponse.HttpIdentityResponseBuilder builder = new HttpIdentityResponse.HttpIdentityResponseBuilder();
+        //super.create(builder, authzResponse);
         OAuthResponse response = null;
         try {
             response = authzResponse.getBuilder().buildQueryMessage();
         } catch (OAuthSystemException e) {
             throw OAuth2RuntimeException.error("Error occurred while building query message for authorization " +
-                                               "response");
+                                               "response", e);
         }
         builder.setStatusCode(response.getResponseStatus());
         builder.setHeaders(response.getHeaders());
@@ -62,24 +63,24 @@ public class HttpAuthzResponseFactory extends HttpIdentityResponseFactory {
         return builder;
     }
 
-    @Override
-    public HttpIdentityResponse.HttpIdentityResponseBuilder create(
-            HttpIdentityResponse.HttpIdentityResponseBuilder builder, IdentityResponse identityResponse) {
-
-        AuthzResponse authzResponse = ((AuthzResponse)identityResponse);
-        OAuthResponse response = null;
-        try {
-            response = authzResponse.getBuilder().buildQueryMessage();
-        } catch (OAuthSystemException e) {
-            throw OAuth2RuntimeException.error("Error occurred while building query message for authorization " +
-                                               "response");
-        }
-        builder.setStatusCode(response.getResponseStatus());
-        builder.setHeaders(response.getHeaders());
-        builder.addHeader(OAuth2.Header.CACHE_CONTROL,
-                          OAuth2.HeaderValue.CACHE_CONTROL_NO_STORE);
-        builder.addHeader(OAuth2.Header.PRAGMA,
-                          OAuth2.HeaderValue.PRAGMA_NO_CACHE);
-        return builder;
-    }
+//    @Override
+//    public HttpIdentityResponse.HttpIdentityResponseBuilder create(
+//            HttpIdentityResponse.HttpIdentityResponseBuilder builder, IdentityResponse identityResponse) {
+//
+//        AuthzResponse authzResponse = ((AuthzResponse)identityResponse);
+//        OAuthResponse response = null;
+//        try {
+//            response = authzResponse.getBuilder().buildQueryMessage();
+//        } catch (OAuthSystemException e) {
+//            throw OAuth2RuntimeException.error("Error occurred while building query message for authorization " +
+//                                               "response");
+//        }
+//        builder.setStatusCode(response.getResponseStatus());
+//        builder.setHeaders(response.getHeaders());
+//        builder.addHeader(OAuth2.Header.CACHE_CONTROL,
+//                          OAuth2.HeaderValue.CACHE_CONTROL_NO_STORE);
+//        builder.addHeader(OAuth2.Header.PRAGMA,
+//                          OAuth2.HeaderValue.PRAGMA_NO_CACHE);
+//        return builder;
+//    }
 }

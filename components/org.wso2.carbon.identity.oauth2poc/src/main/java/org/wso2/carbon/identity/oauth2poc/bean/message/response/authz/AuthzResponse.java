@@ -1,7 +1,7 @@
 package org.wso2.carbon.identity.oauth2poc.bean.message.response.authz;
 
 import org.apache.oltu.oauth2.as.response.OAuthASResponse;
-import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityMessageContext;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 
 
 public class AuthzResponse extends ROApprovalResponse {
@@ -19,7 +19,7 @@ public class AuthzResponse extends ROApprovalResponse {
 
     public static class AuthzResponseBuilder extends ROApprovalResponseBuilder {
 
-        public AuthzResponseBuilder(IdentityMessageContext context) {
+        public AuthzResponseBuilder(AuthenticationContext context) {
             super(context);
         }
 

@@ -20,7 +20,7 @@ package org.wso2.carbon.identity.oauth2poc.bean.message.request;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.oltu.oauth2.common.OAuth;
-import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityRequestFactory;
+import org.wso2.carbon.identity.application.authentication.framework.HttpIdentityRequestFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;

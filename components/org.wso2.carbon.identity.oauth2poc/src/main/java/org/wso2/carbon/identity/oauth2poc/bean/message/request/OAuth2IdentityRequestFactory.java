@@ -30,7 +30,7 @@ public class OAuth2IdentityRequestFactory extends HttpIdentityRequestFactory {
 
     @Override
     public String getName() {
-        return "OAuth2InboundRequestFactory";
+        return "OAuth2IdentityRequestFactory";
     }
 
     @Override

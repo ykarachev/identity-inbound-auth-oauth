@@ -16,22 +16,10 @@
  * under the License.
  */
 
-package org.wso2.carbon.identity.oauth2poc;
+package org.wso2.carbon.identity.oauth2poc.handler.request;
 
-public class OAuth2 {
+import org.wso2.carbon.identity.application.authentication.framework.processor.handler.request.AbstractRequestHandler;
 
-    public static final long UNASSIGNED_VALIDITY_PERIOD = -1l;
+public abstract class OAuth2RequestHandler extends AbstractRequestHandler {
 
-    public class Header {
-        public static final String CACHE_CONTROL = "Cache-Control";
-        public static final String PRAGMA = "Pragma";
-    }
-
-    public class HeaderValue {
-        public static final String CACHE_CONTROL_NO_STORE = "no-store";
-        public static final String PRAGMA_NO_CACHE = "no-cache";
-    }
-
-    public static final String OAUTH2_SERVICE_PROVIDER = "OAuth2ServiceProvider";
-    public static final String PREV_ACCESS_TOKEN = "PreviousAccessToken";
 }

@@ -23,9 +23,14 @@ import org.wso2.carbon.identity.application.authentication.framework.FrameworkHa
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.context.IdentityMessageContext;
 import org.wso2.carbon.identity.application.authentication.framework.processor.handler.request.RequestHandlerException;
+import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
+import org.wso2.carbon.identity.application.common.model.InboundAuthenticationRequestConfig;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
+import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
+import org.wso2.carbon.identity.application.mgt.internal.ApplicationManagementServiceComponentHolder;
 import org.wso2.carbon.identity.core.bean.context.MessageContext;
 import org.wso2.carbon.identity.oauth2poc.OAuth2;
+import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.OAuth2AuthzRequest;
 
 /*
  * InboundRequestProcessor for OAuth2 Authorization Endpoint
@@ -48,14 +53,15 @@ public class AuthzRequestHandler extends OAuth2RequestHandler {
     }
 
     @Override
-    public FrameworkHandlerResponse validate(IdentityMessageContext messageContext)
+    public FrameworkHandlerResponse validate(AuthenticationContext messageContext)
             throws RequestHandlerException {
 
-        AuthenticationContext authenticationContext = (AuthenticationContext)messageContext;
-        String clientId = authenticationContext.getInitialAuthenticationRequest().getParameter("client_id");
+        String clientId = ((OAuth2AuthzRequest)messageContext.getInitialAuthenticationRequest()).getClientId();
+        String tenantDomain = messageContext.getInitialAuthenticationRequest().getTenantDomain();
 
         ServiceProvider serviceProvider = null;
         // Validate clientId, redirect_uri, response_type allowed
+
         messageContext.addParameter(OAuth2.OAUTH2_SERVICE_PROVIDER, serviceProvider);
 
         return FrameworkHandlerResponse.CONTINUE;

@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.oidc.handler.request;
 
 import org.apache.oltu.oauth2.common.OAuth;
 import org.wso2.carbon.identity.application.authentication.framework.FrameworkHandlerResponse;
+import org.wso2.carbon.identity.application.authentication.framework.InboundConstants;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.context.IdentityMessageContext;
 import org.wso2.carbon.identity.application.authentication.framework.processor.handler.request.RequestHandlerException;
@@ -27,6 +28,7 @@ import org.wso2.carbon.identity.core.bean.context.MessageContext;
 import org.wso2.carbon.identity.oauth2poc.handler.request.AuthzRequestHandler;
 import org.wso2.carbon.identity.oauth2poc.util.OAuth2Util;
 import org.wso2.carbon.identity.oidc.OIDC;
+import org.wso2.carbon.identity.oidc.bean.message.request.authz.OIDCAuthzRequest;
 
 import java.util.Set;
 
@@ -54,14 +56,13 @@ public class OIDCAuthzRequestHandler extends AuthzRequestHandler {
     }
 
     @Override
-    public FrameworkHandlerResponse validate(IdentityMessageContext messageContext)
+    public FrameworkHandlerResponse validate(AuthenticationContext messageContext)
             throws RequestHandlerException {
 
-        AuthenticationContext authenticationContext = (AuthenticationContext)messageContext;
-//        boolean isLoginRequired = ((OIDCAuthzRequest)messageContext.getRequest()).isLoginRequired();
-//        messageContext.addParameter(InboundConstants.ForceAuth, isLoginRequired);
-//        boolean isPromptNone = ((OIDCAuthzRequest)messageContext.getRequest()).isPromptNone();
-//        messageContext.addParameter(InboundConstants.PassiveAuth, isPromptNone);
+        boolean isLoginRequired = ((OIDCAuthzRequest)messageContext.getInitialAuthenticationRequest()).isLoginRequired();
+        messageContext.addParameter(InboundConstants.ForceAuth, isLoginRequired);
+        boolean isPromptNone = ((OIDCAuthzRequest)messageContext.getInitialAuthenticationRequest()).isPromptNone();
+        messageContext.addParameter(InboundConstants.PassiveAuth, isPromptNone);
 
         return super.validate(messageContext);
     }

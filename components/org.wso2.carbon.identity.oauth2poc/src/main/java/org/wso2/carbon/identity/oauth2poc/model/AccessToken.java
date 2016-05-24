@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.identity.oauth2poc.model;
 
-import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.authentication.framework.model.User;
 
 import java.io.Serializable;
 import java.sql.Timestamp;
@@ -36,7 +36,7 @@ public class AccessToken implements Serializable {
 
     private String subjectIdentifier;
 
-    private AuthenticatedUser authzUser;
+    private User authzUser;
 
     private Set<String> scopes;
 
@@ -93,7 +93,7 @@ public class AccessToken implements Serializable {
         return subjectIdentifier;
     }
 
-    public AuthenticatedUser getAuthzUser() {
+    public User getAuthzUser() {
         return authzUser;
     }
 
@@ -129,7 +129,7 @@ public class AccessToken implements Serializable {
         this.refreshToken = refreshToken;
     }
 
-    public void setAuthzUser(AuthenticatedUser authzUser) {
+    public void setAuthzUser(User authzUser) {
         this.authzUser = authzUser;
     }
 

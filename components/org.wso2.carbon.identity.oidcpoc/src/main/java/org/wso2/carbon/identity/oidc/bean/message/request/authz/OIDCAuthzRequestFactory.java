@@ -19,14 +19,12 @@
 package org.wso2.carbon.identity.oidc.bean.message.request.authz;
 
 import org.apache.oltu.oauth2.common.OAuth;
-import org.wso2.carbon.identity.application.authentication.framework.inbound.FrameworkClientException;
-import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
+import org.wso2.carbon.identity.application.authentication.framework.FrameworkClientException;
+import org.wso2.carbon.identity.application.authentication.framework.IdentityRequest;
 import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.AuthzRequestFactory;
-import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.OAuth2AuthzRequest;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2ClientException;
 import org.wso2.carbon.identity.oauth2poc.util.OAuth2Util;
 import org.wso2.carbon.identity.oidc.OIDC;
-import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;

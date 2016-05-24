@@ -21,7 +21,7 @@ package org.wso2.carbon.identity.oauth2poc.handler.issuer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.authentication.framework.model.User;
 import org.wso2.carbon.identity.application.authentication.framework.processor.request.AuthenticationRequest;
 import org.wso2.carbon.identity.core.handler.AbstractIdentityHandler;
 import org.wso2.carbon.identity.oauth2poc.OAuth2;
@@ -76,20 +76,18 @@ public abstract class AccessTokenResponseIssuer extends AbstractIdentityHandler 
     protected AccessToken validTokenExists(OAuth2AuthzRequest authzRequest, AuthenticationContext messageContext) {
 
         String clientId = authzRequest.getClientId();
-        // The final authenticated user should be obtained here
-        AuthenticatedUser user = null;
+        User user = messageContext.getSubjectUser();
         Set<String> approvedScopes = (Set<String>)messageContext.getParameter("ApprovedScopes");
         return validTokenExists(clientId, user, approvedScopes, messageContext);
     }
 
-    protected AccessToken validTokenExists(String clientId, AuthenticatedUser user,
+    protected AccessToken validTokenExists(String clientId, User user,
                                            Set<String> scopes, AuthenticationContext messageContext) {
 
         boolean isAccessTokenValid = false;
         boolean isRefreshTokenValid = false;
         boolean markAccessTokenExpired = false;
 
-        // check in cache and persistent storage
         AccessToken accessToken = null;
 
         messageContext.addParameter(IS_ACCESS_TOKEN_VALID, isAccessTokenValid);
@@ -116,19 +114,22 @@ public abstract class AccessTokenResponseIssuer extends AbstractIdentityHandler 
         boolean isRefreshTokenValid = (Boolean)messageContext.getParameter(IS_REFRESH_TOKEN_VALID);
         boolean markAccessTokenExpired = (Boolean)messageContext.getParameter(MARK_ACCESS_TOKEN_EXPIRED);
         AccessToken prevAccessToken = (AccessToken)messageContext.getParameter(OAuth2.PREV_ACCESS_TOKEN);
+
         String clientId = authzRequest.getClientId();
-        // The final authenticated user should be obtained here
-        AuthenticatedUser user = null;
+        User user = null;
         Set<String> approvedScopes = (Set<String>)messageContext.getParameter("ApprovedScopes");
         long accessTokenCallbackValidity = (Long)messageContext.getParameter("AccessTokenValidityPeriod");
         long refreshTokenCallbackValidity = (Long)messageContext.getParameter("RefreshTokenValidityPeriod");
         String responseType = authzRequest.getResponseType();
-        return issueNewAccessToken(clientId, user, approvedScopes, isRefreshTokenValid,
+
+        AccessToken accessToken = issueNewAccessToken(clientId, user, approvedScopes, isRefreshTokenValid,
                 markAccessTokenExpired, prevAccessToken, accessTokenCallbackValidity, refreshTokenCallbackValidity,
                 responseType, messageContext);
+        messageContext.addParameter("AccessToken", accessToken);
+        return accessToken;
     }
 
-    protected abstract AccessToken issueNewAccessToken(String clientId, AuthenticatedUser authzUser, Set<String> scopes,
+    protected abstract AccessToken issueNewAccessToken(String clientId, User authzUser, Set<String> scopes,
                                               boolean isRefreshTokenValid, boolean markAccessTokenExpired,
                                               AccessToken prevAccessToken, long accessTokenCallbackValidity,
                                               long refreshTokenCallbackValidity, String grantOrResponseType,

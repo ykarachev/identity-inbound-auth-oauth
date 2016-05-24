@@ -43,7 +43,7 @@ public class AuthzRequestFactory extends OAuth2IdentityRequestFactory {
     }
 
     public OAuth2AuthzRequest.AuthzRequestBuilder create(HttpServletRequest request,
-                                                         HttpServletResponse response) {
+                                                         HttpServletResponse response) throws OAuth2ClientException {
 
         OAuth2AuthzRequest.AuthzRequestBuilder builder = new OAuth2AuthzRequest.AuthzRequestBuilder
                 (request, response);

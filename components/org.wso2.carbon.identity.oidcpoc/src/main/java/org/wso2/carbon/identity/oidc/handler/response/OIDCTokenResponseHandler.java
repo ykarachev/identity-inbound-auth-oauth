@@ -18,13 +18,16 @@
 
 package org.wso2.carbon.identity.oidc.handler.response;
 
+import com.nimbusds.jwt.JWT;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.core.bean.context.MessageContext;
 import org.wso2.carbon.identity.oauth2poc.bean.message.response.authz.AuthzResponse;
+import org.wso2.carbon.identity.oauth2poc.exception.OAuth2InternalException;
 import org.wso2.carbon.identity.oauth2poc.handler.response.TokenResponseHandler;
 import org.wso2.carbon.identity.oauth2poc.util.OAuth2Util;
-import org.wso2.carbon.identity.oidc.IDTokenBuilder;
 import org.wso2.carbon.identity.oidc.OIDC;
 import org.wso2.carbon.identity.oidc.bean.message.request.authz.OIDCAuthzRequest;
 import org.wso2.carbon.identity.oidc.handler.OIDCHandlerManager;
@@ -32,6 +35,8 @@ import org.wso2.carbon.identity.oidc.handler.OIDCHandlerManager;
 import java.util.Set;
 
 public class OIDCTokenResponseHandler extends TokenResponseHandler {
+
+    private static Log log = LogFactory.getLog(OIDCTokenResponseHandler.class);
 
     public String getName() {
         return "OIDCTokenResponseHandler";
@@ -53,18 +58,21 @@ public class OIDCTokenResponseHandler extends TokenResponseHandler {
 
         AuthzResponse.AuthzResponseBuilder builder = super.buildAuthzResponse(messageContext);
         OIDCAuthzRequest authzRequest = (OIDCAuthzRequest)messageContext.getInitialAuthenticationRequest();
-//        AuthenticationResult authenticationResult = (AuthenticationResult)messageContext.getParameter(
-//                InboundConstants.RequestProcessor.AUTHENTICATION_RESULT);
         if(authzRequest.getResponseType().contains("id_token")) {
-            addIDToken(builder, messageContext);
+            try {
+                addIDToken(builder, messageContext);
+            } catch (OAuth2InternalException e) {
+                log.error("Error occurred while building IDToken", e);
+            }
         }
         return builder;
     }
 
-    protected void addIDToken(AuthzResponse.AuthzResponseBuilder builder, AuthenticationContext messageContext) {
+    protected void addIDToken(AuthzResponse.AuthzResponseBuilder builder, AuthenticationContext messageContext)
+            throws OAuth2InternalException {
 
-        IDTokenBuilder idTokenBuilder = OIDCHandlerManager.getInstance().buildIDToken(messageContext);
-        String idToken = idTokenBuilder.build();
+        JWT jwt = OIDCHandlerManager.getInstance().buildIDToken(messageContext);
+        String idToken = jwt.serialize();
         builder.getBuilder().setParam("id_token", idToken);
     }
 

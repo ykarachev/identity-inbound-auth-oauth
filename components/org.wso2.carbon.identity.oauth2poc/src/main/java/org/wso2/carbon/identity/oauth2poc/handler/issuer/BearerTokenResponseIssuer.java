@@ -24,10 +24,9 @@ import org.apache.oltu.oauth2.as.issuer.MD5Generator;
 import org.apache.oltu.oauth2.as.issuer.OAuthIssuerImpl;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.authentication.framework.model.User;
 import org.wso2.carbon.identity.core.bean.context.MessageContext;
 import org.wso2.carbon.identity.oauth2poc.OAuth2;
-import org.wso2.carbon.identity.oauth2poc.bean.context.OAuth2MessageContext;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 import org.wso2.carbon.identity.oauth2poc.model.AccessToken;
 import org.wso2.carbon.identity.oauth2poc.model.OAuth2ServerConfig;
@@ -54,7 +53,7 @@ public class BearerTokenResponseIssuer extends AccessTokenResponseIssuer {
 
 
 
-    protected AccessToken issueNewAccessToken(String clientId, AuthenticatedUser authzUser, Set<String> scopes,
+    protected AccessToken issueNewAccessToken(String clientId, User authzUser, Set<String> scopes,
                                               boolean isRefreshTokenValid, boolean markAccessTokenExpired,
                                               AccessToken prevAccessToken, long accessTokenCallbackValidity,
                                               long refreshTokenCallbackValidity, String grantOrResponseType,

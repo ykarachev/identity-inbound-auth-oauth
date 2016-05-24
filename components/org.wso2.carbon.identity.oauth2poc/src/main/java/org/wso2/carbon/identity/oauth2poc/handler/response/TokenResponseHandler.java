@@ -20,7 +20,6 @@ package org.wso2.carbon.identity.oauth2poc.handler.response;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.oltu.oauth2.as.response.OAuthASResponse;
-import org.apache.oltu.oauth2.client.request.OAuthClientRequest;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.wso2.carbon.identity.application.authentication.framework.FrameworkHandlerResponse;
@@ -28,6 +27,7 @@ import org.wso2.carbon.identity.application.authentication.framework.context.Aut
 import org.wso2.carbon.identity.application.authentication.framework.context.IdentityMessageContext;
 import org.wso2.carbon.identity.application.authentication.framework.processor.handler.response.ResponseException;
 import org.wso2.carbon.identity.core.bean.context.MessageContext;
+import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.OAuth2AuthzRequest;
 import org.wso2.carbon.identity.oauth2poc.bean.message.response.authz.AuthzResponse;
 import org.wso2.carbon.identity.oauth2poc.handler.HandlerManager;
 import org.wso2.carbon.identity.oauth2poc.model.AccessToken;
@@ -43,8 +43,8 @@ public class TokenResponseHandler extends OAuth2ResponseHandler {
 
     public boolean canHandle(MessageContext messageContext) {
         AuthenticationContext authenticationContext = (AuthenticationContext)messageContext;
-        String responseType = authenticationContext.getInitialAuthenticationRequest()
-                .getParameter(OAuth.OAUTH_RESPONSE_TYPE);
+        String responseType = ((OAuth2AuthzRequest)authenticationContext.getInitialAuthenticationRequest())
+                .getResponseType();
         if(StringUtils.equals(ResponseType.CODE.toString(), responseType)) {
             return true;
         }

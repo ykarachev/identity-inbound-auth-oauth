@@ -23,7 +23,7 @@ import org.wso2.carbon.identity.application.authentication.framework.processor.r
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-public class OAuth2IdentityRequest extends ClientAuthenticationRequest {
+public abstract class OAuth2IdentityRequest extends ClientAuthenticationRequest {
 
     private static final long serialVersionUID = 5255384558894431030L;
 
@@ -38,11 +38,6 @@ public class OAuth2IdentityRequest extends ClientAuthenticationRequest {
         }
 
         public OAuth2IdentityRequestBuilder() {
-
-        }
-
-        public OAuth2IdentityRequest build() {
-            return new OAuth2IdentityRequest(this);
         }
     }
 }

@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.oauth.dcr.internal;
 
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
+import org.wso2.carbon.identity.oauth.dcr.DCRService;
 
 /**
  * This is the DataHolder class of DynamicClientRegistration bundle. This holds a reference to the
@@ -26,7 +27,8 @@ import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
  */
 public class DynamicClientRegistrationDataHolder {
 
-    private ApplicationManagementService applicationManagementService;
+    private ApplicationManagementService applicationManagementService = null ;
+    private DCRService dcrService = null ;
 
     private static DynamicClientRegistrationDataHolder thisInstance = new DynamicClientRegistrationDataHolder();
 
@@ -46,5 +48,13 @@ public class DynamicClientRegistrationDataHolder {
 
     public void setApplicationManagementService(ApplicationManagementService applicationManagementService) {
         this.applicationManagementService = applicationManagementService;
+    }
+
+    public DCRService getDcrService() {
+        return dcrService;
+    }
+
+    public void setDcrService(DCRService dcrService) {
+        this.dcrService = dcrService;
     }
 }

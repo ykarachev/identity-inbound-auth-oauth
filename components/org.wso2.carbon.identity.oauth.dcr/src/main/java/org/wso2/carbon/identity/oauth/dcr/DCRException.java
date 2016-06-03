@@ -18,10 +18,12 @@
 
 package org.wso2.carbon.identity.oauth.dcr;
 
+import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
+
 /**
  * Custom exception to be thrown inside DynamicClientRegistration related functionality.
  */
-public class DynamicClientRegistrationException extends Exception {
+public class DCRException extends FrameworkException {
 
     private static final long serialVersionUID = -3151279311929070297L;
 
@@ -35,27 +37,28 @@ public class DynamicClientRegistrationException extends Exception {
         this.errorMessage = errorMessage;
     }
 
-    public DynamicClientRegistrationException(String msg, Exception nestedEx) {
+    public DCRException(String msg, Exception nestedEx) {
         super(msg, nestedEx);
         setErrorMessage(msg);
     }
 
-    public DynamicClientRegistrationException(String message, Throwable cause) {
+    public DCRException(String message, Throwable cause) {
         super(message, cause);
         setErrorMessage(message);
     }
 
-    public DynamicClientRegistrationException(String msg) {
+    public DCRException(String msg) {
         super(msg);
         setErrorMessage(msg);
     }
 
-    public DynamicClientRegistrationException() {
-        super();
+    public DCRException(String message, String errorMessage) {
+        super(message);
+        this.errorMessage = errorMessage;
     }
 
-    public DynamicClientRegistrationException(Throwable cause) {
-        super(cause);
+    public DCRException(String message, Throwable cause, String errorMessage) {
+        super(message, cause);
+        this.errorMessage = errorMessage;
     }
-
 }

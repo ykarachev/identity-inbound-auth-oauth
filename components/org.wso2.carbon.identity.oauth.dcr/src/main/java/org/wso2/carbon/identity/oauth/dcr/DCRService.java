@@ -17,9 +17,10 @@
  */
 package org.wso2.carbon.identity.oauth.dcr;
 
+import org.wso2.carbon.identity.oauth.dcr.model.OAuthApplication;
 import org.wso2.carbon.identity.oauth.dcr.profile.RegistrationProfile;
 
-public interface DynamicClientRegistrationService {
+public interface DCRService {
 
     enum ErrorCode {
         INVALID_URI("invalid_redirect_uri"), INVALID_CLIENT_METADATA("invalid_client_metadata");
@@ -40,11 +41,11 @@ public interface DynamicClientRegistrationService {
      * RegistrationProfile.
      *
      * @param profile - RegistrationProfile of the OAuth application to be created.
-     * @return OAuthApplicationInfo object which holds the necessary data of created OAuth app.
-     * @throws DynamicClientRegistrationException
+     * @return OAuthApplication object which holds the necessary data of created OAuth app.
+     * @throws DCRException
      */
-    OAuthApplicationInfo registerOAuthApplication(RegistrationProfile profile)
-            throws DynamicClientRegistrationException;
+    OAuthApplication registerOAuthApplication(RegistrationProfile profile)
+            throws DCRException;
 
     /**
      * This method will unregister a created OAuth application.
@@ -53,18 +54,18 @@ public interface DynamicClientRegistrationService {
      * @param applicationName - OAuth application name
      * @param consumerKey     - ConsumerKey of the OAuth application
      * @return The status of the operation
-     * @throws DynamicClientRegistrationException
+     * @throws DCRException
      */
     boolean unregisterOAuthApplication(String userName, String applicationName, String consumerKey)
-            throws DynamicClientRegistrationException;
+            throws DCRException;
 
     /**
      * This method will check the existence of an OAuth application provided the application-name.
      *
      * @param applicationName - OAuth application name
      * @return The status of the operation
-     * @throws DynamicClientRegistrationException
+     * @throws DCRException
      */
-    boolean isOAuthApplicationAvailable(String applicationName) throws DynamicClientRegistrationException;
+    boolean isOAuthApplicationAvailable(String applicationName) throws DCRException;
 
 }

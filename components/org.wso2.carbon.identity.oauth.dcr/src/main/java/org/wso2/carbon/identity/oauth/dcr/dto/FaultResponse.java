@@ -17,22 +17,22 @@
  */
 package org.wso2.carbon.identity.oauth.dcr.dto;
 
-import org.wso2.carbon.identity.oauth.dcr.DynamicClientRegistrationService;
+import org.wso2.carbon.identity.oauth.dcr.DCRService;
 
 /**
  * This class describes the response sent to the client if the registration was unsuccessful
  */
 public class FaultResponse {
 
-    private DynamicClientRegistrationService.ErrorCode code;
+    private DCRService.ErrorCode code;
     private String description;
 
-    public FaultResponse(DynamicClientRegistrationService.ErrorCode code, String description) {
+    public FaultResponse(DCRService.ErrorCode code, String description) {
         this.code = code;
         this.description = description;
     }
 
-    public DynamicClientRegistrationService.ErrorCode getCode() {
+    public DCRService.ErrorCode getCode() {
         return code;
     }
 

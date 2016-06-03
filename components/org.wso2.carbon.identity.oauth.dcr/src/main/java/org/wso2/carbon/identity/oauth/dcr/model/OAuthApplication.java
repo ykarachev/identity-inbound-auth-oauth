@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.identity.oauth.dcr;
+package org.wso2.carbon.identity.oauth.dcr.model;
 
 import org.json.simple.JSONObject;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
@@ -26,12 +26,13 @@ import java.util.Map;
 /**
  * This class represents an OAuth application populated with necessary data.
  */
-public class OAuthApplicationInfo {
+public class OAuthApplication {
 
     private String clientId;
     private String clientName;
     private String callBackURL;
     private String clientSecret;
+
     private Map<String, Object> parameters = new HashMap<String, Object>();
 
     public String getClientId() {

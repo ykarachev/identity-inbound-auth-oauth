@@ -1,11 +1,10 @@
-package org.wso2.carbon.identity.oauth.dcr;
+package org.wso2.carbon.identity.oauth.dcr.unregister;
 
-import org.wso2.carbon.identity.application.authentication.framework.inbound.InboundRequest;
+import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 
-/**
- * Created by yasiru on 4/25/16.
- */
-public class DCRUnregisterInboundRequest extends InboundRequest {
+
+public class DCUnregisterRequest extends IdentityRequest {
+
     private String consumerKey;
     private String applicationName;
     private String userId;
@@ -22,14 +21,14 @@ public class DCRUnregisterInboundRequest extends InboundRequest {
         return userId;
     }
 
-    protected DCRUnregisterInboundRequest(DCRInboundUnregisterInboundRequestBuilder builder) {
+    protected DCUnregisterRequest(DCRUnregisterRequestBuilder builder) {
         super(builder);
         this.consumerKey = builder.consumerKey;
         this.applicationName = builder.applicationName;
         this.userId = builder.userId;
     }
 
-    public static class DCRInboundUnregisterInboundRequestBuilder extends InboundRequestBuilder{
+    public static class DCRUnregisterRequestBuilder extends IdentityRequestBuilder{
         private String consumerKey;
         private String applicationName;
         private String userId;
@@ -46,9 +45,8 @@ public class DCRUnregisterInboundRequest extends InboundRequest {
             this.userId = userId;
         }
 
-        public DCRUnregisterInboundRequest build() {
-            return new DCRUnregisterInboundRequest(this);
+        public DCUnregisterRequest build() {
+            return new DCUnregisterRequest(this);
         }
     }
-
 }

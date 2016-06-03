@@ -1,12 +1,32 @@
-package org.wso2.carbon.identity.oauth.dcr;
+/*
+ * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * you may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.wso2.carbon.identity.oauth.dcr.register;
 
 import org.wso2.carbon.identity.application.authentication.framework.inbound.FrameworkRuntimeException;
-import org.wso2.carbon.identity.application.authentication.framework.inbound.InboundRequest;
+import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 
 /**
- * Created by yasiru on 4/20/16.
+ * DCR Request data for Register a oauth application
+ *
  */
-public class DCRRegisterInboundRequest extends InboundRequest {
+public class DCRegisterRequest extends IdentityRequest {
+
     private String applicationType;
     private String[] redirectUris;
     private String clientName;
@@ -26,7 +46,8 @@ public class DCRRegisterInboundRequest extends InboundRequest {
     private boolean saasApp;
     private String audience;
 
-    public DCRRegisterInboundRequest(DCRRegisterInboundRequestBuilder builder) {
+    public DCRegisterRequest(DCRRegisterInboundRequestBuilder builder) {
+
         super(builder);
         this.applicationType = builder.applicationType;
         this.redirectUris = builder.redirectUris;
@@ -48,7 +69,83 @@ public class DCRRegisterInboundRequest extends InboundRequest {
         this.audience = builder.audience;
     }
 
-    public static class DCRRegisterInboundRequestBuilder extends InboundRequestBuilder {
+
+    public String getApplicationType() {
+        return applicationType;
+    }
+
+    public String[] getRedirectUris() {
+        return redirectUris;
+    }
+
+    public String getClientName() {
+        return clientName;
+    }
+
+    public String getLogoUri() {
+        return logoUri;
+    }
+
+    public String getSubjectType() {
+        return subjectType;
+    }
+
+    public String getSectorIdentifierUri() {
+        return sectorIdentifierUri;
+    }
+
+    public String getTokenEndpointAuthMethod() {
+        return tokenEndpointAuthMethod;
+    }
+
+    public String getJwksUri() {
+        return jwksUri;
+    }
+
+    public String getUserInfoEncryptedResponseAlg() {
+        return userInfoEncryptedResponseAlg;
+    }
+
+    public String getUserInfoEncryptedResponseEnc() {
+        return userInfoEncryptedResponseEnc;
+    }
+
+    public String[] getContacts() {
+        return contacts;
+    }
+
+    public String[] getRequestUris() {
+        return requestUris;
+    }
+
+    public String getOwner() {
+        return owner;
+    }
+
+    public String getCallbackUrl() {
+        return callbackUrl;
+    }
+
+    public String getTokenScope() {
+        return tokenScope;
+    }
+
+    public String getGrantType() {
+        return grantType;
+    }
+
+    public boolean isSaasApp() {
+        return saasApp;
+    }
+
+    public String getAudience() {
+        return audience;
+    }
+
+
+
+    public static class DCRRegisterInboundRequestBuilder extends IdentityRequestBuilder {
+
         private String applicationType;
         private String[] redirectUris;
         private String clientName;
@@ -140,83 +237,19 @@ public class DCRRegisterInboundRequest extends InboundRequest {
             this.audience = audience;
         }
 
-
         @Override
-        public DCRRegisterInboundRequest build() throws FrameworkRuntimeException {
-            return new DCRRegisterInboundRequest(this);
+        public DCRegisterRequest build() throws FrameworkRuntimeException {
+            return new DCRegisterRequest(this);
         }
     }
 
-    public String getApplicationType() {
-        return applicationType;
-    }
-
-    public String[] getRedirectUris() {
-        return redirectUris;
-    }
-
-    public String getClientName() {
-        return clientName;
-    }
-
-    public String getLogoUri() {
-        return logoUri;
-    }
-
-    public String getSubjectType() {
-        return subjectType;
-    }
-
-    public String getSectorIdentifierUri() {
-        return sectorIdentifierUri;
-    }
-
-    public String getTokenEndpointAuthMethod() {
-        return tokenEndpointAuthMethod;
-    }
-
-    public String getJwksUri() {
-        return jwksUri;
-    }
-
-    public String getUserInfoEncryptedResponseAlg() {
-        return userInfoEncryptedResponseAlg;
-    }
-
-    public String getUserInfoEncryptedResponseEnc() {
-        return userInfoEncryptedResponseEnc;
-    }
-
-    public String[] getContacts() {
-        return contacts;
-    }
-
-    public String[] getRequestUris() {
-        return requestUris;
-    }
-
-    public String getOwner() {
-        return owner;
-    }
-
-    public String getCallbackUrl() {
-        return callbackUrl;
-    }
-
-    public String getTokenScope() {
-        return tokenScope;
-    }
-
-    public String getGrantType() {
-        return grantType;
-    }
-
-    public boolean isSaasApp() {
-        return saasApp;
-    }
-
-    public String getAudience() {
-        return audience;
+    public static class DCRRegisterInboundRequestConstant extends IdentityRequestConstant {
+        public final static String CLIENT_NAME = "clientName" ;
+        public final static String CALLBACK_URL = "callbackUrl" ;
+        public final static String TOKEN_SCOPE = "tokenScope" ;
+        public final static String OWNER = "owner" ;
+        public final static String GRANT_TYPE = "grantType" ;
+        public final static String SAAS_APP = "saasApp" ;
     }
 
 }

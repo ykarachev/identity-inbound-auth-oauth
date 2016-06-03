@@ -26,15 +26,19 @@ import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.context.RegistryType;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
-import org.wso2.carbon.identity.application.common.model.*;
+import org.wso2.carbon.identity.application.common.model.InboundAuthenticationConfig;
+import org.wso2.carbon.identity.application.common.model.InboundAuthenticationRequestConfig;
+import org.wso2.carbon.identity.application.common.model.Property;
+import org.wso2.carbon.identity.application.common.model.ServiceProvider;
+import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.OAuthAdminService;
-import org.wso2.carbon.identity.oauth.dcr.DynamicClientRegistrationException;
-import org.wso2.carbon.identity.oauth.dcr.DynamicClientRegistrationService;
-import org.wso2.carbon.identity.oauth.dcr.OAuthApplicationInfo;
+import org.wso2.carbon.identity.oauth.dcr.DCRException;
+import org.wso2.carbon.identity.oauth.dcr.DCRService;
 import org.wso2.carbon.identity.oauth.dcr.internal.DynamicClientRegistrationDataHolder;
+import org.wso2.carbon.identity.oauth.dcr.model.OAuthApplication;
 import org.wso2.carbon.identity.oauth.dcr.profile.RegistrationProfile;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
@@ -45,9 +49,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class DynamicClientRegistrationServiceImpl implements DynamicClientRegistrationService {
+public class DCRServiceImpl implements DCRService {
 
-    private static final Log log = LogFactory.getLog(DynamicClientRegistrationServiceImpl.class);
+    private static final Log log = LogFactory.getLog(DCRServiceImpl.class);
 
     private static final String TOKEN_SCOPE = "tokenScope";
     private static final String AUTH_TYPE_OAUTH_2 = "oauth2";
@@ -59,13 +63,13 @@ public class DynamicClientRegistrationServiceImpl implements DynamicClientRegist
      * RegistrationProfile.
      *
      * @param profile - RegistrationProfile of the OAuth application to be created.
-     * @return OAuthApplicationInfo object which holds the necessary data of created OAuth app.
-     * @throws DynamicClientRegistrationException
+     * @return OAuthApplication object which holds the necessary data of created OAuth app.
+     * @throws DCRException
      */
     @Override
-    public OAuthApplicationInfo registerOAuthApplication(RegistrationProfile profile)
-            throws DynamicClientRegistrationException {
-        OAuthApplicationInfo oAuthApplicationInfo = new OAuthApplicationInfo();
+    public OAuthApplication registerOAuthApplication(RegistrationProfile profile)
+            throws DCRException {
+        OAuthApplication oAuthApplication = new OAuthApplication();
         String applicationName = profile.getClientName();
 
         if (log.isDebugEnabled()) {
@@ -73,50 +77,50 @@ public class DynamicClientRegistrationServiceImpl implements DynamicClientRegist
         }
 
         String tokenScopes[] = { profile.getTokenScope() };
-        oAuthApplicationInfo.addParameter(TOKEN_SCOPE, Arrays.toString(tokenScopes));
-        OAuthApplicationInfo info;
+        oAuthApplication.addParameter(TOKEN_SCOPE, Arrays.toString(tokenScopes));
+        OAuthApplication info;
         try {
             info = this.createOAuthApplication(profile);
-        } catch (DynamicClientRegistrationException | IdentityException e) {
-            throw new DynamicClientRegistrationException("Can not create OAuth application  : " + applicationName, e);
+        } catch (IdentityException e) {
+            throw new DCRException("Can not create OAuth application  : " + applicationName, e);
         }
 
         if (info == null || info.getJsonString() == null) {
-            throw new DynamicClientRegistrationException(
+            throw new DCRException(
                     "OAuth app does not contain required data: '" + applicationName + "'");
         }
 
-        oAuthApplicationInfo.setClientName(info.getClientName());
-        oAuthApplicationInfo.setClientId(info.getClientId());
-        oAuthApplicationInfo.setCallBackURL(info.getCallBackURL());
-        oAuthApplicationInfo.setClientSecret(info.getClientSecret());
+        oAuthApplication.setClientName(info.getClientName());
+        oAuthApplication.setClientId(info.getClientId());
+        oAuthApplication.setCallBackURL(info.getCallBackURL());
+        oAuthApplication.setClientSecret(info.getClientSecret());
 
         try {
             JSONObject jsonObject = new JSONObject(info.getJsonString());
             if (jsonObject.has(DCRConstants.ClientMetadata.OAUTH_REDIRECT_URIS)) {
-                oAuthApplicationInfo.addParameter(DCRConstants.ClientMetadata.OAUTH_REDIRECT_URIS,
+                oAuthApplication.addParameter(DCRConstants.ClientMetadata.OAUTH_REDIRECT_URIS,
                         jsonObject.get(DCRConstants.ClientMetadata.OAUTH_REDIRECT_URIS));
             }
 
             if (jsonObject.has(DCRConstants.ClientMetadata.OAUTH_CLIENT_GRANT)) {
-                oAuthApplicationInfo.addParameter(DCRConstants.ClientMetadata.OAUTH_CLIENT_GRANT,
+                oAuthApplication.addParameter(DCRConstants.ClientMetadata.OAUTH_CLIENT_GRANT,
                         jsonObject.get(DCRConstants.ClientMetadata.OAUTH_CLIENT_GRANT));
             }
         } catch (JSONException e) {
-            throw new DynamicClientRegistrationException(
+            throw new DCRException(
                     "Can not retrieve information of the created OAuth application", e);
         }
-        return oAuthApplicationInfo;
+        return oAuthApplication;
     }
 
     /**
      * @param profile - RegistrationProfile of the OAuth application to be created.
-     * @return OAuthApplicationInfo object which holds the necessary data of created OAuth app.
-     * @throws DynamicClientRegistrationException
+     * @return OAuthApplication object which holds the necessary data of created OAuth app.
+     * @throws DCRException
      * @throws IdentityException
      */
-    private OAuthApplicationInfo createOAuthApplication(RegistrationProfile profile)
-            throws DynamicClientRegistrationException, IdentityException {
+    private OAuthApplication createOAuthApplication(RegistrationProfile profile)
+            throws DCRException, IdentityException {
 
         //Subscriber's name should be passed as a parameter, since it's under the subscriber
         //the OAuth App is created.
@@ -167,7 +171,7 @@ public class DynamicClientRegistrationServiceImpl implements DynamicClientRegist
 
             ServiceProvider createdServiceProvider = appMgtService.getServiceProvider(applicationName, tenantDomain);
             if (createdServiceProvider == null) {
-                throw new DynamicClientRegistrationException(
+                throw new DCRException(
                         "Couldn't create Service Provider Application " + applicationName);
             }
             //Set SaaS app option
@@ -221,23 +225,23 @@ public class DynamicClientRegistrationServiceImpl implements DynamicClientRegist
             // Update the Service Provider app to add OAuthApp as an Inbound Authentication Config
             appMgtService.updateApplication(createdServiceProvider, tenantDomain, userName);
 
-            OAuthApplicationInfo oAuthApplicationInfo = new OAuthApplicationInfo();
-            oAuthApplicationInfo.setClientId(createdApp.getOauthConsumerKey());
-            oAuthApplicationInfo.setCallBackURL(createdApp.getCallbackUrl());
-            oAuthApplicationInfo.setClientSecret(oauthConsumerSecret);
-            oAuthApplicationInfo.setClientName(createdApp.getApplicationName());
+            OAuthApplication oAuthApplication = new OAuthApplication();
+            oAuthApplication.setClientId(createdApp.getOauthConsumerKey());
+            oAuthApplication.setCallBackURL(createdApp.getCallbackUrl());
+            oAuthApplication.setClientSecret(oauthConsumerSecret);
+            oAuthApplication.setClientName(createdApp.getApplicationName());
 
-            oAuthApplicationInfo
+            oAuthApplication
                     .addParameter(DCRConstants.ClientMetadata.OAUTH_REDIRECT_URIS, createdApp.getCallbackUrl());
-            oAuthApplicationInfo
+            oAuthApplication
                     .addParameter(DCRConstants.ClientMetadata.OAUTH_CLIENT_GRANT, createdApp.getGrantTypes());
 
-            return oAuthApplicationInfo;
+            return oAuthApplication;
         } catch (IdentityApplicationManagementException e) {
-            throw new DynamicClientRegistrationException(
+            throw new DCRException(
                     "Error occurred while creating ServiceProvider for app " + applicationName, e);
         } catch (Exception e) {
-            throw new DynamicClientRegistrationException("Error occurred while creating OAuthApp " + applicationName,
+            throw new DCRException("Error occurred while creating OAuthApp " + applicationName,
                     e);
         } finally {
             PrivilegedCarbonContext.endTenantFlow();
@@ -252,15 +256,15 @@ public class DynamicClientRegistrationServiceImpl implements DynamicClientRegist
      * @param applicationName - OAuth application name
      * @param consumerKey     - ConsumerKey of the OAuth application
      * @return The status of the operation
-     * @throws DynamicClientRegistrationException
+     * @throws DCRException
      */
     @Override
     public boolean unregisterOAuthApplication(String userId, String applicationName, String consumerKey)
-            throws DynamicClientRegistrationException {
+            throws DCRException {
 
         if (!StringUtils.isNotEmpty(userId) || !StringUtils.isNotEmpty(applicationName) || !StringUtils
                 .isNotEmpty(consumerKey)) {
-            throw new DynamicClientRegistrationException(
+            throw new DCRException(
                     "Username, Application Name and Consumer Key cannot be null or empty");
         }
 
@@ -277,14 +281,15 @@ public class DynamicClientRegistrationServiceImpl implements DynamicClientRegist
         try {
             oAuthAdminService = new OAuthAdminService();
             oAuthConsumerApp = oAuthAdminService.getOAuthApplicationData(consumerKey);
+            applicationName = oAuthConsumerApp.getApplicationName();
         } catch (Exception e) {
             //We had to catch Exception here because getOAuthApplicationData can throw exceptions of java.lang.Exception
             // class.
-            throw new DynamicClientRegistrationException("Error occurred while retrieving application data", e);
+            throw new DCRException("Error occurred while retrieving application data", e);
         }
 
         if (oAuthConsumerApp == null) {
-            throw new DynamicClientRegistrationException(
+            throw new DCRException(
                     "No OAuth Consumer Application is associated with the given consumer key: " + consumerKey);
         }
 
@@ -298,16 +303,16 @@ public class DynamicClientRegistrationServiceImpl implements DynamicClientRegist
             }
             ServiceProvider createdServiceProvider = appMgtService.getServiceProvider(applicationName, tenantDomain);
             if (createdServiceProvider == null) {
-                throw new DynamicClientRegistrationException(
+                throw new DCRException(
                         "Couldn't retrieve Service Provider Application " + applicationName);
             }
             appMgtService.deleteApplication(applicationName, tenantDomain, userName);
             status = true;
         } catch (IdentityApplicationManagementException e) {
-            throw new DynamicClientRegistrationException(
+            throw new DCRException(
                     "Error occurred while removing ServiceProvider for application '" + applicationName + "'", e);
         } catch (IdentityOAuthAdminException e) {
-            throw new DynamicClientRegistrationException("Error occurred while removing application '" +
+            throw new DCRException("Error occurred while removing application '" +
                     applicationName + "'", e);
         } finally {
             PrivilegedCarbonContext.endTenantFlow();
@@ -320,10 +325,10 @@ public class DynamicClientRegistrationServiceImpl implements DynamicClientRegist
      *
      * @param applicationName - OAuth application name
      * @return The status of the operation
-     * @throws DynamicClientRegistrationException
+     * @throws DCRException
      */
     @Override
-    public boolean isOAuthApplicationAvailable(String applicationName) throws DynamicClientRegistrationException {
+    public boolean isOAuthApplicationAvailable(String applicationName) throws DCRException {
         ApplicationManagementService appMgtService = DynamicClientRegistrationDataHolder.getInstance().
                 getApplicationManagementService();
         if (appMgtService == null) {
@@ -334,7 +339,7 @@ public class DynamicClientRegistrationServiceImpl implements DynamicClientRegist
                     .getServiceProvider(applicationName, CarbonContext.getThreadLocalCarbonContext().getTenantDomain())
                     != null;
         } catch (IdentityApplicationManagementException e) {
-            throw new DynamicClientRegistrationException(
+            throw new DCRException(
                     "Error occurred while retrieving information of OAuthApp " + applicationName, e);
         }
     }

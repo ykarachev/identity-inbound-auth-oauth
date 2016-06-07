@@ -89,7 +89,7 @@ public class OAuth2TokenEndpoint {
                     return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                 }
             } catch (IdentityOAuthAdminException e) {
-                e.printStackTrace();
+                throw new OAuthSystemException("Error in getting oauth app state.");
             }
 
             // extract the basic auth credentials if present in the request and use for

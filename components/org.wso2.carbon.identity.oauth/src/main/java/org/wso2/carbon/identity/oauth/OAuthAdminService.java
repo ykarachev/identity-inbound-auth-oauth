@@ -343,7 +343,7 @@ public class OAuthAdminService extends AbstractAdmin {
             //Revoke all active access tokens
             Set<String> accessTokens = tokenMgtDAO.getActiveTokensForConsumerKey(consumerKey);
             if(accessTokens != null && accessTokens.size() != 0) {
-                tokenMgtDAO.revokeTokensBatch((String[]) accessTokens.toArray());
+                tokenMgtDAO.revokeTokens(accessTokens.toArray(new String[accessTokens.size()]));
             }
 
             //Deactivate all active authorization codes

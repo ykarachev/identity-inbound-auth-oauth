@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.carbon.identity.oauth.dcr.internal;
+package org.wso2.carbon.identity.oidc.dcr.internal;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -26,46 +26,36 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Htt
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityProcessor;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.oauth.dcr.DCRManagementService;
-import org.wso2.carbon.identity.oauth.dcr.impl.DCRManagementServiceImpl;
-import org.wso2.carbon.identity.oauth.dcr.processor.register.RegistrationRequestProcessor;
-import org.wso2.carbon.identity.oauth.dcr.processor.register.factory.HttpRegistrationResponseFactory;
-import org.wso2.carbon.identity.oauth.dcr.processor.register.factory.RegistrationRequestFactory;
-import org.wso2.carbon.identity.oauth.dcr.processor.unregister.UnregistrationRequestProcessor;
-import org.wso2.carbon.identity.oauth.dcr.processor.unregister.factory.HttpUnregistrationResponseFactory;
-import org.wso2.carbon.identity.oauth.dcr.processor.unregister.factory.UnregistrationRequestFactory;
+import org.wso2.carbon.identity.oidc.dcr.processor.register.OIDCRegistrationRequestProcessor;
+import org.wso2.carbon.identity.oidc.dcr.processor.register.factory.HttpOIDCRegistrationResponseFactory;
+import org.wso2.carbon.identity.oidc.dcr.processor.register.factory.OIDCRegistrationRequestFactory;
 
 /**
- * @scr.component name="identity.oauth.dcr" immediate="true"
+ * @scr.component name="identity.oidc.dcr" immediate="true"
  * @scr.reference name="identity.application.management.service"
  * interface="org.wso2.carbon.identity.application.mgt.ApplicationManagementService"
  * cardinality="1..1" policy="dynamic"
  * bind="setApplicationManagementService" unbind="unsetApplicationManagementService"
- * @scr.reference name="identity.oauth.dcr.dcrservice"
+ * @scr.reference name="identity.oidc.dcr.dcrservice"
  * interface="org.wso2.carbon.identity.oauth.dcr.DCRManagementService"
  * cardinality="0..1" policy="dynamic"
- * bind="setDynamicClientRegistrationService" unbind="unsetDynamicClientRegistrationService"
+ * bind="setDCRManagementService" unbind="unsetDCRManagementService"
  */
-public class DynamicClientRegistrationServiceComponent {
+public class OIDCDCRServiceComponent {
 
-    private static final Log log = LogFactory.getLog(DynamicClientRegistrationServiceComponent.class);
+    private static final Log log = LogFactory.getLog(OIDCDCRServiceComponent.class);
 
     @SuppressWarnings("unused")
     protected void activate(ComponentContext componentContext) {
         try {
-            componentContext.getBundleContext().registerService(DCRManagementService.class.getName(),new DCRManagementServiceImpl(), null);
-            componentContext.getBundleContext().registerService(HttpIdentityRequestFactory.class.getName(),
-                                                                new RegistrationRequestFactory(), null);
-            componentContext.getBundleContext().registerService(IdentityProcessor.class.getName(),
-                                                                new RegistrationRequestProcessor(), null);
-            componentContext.getBundleContext().registerService(HttpIdentityResponseFactory.class.getName(),
-                                                                new HttpRegistrationResponseFactory(), null);
+           System.out.print("DDD");
 
             componentContext.getBundleContext().registerService(HttpIdentityRequestFactory.class.getName(),
-                                                                new UnregistrationRequestFactory(), null);
+                                                                new OIDCRegistrationRequestFactory(), null);
             componentContext.getBundleContext().registerService(IdentityProcessor.class.getName(),
-                                                                new UnregistrationRequestProcessor(), null);
+                                                                new OIDCRegistrationRequestProcessor(), null);
             componentContext.getBundleContext().registerService(HttpIdentityResponseFactory.class.getName(),
-                                                                new HttpUnregistrationResponseFactory(), null);
+                                                                new HttpOIDCRegistrationResponseFactory(), null);
 
 
         }catch(Exception ee){
@@ -76,9 +66,10 @@ public class DynamicClientRegistrationServiceComponent {
     @SuppressWarnings("unused")
     protected void deactivate(ComponentContext componentContext) {
         if (log.isDebugEnabled()) {
-            log.debug("Stopping DynamicClientRegistrationServiceComponent");
+            log.debug("Stopping OIDCDCRServiceComponent");
         }
     }
+
 
     /**
      * Sets ApplicationManagement Service.
@@ -89,7 +80,7 @@ public class DynamicClientRegistrationServiceComponent {
         if (log.isDebugEnabled()) {
             log.debug("Setting ApplicationManagement Service");
         }
-        DynamicClientRegistrationDataHolder.getInstance().
+        OIDCDCRDataHolder.getInstance().
                 setApplicationManagementService(applicationManagementService);
     }
 
@@ -102,32 +93,33 @@ public class DynamicClientRegistrationServiceComponent {
         if (log.isDebugEnabled()) {
             log.debug("Unsetting ApplicationManagement.");
         }
-        DynamicClientRegistrationDataHolder.getInstance().setApplicationManagementService(null);
+        OIDCDCRDataHolder.getInstance().setApplicationManagementService(null);
     }
 
     /**
      * Sets DCRManagementService Service.
      *
-     * @param DCRManagementService An instance of DCRManagementService
+     * @param dcrManagementService An instance of DCRManagementService
      */
-    protected void setDynamicClientRegistrationService(DCRManagementService
-                                                               DCRManagementService) {
+    protected void setDCRManagementService(DCRManagementService
+                                                   dcrManagementService) {
         if (log.isDebugEnabled()) {
-            log.debug("Setting DCRManagementService.");
+            log.debug("Setting OIDCDCRManagementService.");
         }
-        DynamicClientRegistrationDataHolder.getInstance().setDCRManagementService(DCRManagementService);
+        OIDCDCRDataHolder.getInstance().setDcrManagementService(dcrManagementService);
     }
 
     /**
      * Unsets DCRManagementService.
      *
-     * @param DCRManagementService An instance of DCRManagementService
+     * @param dcrManagementService An instance of DCRManagementService
      */
-    protected void unsetDynamicClientRegistrationService(DCRManagementService DCRManagementService) {
+    protected void unsetDCRManagementService(DCRManagementService dcrManagementService) {
         if (log.isDebugEnabled()) {
-            log.debug("Unsetting DCRManagementService.");
+            log.debug("Unsetting OIDCDCRManagementService.");
         }
-        DynamicClientRegistrationDataHolder.getInstance().setDCRManagementService(null);
+        OIDCDCRDataHolder.getInstance().setDcrManagementService(null);
     }
+
 
 }

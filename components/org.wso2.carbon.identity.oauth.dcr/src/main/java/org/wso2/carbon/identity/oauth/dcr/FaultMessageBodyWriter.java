@@ -20,7 +20,7 @@ package org.wso2.carbon.identity.oauth.dcr;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import org.wso2.carbon.identity.oauth.dcr.dto.FaultResponse;
+import org.wso2.carbon.identity.oauth.dcr.model.FaultResponse;
 
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;

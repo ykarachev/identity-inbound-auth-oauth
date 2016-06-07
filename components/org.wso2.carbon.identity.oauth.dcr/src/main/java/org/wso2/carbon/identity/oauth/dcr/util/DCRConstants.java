@@ -24,8 +24,8 @@ import java.util.regex.Pattern;
  */
 public final class DCRConstants {
     public static final Pattern DCR_ENDPOINT_URL_PATTERN = Pattern.compile(".+/register/?");
-    public static final Pattern DCR_ENDPOINT_REGISTER_URL_PATTERN = Pattern.compile(".+/register/?");
-    public static final Pattern DCR_ENDPOINT_UNREGISTER_URL_PATTERN = Pattern.compile(".+/register/(.+)");
+    public static final Pattern DCR_ENDPOINT_REGISTER_URL_PATTERN = Pattern.compile("/identity/register/?");
+    public static final Pattern DCR_ENDPOINT_UNREGISTER_URL_PATTERN = Pattern.compile("/identity/register/(.+)");
 
     public static class ClientMetadata {
         private ClientMetadata() {

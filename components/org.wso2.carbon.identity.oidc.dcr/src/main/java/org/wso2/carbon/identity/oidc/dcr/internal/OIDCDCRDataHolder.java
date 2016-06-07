@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.carbon.identity.oauth.dcr.internal;
+package org.wso2.carbon.identity.oidc.dcr.internal;
 
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.oauth.dcr.DCRManagementService;
@@ -25,17 +25,18 @@ import org.wso2.carbon.identity.oauth.dcr.DCRManagementService;
  * This is the DataHolder class of DynamicClientRegistration bundle. This holds a reference to the
  * ApplicationManagementService.
  */
-public class DynamicClientRegistrationDataHolder {
+public class OIDCDCRDataHolder {
 
     private ApplicationManagementService applicationManagementService = null ;
-    private DCRManagementService DCRManagementService = null ;
+    private DCRManagementService dcrManagementService = null ;
 
-    private static DynamicClientRegistrationDataHolder thisInstance = new DynamicClientRegistrationDataHolder();
+    private static OIDCDCRDataHolder
+            thisInstance = new OIDCDCRDataHolder();
 
-    private DynamicClientRegistrationDataHolder() {
+    private OIDCDCRDataHolder() {
     }
 
-    public static DynamicClientRegistrationDataHolder getInstance() {
+    public static OIDCDCRDataHolder getInstance() {
         return thisInstance;
     }
 
@@ -50,11 +51,11 @@ public class DynamicClientRegistrationDataHolder {
         this.applicationManagementService = applicationManagementService;
     }
 
-    public DCRManagementService getDCRManagementService() {
-        return DCRManagementService;
+    public DCRManagementService getDcrManagementService() {
+        return dcrManagementService;
     }
 
-    public void setDCRManagementService(DCRManagementService DCRManagementService) {
-        this.DCRManagementService = DCRManagementService;
+    public void setDcrManagementService(DCRManagementService dcrManagementService) {
+        this.dcrManagementService = dcrManagementService;
     }
 }

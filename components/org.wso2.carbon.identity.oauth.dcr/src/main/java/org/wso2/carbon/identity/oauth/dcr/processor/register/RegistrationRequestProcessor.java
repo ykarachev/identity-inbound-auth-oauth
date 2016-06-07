@@ -35,15 +35,14 @@ public class RegistrationRequestProcessor extends IdentityProcessor {
             registrationProfile.setOwner(registerRequest.getOwner());
             registrationProfile.setClientName(registerRequest.getClientName());
             registrationProfile.setGrantType(registerRequest.getGrantType());
-            registrationProfile.setCallbackUrl(registerRequest.getCallbackUrl());
-            registrationProfile.setSaasApp(registerRequest.isSaasApp());
+            registrationProfile.setRedirectUris(registerRequest.getRedirectUris());
 
             DCRManagementService
                     DCRManagementService = DynamicClientRegistrationDataHolder.getInstance().getDCRManagementService();
 
             OAuthApplication oAuthApplication = DCRManagementService.registerOAuthApplication(registrationProfile);
             dcrRegisterResponseBuilder = new RegistrationResponse.DCRRegisterResponseBuilder();
-            dcrRegisterResponseBuilder.setCallBackURL(oAuthApplication.getCallBackURL());
+            dcrRegisterResponseBuilder.setRedirectUris(oAuthApplication.getRedirectUrls());
             dcrRegisterResponseBuilder.setClientId(oAuthApplication.getClientId());
             dcrRegisterResponseBuilder.setClientName(oAuthApplication.getClientName());
             dcrRegisterResponseBuilder.setClientSecret(oAuthApplication.getClientSecret());

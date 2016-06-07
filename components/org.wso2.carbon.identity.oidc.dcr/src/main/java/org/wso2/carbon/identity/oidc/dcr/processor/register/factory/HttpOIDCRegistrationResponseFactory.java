@@ -1,6 +1,7 @@
 package org.wso2.carbon.identity.oidc.dcr.processor.register.factory;
 
 
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
@@ -30,6 +31,7 @@ public class HttpOIDCRegistrationResponseFactory extends HttpRegistrationRespons
     public void create(HttpIdentityResponse.HttpIdentityResponseBuilder httpIdentityResponseBuilder, IdentityResponse identityResponse) {
         RegistrationResponse registrationResponse = (RegistrationResponse)identityResponse ;
         super.create(httpIdentityResponseBuilder, identityResponse);
+        httpIdentityResponseBuilder.setBody(generateSuccessfulResponse(registrationResponse));
     }
 
     public HttpIdentityResponse.HttpIdentityResponseBuilder handleException(FrameworkException exception) {
@@ -53,7 +55,7 @@ public class HttpOIDCRegistrationResponseFactory extends HttpRegistrationRespons
 
     @Override
     public int getPriority() {
-        return 100;
+        return 50;
     }
 
     public boolean canHandle(FrameworkException exception) {
@@ -67,8 +69,13 @@ public class HttpOIDCRegistrationResponseFactory extends HttpRegistrationRespons
     private String generateSuccessfulResponse(RegistrationResponse registrationResponse) {
         JSONObject obj = new JSONObject();
         obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_ID, registrationResponse.getClientId());
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_NAME, registrationResponse.getClientName());
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CALLBACK_URIS, registrationResponse.getCallBackURL());
+        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_NAME, registrationResponse
+                .getClientName());
+        JSONArray jsonArray = new JSONArray();
+        for (String redirectUri : registrationResponse.getRedirectUris()){
+            jsonArray.add(redirectUri);
+        }
+        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CALLBACK_URIS, jsonArray);
         obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_SECRET, registrationResponse
                 .getClientSecret());
         return obj.toString();

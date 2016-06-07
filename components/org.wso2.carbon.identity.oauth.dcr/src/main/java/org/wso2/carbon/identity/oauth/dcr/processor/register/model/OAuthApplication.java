@@ -20,7 +20,9 @@ package org.wso2.carbon.identity.oauth.dcr.processor.register.model;
 import org.json.simple.JSONObject;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,7 +32,7 @@ public class OAuthApplication {
 
     private String clientId;
     private String clientName;
-    private String callBackURL;
+    private List<String> redirectUrls = new ArrayList<>();
     private String clientSecret;
 
     private Map<String, Object> parameters = new HashMap<String, Object>();
@@ -55,9 +57,6 @@ public class OAuthApplication {
         this.clientName = clientName;
     }
 
-    public void setCallBackURL(String callBackURL) {
-        this.callBackURL = callBackURL;
-    }
 
     public void addParameter(String name, Object value) {
         parameters.put(name, value);
@@ -75,9 +74,6 @@ public class OAuthApplication {
         return clientName;
     }
 
-    public String getCallBackURL() {
-        return callBackURL;
-    }
 
     public void putAll(Map<String, Object> parameters) {
         this.parameters.putAll(parameters);
@@ -87,13 +83,11 @@ public class OAuthApplication {
         this.parameters.remove(key);
     }
 
-    public String toString() {
-        JSONObject obj = new JSONObject();
-        obj.put(DCRConstants.ClientMetadata.OAUTH_CLIENT_ID, this.getClientId());
-        obj.put(DCRConstants.ClientMetadata.OAUTH_CLIENT_NAME, this.getClientName());
-        obj.put(DCRConstants.ClientMetadata.OAUTH_CALLBACK_URIS, this.getCallBackURL());
-        obj.put(DCRConstants.ClientMetadata.OAUTH_CLIENT_SECRET, this.getClientSecret());
-        return obj.toString();
+    public List<String> getRedirectUrls() {
+        return redirectUrls;
     }
 
+    public void setRedirectUrls(List<String> redirectUrls) {
+        this.redirectUrls = redirectUrls;
+    }
 }

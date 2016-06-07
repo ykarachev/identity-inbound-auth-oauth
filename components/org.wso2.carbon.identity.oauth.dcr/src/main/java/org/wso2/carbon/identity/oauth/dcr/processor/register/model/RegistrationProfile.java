@@ -17,13 +17,20 @@
  */
 package org.wso2.carbon.identity.oauth.dcr.processor.register.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * DTO class to be used when registering an OAuth application.
  */
 public class RegistrationProfile {
 
+
+    private List<String> redirectUris = new ArrayList<>();
+    private String grantType ;
+
     private String applicationType;
-    private String[] redirectUris;
+
     private String clientName;
     private String logoUri;
     private String subjectType;
@@ -35,11 +42,17 @@ public class RegistrationProfile {
     private String[] contacts;
     private String[] requestUris;
     private String owner;
-    private String callbackUrl;
     private String tokenScope;
-    private String grantType;
-    private boolean saasApp;
+
     private String audience;
+
+    public String getGrantType() {
+        return grantType;
+    }
+
+    public void setGrantType(String grantType) {
+        this.grantType = grantType;
+    }
 
     public String getRecepientValidationURL() {
         return recepientValidationURL;
@@ -68,13 +81,6 @@ public class RegistrationProfile {
         this.audience = audience;
     }
 
-    public boolean isSaasApp() {
-        return saasApp;
-    }
-
-    public void setSaasApp(boolean saasApp) {
-        this.saasApp = saasApp;
-    }
 
     public String getApplicationType() {
         return applicationType;
@@ -84,11 +90,11 @@ public class RegistrationProfile {
         this.applicationType = applicationType;
     }
 
-    public String[] getRedirectUris() {
+    public List<String> getRedirectUris() {
         return redirectUris;
     }
 
-    public void setRedirectUris(String[] redirectUris) {
+    public void setRedirectUris(List<String> redirectUris) {
         this.redirectUris = redirectUris;
     }
 
@@ -180,13 +186,6 @@ public class RegistrationProfile {
         this.owner = owner;
     }
 
-    public String getCallbackUrl() {
-        return callbackUrl;
-    }
-
-    public void setCallbackUrl(String callbackUrl) {
-        this.callbackUrl = callbackUrl;
-    }
 
     public String getTokenScope() {
         return tokenScope;
@@ -196,11 +195,4 @@ public class RegistrationProfile {
         this.tokenScope = tokenScope;
     }
 
-    public String getGrantType() {
-        return grantType;
-    }
-
-    public void setGrantType(String grantType) {
-        this.grantType = grantType;
-    }
 }

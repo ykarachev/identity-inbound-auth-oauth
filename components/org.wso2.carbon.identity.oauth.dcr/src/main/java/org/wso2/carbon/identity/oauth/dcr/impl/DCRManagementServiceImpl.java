@@ -92,7 +92,7 @@ public class DCRManagementServiceImpl implements DCRManagementService {
 
         oAuthApplication.setClientName(info.getClientName());
         oAuthApplication.setClientId(info.getClientId());
-        oAuthApplication.setCallBackURL(info.getCallBackURL());
+        oAuthApplication.getRedirectUrls().add(info.getRedirectUrls().get(0));
         oAuthApplication.setClientSecret(info.getClientSecret());
 
         try {
@@ -127,8 +127,6 @@ public class DCRManagementServiceImpl implements DCRManagementService {
         String userId = profile.getOwner();
         String applicationName = profile.getClientName();
         String grantType = profile.getGrantType();
-        String callbackUrl = profile.getCallbackUrl();
-        boolean isSaaSApp = profile.isSaasApp();
 
         if (StringUtils.isEmpty(userId)) {
             return null;
@@ -175,13 +173,18 @@ public class DCRManagementServiceImpl implements DCRManagementService {
                         "Couldn't create Service Provider Application " + applicationName);
             }
             //Set SaaS app option
-            createdServiceProvider.setSaasApp(isSaaSApp);
+            createdServiceProvider.setSaasApp(false);
             // Then Create OAuthApp
             OAuthAdminService oAuthAdminService = new OAuthAdminService();
 
             OAuthConsumerAppDTO oAuthConsumerApp = new OAuthConsumerAppDTO();
             oAuthConsumerApp.setApplicationName(applicationName);
-            oAuthConsumerApp.setCallbackUrl(callbackUrl);
+            //TODO: After implement multi-urls to the oAuth application, we have to change this API call
+            if(profile.getRedirectUris().size()==0){
+                throw new DCRManagementException(
+                        "redirect_uris can't be empty.");
+            }
+            oAuthConsumerApp.setCallbackUrl(profile.getRedirectUris().get(0));
             oAuthConsumerApp.setGrantTypes(grantType);
             oAuthConsumerApp.setOAuthVersion(OAUTH_VERSION);
             if (log.isDebugEnabled()) {
@@ -227,7 +230,7 @@ public class DCRManagementServiceImpl implements DCRManagementService {
 
             OAuthApplication oAuthApplication = new OAuthApplication();
             oAuthApplication.setClientId(createdApp.getOauthConsumerKey());
-            oAuthApplication.setCallBackURL(createdApp.getCallbackUrl());
+            oAuthApplication.getRedirectUrls().add(createdApp.getCallbackUrl());
             oAuthApplication.setClientSecret(oauthConsumerSecret);
             oAuthApplication.setClientName(createdApp.getApplicationName());
 

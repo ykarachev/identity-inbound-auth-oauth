@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.oauth.dcr.processor.register.factory;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -75,7 +76,6 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory{
         RegistrationRequest.DCRRegisterInboundRequestBuilder registerRequestBuilder = new
                 RegistrationRequest.DCRRegisterInboundRequestBuilder();
         create(registerRequestBuilder, request, response);
-
         return registerRequestBuilder;
 
     }
@@ -102,23 +102,23 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory{
                 log.debug("DCR request json : " + jsonData.toJSONString());
             }
 
-            registerRequestBuilder.setClientName((String) jsonData.get(RegistrationRequest
-                                                                               .DCRRegisterInboundRequestConstant
+            Object obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.REDIRECT_URIS);
+            if(obj != null && obj instanceof JSONArray){
+                JSONArray redirectUris = (JSONArray)obj ;
+                for (int i = 0; i < redirectUris.size(); i++) {
+                    registerRequestBuilder.getRedirectUris().add(redirectUris.get(i).toString());
+                }
+            }else if(obj != null){
+                registerRequestBuilder.getRedirectUris().add((String)obj);
+            }
+
+            registerRequestBuilder.setClientName((String) jsonData.get(RegistrationRequest.RegisterRequestConstant
                                                                                .CLIENT_NAME));
-            registerRequestBuilder.setCallbackUrl((String) jsonData.get(RegistrationRequest
-                                                                                .DCRRegisterInboundRequestConstant
-                                                                                .CALLBACK_URL));
-            registerRequestBuilder.setTokenScope((String) jsonData.get(RegistrationRequest
-                                                                               .DCRRegisterInboundRequestConstant
+            registerRequestBuilder.setTokenScope((String) jsonData.get(RegistrationRequest.RegisterRequestConstant
                                                                                .TOKEN_SCOPE));
-            registerRequestBuilder.setOwner((String) jsonData.get(RegistrationRequest
-                                                                          .DCRRegisterInboundRequestConstant.OWNER));
-            registerRequestBuilder.setGrantType((String) jsonData.get(RegistrationRequest
-                                                                              .DCRRegisterInboundRequestConstant
+            registerRequestBuilder.setOwner((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.OWNER));
+            registerRequestBuilder.setGrantType((String) jsonData.get(RegistrationRequest.RegisterRequestConstant
                                                                               .GRANT_TYPE));
-            registerRequestBuilder.setSaasApp((Boolean) jsonData.get(RegistrationRequest
-                                                                             .DCRRegisterInboundRequestConstant
-                                                                             .SAAS_APP));
         } catch (IOException e) {
             String errorMessage = "Error occurred while reading servlet request body, " + e.getMessage() ;
             FrameworkClientException.error(errorMessage, e);

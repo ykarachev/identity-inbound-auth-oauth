@@ -21,13 +21,16 @@ package org.wso2.carbon.identity.oauth.dcr.processor.register.model;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityMessageContext;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 
+import java.util.ArrayList;
+import java.util.List;
+
 
 public class RegistrationResponse extends IdentityResponse {
 
 
     private String clientId;
     private String clientName;
-    private String callBackURL;
+    private List<String> redirectUris = new ArrayList<>();
     private String clientSecret;
 
     protected RegistrationResponse(
@@ -35,7 +38,7 @@ public class RegistrationResponse extends IdentityResponse {
         super(builder);
         this.clientId = builder.clientId ;
         this.clientName = builder.clientName ;
-        this.callBackURL = builder.callBackURL ;
+        this.redirectUris = builder.redirectUris ;
         this.clientSecret = builder.clientSecret ;
     }
 
@@ -47,8 +50,8 @@ public class RegistrationResponse extends IdentityResponse {
         return clientName;
     }
 
-    public String getCallBackURL() {
-        return callBackURL;
+    public List<String> getRedirectUris() {
+        return redirectUris;
     }
 
     public String getClientSecret() {
@@ -61,7 +64,7 @@ public class RegistrationResponse extends IdentityResponse {
 
         private String clientId;
         private String clientName;
-        private String callBackURL;
+        private List<String> redirectUris = new ArrayList<>();
         private String clientSecret;
 
         public DCRRegisterResponseBuilder() {
@@ -83,9 +86,13 @@ public class RegistrationResponse extends IdentityResponse {
             return this ;
         }
 
-        public DCRRegisterResponseBuilder setCallBackURL(String callBackURL){
-            this.callBackURL = callBackURL ;
+        public DCRRegisterResponseBuilder setRedirectUris(List<String> redirectUris){
+            this.redirectUris = redirectUris ;
             return this ;
+        }
+
+        public List<String> getRedirectUris() {
+            return redirectUris;
         }
 
         public DCRRegisterResponseBuilder setClientSecret(String clientSecret){
@@ -103,6 +110,6 @@ public class RegistrationResponse extends IdentityResponse {
         public static final String OAUTH_CLIENT_ID = "client_id";
         public static final String OAUTH_CLIENT_SECRET = "client_secret";
         public static final String OAUTH_CLIENT_NAME = "client_name";
-        public static final String OAUTH_CALLBACK_URIS = "callback_url";
+        public static final String OAUTH_CALLBACK_URIS = "redirect_uris";
     }
 }

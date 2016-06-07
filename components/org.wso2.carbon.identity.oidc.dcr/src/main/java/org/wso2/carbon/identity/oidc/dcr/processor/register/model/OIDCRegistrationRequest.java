@@ -46,7 +46,7 @@ public class OIDCRegistrationRequest extends RegistrationRequest {
         }
     }
 
-    public static class OIDCRegisterRequestConstant extends DCRRegisterInboundRequestConstant {
+    public static class OIDCRegisterRequestConstant extends RegisterRequestConstant {
 
     }
 

@@ -21,14 +21,20 @@ package org.wso2.carbon.identity.oauth.dcr.processor.register.model;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.FrameworkRuntimeException;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * DCR Request data for Register a oauth application
  *
  */
 public class RegistrationRequest extends IdentityRequest {
 
+
+    private List<String> redirectUris = new ArrayList<>();
+    private String grantType;
+
     private String applicationType;
-    private String[] redirectUris;
     private String clientName;
     private String logoUri;
     private String subjectType;
@@ -40,17 +46,17 @@ public class RegistrationRequest extends IdentityRequest {
     private String[] contacts;
     private String[] requestUris;
     private String owner;
-    private String callbackUrl;
     private String tokenScope;
-    private String grantType;
-    private boolean saasApp;
+
     private String audience;
 
     public RegistrationRequest(DCRRegisterInboundRequestBuilder builder) {
 
         super(builder);
-        this.applicationType = builder.applicationType;
         this.redirectUris = builder.redirectUris;
+        this.grantType = builder.grantType;
+
+        this.applicationType = builder.applicationType;
         this.clientName = builder.clientName;
         this.logoUri = builder.logoUri;
         this.subjectType = builder.subjectType;
@@ -62,20 +68,21 @@ public class RegistrationRequest extends IdentityRequest {
         this.contacts = builder.contacts;
         this.requestUris = builder.requestUris;
         this.owner = builder.owner;
-        this.callbackUrl = builder.callbackUrl;
         this.tokenScope = builder.tokenScope;
-        this.grantType = builder.grantType;
-        this.saasApp = builder.saasApp;
+
         this.audience = builder.audience;
     }
 
+    public List<String> getRedirectUris() {
+        return redirectUris;
+    }
+
+    public String getGrantType() {
+        return grantType;
+    }
 
     public String getApplicationType() {
         return applicationType;
-    }
-
-    public String[] getRedirectUris() {
-        return redirectUris;
     }
 
     public String getClientName() {
@@ -122,32 +129,21 @@ public class RegistrationRequest extends IdentityRequest {
         return owner;
     }
 
-    public String getCallbackUrl() {
-        return callbackUrl;
-    }
-
     public String getTokenScope() {
         return tokenScope;
-    }
-
-    public String getGrantType() {
-        return grantType;
-    }
-
-    public boolean isSaasApp() {
-        return saasApp;
     }
 
     public String getAudience() {
         return audience;
     }
 
-
-
     public static class DCRRegisterInboundRequestBuilder extends IdentityRequestBuilder {
 
+        private List<String> redirectUris = new ArrayList<>();
+        private String grantType;
+
         private String applicationType;
-        private String[] redirectUris;
+
         private String clientName;
         private String logoUri;
         private String subjectType;
@@ -159,82 +155,92 @@ public class RegistrationRequest extends IdentityRequest {
         private String[] contacts;
         private String[] requestUris;
         private String owner;
-        private String callbackUrl;
         private String tokenScope;
-        private String grantType;
-        private boolean saasApp;
+
         private String audience;
 
-        public void setApplicationType(String applicationType) {
+        public DCRRegisterInboundRequestBuilder setApplicationType(String applicationType) {
             this.applicationType = applicationType;
+            return this;
         }
 
-        public void setRedirectUris(String[] redirectUris) {
+        public DCRRegisterInboundRequestBuilder setRedirectUris(List<String> redirectUris) {
             this.redirectUris = redirectUris;
+            return this;
         }
 
-        public void setClientName(String clientName) {
+        public List<String> getRedirectUris() {
+            return redirectUris;
+        }
+
+        public DCRRegisterInboundRequestBuilder setClientName(String clientName) {
             this.clientName = clientName;
+            return this;
         }
 
-        public void setLogoUri(String logoUri) {
+        public DCRRegisterInboundRequestBuilder setLogoUri(String logoUri) {
             this.logoUri = logoUri;
+            return this;
         }
 
-        public void setSubjectType(String subjectType) {
+        public DCRRegisterInboundRequestBuilder setSubjectType(String subjectType) {
             this.subjectType = subjectType;
+            return this;
         }
 
-        public void setSectorIdentifierUri(String sectorIdentifierUri) {
+        public DCRRegisterInboundRequestBuilder setSectorIdentifierUri(String sectorIdentifierUri) {
             this.sectorIdentifierUri = sectorIdentifierUri;
+            return this;
         }
 
-        public void setTokenEndpointAuthMethod(String tokenEndpointAuthMethod) {
+        public DCRRegisterInboundRequestBuilder setTokenEndpointAuthMethod(String tokenEndpointAuthMethod) {
             this.tokenEndpointAuthMethod = tokenEndpointAuthMethod;
+            return this;
         }
 
-        public void setJwksUri(String jwksUri) {
+        public DCRRegisterInboundRequestBuilder setJwksUri(String jwksUri) {
             this.jwksUri = jwksUri;
+            return this;
         }
 
-        public void setUserInfoEncryptedResponseAlg(String userInfoEncryptedResponseAlg) {
+        public DCRRegisterInboundRequestBuilder setUserInfoEncryptedResponseAlg(String userInfoEncryptedResponseAlg) {
             this.userInfoEncryptedResponseAlg = userInfoEncryptedResponseAlg;
+            return this;
         }
 
-        public void setUserInfoEncryptedResponseEnc(String userInfoEncryptedResponseEnc) {
+        public DCRRegisterInboundRequestBuilder setUserInfoEncryptedResponseEnc(String userInfoEncryptedResponseEnc) {
             this.userInfoEncryptedResponseEnc = userInfoEncryptedResponseEnc;
+            return this;
         }
 
-        public void setContacts(String[] contacts) {
+        public DCRRegisterInboundRequestBuilder setContacts(String[] contacts) {
             this.contacts = contacts;
+            return this;
         }
 
-        public void setRequestUris(String[] requestUris) {
+        public DCRRegisterInboundRequestBuilder setRequestUris(String[] requestUris) {
             this.requestUris = requestUris;
+            return this;
         }
 
-        public void setOwner(String owner) {
+        public DCRRegisterInboundRequestBuilder setOwner(String owner) {
             this.owner = owner;
+            return this;
         }
 
-        public void setCallbackUrl(String callbackUrl) {
-            this.callbackUrl = callbackUrl;
-        }
-
-        public void setTokenScope(String tokenScope) {
+        public DCRRegisterInboundRequestBuilder setTokenScope(String tokenScope) {
             this.tokenScope = tokenScope;
+            return this;
         }
 
-        public void setGrantType(String grantType) {
+        public DCRRegisterInboundRequestBuilder setGrantType(String grantType) {
             this.grantType = grantType;
+            return this;
         }
 
-        public void setSaasApp(boolean saasApp) {
-            this.saasApp = saasApp;
-        }
-
-        public void setAudience(String audience) {
+        public DCRRegisterInboundRequestBuilder setAudience(String audience) {
             this.audience = audience;
+            return this;
         }
 
         @Override
@@ -243,13 +249,15 @@ public class RegistrationRequest extends IdentityRequest {
         }
     }
 
-    public static class DCRRegisterInboundRequestConstant extends IdentityRequestConstants {
+    public static class RegisterRequestConstant extends IdentityRequestConstants {
+
+        public final static String GRANT_TYPE = "grant_types" ;
+        public final static String REDIRECT_URIS = "redirect_uris" ;
+
         public final static String CLIENT_NAME = "clientName" ;
-        public final static String CALLBACK_URL = "callbackUrl" ;
         public final static String TOKEN_SCOPE = "tokenScope" ;
         public final static String OWNER = "owner" ;
-        public final static String GRANT_TYPE = "grantType" ;
-        public final static String SAAS_APP = "saasApp" ;
+
     }
 
 }

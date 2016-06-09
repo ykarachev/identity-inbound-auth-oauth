@@ -15,29 +15,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.identity.oauth.dcr.model;
+package org.wso2.carbon.identity.oidc.dcr.processor.register.model;
 
-import org.wso2.carbon.identity.oauth.dcr.DCRManagementService;
+import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationRequestProfile;
 
-/**
- * This class describes the response sent to the client if the registration was unsuccessful
- */
-public class FaultResponse {
 
-    private DCRManagementService.ErrorCode code;
-    private String description;
+public class OIDCRegistrationRequestProfile extends RegistrationRequestProfile {
 
-    public FaultResponse(DCRManagementService.ErrorCode code, String description) {
-        this.code = code;
-        this.description = description;
-    }
-
-    public DCRManagementService.ErrorCode getCode() {
-        return code;
-    }
-
-    public String getDescription() {
-        return description;
-    }
 
 }

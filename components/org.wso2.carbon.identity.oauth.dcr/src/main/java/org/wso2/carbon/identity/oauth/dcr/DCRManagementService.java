@@ -17,34 +17,20 @@
  */
 package org.wso2.carbon.identity.oauth.dcr;
 
-import org.wso2.carbon.identity.oauth.dcr.processor.register.model.OAuthApplication;
-import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationProfile;
+import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationRequestProfile;
+import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationResponseProfile;
 
 public interface DCRManagementService {
 
-    enum ErrorCode {
-        INVALID_URI("invalid_redirect_uri"), INVALID_CLIENT_METADATA("invalid_client_metadata");
-
-        private String value;
-
-        ErrorCode(String value) {
-            this.value = value;
-        }
-
-        public String getValue() {
-            return value;
-        }
-    }
-
     /**
      * This method will register a new OAuth application using the data provided by the
-     * RegistrationProfile.
+     * RegistrationRequestProfile.
      *
-     * @param profile - RegistrationProfile of the OAuth application to be created.
-     * @return OAuthApplication object which holds the necessary data of created OAuth app.
+     * @param profile - RegistrationRequestProfile of the OAuth application to be created.
+     * @return RegistrationResponseProfile object which holds the necessary data of created OAuth app.
      * @throws DCRManagementException
      */
-    OAuthApplication registerOAuthApplication(RegistrationProfile profile)
+    RegistrationResponseProfile registerOAuthApplication(RegistrationRequestProfile profile)
             throws DCRManagementException;
 
     /**

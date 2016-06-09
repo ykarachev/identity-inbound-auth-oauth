@@ -45,9 +45,9 @@ import org.wso2.carbon.identity.oauth.dcr.processor.unregister.factory.Unregistr
  * cardinality="0..1" policy="dynamic"
  * bind="setDynamicClientRegistrationService" unbind="unsetDynamicClientRegistrationService"
  */
-public class DynamicClientRegistrationServiceComponent {
+public class DCRServiceComponent {
 
-    private static final Log log = LogFactory.getLog(DynamicClientRegistrationServiceComponent.class);
+    private static final Log log = LogFactory.getLog(DCRServiceComponent.class);
 
     @SuppressWarnings("unused")
     protected void activate(ComponentContext componentContext) {
@@ -76,7 +76,7 @@ public class DynamicClientRegistrationServiceComponent {
     @SuppressWarnings("unused")
     protected void deactivate(ComponentContext componentContext) {
         if (log.isDebugEnabled()) {
-            log.debug("Stopping DynamicClientRegistrationServiceComponent");
+            log.debug("Stopping DCRServiceComponent");
         }
     }
 
@@ -89,7 +89,7 @@ public class DynamicClientRegistrationServiceComponent {
         if (log.isDebugEnabled()) {
             log.debug("Setting ApplicationManagement Service");
         }
-        DynamicClientRegistrationDataHolder.getInstance().
+        DCRDataHolder.getInstance().
                 setApplicationManagementService(applicationManagementService);
     }
 
@@ -102,7 +102,7 @@ public class DynamicClientRegistrationServiceComponent {
         if (log.isDebugEnabled()) {
             log.debug("Unsetting ApplicationManagement.");
         }
-        DynamicClientRegistrationDataHolder.getInstance().setApplicationManagementService(null);
+        DCRDataHolder.getInstance().setApplicationManagementService(null);
     }
 
     /**
@@ -115,7 +115,7 @@ public class DynamicClientRegistrationServiceComponent {
         if (log.isDebugEnabled()) {
             log.debug("Setting DCRManagementService.");
         }
-        DynamicClientRegistrationDataHolder.getInstance().setDCRManagementService(DCRManagementService);
+        DCRDataHolder.getInstance().setDCRManagementService(DCRManagementService);
     }
 
     /**
@@ -127,7 +127,7 @@ public class DynamicClientRegistrationServiceComponent {
         if (log.isDebugEnabled()) {
             log.debug("Unsetting DCRManagementService.");
         }
-        DynamicClientRegistrationDataHolder.getInstance().setDCRManagementService(null);
+        DCRDataHolder.getInstance().setDCRManagementService(null);
     }
 
 }

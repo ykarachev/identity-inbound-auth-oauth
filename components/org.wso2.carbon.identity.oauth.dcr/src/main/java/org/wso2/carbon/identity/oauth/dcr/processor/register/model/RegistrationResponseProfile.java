@@ -17,25 +17,22 @@
  */
 package org.wso2.carbon.identity.oauth.dcr.processor.register.model;
 
-import org.json.simple.JSONObject;
-import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * This class represents an OAuth application populated with necessary data.
  */
-public class OAuthApplication {
+public class RegistrationResponseProfile {
 
     private String clientId;
+    private String clientSecret;
+    private String clientIdIssueAt ;
+    private String clientSecretExpiresAt ;
+
     private String clientName;
     private List<String> redirectUrls = new ArrayList<>();
-    private String clientSecret;
-
-    private Map<String, Object> parameters = new HashMap<String, Object>();
+    private List<String> grantTypes = new ArrayList<>();
 
     public String getClientId() {
         return clientId;
@@ -53,34 +50,28 @@ public class OAuthApplication {
         this.clientSecret = clientSecret;
     }
 
-    public void setClientName(String clientName) {
-        this.clientName = clientName;
+    public String getClientIdIssueAt() {
+        return new java.util.Date().toString();
     }
 
-
-    public void addParameter(String name, Object value) {
-        parameters.put(name, value);
+    public void setClientIdIssueAt(String clientIdIssueAt) {
+        this.clientIdIssueAt = clientIdIssueAt;
     }
 
-    public Object getParameter(String name) {
-        return parameters.get(name);
+    public String getClientSecretExpiresAt() {
+        return clientSecretExpiresAt;
     }
 
-    public String getJsonString() {
-        return JSONObject.toJSONString(parameters);
+    public void setClientSecretExpiresAt(String clientSecretExpiresAt) {
+        this.clientSecretExpiresAt = clientSecretExpiresAt;
     }
 
     public String getClientName() {
         return clientName;
     }
 
-
-    public void putAll(Map<String, Object> parameters) {
-        this.parameters.putAll(parameters);
-    }
-
-    public void removeParameter(String key) {
-        this.parameters.remove(key);
+    public void setClientName(String clientName) {
+        this.clientName = clientName;
     }
 
     public List<String> getRedirectUrls() {
@@ -89,5 +80,13 @@ public class OAuthApplication {
 
     public void setRedirectUrls(List<String> redirectUrls) {
         this.redirectUrls = redirectUrls;
+    }
+
+    public List<String> getGrantTypes() {
+        return grantTypes;
+    }
+
+    public void setGrantTypes(List<String> grantTypes) {
+        this.grantTypes = grantTypes;
     }
 }

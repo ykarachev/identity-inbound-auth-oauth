@@ -33,7 +33,7 @@ public class HttpRegistrationResponseFactory extends HttpIdentityResponseFactory
     @Override
     public void create(HttpIdentityResponse.HttpIdentityResponseBuilder httpIdentityResponseBuilder, IdentityResponse identityResponse) {
         RegistrationResponse registrationResponse = (RegistrationResponse)identityResponse ;
-        httpIdentityResponseBuilder.setBody(generateSuccessfulResponse(registrationResponse));
+        httpIdentityResponseBuilder.setBody(generateSuccessfulResponse(registrationResponse).toJSONString());
         httpIdentityResponseBuilder.setStatusCode(HttpServletResponse.SC_CREATED);
         httpIdentityResponseBuilder.addHeader(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
                                               OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE);
@@ -44,11 +44,14 @@ public class HttpRegistrationResponseFactory extends HttpIdentityResponseFactory
 
     public HttpIdentityResponse.HttpIdentityResponseBuilder handleException(FrameworkException exception) {
         HttpIdentityResponse.HttpIdentityResponseBuilder builder = new HttpIdentityResponse.HttpIdentityResponseBuilder();
-        builder.setStatusCode(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+        String errorMessage = generateErrorResponse("ddd", exception.getMessage()).toJSONString();
+        builder.setBody(errorMessage);
+        builder.setStatusCode(HttpServletResponse.SC_BAD_REQUEST);
         builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
                           OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE);
         builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
                           OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
+        builder.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
         return builder;
     }
 
@@ -73,19 +76,34 @@ public class HttpRegistrationResponseFactory extends HttpIdentityResponseFactory
     }
 
 
-    private String generateSuccessfulResponse(RegistrationResponse registrationResponse) {
+    protected JSONObject generateSuccessfulResponse(RegistrationResponse registrationResponse) {
         JSONObject obj = new JSONObject();
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_ID, registrationResponse.getClientId());
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_NAME, registrationResponse
+        obj.put(RegistrationResponse.DCRegisterResponseConstants.CLIENT_ID, registrationResponse
+                .getRegistrationResponseProfile().getClientId());
+        obj.put(RegistrationResponse.DCRegisterResponseConstants.CLIENT_NAME, registrationResponse.getRegistrationResponseProfile()
                 .getClientName());
         JSONArray jsonArray = new JSONArray();
-        for (String redirectUri : registrationResponse.getRedirectUris()){
+        for (String redirectUri : registrationResponse.getRegistrationResponseProfile().getRedirectUrls()){
             jsonArray.add(redirectUri);
         }
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CALLBACK_URIS, jsonArray);
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_SECRET, registrationResponse
+        obj.put(RegistrationResponse.DCRegisterResponseConstants.REDIRECT_URIS, jsonArray);
+
+        jsonArray = new JSONArray();
+        for (String grantType : registrationResponse.getRegistrationResponseProfile().getGrantTypes()){
+            jsonArray.add(grantType);
+        }
+        obj.put(RegistrationResponse.DCRegisterResponseConstants.GRANT_TYPES, jsonArray);
+
+        obj.put(RegistrationResponse.DCRegisterResponseConstants.CLIENT_SECRET, registrationResponse.getRegistrationResponseProfile()
                 .getClientSecret());
-        return obj.toString();
+        return obj;
+    }
+
+    protected JSONObject generateErrorResponse(String error, String description){
+        JSONObject obj = new JSONObject();
+        obj.put("error", error);
+        obj.put("error_description", description);
+        return obj;
     }
 
 

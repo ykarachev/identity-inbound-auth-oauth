@@ -5,8 +5,8 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Htt
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponseFactory;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
-import org.wso2.carbon.identity.oauth.dcr.processor.unregister.UnregistrationException;
-import org.wso2.carbon.identity.oauth.dcr.processor.unregister.model.UnregisterResponse;
+import org.wso2.carbon.identity.oauth.dcr.processor.unregister.UnregistrationProcessorException;
+import org.wso2.carbon.identity.oauth.dcr.processor.unregister.model.UnregistrationResponse;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -20,7 +20,7 @@ public class HttpUnregistrationResponseFactory extends HttpIdentityResponseFacto
 
     @Override
     public boolean canHandle(IdentityResponse identityResponse) {
-        if(identityResponse instanceof UnregisterResponse) {
+        if(identityResponse instanceof UnregistrationResponse) {
             return true;
         }
         return false;
@@ -60,7 +60,7 @@ public class HttpUnregistrationResponseFactory extends HttpIdentityResponseFacto
     }
 
     public boolean canHandle(FrameworkException exception) {
-        if(exception instanceof UnregistrationException){
+        if(exception instanceof UnregistrationProcessorException){
             return true ;
         }
         return false;

@@ -25,6 +25,7 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Fra
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 import org.wso2.carbon.identity.oauth.dcr.processor.register.factory.RegistrationRequestFactory;
 import org.wso2.carbon.identity.oidc.dcr.processor.register.model.OIDCRegistrationRequest;
+import org.wso2.carbon.identity.oidc.dcr.processor.register.model.OIDCRegistrationRequestProfile;
 import org.wso2.carbon.identity.oidc.dcr.util.OIDCDCRConstants;
 
 import javax.servlet.http.HttpServletRequest;
@@ -35,37 +36,39 @@ import java.util.regex.Matcher;
 /**
  * OIDCRegistrationRequestFactory build the request for DCR Registry Request.
  */
-public class OIDCRegistrationRequestFactory extends RegistrationRequestFactory{
+public class OIDCRegistrationRequestFactory extends RegistrationRequestFactory {
 
     private static Log log = LogFactory.getLog(OIDCRegistrationRequestFactory.class);
 
     @Override
     public boolean canHandle(HttpServletRequest request, HttpServletResponse response) throws
                                                                                        FrameworkRuntimeException {
-        boolean canHandle = false ;
+        boolean canHandle = false;
         if (request != null) {
             Matcher matcher = OIDCDCRConstants.OIDC_DCR_ENDPOINT_REGISTER_URL_PATTERN.matcher(request.getRequestURI());
             if (matcher.matches() && HttpMethod.POST.equals(request.getMethod())) {
-                canHandle =  true;
+                canHandle = true;
             }
         }
-        if(log.isDebugEnabled()){
-            log.debug("canHandle "+ canHandle +" by OIDCRegistrationRequestFactory.");
+        if (log.isDebugEnabled()) {
+            log.debug("canHandle " + canHandle + " by OIDCRegistrationRequestFactory.");
         }
         return canHandle;
     }
 
 
     @Override
-    public OIDCRegistrationRequest.OIDCRegisterRequestBuilder create(HttpServletRequest request,
-                                                                      HttpServletResponse response) throws FrameworkClientException
-             {
+    public OIDCRegistrationRequest.OIDCRegistrationRequestBuilder create(HttpServletRequest request,
+                                                                         HttpServletResponse response)
+            throws FrameworkClientException {
 
-        if(log.isDebugEnabled()){
-            log.debug("create RegistrationRequest.DCRRegisterInboundRequestBuilder by OIDCRegistrationRequestFactory.");
+        if (log.isDebugEnabled()) {
+            log.debug("create RegistrationRequest.RegistrationRequestBuilder by OIDCRegistrationRequestFactory.");
         }
-                 OIDCRegistrationRequest.OIDCRegisterRequestBuilder registerRequestBuilder = new
-                         OIDCRegistrationRequest.OIDCRegisterRequestBuilder();
+        OIDCRegistrationRequest.OIDCRegistrationRequestBuilder registerRequestBuilder = new
+                OIDCRegistrationRequest.OIDCRegistrationRequestBuilder(request, response);
+
+
         create(registerRequestBuilder, request, response);
 
         return registerRequestBuilder;
@@ -74,13 +77,15 @@ public class OIDCRegistrationRequestFactory extends RegistrationRequestFactory{
 
     @Override
     public void create(IdentityRequest.IdentityRequestBuilder builder, HttpServletRequest request,
-                       HttpServletResponse response)  throws FrameworkClientException{
+                       HttpServletResponse response) throws FrameworkClientException {
 
-        OIDCRegistrationRequest.OIDCRegisterRequestBuilder registerRequestBuilder = (OIDCRegistrationRequest.OIDCRegisterRequestBuilder)builder ;
+        OIDCRegistrationRequest.OIDCRegistrationRequestBuilder registerRequestBuilder =
+                (OIDCRegistrationRequest.OIDCRegistrationRequestBuilder) builder;
+        OIDCRegistrationRequestProfile oidcRegistrationRequestProfile = new OIDCRegistrationRequestProfile();
+        registerRequestBuilder.setRegistrationRequestProfile(oidcRegistrationRequestProfile);
 
         super.create(registerRequestBuilder, request, response);
-
-
-
     }
+
+
 }

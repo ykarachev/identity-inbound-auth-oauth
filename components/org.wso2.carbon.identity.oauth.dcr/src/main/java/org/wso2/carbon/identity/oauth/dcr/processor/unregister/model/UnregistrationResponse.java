@@ -3,11 +3,11 @@ package org.wso2.carbon.identity.oauth.dcr.processor.unregister.model;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityMessageContext;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 
-public class UnregisterResponse extends IdentityResponse {
+public class UnregistrationResponse extends IdentityResponse {
 
     private boolean isUnregistered = false ;
 
-    protected UnregisterResponse(
+    protected UnregistrationResponse(
             DCUnregisterResponseBuilder builder) {
         super(builder);
         this.isUnregistered = builder.isUnregistered ;
@@ -36,8 +36,8 @@ public class UnregisterResponse extends IdentityResponse {
         }
 
         @Override
-        public UnregisterResponse build() {
-            return new UnregisterResponse(this);
+        public UnregistrationResponse build() {
+            return new UnregistrationResponse(this);
         }
     }
 }

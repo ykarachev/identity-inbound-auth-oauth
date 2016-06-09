@@ -20,6 +20,10 @@ package org.wso2.carbon.identity.oidc.dcr.processor.register.model;
 
 import org.wso2.carbon.identity.application.authentication.framework.inbound.FrameworkRuntimeException;
 import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationRequest;
+import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationRequestProfile;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * DCR Request data for Register a oauth application
@@ -27,27 +31,24 @@ import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationR
  */
 public class OIDCRegistrationRequest extends RegistrationRequest {
 
-
-    public OIDCRegistrationRequest(OIDCRegisterRequestBuilder builder) {
-
+    public OIDCRegistrationRequest(OIDCRegistrationRequestBuilder builder) {
         super(builder);
     }
 
 
-
-
-
-    public static class OIDCRegisterRequestBuilder extends RegistrationRequest.DCRRegisterInboundRequestBuilder {
-
+    public static class OIDCRegistrationRequestBuilder extends RegistrationRequestBuilder {
+        public OIDCRegistrationRequestBuilder(HttpServletRequest request,
+                                                HttpServletResponse response) {
+            super(request, response);
+        }
 
         @Override
-        public OIDCRegistrationRequest build() throws FrameworkRuntimeException {
+        public RegistrationRequest build() throws FrameworkRuntimeException {
             return new OIDCRegistrationRequest(this);
         }
     }
 
-    public static class OIDCRegisterRequestConstant extends RegisterRequestConstant {
+    public static class OIDCRegistrationRequestConstants extends RegisterRequestConstant {
 
     }
-
 }

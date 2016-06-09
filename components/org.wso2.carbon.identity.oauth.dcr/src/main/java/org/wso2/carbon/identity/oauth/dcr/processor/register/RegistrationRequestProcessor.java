@@ -9,11 +9,11 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Ide
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 import org.wso2.carbon.identity.oauth.dcr.DCRManagementService;
-import org.wso2.carbon.identity.oauth.dcr.internal.DynamicClientRegistrationDataHolder;
-import org.wso2.carbon.identity.oauth.dcr.processor.register.model.OAuthApplication;
-import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationProfile;
+import org.wso2.carbon.identity.oauth.dcr.internal.DCRDataHolder;
 import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationRequest;
+import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationRequestProfile;
 import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationResponse;
+import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationResponseProfile;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
 
 import java.util.regex.Matcher;
@@ -30,22 +30,15 @@ public class RegistrationRequestProcessor extends IdentityProcessor {
         RegistrationResponse.DCRRegisterResponseBuilder dcrRegisterResponseBuilder = null;
         try {
             RegistrationRequest registerRequest = (RegistrationRequest) identityRequest;
-            RegistrationProfile registrationProfile = new RegistrationProfile();
-
-            registrationProfile.setOwner(registerRequest.getOwner());
-            registrationProfile.setClientName(registerRequest.getClientName());
-            registrationProfile.setGrantType(registerRequest.getGrantType());
-            registrationProfile.setRedirectUris(registerRequest.getRedirectUris());
-
+            RegistrationRequestProfile registrationRequestProfile = registerRequest.getRegistrationRequestProfile();
+            registrationRequestProfile.setTenantDomain(registerRequest.getTenantDomain());
             DCRManagementService
-                    DCRManagementService = DynamicClientRegistrationDataHolder.getInstance().getDCRManagementService();
+                    DCRManagementService = DCRDataHolder.getInstance().getDCRManagementService();
 
-            OAuthApplication oAuthApplication = DCRManagementService.registerOAuthApplication(registrationProfile);
+            RegistrationResponseProfile registrationResponseProfile = DCRManagementService.registerOAuthApplication(registrationRequestProfile);
+
             dcrRegisterResponseBuilder = new RegistrationResponse.DCRRegisterResponseBuilder();
-            dcrRegisterResponseBuilder.setRedirectUris(oAuthApplication.getRedirectUrls());
-            dcrRegisterResponseBuilder.setClientId(oAuthApplication.getClientId());
-            dcrRegisterResponseBuilder.setClientName(oAuthApplication.getClientName());
-            dcrRegisterResponseBuilder.setClientSecret(oAuthApplication.getClientSecret());
+            dcrRegisterResponseBuilder.setRegistrationResponseProfile(registrationResponseProfile);
 
         } catch (FrameworkException e) {
             throw new RegistrationProcessorException("Error occurred file registering application.", e);
@@ -90,6 +83,5 @@ public class RegistrationRequestProcessor extends IdentityProcessor {
         }
         return canHandle;
     }
-
 
 }

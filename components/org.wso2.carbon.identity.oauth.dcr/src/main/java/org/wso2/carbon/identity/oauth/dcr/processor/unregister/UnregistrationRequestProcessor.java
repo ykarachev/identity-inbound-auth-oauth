@@ -9,9 +9,9 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Ide
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 import org.wso2.carbon.identity.oauth.dcr.DCRManagementException;
 import org.wso2.carbon.identity.oauth.dcr.DCRManagementService;
-import org.wso2.carbon.identity.oauth.dcr.internal.DynamicClientRegistrationDataHolder;
-import org.wso2.carbon.identity.oauth.dcr.processor.unregister.model.UnregisterResponse;
+import org.wso2.carbon.identity.oauth.dcr.internal.DCRDataHolder;
 import org.wso2.carbon.identity.oauth.dcr.processor.unregister.model.UnregistrationRequest;
+import org.wso2.carbon.identity.oauth.dcr.processor.unregister.model.UnregistrationResponse;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
 
 import java.util.regex.Matcher;
@@ -22,20 +22,20 @@ public class UnregistrationRequestProcessor extends IdentityProcessor{
     @Override
     public IdentityResponse.IdentityResponseBuilder process(IdentityRequest identityRequest) throws FrameworkException {
 
-        UnregisterResponse.DCUnregisterResponseBuilder dcUnregisterResponseBuilder = null ;
+        UnregistrationResponse.DCUnregisterResponseBuilder dcUnregisterResponseBuilder = null ;
         try {
             UnregistrationRequest unregistrationRequest = (UnregistrationRequest)identityRequest ;
-            dcUnregisterResponseBuilder = new UnregisterResponse.DCUnregisterResponseBuilder();
+            dcUnregisterResponseBuilder = new UnregistrationResponse.DCUnregisterResponseBuilder();
 
             DCRManagementService
-                    DCRManagementService = DynamicClientRegistrationDataHolder.getInstance().getDCRManagementService();
+                    DCRManagementService = DCRDataHolder.getInstance().getDCRManagementService();
 
             DCRManagementService.unregisterOAuthApplication(unregistrationRequest.getUserId(),
                                                                            unregistrationRequest
                                                                                    .getApplicationName(), unregistrationRequest
                                                                                    .getConsumerKey());
         } catch (DCRManagementException e) {
-            throw new UnregistrationException("Error occured while processing the request.", e);
+            throw new UnregistrationProcessorException("Error occured while processing the request.", e);
         }
         return dcUnregisterResponseBuilder ;
     }

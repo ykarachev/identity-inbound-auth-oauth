@@ -12,6 +12,8 @@ import org.wso2.carbon.identity.oauth.dcr.processor.register.model.RegistrationR
 import org.wso2.carbon.identity.oidc.dcr.processor.register.OIDCRegistrationProcessorException;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
 
 public class HttpOIDCRegistrationResponseFactory extends HttpRegistrationResponseFactory {
     @Override
@@ -30,19 +32,21 @@ public class HttpOIDCRegistrationResponseFactory extends HttpRegistrationRespons
     @Override
     public void create(HttpIdentityResponse.HttpIdentityResponseBuilder httpIdentityResponseBuilder, IdentityResponse identityResponse) {
         RegistrationResponse registrationResponse = (RegistrationResponse)identityResponse ;
-        super.create(httpIdentityResponseBuilder, identityResponse);
-        httpIdentityResponseBuilder.setBody(generateSuccessfulResponse(registrationResponse));
+        //super.create(httpIdentityResponseBuilder, identityResponse);
+        httpIdentityResponseBuilder.setStatusCode(HttpServletResponse.SC_CREATED);
+        httpIdentityResponseBuilder.addHeader(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
+                                              OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE);
+        httpIdentityResponseBuilder.addHeader(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
+                                              OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
+        httpIdentityResponseBuilder.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
+        httpIdentityResponseBuilder.setBody(generateSuccessfulResponse(registrationResponse).toJSONString());
     }
 
     public HttpIdentityResponse.HttpIdentityResponseBuilder handleException(FrameworkException exception) {
 
         HttpIdentityResponse.HttpIdentityResponseBuilder builder = new HttpIdentityResponse.HttpIdentityResponseBuilder();
         builder.setStatusCode(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-        builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
-                          OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE);
-        builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
-                          OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
-        return builder;
+        return super.handleException(exception);
     }
 
     @Override
@@ -65,21 +69,6 @@ public class HttpOIDCRegistrationResponseFactory extends HttpRegistrationRespons
         return false;
     }
 
-
-    private String generateSuccessfulResponse(RegistrationResponse registrationResponse) {
-        JSONObject obj = new JSONObject();
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_ID, registrationResponse.getClientId());
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_NAME, registrationResponse
-                .getClientName());
-        JSONArray jsonArray = new JSONArray();
-        for (String redirectUri : registrationResponse.getRedirectUris()){
-            jsonArray.add(redirectUri);
-        }
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CALLBACK_URIS, jsonArray);
-        obj.put(RegistrationResponse.DCRegisterResponseConstants.OAUTH_CLIENT_SECRET, registrationResponse
-                .getClientSecret());
-        return obj.toString();
-    }
 
 
 }

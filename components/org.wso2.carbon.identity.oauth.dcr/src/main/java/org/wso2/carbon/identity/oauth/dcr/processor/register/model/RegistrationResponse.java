@@ -21,85 +21,38 @@ package org.wso2.carbon.identity.oauth.dcr.processor.register.model;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityMessageContext;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 
-import java.util.ArrayList;
-import java.util.List;
-
 
 public class RegistrationResponse extends IdentityResponse {
 
 
-    private String clientId;
-    private String clientName;
-    private List<String> redirectUris = new ArrayList<>();
-    private String clientSecret;
+    private RegistrationResponseProfile registrationResponseProfile = null ;
 
     protected RegistrationResponse(
             DCRRegisterResponseBuilder builder) {
         super(builder);
-        this.clientId = builder.clientId ;
-        this.clientName = builder.clientName ;
-        this.redirectUris = builder.redirectUris ;
-        this.clientSecret = builder.clientSecret ;
+        this.registrationResponseProfile = builder.registrationResponseProfile ;
     }
 
-    public String getClientId() {
-        return clientId;
+    public RegistrationResponseProfile getRegistrationResponseProfile() {
+        return registrationResponseProfile;
     }
-
-    public String getClientName() {
-        return clientName;
-    }
-
-    public List<String> getRedirectUris() {
-        return redirectUris;
-    }
-
-    public String getClientSecret() {
-        return clientSecret;
-    }
-
-
 
     public static class DCRRegisterResponseBuilder extends  IdentityResponseBuilder{
 
-        private String clientId;
-        private String clientName;
-        private List<String> redirectUris = new ArrayList<>();
-        private String clientSecret;
-
-        public DCRRegisterResponseBuilder() {
-            super();
-        }
+        private RegistrationResponseProfile registrationResponseProfile = null ;
 
         public DCRRegisterResponseBuilder(
                 IdentityMessageContext context) {
             super(context);
         }
 
-        public DCRRegisterResponseBuilder setClientId(String clientId){
-            this.clientId = clientId ;
+        public DCRRegisterResponseBuilder() {
+        }
+
+        public DCRRegisterResponseBuilder setRegistrationResponseProfile(RegistrationResponseProfile registrationResponseProfile){
+            this.registrationResponseProfile = registrationResponseProfile ;
             return this ;
         }
-
-        public DCRRegisterResponseBuilder setClientName(String clientName){
-            this.clientName = clientName ;
-            return this ;
-        }
-
-        public DCRRegisterResponseBuilder setRedirectUris(List<String> redirectUris){
-            this.redirectUris = redirectUris ;
-            return this ;
-        }
-
-        public List<String> getRedirectUris() {
-            return redirectUris;
-        }
-
-        public DCRRegisterResponseBuilder setClientSecret(String clientSecret){
-            this.clientSecret = clientSecret ;
-            return this ;
-        }
-
         @Override
         public RegistrationResponse build() {
             return new RegistrationResponse(this);
@@ -107,9 +60,13 @@ public class RegistrationResponse extends IdentityResponse {
     }
 
     public static class DCRegisterResponseConstants extends IdentityResponseConstants{
-        public static final String OAUTH_CLIENT_ID = "client_id";
-        public static final String OAUTH_CLIENT_SECRET = "client_secret";
-        public static final String OAUTH_CLIENT_NAME = "client_name";
-        public static final String OAUTH_CALLBACK_URIS = "redirect_uris";
+        public static final String CLIENT_ID = "client_id";
+        public static final String CLIENT_SECRET = "client_secret";
+        public static final String CLIENT_NAME = "client_name";
+        public static final String CLIENT_ID_ISSUED_AT = "client_id_issued_at";
+        public static final String CLIENT_SECRET_EXPIRES_AT = "client_secret_expires_at";
+        public final static String REDIRECT_URIS = "redirect_uris" ;
+        public final static String GRANT_TYPES = "grant_types" ;
+
     }
 }

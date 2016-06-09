@@ -90,7 +90,7 @@ public class OAuthCallbackHandlerRegistry {
                         OAuthCallbackHandler callbackHandler;
 
                         try {
-                            clazz = Thread.currentThread().getContextClassLoader().loadClass(metaData.getClassName());
+                            clazz = this.getClass().getClassLoader().loadClass(metaData.getClassName());
                             callbackHandler = (OAuthCallbackHandler) clazz.newInstance();
                             callbackHandler.setPriority(metaData.getPriority());
                             callbackHandler.setProperties(metaData.getProperties());

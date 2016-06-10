@@ -31,12 +31,10 @@ import java.util.List;
  */
 public class DCRDataHolder {
 
-    private ApplicationManagementService applicationManagementService = null ;
-
+    private static DCRDataHolder thisInstance = new DCRDataHolder();
+    private ApplicationManagementService applicationManagementService = null;
     private List<RegistrationHandler> registrationHandlerList = new ArrayList<>();
     private List<UnRegistrationHandler> unRegistrationHandlerList = new ArrayList<>();
-
-    private static DCRDataHolder thisInstance = new DCRDataHolder();
 
     private DCRDataHolder() {
     }

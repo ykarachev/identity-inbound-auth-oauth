@@ -20,14 +20,12 @@ package org.wso2.carbon.identity.oidc.dcr.processor;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 import org.wso2.carbon.identity.oauth.dcr.DCRException;
 import org.wso2.carbon.identity.oauth.dcr.context.DCRMessageContext;
 import org.wso2.carbon.identity.oauth.dcr.exception.RegistrationException;
 import org.wso2.carbon.identity.oauth.dcr.processor.DCRProcessor;
-import org.wso2.carbon.identity.oidc.dcr.OIDCDCRException;
 import org.wso2.carbon.identity.oidc.dcr.context.OIDCDCRMessageContext;
 import org.wso2.carbon.identity.oidc.dcr.model.OIDCRegistrationRequest;
 import org.wso2.carbon.identity.oidc.dcr.util.OIDCDCRConstants;
@@ -37,6 +35,7 @@ import java.util.regex.Matcher;
 public class OIDCDCRProcessor extends DCRProcessor {
 
     private static Log log = LogFactory.getLog(OIDCDCRProcessor.class);
+
     @Override
     public IdentityResponse.IdentityResponseBuilder process(IdentityRequest identityRequest) throws DCRException {
 
@@ -47,7 +46,7 @@ public class OIDCDCRProcessor extends DCRProcessor {
         IdentityResponse.IdentityResponseBuilder identityResponseBuilder = null;
         if (identityRequest instanceof OIDCRegistrationRequest) {
             identityResponseBuilder = registerOAuthApplication(oidcdcrMessageContext);
-        }else{
+        } else {
             identityResponseBuilder = super.process(identityRequest);
         }
 
@@ -62,15 +61,16 @@ public class OIDCDCRProcessor extends DCRProcessor {
 
     @Override
     public boolean canHandle(IdentityRequest identityRequest) {
-        boolean canHandle = false ;
+        boolean canHandle = false;
         if (identityRequest != null) {
-            Matcher registerMatcher = OIDCDCRConstants.OIDC_DCR_ENDPOINT_REGISTER_URL_PATTERN.matcher(identityRequest.getRequestURI());
+            Matcher registerMatcher =
+                    OIDCDCRConstants.OIDC_DCR_ENDPOINT_REGISTER_URL_PATTERN.matcher(identityRequest.getRequestURI());
             if (registerMatcher.matches()) {
-                canHandle =  true;
+                canHandle = true;
             }
         }
-        if(log.isDebugEnabled()){
-            log.debug("canHandle "+ canHandle +" by OIDCDCRProcessor.");
+        if (log.isDebugEnabled()) {
+            log.debug("canHandle " + canHandle + " by OIDCDCRProcessor.");
         }
         return canHandle;
     }

@@ -70,23 +70,26 @@ public class DCRProcessor extends IdentityProcessor {
         return null;
     }
 
-    protected IdentityResponse.IdentityResponseBuilder registerOAuthApplication(DCRMessageContext dcrMessageContext)throws RegistrationException {
+    protected IdentityResponse.IdentityResponseBuilder registerOAuthApplication(DCRMessageContext dcrMessageContext)
+            throws RegistrationException {
 
         IdentityResponse.IdentityResponseBuilder identityResponseBuilder = null;
 
         try {
             RegistrationHandler registrationHandler =
                     HandlerManager.getInstance().getRegistrationHandler(dcrMessageContext);
-             identityResponseBuilder = registrationHandler.handle(dcrMessageContext);
+            identityResponseBuilder = registrationHandler.handle(dcrMessageContext);
         } catch (DCRException e) {
-            if(e.getErrorInfoList().size()==0){
+            if (e.getErrorInfoList().size() == 0) {
                 throw DCRExceptionBuilder
-                        .buildException(new RegistrationException(e.getErrorMessage()), ErrorCodes.BAD_REQUEST.toString(), e.getErrorMessage());
-            }else{
-                throw DCRExceptionBuilder.buildException(RegistrationException.class, e.getErrorInfoList().get(e.getErrorInfoList().size()-1));
+                        .buildException(new RegistrationException(e.getErrorMessage()), ErrorCodes.BAD_REQUEST
+                                .toString(), e.getErrorMessage());
+            } else {
+                throw DCRExceptionBuilder.buildException(RegistrationException.class, e.getErrorInfoList()
+                        .get(e.getErrorInfoList().size() - 1));
             }
         }
-        return identityResponseBuilder ;
+        return identityResponseBuilder;
     }
 
     protected IdentityResponse.IdentityResponseBuilder unRegisterOAuthApplication(DCRMessageContext dcrMessageContext)
@@ -97,14 +100,16 @@ public class DCRProcessor extends IdentityProcessor {
                     HandlerManager.getInstance().getUnRegistrationHandler(dcrMessageContext);
             identityResponseBuilder = unRegistrationHandler.handle(dcrMessageContext);
         } catch (DCRException e) {
-            if(StringUtils.isBlank(e.getCode())){
+            if (StringUtils.isBlank(e.getCode())) {
                 throw DCRExceptionBuilder
-                        .buildException(new UnRegistrationException(e.getErrorMessage()), ErrorCodes.BAD_REQUEST.toString(), e.getErrorMessage());
-            }else{
-                throw DCRExceptionBuilder.buildException(UnRegistrationException.class, e.getErrorInfoList().get(e.getErrorInfoList().size()));
+                        .buildException(new UnRegistrationException(e.getErrorMessage()), ErrorCodes.BAD_REQUEST
+                                .toString(), e.getErrorMessage());
+            } else {
+                throw DCRExceptionBuilder.buildException(UnRegistrationException.class, e.getErrorInfoList()
+                        .get(e.getErrorInfoList().size()));
             }
         }
-        return identityResponseBuilder ;
+        return identityResponseBuilder;
     }
 
     @Override

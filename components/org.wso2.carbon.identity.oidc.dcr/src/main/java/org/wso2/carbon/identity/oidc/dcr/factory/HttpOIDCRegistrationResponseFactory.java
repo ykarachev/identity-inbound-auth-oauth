@@ -44,9 +44,9 @@ public class HttpOIDCRegistrationResponseFactory extends HttpRegistrationRespons
     }
 
     @Override
-    public void create(HttpIdentityResponse.HttpIdentityResponseBuilder httpIdentityResponseBuilder, IdentityResponse identityResponse) {
-        RegistrationResponse registrationResponse = (RegistrationResponse)identityResponse ;
-        //super.create(httpIdentityResponseBuilder, identityResponse);
+    public void create(HttpIdentityResponse.HttpIdentityResponseBuilder httpIdentityResponseBuilder,
+                       IdentityResponse identityResponse) {
+        RegistrationResponse registrationResponse = (RegistrationResponse) identityResponse;
         httpIdentityResponseBuilder.setStatusCode(HttpServletResponse.SC_CREATED);
         httpIdentityResponseBuilder.addHeader(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
                                               OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE);
@@ -57,15 +57,12 @@ public class HttpOIDCRegistrationResponseFactory extends HttpRegistrationRespons
     }
 
     public HttpIdentityResponse.HttpIdentityResponseBuilder handleException(FrameworkException exception) {
-
-        HttpIdentityResponse.HttpIdentityResponseBuilder builder = new HttpIdentityResponse.HttpIdentityResponseBuilder();
-        builder.setStatusCode(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
         return super.handleException(exception);
     }
 
     @Override
     public boolean canHandle(IdentityResponse identityResponse) {
-        if(identityResponse instanceof RegistrationResponse) {
+        if (identityResponse instanceof RegistrationResponse) {
             return true;
         }
         return false;
@@ -80,7 +77,6 @@ public class HttpOIDCRegistrationResponseFactory extends HttpRegistrationRespons
 
         return false;
     }
-
 
 
 }

@@ -3,7 +3,7 @@ package org.wso2.carbon.identity.oauth.dcr.exception;
 
 import org.wso2.carbon.identity.oauth.dcr.DCRException;
 
-public class RegistrationException extends DCRException{
+public class RegistrationException extends DCRException {
     public RegistrationException(String msg, Exception nestedEx) {
         super(msg, nestedEx);
     }

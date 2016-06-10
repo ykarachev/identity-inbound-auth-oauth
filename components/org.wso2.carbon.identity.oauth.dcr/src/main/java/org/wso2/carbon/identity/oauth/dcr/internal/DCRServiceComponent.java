@@ -78,9 +78,8 @@ public class DCRServiceComponent {
                                                                 new UnRegistrationHandler(), null);
 
 
-
             System.out.print(">>>>>");
-        }catch(Exception ee){
+        } catch (Exception ee) {
             ee.printStackTrace();
         }
     }
@@ -124,7 +123,7 @@ public class DCRServiceComponent {
      * @param unRegistrationHandler An instance of DCRManagementService
      */
     protected void setUnRegistrationHandler(UnRegistrationHandler
-                                                               unRegistrationHandler) {
+                                                    unRegistrationHandler) {
         if (log.isDebugEnabled()) {
             log.debug("Setting DCRManagementService.");
         }
@@ -168,9 +167,6 @@ public class DCRServiceComponent {
         }
         DCRDataHolder.getInstance().setApplicationManagementService(null);
     }
-
-
-
 
 
 }

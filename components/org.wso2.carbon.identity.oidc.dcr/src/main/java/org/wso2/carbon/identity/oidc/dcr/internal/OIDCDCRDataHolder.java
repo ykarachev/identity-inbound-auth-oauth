@@ -26,10 +26,9 @@ import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
  */
 public class OIDCDCRDataHolder {
 
-    private ApplicationManagementService applicationManagementService = null ;
-
     private static OIDCDCRDataHolder
             thisInstance = new OIDCDCRDataHolder();
+    private ApplicationManagementService applicationManagementService = null;
 
     private OIDCDCRDataHolder() {
     }

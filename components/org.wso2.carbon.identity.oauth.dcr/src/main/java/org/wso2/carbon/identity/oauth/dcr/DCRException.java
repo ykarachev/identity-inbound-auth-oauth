@@ -29,14 +29,6 @@ public class DCRException extends FrameworkException {
 
     private String errorMessage;
 
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
-
     public DCRException(String msg, Exception nestedEx) {
         super(msg, nestedEx);
         setErrorMessage(msg);
@@ -59,6 +51,14 @@ public class DCRException extends FrameworkException {
 
     public DCRException(String message, Throwable cause, String errorMessage) {
         super(message, cause);
+        this.errorMessage = errorMessage;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
     }
 }

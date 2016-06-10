@@ -237,7 +237,9 @@ public class DCRManagementService {
             try {
                 appMgtService.updateApplication(createdServiceProvider, profile.getTenantDomain(), userName);
             } catch (IdentityApplicationManagementException e) {
-                throw DCRExceptionBuilder.buildException(new DCRException(e.getMessage(), e), ErrorCodes.BAD_REQUEST.toString(), e.getMessage());
+                throw DCRExceptionBuilder
+                        .buildException(new DCRException(e.getMessage(), e), ErrorCodes.BAD_REQUEST.toString(), e
+                                .getMessage());
             }
 
             RegistrationResponseProfile registrationResponseProfile = new RegistrationResponseProfile();

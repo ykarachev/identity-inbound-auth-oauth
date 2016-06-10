@@ -20,7 +20,7 @@ package org.wso2.carbon.identity.oauth.dcr;
 
 import org.wso2.carbon.identity.base.IdentityRuntimeException;
 
-public class DCRRuntimeException extends IdentityRuntimeException{
+public class DCRRuntimeException extends IdentityRuntimeException {
     public DCRRuntimeException(String errorDescription) {
         super(errorDescription);
     }

@@ -25,7 +25,6 @@ import org.wso2.carbon.identity.oauth.dcr.model.RegistrationResponse;
 public class OIDCRegistrationResponse extends RegistrationResponse {
 
 
-
     protected OIDCRegistrationResponse(
             OIDCRegisterResponseBuilder builder) {
         super(builder);
@@ -33,8 +32,7 @@ public class OIDCRegistrationResponse extends RegistrationResponse {
     }
 
 
-    public static class OIDCRegisterResponseBuilder extends RegistrationResponse.DCRRegisterResponseBuilder{
-
+    public static class OIDCRegisterResponseBuilder extends RegistrationResponse.DCRRegisterResponseBuilder {
 
 
         public OIDCRegisterResponseBuilder() {
@@ -53,7 +51,7 @@ public class OIDCRegistrationResponse extends RegistrationResponse {
         }
     }
 
-    public static class OIDCRegisterResponseConstants extends DCRegisterResponseConstants{
+    public static class OIDCRegisterResponseConstants extends DCRegisterResponseConstants {
 
     }
 }

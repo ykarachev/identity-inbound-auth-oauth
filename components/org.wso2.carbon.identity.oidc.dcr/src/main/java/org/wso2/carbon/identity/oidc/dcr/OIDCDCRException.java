@@ -29,14 +29,6 @@ public class OIDCDCRException extends DCRException {
 
     private String errorMessage;
 
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
-
     public OIDCDCRException(String msg, Exception nestedEx) {
         super(msg, nestedEx);
         setErrorMessage(msg);
@@ -59,6 +51,14 @@ public class OIDCDCRException extends DCRException {
 
     public OIDCDCRException(String message, Throwable cause, String errorMessage) {
         super(message, cause);
+        this.errorMessage = errorMessage;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
     }
 }

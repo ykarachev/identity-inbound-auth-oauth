@@ -22,23 +22,23 @@ import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
 
 public class OIDCRegistrationRequestProfile extends RegistrationRequestProfile {
 
-    public String sectorIdentifierUri ;
-    public String subjectType ;
-    public String idTokenSignedResponseAlg ;
-    public String idTokenEncryptedResponseAlg ;
-    public String idTokenEncryptedResponseEnc ;
-    public String userinfoSignedResponseAlg ;
-    public String userinfoencryptedResponseAlg ;
-    public String userinfoEncryptedResponseEnc ;
-    public String requestObjectSigningAlg ;
-    public String requestObjectEncryptionAlg ;
-    public String requestObjectEncryptionEnc ;
-    public String tokenEndpointAuthSigningAlg ;
-    public String defaultMaxAge ;
-    public String requireAuthTime ;
-    public String defaultAcrValues ;
-    public String initiateLoginUri ;
-    public String requestUris ;
+    public String sectorIdentifierUri;
+    public String subjectType;
+    public String idTokenSignedResponseAlg;
+    public String idTokenEncryptedResponseAlg;
+    public String idTokenEncryptedResponseEnc;
+    public String userinfoSignedResponseAlg;
+    public String userinfoencryptedResponseAlg;
+    public String userinfoEncryptedResponseEnc;
+    public String requestObjectSigningAlg;
+    public String requestObjectEncryptionAlg;
+    public String requestObjectEncryptionEnc;
+    public String tokenEndpointAuthSigningAlg;
+    public String defaultMaxAge;
+    public String requireAuthTime;
+    public String defaultAcrValues;
+    public String initiateLoginUri;
+    public String requestUris;
 
     public String getSectorIdentifierUri() {
         return sectorIdentifierUri;

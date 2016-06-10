@@ -24,18 +24,17 @@ import java.util.regex.Pattern;
  */
 public final class DCRConstants {
 
-    public static final String DCR_OPERATION_CONTEXT = "OPERATION_CONTEXT" ;
-
-    public static class  DCROperation{
-        public static final String DCR_OPERATION_REGISTER = "REGISTER" ;
-        public static final String DCR_OPERATION_UNREGISTER = "UNREGISTER" ;
-        public static final String DCR_OPERATION_UPDATE = "UPDATE" ;
-        public static final String DCR_OPERATION_READ = "READ" ;
-    }
-
+    public static final String DCR_OPERATION_CONTEXT = "OPERATION_CONTEXT";
     public static final Pattern DCR_ENDPOINT_URL_PATTERN = Pattern.compile(".+/register/?");
     public static final Pattern DCR_ENDPOINT_REGISTER_URL_PATTERN = Pattern.compile("/identity/register/?");
     public static final Pattern DCR_ENDPOINT_UNREGISTER_URL_PATTERN = Pattern.compile("/identity/register/(.+)");
+
+    public static class DCROperation {
+        public static final String DCR_OPERATION_REGISTER = "REGISTER";
+        public static final String DCR_OPERATION_UNREGISTER = "UNREGISTER";
+        public static final String DCR_OPERATION_UPDATE = "UPDATE";
+        public static final String DCR_OPERATION_READ = "READ";
+    }
 
     public static class ClientMetadata {
         public static final String OAUTH_CLIENT_ID = "client_id";
@@ -64,6 +63,7 @@ public final class DCRConstants {
         public static final String OAUTH_CLIENT_USERNAME = "username";
         public static final String OAUTH_CLIENT_APPLICATION = "application";
         public static final String VALIDITY_PERIOD = "validityPeriod";
+
         private ClientMetadata() {
             throw new AssertionError();
         }

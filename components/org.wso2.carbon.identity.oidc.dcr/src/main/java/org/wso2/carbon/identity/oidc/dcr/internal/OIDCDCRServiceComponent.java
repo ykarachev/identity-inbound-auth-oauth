@@ -36,6 +36,7 @@ import org.wso2.carbon.identity.oidc.dcr.processor.OIDCDCRProcessor;
  * cardinality="1..1" policy="dynamic"
  * bind="setApplicationManagementService" unbind="unsetApplicationManagementService"
  */
+
 public class OIDCDCRServiceComponent {
 
     private static final Log log = LogFactory.getLog(OIDCDCRServiceComponent.class);
@@ -43,7 +44,7 @@ public class OIDCDCRServiceComponent {
     @SuppressWarnings("unused")
     protected void activate(ComponentContext componentContext) {
         try {
-           System.out.print("DDD");
+            System.out.print("DDD");
 
             componentContext.getBundleContext().registerService(HttpIdentityRequestFactory.class.getName(),
                                                                 new OIDCRegistrationRequestFactory(), null);
@@ -53,7 +54,7 @@ public class OIDCDCRServiceComponent {
                                                                 new HttpOIDCRegistrationResponseFactory(), null);
 
 
-        }catch(Exception ee){
+        } catch (Exception ee) {
             ee.printStackTrace();
         }
     }
@@ -90,7 +91,6 @@ public class OIDCDCRServiceComponent {
         }
         OIDCDCRDataHolder.getInstance().setApplicationManagementService(null);
     }
-
 
 
 }

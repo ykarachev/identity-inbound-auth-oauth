@@ -21,49 +21,59 @@ package org.wso2.carbon.identity.oauth.dcr.util;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.oauth.dcr.DCRRuntimeException;
 
-import java.lang.reflect.InvocationTargetException;
-
 public class DCRExceptionBuilder {
-    public static <T extends IdentityException> T buildException(T exception, String errorCode, String errorDescription){
-        IdentityException.ErrorInfo.ErrorInfoBuilder errorInfoBuilder = new IdentityException.ErrorInfo.ErrorInfoBuilder(errorDescription);
+    public static <T extends IdentityException> T buildException(T exception, String errorCode,
+                                                                 String errorDescription) {
+        IdentityException.ErrorInfo.ErrorInfoBuilder errorInfoBuilder =
+                new IdentityException.ErrorInfo.ErrorInfoBuilder(errorDescription);
         errorInfoBuilder.errorCode(errorCode);
         exception.addErrorInfo(errorInfoBuilder.build());
         return exception;
     }
 
-    public static <T extends IdentityException> T buildException(T exception, String errorCode, String errorDescription, String operationContext){
-        IdentityException.ErrorInfo.ErrorInfoBuilder errorInfoBuilder = new IdentityException.ErrorInfo.ErrorInfoBuilder(errorDescription);
+    public static <T extends IdentityException> T buildException(T exception, String errorCode, String errorDescription,
+                                                                 String operationContext) {
+        IdentityException.ErrorInfo.ErrorInfoBuilder errorInfoBuilder =
+                new IdentityException.ErrorInfo.ErrorInfoBuilder(errorDescription);
         errorInfoBuilder.errorCode(errorCode);
         errorInfoBuilder.parameter(DCRConstants.DCR_OPERATION_CONTEXT, operationContext);
         exception.addErrorInfo(errorInfoBuilder.build());
         return exception;
     }
 
-    public static <T extends IdentityException> T buildException(Class<T> exceptionClass, String errorCode, String errorDescription) throws DCRRuntimeException {
+    public static <T extends IdentityException> T buildException(Class<T> exceptionClass, String errorCode,
+                                                                 String errorDescription) throws DCRRuntimeException {
         try {
             T exception = exceptionClass.getConstructor(String.class).newInstance(errorDescription);
             return buildException(exception, errorCode, errorDescription);
         } catch (Exception e) {
-            throw new DCRRuntimeException("Error occurred while creating new instant using reflection, " + e.getMessage());
+            throw new DCRRuntimeException(
+                    "Error occurred while creating new instant using reflection, " + e.getMessage());
         }
     }
 
-    public static <T extends IdentityException> T buildException(Class<T> exceptionClass, String errorCode, String errorDescription, String contextId) throws DCRRuntimeException {
+    public static <T extends IdentityException> T buildException(Class<T> exceptionClass, String errorCode,
+                                                                 String errorDescription, String contextId)
+            throws DCRRuntimeException {
         try {
             T exception = exceptionClass.getConstructor(String.class).newInstance(errorDescription);
             return buildException(exception, errorCode, errorDescription, contextId);
         } catch (Exception e) {
-            throw new DCRRuntimeException("Error occurred while creating new instant using reflection, " + e.getMessage());
+            throw new DCRRuntimeException(
+                    "Error occurred while creating new instant using reflection, " + e.getMessage());
         }
     }
 
-    public static <T extends IdentityException> T buildException(Class<T> exceptionClass, IdentityException.ErrorInfo errorInfo) throws DCRRuntimeException {
+    public static <T extends IdentityException> T buildException(Class<T> exceptionClass,
+                                                                 IdentityException.ErrorInfo errorInfo)
+            throws DCRRuntimeException {
         try {
             T exception = exceptionClass.getConstructor(String.class).newInstance(errorInfo.getErrorDescription());
             exception.addErrorInfo(errorInfo);
-            return exception ;
+            return exception;
         } catch (Exception e) {
-            throw new DCRRuntimeException("Error occurred while creating new instant using reflection, " + e.getMessage());
+            throw new DCRRuntimeException(
+                    "Error occurred while creating new instant using reflection, " + e.getMessage());
         }
     }
 }

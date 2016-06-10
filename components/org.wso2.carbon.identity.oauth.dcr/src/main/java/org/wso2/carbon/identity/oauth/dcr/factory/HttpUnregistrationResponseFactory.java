@@ -69,8 +69,8 @@ public class HttpUnregistrationResponseFactory extends HttpIdentityResponseFacto
     }
 
     public boolean canHandle(FrameworkException exception) {
-        if(exception instanceof UnRegistrationException){
-            return true ;
+        if (exception instanceof UnRegistrationException) {
+            return true;
         }
         return false;
     }

@@ -23,5 +23,6 @@ import java.util.regex.Pattern;
  * This class holds the constants used by DynamicClientRegistration component.
  */
 public final class OIDCDCRConstants {
-    public static final Pattern OIDC_DCR_ENDPOINT_REGISTER_URL_PATTERN = Pattern.compile("/identity/connect/register/?");
+    public static final Pattern OIDC_DCR_ENDPOINT_REGISTER_URL_PATTERN =
+            Pattern.compile("/identity/connect/register/?");
 }

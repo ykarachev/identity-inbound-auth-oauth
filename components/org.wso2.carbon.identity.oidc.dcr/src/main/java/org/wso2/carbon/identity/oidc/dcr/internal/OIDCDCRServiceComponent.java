@@ -25,10 +25,9 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Htt
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponseFactory;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityProcessor;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
-import org.wso2.carbon.identity.oauth.dcr.DCRManagementService;
-import org.wso2.carbon.identity.oidc.dcr.processor.register.OIDCRegistrationRequestProcessor;
-import org.wso2.carbon.identity.oidc.dcr.processor.register.factory.HttpOIDCRegistrationResponseFactory;
-import org.wso2.carbon.identity.oidc.dcr.processor.register.factory.OIDCRegistrationRequestFactory;
+import org.wso2.carbon.identity.oidc.dcr.factory.HttpOIDCRegistrationResponseFactory;
+import org.wso2.carbon.identity.oidc.dcr.factory.OIDCRegistrationRequestFactory;
+import org.wso2.carbon.identity.oidc.dcr.processor.OIDCDCRProcessor;
 
 /**
  * @scr.component name="identity.oidc.dcr" immediate="true"
@@ -36,10 +35,6 @@ import org.wso2.carbon.identity.oidc.dcr.processor.register.factory.OIDCRegistra
  * interface="org.wso2.carbon.identity.application.mgt.ApplicationManagementService"
  * cardinality="1..1" policy="dynamic"
  * bind="setApplicationManagementService" unbind="unsetApplicationManagementService"
- * @scr.reference name="identity.oidc.dcr.dcrservice"
- * interface="org.wso2.carbon.identity.oauth.dcr.DCRManagementService"
- * cardinality="0..1" policy="dynamic"
- * bind="setDCRManagementService" unbind="unsetDCRManagementService"
  */
 public class OIDCDCRServiceComponent {
 
@@ -53,7 +48,7 @@ public class OIDCDCRServiceComponent {
             componentContext.getBundleContext().registerService(HttpIdentityRequestFactory.class.getName(),
                                                                 new OIDCRegistrationRequestFactory(), null);
             componentContext.getBundleContext().registerService(IdentityProcessor.class.getName(),
-                                                                new OIDCRegistrationRequestProcessor(), null);
+                                                                new OIDCDCRProcessor(), null);
             componentContext.getBundleContext().registerService(HttpIdentityResponseFactory.class.getName(),
                                                                 new HttpOIDCRegistrationResponseFactory(), null);
 
@@ -96,30 +91,6 @@ public class OIDCDCRServiceComponent {
         OIDCDCRDataHolder.getInstance().setApplicationManagementService(null);
     }
 
-    /**
-     * Sets DCRManagementService Service.
-     *
-     * @param dcrManagementService An instance of DCRManagementService
-     */
-    protected void setDCRManagementService(DCRManagementService
-                                                   dcrManagementService) {
-        if (log.isDebugEnabled()) {
-            log.debug("Setting OIDCDCRManagementService.");
-        }
-        OIDCDCRDataHolder.getInstance().setDcrManagementService(dcrManagementService);
-    }
-
-    /**
-     * Unsets DCRManagementService.
-     *
-     * @param dcrManagementService An instance of DCRManagementService
-     */
-    protected void unsetDCRManagementService(DCRManagementService dcrManagementService) {
-        if (log.isDebugEnabled()) {
-            log.debug("Unsetting OIDCDCRManagementService.");
-        }
-        OIDCDCRDataHolder.getInstance().setDcrManagementService(null);
-    }
 
 
 }

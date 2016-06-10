@@ -24,8 +24,8 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Fra
 import org.wso2.carbon.identity.application.authentication.framework.inbound.FrameworkRuntimeException;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 import org.wso2.carbon.identity.oauth.dcr.factory.RegistrationRequestFactory;
-import org.wso2.carbon.identity.oidc.dcr.processor.register.model.OIDCRegistrationRequest;
-import org.wso2.carbon.identity.oidc.dcr.processor.register.model.OIDCRegistrationRequestProfile;
+import org.wso2.carbon.identity.oidc.dcr.model.OIDCRegistrationRequest;
+import org.wso2.carbon.identity.oidc.dcr.model.OIDCRegistrationRequestProfile;
 import org.wso2.carbon.identity.oidc.dcr.util.OIDCDCRConstants;
 
 import javax.servlet.http.HttpServletRequest;

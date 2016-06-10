@@ -19,11 +19,12 @@
 package org.wso2.carbon.identity.oidc.dcr;
 
 import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
+import org.wso2.carbon.identity.oauth.dcr.DCRException;
 
 /**
  * Custom exception to be thrown inside DynamicClientRegistration related functionality.
  */
-public class OIDCDCRException extends FrameworkException {
+public class OIDCDCRException extends DCRException {
 
     private static final long serialVersionUID = -3151279311929070297L;
 

@@ -84,16 +84,16 @@
             app = client.getOAuthApplicationData(consumerkey);
         }
 
-        if (action != null && action.equalsIgnoreCase("regenerate")) {
+        if (action != null && action.equalsIgnoreCase(OAuthConstants.ACTION_REGENERATE)) {
             String oauthAppState = client.getOauthApplicationState(consumerkey);
             client.regenerateSecretKey(consumerkey);
             if(oauthAppState.equalsIgnoreCase(OAuthConstants.OauthAppStates.APP_STATE_REVOKED)) {
                 client.updateOauthApplicationState(consumerkey, OAuthConstants.OauthAppStates.APP_STATE_ACTIVE);
             }
             app.setOauthConsumerSecret(client.getOAuthApplicationData(consumerkey).getOauthConsumerSecret());
-            CarbonUIMessage.sendCarbonUIMessage("Client secret successfully updated.",CarbonUIMessage.INFO, request);
+            CarbonUIMessage.sendCarbonUIMessage("Client secret successfully updated for client ID: " + consumerkey,CarbonUIMessage.INFO, request);
 
-        } else if (action != null && action.equalsIgnoreCase("revoke")) {
+        } else if (action != null && action.equalsIgnoreCase(OAuthConstants.ACTION_REVOKE)) {
             String oauthAppState = client.getOauthApplicationState(consumerkey);
             if(oauthAppState.equalsIgnoreCase(OAuthConstants.OauthAppStates.APP_STATE_REVOKED)) {
                 CarbonUIMessage.sendCarbonUIMessage("Application is already revoked.",
@@ -150,11 +150,18 @@
 
     if((action != null) && (action.equalsIgnoreCase("revoke") || action.equalsIgnoreCase("regenerate"))) {
         session.setAttribute("oauth-consum-secret", app.getOauthConsumerSecret());
+        if(action.equalsIgnoreCase("revoke")) {
 %>
+        <script>
+            location.href = '../application/configure-service-provider.jsp?action=<%=action%>&appState=<%=OAuthConstants.OauthAppStates.APP_STATE_REVOKED%>&display=oauthapp&spName=<%=Encode.forUriComponent(applicationSPName)%>&oauthapp=<%=Encode.forUriComponent(app.getOauthConsumerKey())%>';
+        </script>
+<%  } else { %>
         <script>
             location.href = '../application/configure-service-provider.jsp?action=<%=action%>&display=oauthapp&spName=<%=Encode.forUriComponent(applicationSPName)%>&oauthapp=<%=Encode.forUriComponent(app.getOauthConsumerKey())%>';
         </script>
-  <%  } else {
+<% } %>
+
+<% } else {
 %>
 
 <fmt:bundle basename="org.wso2.carbon.identity.oauth.ui.i18n.Resources">

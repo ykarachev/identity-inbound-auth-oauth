@@ -196,6 +196,7 @@ public final class OAuthConstants {
         public static final String TOKEN_STATE_ACTIVE = "ACTIVE";
         public static final String TOKEN_STATE_REVOKED = "REVOKED";
         public static final String TOKEN_STATE_EXPIRED = "EXPIRED";
+        public static final String TOKEN_STATE_INACTIVE = "INACTIVE";
 
         private TokenStates(){
 
@@ -215,7 +216,6 @@ public final class OAuthConstants {
 
     public static class OauthAppStates {
         public static final String APP_STATE_ACTIVE = "ACTIVE";
-        public static final String APP_STATE_INACTIVE = "INACTIVE";
         public static final String APP_STATE_REVOKED = "REVOKED";
 
         private OauthAppStates(){

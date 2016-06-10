@@ -59,6 +59,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 public class OAuthAdminService extends AbstractAdmin {
@@ -339,8 +340,6 @@ public class OAuthAdminService extends AbstractAdmin {
 
         OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
         try {
-            oAuthAppDAO.updateConsumerAppState(consumerKey, newState);
-
             if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
                 OAuthAppDO oAuthAppDO = appInfoCache.getValueFromCache(consumerKey);
                 if(oAuthAppDO != null) {
@@ -355,9 +354,12 @@ public class OAuthAdminService extends AbstractAdmin {
                 }
             }
 
-            revokeTokensAndAuthzCodes(consumerKey);
+            Properties properties = new Properties();
+            properties.setProperty(OAuthConstants.OAUTH_APP_NEW_STATE, newState);
+            properties.setProperty(OAuthConstants.ACTION_PROPERTY_KEY, OAuthConstants.ACTION_REVOKE);
+            updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties);
 
-        } catch (IdentityApplicationManagementException | InvalidOAuthClientException | IdentityOAuth2Exception e) {
+        } catch ( InvalidOAuthClientException | IdentityOAuth2Exception e) {
             throw new IdentityOAuthAdminException("Error while updating consumer application state", e);
         }
     }
@@ -371,34 +373,26 @@ public class OAuthAdminService extends AbstractAdmin {
 
         OAuthConsumerDAO oAuthConsumerDAO = new OAuthConsumerDAO();
         String newSecretKey = OAuthUtil.getRandomNumber();
-        try {
-            oAuthConsumerDAO.updateSecretKey(consumerKey, newSecretKey);
-
-            if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-                CacheEntry clientCredentialDO = new ClientCredentialDO(newSecretKey);
-                OAuthCache.getInstance().addToCache(new OAuthCacheKey(consumerKey), clientCredentialDO);
-                if (log.isDebugEnabled()) {
-                    log.debug("Client Secret is updated in the cache.");
-                }
+        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+            CacheEntry clientCredentialDO = new ClientCredentialDO(newSecretKey);
+            OAuthCache.getInstance().addToCache(new OAuthCacheKey(consumerKey), clientCredentialDO);
+            if (log.isDebugEnabled()) {
+                log.debug("Client Secret is updated in the cache.");
             }
-
-            revokeTokensAndAuthzCodes(consumerKey);
-
-        } catch (IdentityApplicationManagementException e) {
-            throw new IdentityOAuthAdminException("Error while updating auth secret key using consumer key", e);
         }
+
+        Properties properties = new Properties();
+        properties.setProperty(OAuthConstants.OAUTH_APP_NEW_SECRET_KEY, newSecretKey);
+        properties.setProperty(OAuthConstants.ACTION_PROPERTY_KEY, OAuthConstants.ACTION_REGENERATE);
+        updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties);
+
     }
 
-    private void revokeTokensAndAuthzCodes(String consumerKey)  throws IdentityOAuthAdminException {
+    private void updateAppAndRevokeTokensAndAuthzCodes(String consumerKey, Properties properties)  throws IdentityOAuthAdminException {
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
 
         try {
-            //Revoke all active access tokens
             Set<String> accessTokens = tokenMgtDAO.getActiveTokensForConsumerKey(consumerKey);
-            if(accessTokens != null && accessTokens.size() != 0) {
-                tokenMgtDAO.revokeTokens(accessTokens.toArray(new String[accessTokens.size()]));
-            }
-
             if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
                 OAuthCache oauthCache = OAuthCache.getInstance();
                 for(String accessToken : accessTokens) {
@@ -410,14 +404,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 }
             }
 
-            //Deactivate all active authorization codes
             Set<String> authorizationCodes = tokenMgtDAO.getActiveAuthorizationCodesForConsumerKey(consumerKey);
-            if(authorizationCodes != null && authorizationCodes.size() != 0) {
-                for(String authzCode : authorizationCodes) {
-                    tokenMgtDAO.changeAuthzCodeState(authzCode, OAuthConstants.AuthorizationCodeState.REVOKED);
-                }
-            }
-
             if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
                 OAuthCache oauthCache = OAuthCache.getInstance();
                 for(String authorizationCode : authorizationCodes) {
@@ -428,8 +415,15 @@ public class OAuthAdminService extends AbstractAdmin {
                     log.debug("Access tokens are removed from the cache.");
                 }
             }
+
+            tokenMgtDAO.updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties,
+                    authorizationCodes.toArray(new String[authorizationCodes.size()]),
+                    accessTokens.toArray(new String[accessTokens.size()]));
+
         } catch (IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error in revoking access tokens and authz codes." + e);
+            throw new IdentityOAuthAdminException("Error in updating oauth app & revoking access tokens and authz codes." + e);
+        } catch (IdentityApplicationManagementException e) {
+            throw new IdentityOAuthAdminException("Error in updating oauth app & revoking access tokens and authz codes." + e);
         }
     }
 

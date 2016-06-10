@@ -23,11 +23,13 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessor;
 import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
@@ -52,6 +54,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -1848,6 +1851,122 @@ public class TokenMgtDAO {
             throw new IdentityOAuth2Exception(errorMsg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
+        }
+    }
+
+    public void updateAppAndRevokeTokensAndAuthzCodes(String consumerKey, Properties properties,
+                                                      String[] authorizationCodes, String[] accessTokens)
+            throws IdentityOAuth2Exception, IdentityApplicationManagementException {
+
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        PreparedStatement statement = null;
+        ResultSet rs = null;
+        String action = null;
+        if (properties.containsKey(OAuthConstants.ACTION_PROPERTY_KEY)) {
+            action = properties.getProperty(OAuthConstants.ACTION_PROPERTY_KEY);
+        } else {
+            throw new IdentityOAuth2Exception("Invalid operation.");
+        }
+
+        try {
+            if (action.equals(OAuthConstants.ACTION_REVOKE)) {
+                String newAppState;
+                if (properties.containsKey(OAuthConstants.OAUTH_APP_NEW_STATE)) {
+                    newAppState = properties.getProperty(OAuthConstants.OAUTH_APP_NEW_STATE);
+                } else {
+                    throw new IdentityOAuth2Exception("New App State is not specified.");
+                }
+
+                connection.setAutoCommit(false);
+
+                // update application state of the oauth app
+                statement = connection.prepareStatement(org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_APPLICATION_STATE);
+                statement.setString(1, newAppState);
+                statement.setString(2, consumerKey);
+                statement.execute();
+
+            } else if (action.equals(OAuthConstants.ACTION_REGENERATE)) {
+                String newSecretKey;
+                if (properties.containsKey(OAuthConstants.OAUTH_APP_NEW_SECRET_KEY)) {
+                    newSecretKey = properties.getProperty(OAuthConstants.OAUTH_APP_NEW_SECRET_KEY);
+                } else {
+                    throw new IdentityOAuth2Exception("New Consumer Secret is not specified.");
+                }
+
+                connection.setAutoCommit(false);
+
+                // update consumer secret of the oauth app
+                statement = connection.prepareStatement(org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_OAUTH_SECRET_KEY);
+                statement.setString(1, newSecretKey);
+                statement.setString(2, consumerKey);
+                statement.execute();
+
+            }
+
+            //Revoke all active access tokens
+            if (ArrayUtils.isNotEmpty(accessTokens)) {
+                String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
+                if (OAuth2Util.checkAccessTokenPartitioningEnabled() && OAuth2Util.checkUserNameAssertionEnabled()) {
+                    for (String token : accessTokens) {
+                        if (OAuth2Util.checkAccessTokenPartitioningEnabled() &&
+                                OAuth2Util.checkUserNameAssertionEnabled()) {
+                            accessTokenStoreTable = OAuth2Util.getAccessTokenStoreTableFromAccessToken(token);
+                        }
+                        String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(
+                                IDN_OAUTH2_ACCESS_TOKEN, accessTokenStoreTable);
+
+                        connection.setAutoCommit(false);
+                        statement = connection.prepareStatement(sqlQuery);
+                        statement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
+                        statement.setString(2, UUID.randomUUID().toString());
+                        statement.setString(3, persistenceProcessor.getProcessedAccessTokenIdentifier(token));
+                        int count = statement.executeUpdate();
+                        if (log.isDebugEnabled()) {
+                            log.debug("Number of rows being updated : " + count);
+                        }
+
+                    }
+                } else {
+
+                    String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN, accessTokenStoreTable);
+                    connection.setAutoCommit(false);
+                    statement = connection.prepareStatement(sqlQuery);
+                    for (String token : accessTokens) {
+                        statement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
+                        statement.setString(2, UUID.randomUUID().toString());
+                        statement.setString(3, persistenceProcessor.getProcessedAccessTokenIdentifier(token));
+                        statement.addBatch();
+                    }
+                    statement.executeBatch();
+                }
+            }
+
+
+            //Deactivate all active authorization codes
+            if (ArrayUtils.isNotEmpty(authorizationCodes)) {
+                for (String authzCode : authorizationCodes) {
+                    if (maxPoolSize > 0) {
+                        authContextTokenQueue.push(new AuthContextTokenDO(authzCode));
+                    } else {
+                        String authCodeStoreTable = OAuthConstants.AUTHORIZATION_CODE_STORE_TABLE;
+
+                        String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE.replace(IDN_OAUTH2_AUTHORIZATION_CODE, authCodeStoreTable);
+                        connection.setAutoCommit(false);
+                        statement = connection.prepareStatement(sqlQuery);
+                        statement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);
+                        statement.setString(2, persistenceProcessor.getPreprocessedAuthzCode(authzCode));
+                        statement.execute();
+
+                    }
+                }
+            }
+
+            connection.commit();
+
+        } catch (SQLException e) {
+            throw new IdentityApplicationManagementException("Error while executing the SQL statement.", e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, rs, statement);
         }
     }
 

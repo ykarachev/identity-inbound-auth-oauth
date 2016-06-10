@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.oidc.dcr;
 
-import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
 import org.wso2.carbon.identity.oauth.dcr.DCRException;
 
 /**

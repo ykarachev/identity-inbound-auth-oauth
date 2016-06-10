@@ -23,7 +23,11 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
+import org.wso2.carbon.identity.oauth.dcr.DCRException;
+import org.wso2.carbon.identity.oauth.dcr.context.DCRMessageContext;
 import org.wso2.carbon.identity.oauth.dcr.processor.DCRProcessor;
+import org.wso2.carbon.identity.oidc.dcr.context.OIDCDCRMessageContext;
+import org.wso2.carbon.identity.oidc.dcr.model.OIDCRegistrationRequest;
 import org.wso2.carbon.identity.oidc.dcr.util.OIDCDCRConstants;
 
 import java.util.regex.Matcher;
@@ -37,7 +41,19 @@ public class OIDCDCRProcessor extends DCRProcessor {
         if (log.isDebugEnabled()) {
             log.debug("Request processing started by OIDCDCRProcessor.");
         }
-        return super.process(identityRequest);
+        OIDCDCRMessageContext oidcdcrMessageContext = new OIDCDCRMessageContext(identityRequest);
+        IdentityResponse.IdentityResponseBuilder identityResponseBuilder = null;
+        if (identityRequest instanceof OIDCRegistrationRequest) {
+            identityResponseBuilder = registerOAuthApplication(oidcdcrMessageContext);
+        }
+
+        return identityResponseBuilder;
+    }
+
+    @Override
+    protected IdentityResponse.IdentityResponseBuilder registerOAuthApplication(DCRMessageContext dcrMessageContext)
+            throws DCRException {
+        return super.registerOAuthApplication(dcrMessageContext);
     }
 
     @Override

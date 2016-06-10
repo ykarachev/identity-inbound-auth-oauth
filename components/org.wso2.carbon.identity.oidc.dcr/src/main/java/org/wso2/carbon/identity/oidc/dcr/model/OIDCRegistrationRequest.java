@@ -49,5 +49,41 @@ public class OIDCRegistrationRequest extends RegistrationRequest {
 
     public static class OIDCRegistrationRequestConstants extends RegisterRequestConstant {
 
+        public final static String SECTOR_IDENTIFIER_URI = "sector_identifier_uri" ;
+        public final static String SUBJECT_TYPE = "subject_type" ;
+        public final static String ID_TOKEN_SIGNED_RESPONSE_ALG = "id_token_signed_response_alg" ;
+        public final static String ID_TOKEN_ENCRYPTED_RESPONSE_ALG = "id_token_encrypted_response_alg" ;
+        public final static String ID_TOKEN_ENCRYPTED_RESPONSE_ENC = "id_token_encrypted_response_enc" ;
+        public final static String USERINFO_SIGNED_RESPONSE_ALG = "userinfo_signed_response_alg" ;
+        public final static String USERINFO_ENCRYPTED_RESPONSE_ALG = "userinfo_encrypted_response_alg" ;
+        public final static String USERINFO_ENCRYPTED_RESPONSE_ENC = "userinfo_encrypted_response_enc" ;
+        public final static String REQUEST_OBJECT_SIGNING_ALG = "request_object_signing_alg" ;
+        public final static String REQUEST_OBJECT_ENCRYPTION_ALG = "request_object_encryption_alg" ;
+        public final static String REQUEST_OBJECT_ENCRYPTION_ENC = "request_object_encryption_enc" ;
+        public final static String TOKEN_ENDPOINT_AUTH_SIGNING_ALG = "token_endpoint_auth_signing_alg" ;
+        public final static String DEFAULT_MAX_AGE = "default_max_age" ;
+        public final static String REQUIRE_AUTH_TIME = "require_auth_time" ;
+        public final static String DEFAULT_ACR_VALUES = "default_acr_values" ;
+        public final static String INITIATE_LOGIN_URI = "initiate_login_uri" ;
+        public final static String REQUEST_URIS = "request_uris" ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 }

@@ -21,4 +21,23 @@ import org.wso2.carbon.identity.oauth.dcr.model.RegistrationResponseProfile;
 
 
 public class OIDCRegistrationResponseProfile extends RegistrationResponseProfile {
+
+    private String registrationAccessToken ;
+    private String registrationClientUri ;
+
+    public String getRegistrationAccessToken() {
+        return registrationAccessToken;
+    }
+
+    public void setRegistrationAccessToken(String registrationAccessToken) {
+        this.registrationAccessToken = registrationAccessToken;
+    }
+
+    public String getRegistrationClientUri() {
+        return registrationClientUri;
+    }
+
+    public void setRegistrationClientUri(String registrationClientUri) {
+        this.registrationClientUri = registrationClientUri;
+    }
 }

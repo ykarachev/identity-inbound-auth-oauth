@@ -67,15 +67,17 @@ public class OpenIDConnectUserEndpoint {
             TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
             try {
                 AccessTokenDO accessTokenDO = tokenMgtDAO.retrieveAccessToken(accessToken, false);
+                if(accessTokenDO != null) {
                 String appState = oAuthAppDAO.getConsumerAppState(accessTokenDO.getConsumerKey());
-                if(!appState.equalsIgnoreCase(OAuthConstants.OauthAppStates.APP_STATE_ACTIVE)) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("Oauth App is not in active state.");
+                    if(!appState.equalsIgnoreCase(OAuthConstants.OauthAppStates.APP_STATE_ACTIVE)) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Oauth App is not in active state.");
+                        }
+                        OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
+                                .setError(OAuth2ErrorCodes.INVALID_CLIENT)
+                                .setErrorDescription("Oauth application is not in active state.").buildJSONMessage();
+                        return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                     }
-                    OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
-                            .setError(OAuth2ErrorCodes.INVALID_CLIENT)
-                            .setErrorDescription("Oauth application is not in active state.").buildJSONMessage();
-                    return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                 }
             } catch (IdentityOAuthAdminException | IdentityOAuth2Exception | OAuthSystemException e) {
                 throw new OAuthSystemException("Error in getting oauth app state.");

@@ -18,10 +18,10 @@
 package org.wso2.carbon.identity.oauth.dcr.util;
 
 import org.wso2.carbon.identity.oauth.dcr.DCRRuntimeException;
+import org.wso2.carbon.identity.oauth.dcr.context.DCRMessageContext;
 import org.wso2.carbon.identity.oauth.dcr.handler.RegistrationHandler;
 import org.wso2.carbon.identity.oauth.dcr.handler.UnRegistrationHandler;
 import org.wso2.carbon.identity.oauth.dcr.internal.DCRDataHolder;
-import org.wso2.carbon.identity.oauth.dcr.processor.DCRMessageContext;
 
 import java.util.List;
 

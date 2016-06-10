@@ -69,7 +69,7 @@ public class OpenIDConnectUserEndpoint {
                 AccessTokenDO accessTokenDO = tokenMgtDAO.retrieveAccessToken(accessToken, false);
                 if(accessTokenDO != null) {
                 String appState = oAuthAppDAO.getConsumerAppState(accessTokenDO.getConsumerKey());
-                    if(!appState.equalsIgnoreCase(OAuthConstants.OauthAppStates.APP_STATE_ACTIVE)) {
+                    if(!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
                         if (log.isDebugEnabled()) {
                             log.debug("Oauth App is not in active state.");
                         }

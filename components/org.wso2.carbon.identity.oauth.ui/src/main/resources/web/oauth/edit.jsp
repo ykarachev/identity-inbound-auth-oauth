@@ -84,18 +84,18 @@
             app = client.getOAuthApplicationData(consumerkey);
         }
 
-        if (action != null && action.equalsIgnoreCase(OAuthConstants.ACTION_REGENERATE)) {
+        if (action != null && OAuthConstants.ACTION_REGENERATE.equalsIgnoreCase(action)) {
             String oauthAppState = client.getOauthApplicationState(consumerkey);
             client.regenerateSecretKey(consumerkey);
-            if(oauthAppState.equalsIgnoreCase(OAuthConstants.OauthAppStates.APP_STATE_REVOKED)) {
+            if(OAuthConstants.OauthAppStates.APP_STATE_REVOKED.equalsIgnoreCase(oauthAppState)) {
                 client.updateOauthApplicationState(consumerkey, OAuthConstants.OauthAppStates.APP_STATE_ACTIVE);
             }
             app.setOauthConsumerSecret(client.getOAuthApplicationData(consumerkey).getOauthConsumerSecret());
-            CarbonUIMessage.sendCarbonUIMessage("Client secret successfully updated for client ID: " + consumerkey,CarbonUIMessage.INFO, request);
+            CarbonUIMessage.sendCarbonUIMessage("Client Secret successfully updated for Client ID: " + consumerkey,CarbonUIMessage.INFO, request);
 
-        } else if (action != null && action.equalsIgnoreCase(OAuthConstants.ACTION_REVOKE)) {
+        } else if (action != null && OAuthConstants.ACTION_REVOKE.equalsIgnoreCase(action)) {
             String oauthAppState = client.getOauthApplicationState(consumerkey);
-            if(oauthAppState.equalsIgnoreCase(OAuthConstants.OauthAppStates.APP_STATE_REVOKED)) {
+            if(OAuthConstants.OauthAppStates.APP_STATE_REVOKED.equalsIgnoreCase(oauthAppState)) {
                 CarbonUIMessage.sendCarbonUIMessage("Application is already revoked.",
                         CarbonUIMessage.INFO, request);
             } else {
@@ -147,7 +147,7 @@
 </script>
 <%
     }
-    if((action != null) && (action.equalsIgnoreCase("revoke") || action.equalsIgnoreCase("regenerate"))) {
+    if((action != null) && ("revoke".equalsIgnoreCase(action) || "regenerate".equalsIgnoreCase(action))) {
         session.setAttribute("oauth-consum-secret", app.getOauthConsumerSecret());
 %>
 <script>

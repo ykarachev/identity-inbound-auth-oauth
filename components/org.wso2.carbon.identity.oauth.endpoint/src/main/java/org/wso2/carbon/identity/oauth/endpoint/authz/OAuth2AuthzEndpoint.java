@@ -184,7 +184,7 @@ public class OAuth2AuthzEndpoint {
                 OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
                 try {
                     String appState = oAuthAppDAO.getConsumerAppState(clientId);
-                    if(!appState.equalsIgnoreCase(OAuthConstants.OauthAppStates.APP_STATE_ACTIVE)) {
+                    if(!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
                         if (log.isDebugEnabled()) {
                             log.debug("Oauth App is not in active state.");
                         }

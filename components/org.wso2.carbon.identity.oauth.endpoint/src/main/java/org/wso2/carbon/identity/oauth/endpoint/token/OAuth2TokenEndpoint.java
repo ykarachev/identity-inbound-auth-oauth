@@ -78,17 +78,19 @@ public class OAuth2TokenEndpoint {
             String consumer_key = httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID);
             OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
             try {
-                String appState = oAuthAppDAO.getConsumerAppState(consumer_key);
-                if(!appState.equalsIgnoreCase(OAuthConstants.OauthAppStates.APP_STATE_ACTIVE)) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("Oauth App is not in active state.");
+                if(consumer_key != null) {
+                    String appState = oAuthAppDAO.getConsumerAppState(consumer_key);
+                    if(!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Oauth App is not in active state.");
+                        }
+                        OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
+                                .setError(OAuth2ErrorCodes.INVALID_CLIENT)
+                                .setErrorDescription("Oauth application is not in active state.").buildJSONMessage();
+                        return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                     }
-                    OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
-                            .setError(OAuth2ErrorCodes.INVALID_CLIENT)
-                            .setErrorDescription("Oauth application is not in active state.").buildJSONMessage();
-                    return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                 }
-            } catch (IdentityOAuthAdminException e) {
+            }catch (IdentityOAuthAdminException e) {
                 throw new OAuthSystemException("Error in getting oauth app state.");
             }
 

@@ -1869,7 +1869,7 @@ public class TokenMgtDAO {
         }
 
         try {
-            if (action.equals(OAuthConstants.ACTION_REVOKE)) {
+            if (OAuthConstants.ACTION_REVOKE.equals(action)) {
                 String newAppState;
                 if (properties.containsKey(OAuthConstants.OAUTH_APP_NEW_STATE)) {
                     newAppState = properties.getProperty(OAuthConstants.OAUTH_APP_NEW_STATE);
@@ -1885,7 +1885,7 @@ public class TokenMgtDAO {
                 statement.setString(2, consumerKey);
                 statement.execute();
 
-            } else if (action.equals(OAuthConstants.ACTION_REGENERATE)) {
+            } else if (OAuthConstants.ACTION_REGENERATE.equals(action)) {
                 String newSecretKey;
                 if (properties.containsKey(OAuthConstants.OAUTH_APP_NEW_SECRET_KEY)) {
                     newSecretKey = properties.getProperty(OAuthConstants.OAUTH_APP_NEW_SECRET_KEY);

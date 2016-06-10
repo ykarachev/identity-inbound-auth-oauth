@@ -15,19 +15,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.identity.oauth.dcr.util;
+package org.wso2.carbon.identity.oauth.dcr;
 
 
-public enum ErrorCodes {
-    META_DATA_VALIDATION_FAILED("Requested meta data will not be satisfied as in the specification.");
+import org.wso2.carbon.identity.base.IdentityRuntimeException;
 
-    private String description;
-
-    ErrorCodes(String description) {
-        this.description = description;
+public class DCRRuntimeException extends IdentityRuntimeException{
+    protected DCRRuntimeException(String errorDescription) {
+        super(errorDescription);
     }
 
-    public String getDescription() {
-        return this.description;
+    protected DCRRuntimeException(String errorDescription, Throwable cause) {
+        super(errorDescription, cause);
     }
 }

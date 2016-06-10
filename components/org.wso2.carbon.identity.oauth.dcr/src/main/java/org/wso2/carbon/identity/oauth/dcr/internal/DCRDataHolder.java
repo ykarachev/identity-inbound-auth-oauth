@@ -19,7 +19,11 @@
 package org.wso2.carbon.identity.oauth.dcr.internal;
 
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
-import org.wso2.carbon.identity.oauth.dcr.DCRManagementService;
+import org.wso2.carbon.identity.oauth.dcr.handler.RegistrationHandler;
+import org.wso2.carbon.identity.oauth.dcr.handler.UnRegistrationHandler;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This is the DataHolder class of DynamicClientRegistration bundle. This holds a reference to the
@@ -28,7 +32,9 @@ import org.wso2.carbon.identity.oauth.dcr.DCRManagementService;
 public class DCRDataHolder {
 
     private ApplicationManagementService applicationManagementService = null ;
-    private DCRManagementService DCRManagementService = null ;
+
+    private List<RegistrationHandler> registrationHandlerList = new ArrayList<>();
+    private List<UnRegistrationHandler> unRegistrationHandlerList = new ArrayList<>();
 
     private static DCRDataHolder thisInstance = new DCRDataHolder();
 
@@ -50,11 +56,22 @@ public class DCRDataHolder {
         this.applicationManagementService = applicationManagementService;
     }
 
-    public DCRManagementService getDCRManagementService() {
-        return DCRManagementService;
+
+    public List<RegistrationHandler> getRegistrationHandlerList() {
+        return registrationHandlerList;
     }
 
-    public void setDCRManagementService(DCRManagementService DCRManagementService) {
-        this.DCRManagementService = DCRManagementService;
+    public void setRegistrationHandlerList(
+            List<RegistrationHandler> registrationHandlerList) {
+        this.registrationHandlerList = registrationHandlerList;
+    }
+
+    public List<UnRegistrationHandler> getUnRegistrationHandlerList() {
+        return unRegistrationHandlerList;
+    }
+
+    public void setUnRegistrationHandlerList(
+            List<UnRegistrationHandler> unRegistrationHandlerList) {
+        this.unRegistrationHandlerList = unRegistrationHandlerList;
     }
 }

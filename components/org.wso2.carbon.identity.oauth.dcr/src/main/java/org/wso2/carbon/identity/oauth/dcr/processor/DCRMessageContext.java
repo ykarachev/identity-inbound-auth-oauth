@@ -15,19 +15,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.identity.oauth.dcr.util;
+package org.wso2.carbon.identity.oauth.dcr.processor;
 
+import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
+import org.wso2.carbon.identity.core.bean.context.MessageContext;
 
-public enum ErrorCodes {
-    META_DATA_VALIDATION_FAILED("Requested meta data will not be satisfied as in the specification.");
+import java.util.HashMap;
+import java.util.Map;
 
-    private String description;
+public class DCRMessageContext extends MessageContext {
 
-    ErrorCodes(String description) {
-        this.description = description;
+    private IdentityRequest identityRequest = null;
+
+    public DCRMessageContext(Map parameters) {
+        super(parameters);
     }
 
-    public String getDescription() {
-        return this.description;
+    public DCRMessageContext(IdentityRequest identityRequest) {
+        super(new HashMap());
+        this.identityRequest = identityRequest;
+    }
+
+    public IdentityRequest getIdentityRequest() {
+        return identityRequest;
     }
 }

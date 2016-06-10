@@ -15,19 +15,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.identity.oauth.dcr.util;
+package org.wso2.carbon.identity.oauth.dcr.handler;
+
+import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
+import org.wso2.carbon.identity.core.handler.AbstractIdentityHandler;
+import org.wso2.carbon.identity.oauth.dcr.DCRException;
+import org.wso2.carbon.identity.oauth.dcr.processor.DCRMessageContext;
 
 
-public enum ErrorCodes {
-    META_DATA_VALIDATION_FAILED("Requested meta data will not be satisfied as in the specification.");
-
-    private String description;
-
-    ErrorCodes(String description) {
-        this.description = description;
-    }
-
-    public String getDescription() {
-        return this.description;
-    }
+public abstract class AbstractDCRHandler extends AbstractIdentityHandler {
+    public abstract IdentityResponse.IdentityResponseBuilder handle(DCRMessageContext dcrMessageContext) throws
+                                                                                                         DCRException;
 }

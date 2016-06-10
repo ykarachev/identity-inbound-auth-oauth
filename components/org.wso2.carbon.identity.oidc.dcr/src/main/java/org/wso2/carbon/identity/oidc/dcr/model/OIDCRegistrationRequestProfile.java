@@ -15,19 +15,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.identity.oauth.dcr.util;
+package org.wso2.carbon.identity.oidc.dcr.model;
+
+import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
 
 
-public enum ErrorCodes {
-    META_DATA_VALIDATION_FAILED("Requested meta data will not be satisfied as in the specification.");
+public class OIDCRegistrationRequestProfile extends RegistrationRequestProfile {
 
-    private String description;
 
-    ErrorCodes(String description) {
-        this.description = description;
-    }
-
-    public String getDescription() {
-        return this.description;
-    }
 }

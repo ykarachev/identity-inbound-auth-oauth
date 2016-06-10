@@ -147,21 +147,13 @@
 </script>
 <%
     }
-
     if((action != null) && (action.equalsIgnoreCase("revoke") || action.equalsIgnoreCase("regenerate"))) {
         session.setAttribute("oauth-consum-secret", app.getOauthConsumerSecret());
-        if(action.equalsIgnoreCase("revoke")) {
 %>
-        <script>
-            location.href = '../application/configure-service-provider.jsp?action=<%=action%>&appState=<%=OAuthConstants.OauthAppStates.APP_STATE_REVOKED%>&display=oauthapp&spName=<%=Encode.forUriComponent(applicationSPName)%>&oauthapp=<%=Encode.forUriComponent(app.getOauthConsumerKey())%>';
-        </script>
-<%  } else { %>
-        <script>
-            location.href = '../application/configure-service-provider.jsp?action=<%=action%>&display=oauthapp&spName=<%=Encode.forUriComponent(applicationSPName)%>&oauthapp=<%=Encode.forUriComponent(app.getOauthConsumerKey())%>';
-        </script>
-<% } %>
-
-<% } else {
+<script>
+    location.href = '../application/configure-service-provider.jsp?action=<%=action%>&display=oauthapp&spName=<%=Encode.forUriComponent(applicationSPName)%>&oauthapp=<%=Encode.forUriComponent(app.getOauthConsumerKey())%>';
+</script>
+<%  } else {
 %>
 
 <fmt:bundle basename="org.wso2.carbon.identity.oauth.ui.i18n.Resources">

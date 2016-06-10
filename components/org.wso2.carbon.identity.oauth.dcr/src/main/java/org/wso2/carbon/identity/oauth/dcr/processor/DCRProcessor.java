@@ -18,20 +18,24 @@
 package org.wso2.carbon.identity.oauth.dcr.processor;
 
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityMessageContext;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityProcessor;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 import org.wso2.carbon.identity.oauth.dcr.DCRException;
 import org.wso2.carbon.identity.oauth.dcr.context.DCRMessageContext;
+import org.wso2.carbon.identity.oauth.dcr.exception.RegistrationException;
+import org.wso2.carbon.identity.oauth.dcr.exception.UnRegistrationException;
 import org.wso2.carbon.identity.oauth.dcr.handler.RegistrationHandler;
 import org.wso2.carbon.identity.oauth.dcr.handler.UnRegistrationHandler;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequest;
 import org.wso2.carbon.identity.oauth.dcr.model.UnregistrationRequest;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
+import org.wso2.carbon.identity.oauth.dcr.util.DCRExceptionBuilder;
+import org.wso2.carbon.identity.oauth.dcr.util.ErrorCodes;
 import org.wso2.carbon.identity.oauth.dcr.util.HandlerManager;
 
 import java.util.regex.Matcher;
@@ -41,12 +45,11 @@ public class DCRProcessor extends IdentityProcessor {
     private static Log log = LogFactory.getLog(DCRProcessor.class);
 
     @Override
-    public IdentityResponse.IdentityResponseBuilder process(IdentityRequest identityRequest) throws FrameworkException {
+    public IdentityResponse.IdentityResponseBuilder process(IdentityRequest identityRequest) throws DCRException {
 
         if (log.isDebugEnabled()) {
             log.debug("Request processing started by DCRProcessor.");
         }
-
         DCRMessageContext dcrMessageContext = new DCRMessageContext(identityRequest);
         IdentityResponse.IdentityResponseBuilder identityResponseBuilder = null;
         if (identityRequest instanceof RegistrationRequest) {
@@ -54,7 +57,6 @@ public class DCRProcessor extends IdentityProcessor {
         } else if (identityRequest instanceof UnregistrationRequest) {
             identityResponseBuilder = unRegisterOAuthApplication(dcrMessageContext);
         }
-
         return identityResponseBuilder;
     }
 
@@ -68,20 +70,42 @@ public class DCRProcessor extends IdentityProcessor {
         return null;
     }
 
-    protected IdentityResponse.IdentityResponseBuilder registerOAuthApplication(DCRMessageContext dcrMessageContext)
-            throws DCRException {
-        RegistrationHandler registrationHandler =
-                HandlerManager.getInstance().getRegistrationHandler(dcrMessageContext);
-        return registrationHandler.handle(dcrMessageContext);
+    protected IdentityResponse.IdentityResponseBuilder registerOAuthApplication(DCRMessageContext dcrMessageContext)throws RegistrationException {
+
+        IdentityResponse.IdentityResponseBuilder identityResponseBuilder = null;
+
+        try {
+            RegistrationHandler registrationHandler =
+                    HandlerManager.getInstance().getRegistrationHandler(dcrMessageContext);
+             identityResponseBuilder = registrationHandler.handle(dcrMessageContext);
+        } catch (DCRException e) {
+            if(e.getErrorInfoList().size()==0){
+                throw DCRExceptionBuilder
+                        .buildException(new RegistrationException(e.getErrorMessage()), ErrorCodes.BAD_REQUEST.toString(), e.getErrorMessage());
+            }else{
+                throw DCRExceptionBuilder.buildException(RegistrationException.class, e.getErrorInfoList().get(e.getErrorInfoList().size()-1));
+            }
+        }
+        return identityResponseBuilder ;
     }
 
     protected IdentityResponse.IdentityResponseBuilder unRegisterOAuthApplication(DCRMessageContext dcrMessageContext)
             throws DCRException {
-        UnRegistrationHandler unRegistrationHandler =
-                HandlerManager.getInstance().getUnRegistrationHandler(dcrMessageContext);
-        return unRegistrationHandler.handle(dcrMessageContext);
+        IdentityResponse.IdentityResponseBuilder identityResponseBuilder = null;
+        try {
+            UnRegistrationHandler unRegistrationHandler =
+                    HandlerManager.getInstance().getUnRegistrationHandler(dcrMessageContext);
+            identityResponseBuilder = unRegistrationHandler.handle(dcrMessageContext);
+        } catch (DCRException e) {
+            if(StringUtils.isBlank(e.getCode())){
+                throw DCRExceptionBuilder
+                        .buildException(new UnRegistrationException(e.getErrorMessage()), ErrorCodes.BAD_REQUEST.toString(), e.getErrorMessage());
+            }else{
+                throw DCRExceptionBuilder.buildException(UnRegistrationException.class, e.getErrorInfoList().get(e.getErrorInfoList().size()));
+            }
+        }
+        return identityResponseBuilder ;
     }
-
 
     @Override
     public boolean canHandle(IdentityRequest identityRequest) {
@@ -100,5 +124,4 @@ public class DCRProcessor extends IdentityProcessor {
         }
         return canHandle;
     }
-
 }

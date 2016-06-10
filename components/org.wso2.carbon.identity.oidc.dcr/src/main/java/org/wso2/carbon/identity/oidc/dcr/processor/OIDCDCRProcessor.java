@@ -25,7 +25,9 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Ide
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 import org.wso2.carbon.identity.oauth.dcr.DCRException;
 import org.wso2.carbon.identity.oauth.dcr.context.DCRMessageContext;
+import org.wso2.carbon.identity.oauth.dcr.exception.RegistrationException;
 import org.wso2.carbon.identity.oauth.dcr.processor.DCRProcessor;
+import org.wso2.carbon.identity.oidc.dcr.OIDCDCRException;
 import org.wso2.carbon.identity.oidc.dcr.context.OIDCDCRMessageContext;
 import org.wso2.carbon.identity.oidc.dcr.model.OIDCRegistrationRequest;
 import org.wso2.carbon.identity.oidc.dcr.util.OIDCDCRConstants;
@@ -36,7 +38,7 @@ public class OIDCDCRProcessor extends DCRProcessor {
 
     private static Log log = LogFactory.getLog(OIDCDCRProcessor.class);
     @Override
-    public IdentityResponse.IdentityResponseBuilder process(IdentityRequest identityRequest) throws FrameworkException {
+    public IdentityResponse.IdentityResponseBuilder process(IdentityRequest identityRequest) throws DCRException {
 
         if (log.isDebugEnabled()) {
             log.debug("Request processing started by OIDCDCRProcessor.");
@@ -45,6 +47,8 @@ public class OIDCDCRProcessor extends DCRProcessor {
         IdentityResponse.IdentityResponseBuilder identityResponseBuilder = null;
         if (identityRequest instanceof OIDCRegistrationRequest) {
             identityResponseBuilder = registerOAuthApplication(oidcdcrMessageContext);
+        }else{
+            identityResponseBuilder = super.process(identityRequest);
         }
 
         return identityResponseBuilder;
@@ -52,7 +56,7 @@ public class OIDCDCRProcessor extends DCRProcessor {
 
     @Override
     protected IdentityResponse.IdentityResponseBuilder registerOAuthApplication(DCRMessageContext dcrMessageContext)
-            throws DCRException {
+            throws RegistrationException {
         return super.registerOAuthApplication(dcrMessageContext);
     }
 

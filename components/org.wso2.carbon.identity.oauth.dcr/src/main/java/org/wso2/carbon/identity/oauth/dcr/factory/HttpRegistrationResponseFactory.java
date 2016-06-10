@@ -24,14 +24,26 @@ import org.wso2.carbon.identity.application.authentication.framework.exception.F
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponseFactory;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
+import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.dcr.exception.RegistrationException;
+import org.wso2.carbon.identity.oauth.dcr.exception.UnRegistrationException;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationResponse;
+import org.wso2.carbon.identity.oauth.dcr.util.ErrorCodes;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
+import java.util.List;
 
 public class HttpRegistrationResponseFactory extends HttpIdentityResponseFactory {
+
+    public static String INVALID_REDIRECT_URI = "invalid_redirect_uri" ;
+    public static String INVALID_CLIENT_METADATA = "invalid_client_metadata" ;
+    public static String INVALID_SOFTWARE_STATEMENT = "invalid_software_statement" ;
+    public static String UNAPPROVED_SOFTWARE_STATEMENT = "unapproved_software_statement" ;
+    public static String BACKEND_FAILED = "backend_failed" ;
+
     @Override
     public HttpIdentityResponse.HttpIdentityResponseBuilder create(IdentityResponse identityResponse) {
         HttpIdentityResponse.HttpIdentityResponseBuilder httpIdentityResponseBuilder = new HttpIdentityResponse
@@ -57,7 +69,17 @@ public class HttpRegistrationResponseFactory extends HttpIdentityResponseFactory
     public HttpIdentityResponse.HttpIdentityResponseBuilder handleException(FrameworkException exception) {
         HttpIdentityResponse.HttpIdentityResponseBuilder builder =
                 new HttpIdentityResponse.HttpIdentityResponseBuilder();
-        String errorMessage = generateErrorResponse("ddd", exception.getMessage()).toJSONString();
+        String errorMessage = "" ;
+        List<IdentityException.ErrorInfo> errorInfoList = exception.getErrorInfoList();
+        if(errorInfoList.size()>0){
+            IdentityException.ErrorInfo errorInfo = errorInfoList.get(errorInfoList.size() - 1);
+            if(ErrorCodes.META_DATA_VALIDATION_FAILED.name().equals(errorInfo.getErrorCode())){
+                errorMessage = generateErrorResponse(INVALID_CLIENT_METADATA, exception.getMessage()).toJSONString();
+            }else if(ErrorCodes.BAD_REQUEST.name().equals(errorInfo.getErrorCode())){
+                errorMessage = generateErrorResponse(BACKEND_FAILED, exception.getMessage()).toJSONString();
+            }
+
+        }
         builder.setBody(errorMessage);
         builder.setStatusCode(HttpServletResponse.SC_BAD_REQUEST);
         builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
@@ -77,7 +99,11 @@ public class HttpRegistrationResponseFactory extends HttpIdentityResponseFactory
     }
 
     public boolean canHandle(FrameworkException exception) {
-        return false;
+
+        if(exception instanceof RegistrationException){
+            return true ;
+        }
+        return false ;
     }
 
 

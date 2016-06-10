@@ -22,6 +22,7 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Htt
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponseFactory;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.dcr.exception.UnRegistrationException;
 import org.wso2.carbon.identity.oauth.dcr.model.UnregistrationResponse;
 
 import javax.servlet.http.HttpServletResponse;
@@ -68,7 +69,9 @@ public class HttpUnregistrationResponseFactory extends HttpIdentityResponseFacto
     }
 
     public boolean canHandle(FrameworkException exception) {
-
+        if(exception instanceof UnRegistrationException){
+            return true ;
+        }
         return false;
     }
 }

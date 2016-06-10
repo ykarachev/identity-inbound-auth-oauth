@@ -17,6 +17,7 @@
  */
 package org.wso2.carbon.identity.oauth.endpoint.introspection;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.oltu.oauth2.common.utils.JSONUtils;
 import org.codehaus.jettison.json.JSONException;
 
@@ -82,7 +83,7 @@ public class IntrospectionResponseBuilder {
      * @return
      */
     public IntrospectionResponseBuilder setJwtId(String jwtId) {
-	if (jwtId != null && !jwtId.isEmpty()) {
+	if (StringUtils.isNotBlank(jwtId)) {
 	    parameters.put(IntrospectionResponse.JTI, jwtId);
 	}
 	return this;
@@ -94,7 +95,7 @@ public class IntrospectionResponseBuilder {
      * @return
      */
     public IntrospectionResponseBuilder setSubject(String subject) {
-	if (subject != null && !subject.isEmpty()) {
+	if (StringUtils.isNotBlank(subject)) {
 	    parameters.put(IntrospectionResponse.SUB, subject);
 	}
 	return this;
@@ -119,7 +120,7 @@ public class IntrospectionResponseBuilder {
      * @return
      */
     public IntrospectionResponseBuilder setUsername(String username) {
-	if (username != null && !username.isEmpty()) {
+	if (StringUtils.isNotBlank(username)) {
 	    parameters.put(IntrospectionResponse.USERNAME, username);
 	}
 	return this;
@@ -131,7 +132,7 @@ public class IntrospectionResponseBuilder {
      * @return
      */
     public IntrospectionResponseBuilder setTokenType(String tokenType) {
-	if (tokenType != null && !tokenType.isEmpty()) {
+	if (StringUtils.isNotBlank(tokenType)) {
 	    parameters.put(IntrospectionResponse.TOKEN_TYPE, tokenType);
 	}
 	return this;
@@ -156,7 +157,7 @@ public class IntrospectionResponseBuilder {
      * @return
      */
     public IntrospectionResponseBuilder setAudience(String audience) {
-	if (audience != null && !audience.isEmpty()) {
+	if (StringUtils.isNotBlank(audience)) {
 	    parameters.put(IntrospectionResponse.AUD, audience);
 	}
 	return this;
@@ -168,7 +169,7 @@ public class IntrospectionResponseBuilder {
      * @return
      */
     public IntrospectionResponseBuilder setIssuer(String issuer) {
-	if (issuer != null && !issuer.isEmpty()) {
+	if (StringUtils.isNotBlank(issuer)) {
 	    parameters.put(IntrospectionResponse.ISS, issuer);
 	}
 	return this;
@@ -180,7 +181,7 @@ public class IntrospectionResponseBuilder {
      * @return
      */
     public IntrospectionResponseBuilder setScope(String scope) {
-	if (scope != null && !scope.isEmpty()) {
+	if (StringUtils.isNotBlank(scope)) {
 	    parameters.put(IntrospectionResponse.SCOPE, scope);
 	}
 	return this;
@@ -192,7 +193,7 @@ public class IntrospectionResponseBuilder {
      * @return
      */
     public IntrospectionResponseBuilder setClientId(String consumerKey) {
-	if (consumerKey != null && !consumerKey.isEmpty()) {
+	if (StringUtils.isNotBlank(consumerKey)) {
 	    parameters.put(IntrospectionResponse.CLIENT_ID, consumerKey);
 	}
 	return this;

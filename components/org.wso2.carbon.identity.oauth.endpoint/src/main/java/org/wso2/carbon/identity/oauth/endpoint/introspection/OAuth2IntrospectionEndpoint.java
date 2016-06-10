@@ -74,7 +74,7 @@ public class OAuth2IntrospectionEndpoint {
             log.debug("Token type hint: " + tokenTypeHint);
         }
 
-        if (StringUtils.isEmpty(token)) {
+        if (StringUtils.isBlank(token)) {
             return Response.status(Response.Status.BAD_REQUEST).entity("{'error': 'Invalid input'}").build();
         }
 

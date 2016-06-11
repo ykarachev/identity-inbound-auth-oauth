@@ -80,7 +80,6 @@
         <cookie-config>
             <secure>true</secure>
         </cookie-config>
-        <session-timeout>60</session-timeout>
     </session-config>
 
 </web-app>

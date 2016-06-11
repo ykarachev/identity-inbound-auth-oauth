@@ -17,6 +17,9 @@
  */
 package org.wso2.carbon.identity.oauth.endpoint.introspection;
 
+/**
+ * This class represents the format of the introspection response.
+ */
 public final class IntrospectionResponse {
 
     // whether or not the presented token is currently active
@@ -67,11 +70,11 @@ public final class IntrospectionResponse {
 
     class Error {
 
-	public static final String INVALID_REQUEST = "invalid_request";
+        public static final String INVALID_REQUEST = "invalid_request";
 
-	public static final String ERROR = "error";
+        public static final String ERROR = "error";
 
-	public static final String ERROR_DESCRIPTION = "error_description";
+        public static final String ERROR_DESCRIPTION = "error_description";
 
     }
 

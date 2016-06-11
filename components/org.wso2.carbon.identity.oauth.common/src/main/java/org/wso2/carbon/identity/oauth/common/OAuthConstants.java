@@ -115,7 +115,7 @@ public final class OAuthConstants {
         public static final String VERSION_1A = "OAuth-1.0a";
         public static final String VERSION_2 = "OAuth-2.0";
 
-        private OAuthVersions(){
+        private OAuthVersions() {
 
         }
     }
@@ -132,7 +132,7 @@ public final class OAuthConstants {
         public static final String SCOPE = "scope";
         public static final String OAUTH_DISPLAY_NAME = "xoauth_displayname";
 
-        private OAuth10AParams(){
+        private OAuth10AParams() {
 
         }
     }
@@ -145,7 +145,8 @@ public final class OAuthConstants {
         public static final String DISPLAY = "display";
         public static final String ID_TOKEN_HINT = "id_token_hint";
         public static final String LOGIN_HINT = "login_hint";
-        private OAuth20Params(){
+
+        private OAuth20Params() {
 
         }
     }
@@ -156,7 +157,8 @@ public final class OAuthConstants {
         public static final String CONSENT = "consent";
         public static final String NONE = "none";
         public static final String SELECT_ACCOUNT = "select_account";
-        private Prompt(){
+
+        private Prompt() {
 
         }
     }
@@ -167,7 +169,7 @@ public final class OAuthConstants {
         public static final String REQUEST_TOKEN_URL = "/request-token";
         public static final String AUTHORIZE_TOKEN_URL = "/authorize-token";
 
-        private OAuth10AEndpoints(){
+        private OAuth10AEndpoints() {
 
         }
     }
@@ -177,7 +179,7 @@ public final class OAuthConstants {
         public static final String OAUTH20_ACCESS_TOKEN_URL = "/token";
         public static final String OAUTH20_AUTHORIZE_TOKEN_URL = "/authorize";
 
-        private OAuth20Endpoints(){
+        private OAuth20Endpoints() {
 
         }
     }
@@ -187,7 +189,7 @@ public final class OAuthConstants {
         public static final String APPROVE = "approve";
         public static final String APPROVE_ALWAYS = "approveAlways";
 
-        private Consent(){
+        private Consent() {
 
         }
     }
@@ -198,7 +200,7 @@ public final class OAuthConstants {
         public static final String TOKEN_STATE_EXPIRED = "EXPIRED";
         public static final String TOKEN_STATE_INACTIVE = "INACTIVE";
 
-        private TokenStates(){
+        private TokenStates() {
 
         }
     }
@@ -209,7 +211,7 @@ public final class OAuthConstants {
         public static final String EXPIRED = "EXPIRED";
         public static final String INACTIVE = "INACTIVE";
 
-        private AuthorizationCodeState(){
+        private AuthorizationCodeState() {
 
         }
     }
@@ -218,7 +220,7 @@ public final class OAuthConstants {
         public static final String APP_STATE_ACTIVE = "ACTIVE";
         public static final String APP_STATE_REVOKED = "REVOKED";
 
-        private OauthAppStates(){
+        private OauthAppStates() {
 
         }
     }
@@ -227,12 +229,12 @@ public final class OAuthConstants {
         public static class TokenResponse {
             public static final String UNSUPPORTED_CLIENT_AUTHENTICATION_METHOD = "unsupported_client_authentication_method";
 
-            private TokenResponse(){
+            private TokenResponse() {
 
             }
         }
 
-        private OAuthError(){
+        private OAuthError() {
 
         }
     }
@@ -242,7 +244,7 @@ public final class OAuthConstants {
         public static final String OAUTH2 = "oauth2";
         public static final String OIDC = "oidc";
 
-        private Scope(){
+        private Scope() {
 
         }
     }
@@ -250,12 +252,13 @@ public final class OAuthConstants {
     public static class UserType {
         public static final String APPLICATION = "APPLICATION";
         public static final String APPLICATION_USER = "APPLICATION_USER";
-        private UserType(){
+
+        private UserType() {
 
         }
     }
 
-    private OAuthConstants(){
+    private OAuthConstants() {
 
     }
 }

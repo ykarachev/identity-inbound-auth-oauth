@@ -80,7 +80,13 @@ public class OpenIDConnectUserEndpoint {
                     }
                 }
             } catch (IdentityOAuthAdminException | IdentityOAuth2Exception | OAuthSystemException e) {
-                throw new OAuthSystemException("Error in getting oauth app state.");
+                if (log.isDebugEnabled()) {
+                    log.debug("Error in getting oauth app state.");
+                }
+                OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
+                        .setError(OAuth2ErrorCodes.SERVER_ERROR)
+                        .setErrorDescription("Error in getting oauth app state.").buildJSONMessage();
+                return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
             }
 
             // validate the access token

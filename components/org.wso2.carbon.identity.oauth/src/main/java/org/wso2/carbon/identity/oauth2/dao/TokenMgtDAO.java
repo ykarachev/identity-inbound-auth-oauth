@@ -713,7 +713,8 @@ public class TokenMgtDAO {
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
         try {
-            String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE.replace(IDN_OAUTH2_AUTHORIZATION_CODE, authCodeStoreTable);
+            String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE.replace(IDN_OAUTH2_AUTHORIZATION_CODE,
+                    authCodeStoreTable);
             prepStmt = connection.prepareStatement(sqlQuery);
             prepStmt.setString(1, newState);
             prepStmt.setString(2, persistenceProcessor.getPreprocessedAuthzCode(authzCode));
@@ -721,7 +722,8 @@ public class TokenMgtDAO {
             connection.commit();
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollBack(connection);
-            throw new IdentityOAuth2Exception("Error occurred while updating the state of Authorization Code : " + authzCode.toString(), e);
+            throw new IdentityOAuth2Exception("Error occurred while updating the state of Authorization Code : " +
+                    authzCode.toString(), e);
         }  finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, prepStmt);
         }
@@ -1217,7 +1219,8 @@ public class TokenMgtDAO {
             connection.commit();
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollBack(connection);
-            throw new IdentityOAuth2Exception("Error occurred while getting authorization codes from authorization code table for the application with consumer key : " + consumerKey, e);
+            throw new IdentityOAuth2Exception("Error occurred while getting authorization codes from authorization code " +
+                    "table for the application with consumer key : " + consumerKey, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }
@@ -1241,7 +1244,8 @@ public class TokenMgtDAO {
             connection.commit();
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollBack(connection);
-            throw new IdentityOAuth2Exception("Error occurred while getting authorization codes from authorization code table for the application with consumer key : " + consumerKey, e);
+            throw new IdentityOAuth2Exception("Error occurred while getting authorization codes from authorization code " +
+                    "table for the application with consumer key : " + consumerKey, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }
@@ -1880,7 +1884,8 @@ public class TokenMgtDAO {
                 connection.setAutoCommit(false);
 
                 // update application state of the oauth app
-                statement = connection.prepareStatement(org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_APPLICATION_STATE);
+                statement = connection.prepareStatement
+                        (org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_APPLICATION_STATE);
                 statement.setString(1, newAppState);
                 statement.setString(2, consumerKey);
                 statement.execute();
@@ -1896,7 +1901,8 @@ public class TokenMgtDAO {
                 connection.setAutoCommit(false);
 
                 // update consumer secret of the oauth app
-                statement = connection.prepareStatement(org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_OAUTH_SECRET_KEY);
+                statement = connection.prepareStatement
+                        (org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_OAUTH_SECRET_KEY);
                 statement.setString(1, newSecretKey);
                 statement.setString(2, consumerKey);
                 statement.execute();
@@ -1950,7 +1956,8 @@ public class TokenMgtDAO {
                     } else {
                         String authCodeStoreTable = OAuthConstants.AUTHORIZATION_CODE_STORE_TABLE;
 
-                        String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE.replace(IDN_OAUTH2_AUTHORIZATION_CODE, authCodeStoreTable);
+                        String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE.replace(IDN_OAUTH2_AUTHORIZATION_CODE,
+                                authCodeStoreTable);
                         connection.setAutoCommit(false);
                         statement = connection.prepareStatement(sqlQuery);
                         statement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);

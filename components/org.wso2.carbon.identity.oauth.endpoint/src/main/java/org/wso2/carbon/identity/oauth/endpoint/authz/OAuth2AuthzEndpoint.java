@@ -180,7 +180,7 @@ public class OAuth2AuthzEndpoint {
         SessionDataCacheEntry sessionDataCacheEntry = null;
 
         try {
-            if(clientId != null) {
+            if(StringUtils.isNotEmpty(clientId)) {
                 OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
                 try {
                     String appState = oAuthAppDAO.getConsumerAppState(clientId);
@@ -194,7 +194,13 @@ public class OAuth2AuthzEndpoint {
                         return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                     }
                 } catch (IdentityOAuthAdminException e) {
-                    throw new URISyntaxException("Error in getting oauth app state.", "Error in getting oauth app state.");
+                    if (log.isDebugEnabled()) {
+                        log.debug("Error in getting oauth app state.");
+                    }
+                    OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
+                            .setError(OAuth2ErrorCodes.SERVER_ERROR)
+                            .setErrorDescription("Error in getting oauth app state.").buildJSONMessage();
+                    return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                 }
             }
 

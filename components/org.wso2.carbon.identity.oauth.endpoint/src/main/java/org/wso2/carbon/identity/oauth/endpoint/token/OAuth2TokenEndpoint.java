@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.oauth.endpoint.token;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.as.response.OAuthASResponse;
@@ -78,9 +79,9 @@ public class OAuth2TokenEndpoint {
             String consumer_key = httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID);
             OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
             try {
-                if(consumer_key != null) {
+                if (StringUtils.isNotEmpty(consumer_key)) {
                     String appState = oAuthAppDAO.getConsumerAppState(consumer_key);
-                    if(!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
+                    if (!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
                         if (log.isDebugEnabled()) {
                             log.debug("Oauth App is not in active state.");
                         }
@@ -90,8 +91,14 @@ public class OAuth2TokenEndpoint {
                         return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                     }
                 }
-            }catch (IdentityOAuthAdminException e) {
-                throw new OAuthSystemException("Error in getting oauth app state.");
+            } catch (IdentityOAuthAdminException e) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Error in getting oauth app state.");
+                }
+                OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
+                        .setError(OAuth2ErrorCodes.SERVER_ERROR)
+                        .setErrorDescription("Error in getting oauth app state.").buildJSONMessage();
+                return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
             }
 
             // extract the basic auth credentials if present in the request and use for
@@ -134,7 +141,7 @@ public class OAuth2TokenEndpoint {
                     // if there is an auth failure, HTTP 401 Status Code should be sent back to the client.
                     if (OAuth2ErrorCodes.INVALID_CLIENT.equals(oauth2AccessTokenResp.getErrorCode())) {
                         return handleBasicAuthFailure();
-                    } else if ("sql_error".equals(oauth2AccessTokenResp.getErrorCode())){
+                    } else if ("sql_error".equals(oauth2AccessTokenResp.getErrorCode())) {
                         return handleSQLError();
                     } else if (OAuth2ErrorCodes.SERVER_ERROR.equals(oauth2AccessTokenResp.getErrorCode())) {
                         return handleServerError();
@@ -222,7 +229,7 @@ public class OAuth2TokenEndpoint {
                 setError(OAuth2ErrorCodes.SERVER_ERROR).setErrorDescription("Internal Server Error.").buildJSONMessage();
 
         return Response.status(response.getResponseStatus()).header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE,
-                        EndpointUtil.getRealmInfo()).entity(response.getBody()).build();
+                EndpointUtil.getRealmInfo()).entity(response.getBody()).build();
 
     }
 

@@ -101,7 +101,6 @@ public class OAuthConsumerDAO {
             statement.setString(1, newSecretKey);
             statement.setString(2, consumerKey);
             statement.execute();
-            connection.setAutoCommit(false);
             connection.commit();
         } catch (SQLException e) {
             throw new IdentityApplicationManagementException("Error while executing the SQL statement.", e);

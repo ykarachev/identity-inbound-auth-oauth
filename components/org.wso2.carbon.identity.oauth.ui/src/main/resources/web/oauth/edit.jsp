@@ -84,16 +84,17 @@
             app = client.getOAuthApplicationData(consumerkey);
         }
 
-        if (action != null && OAuthConstants.ACTION_REGENERATE.equalsIgnoreCase(action)) {
+        if (OAuthConstants.ACTION_REGENERATE.equalsIgnoreCase(action)) {
             String oauthAppState = client.getOauthApplicationState(consumerkey);
             client.regenerateSecretKey(consumerkey);
             if(OAuthConstants.OauthAppStates.APP_STATE_REVOKED.equalsIgnoreCase(oauthAppState)) {
                 client.updateOauthApplicationState(consumerkey, OAuthConstants.OauthAppStates.APP_STATE_ACTIVE);
             }
             app.setOauthConsumerSecret(client.getOAuthApplicationData(consumerkey).getOauthConsumerSecret());
-            CarbonUIMessage.sendCarbonUIMessage("Client Secret successfully updated for Client ID: " + consumerkey,CarbonUIMessage.INFO, request);
+            CarbonUIMessage.sendCarbonUIMessage("Client Secret successfully updated for Client ID: " + consumerkey,
+                    CarbonUIMessage.INFO, request);
 
-        } else if (action != null && OAuthConstants.ACTION_REVOKE.equalsIgnoreCase(action)) {
+        } else if (OAuthConstants.ACTION_REVOKE.equalsIgnoreCase(action)) {
             String oauthAppState = client.getOauthApplicationState(consumerkey);
             if(OAuthConstants.OauthAppStates.APP_STATE_REVOKED.equalsIgnoreCase(oauthAppState)) {
                 CarbonUIMessage.sendCarbonUIMessage("Application is already revoked.",

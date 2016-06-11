@@ -321,7 +321,6 @@ public class OAuthAdminService extends AbstractAdmin {
     }
 
     /**
-     *
      * @return
      * @throws IdentityOAuthAdminException
      */
@@ -331,7 +330,6 @@ public class OAuthAdminService extends AbstractAdmin {
     }
 
     /**
-     *
      * @param consumerKey
      * @param newState
      * @throws IdentityOAuthAdminException
@@ -342,7 +340,7 @@ public class OAuthAdminService extends AbstractAdmin {
         try {
             if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
                 OAuthAppDO oAuthAppDO = appInfoCache.getValueFromCache(consumerKey);
-                if(oAuthAppDO != null) {
+                if (oAuthAppDO != null) {
                     oAuthAppDO.setState(newState);
                 } else {
                     oAuthAppDO = oAuthAppDAO.getAppInformation(consumerKey);
@@ -359,13 +357,12 @@ public class OAuthAdminService extends AbstractAdmin {
             properties.setProperty(OAuthConstants.ACTION_PROPERTY_KEY, OAuthConstants.ACTION_REVOKE);
             updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties);
 
-        } catch ( InvalidOAuthClientException | IdentityOAuth2Exception e) {
+        } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
             throw new IdentityOAuthAdminException("Error while updating consumer application state", e);
         }
     }
 
     /**
-     *
      * @param consumerKey
      * @throws IdentityOAuthAdminException
      */
@@ -388,14 +385,14 @@ public class OAuthAdminService extends AbstractAdmin {
 
     }
 
-    private void updateAppAndRevokeTokensAndAuthzCodes(String consumerKey, Properties properties)  throws IdentityOAuthAdminException {
+    private void updateAppAndRevokeTokensAndAuthzCodes(String consumerKey, Properties properties) throws IdentityOAuthAdminException {
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
 
         try {
             Set<String> accessTokens = tokenMgtDAO.getActiveTokensForConsumerKey(consumerKey);
             if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
                 OAuthCache oauthCache = OAuthCache.getInstance();
-                for(String accessToken : accessTokens) {
+                for (String accessToken : accessTokens) {
                     OAuthCacheKey cacheKey = new OAuthCacheKey(accessToken);
                     oauthCache.clearCacheEntry(cacheKey);
                 }
@@ -407,7 +404,7 @@ public class OAuthAdminService extends AbstractAdmin {
             Set<String> authorizationCodes = tokenMgtDAO.getActiveAuthorizationCodesForConsumerKey(consumerKey);
             if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
                 OAuthCache oauthCache = OAuthCache.getInstance();
-                for(String authorizationCode : authorizationCodes) {
+                for (String authorizationCode : authorizationCodes) {
                     OAuthCacheKey cacheKey = new OAuthCacheKey(authorizationCode);
                     oauthCache.clearCacheEntry(cacheKey);
                 }
@@ -420,10 +417,8 @@ public class OAuthAdminService extends AbstractAdmin {
                     authorizationCodes.toArray(new String[authorizationCodes.size()]),
                     accessTokens.toArray(new String[accessTokens.size()]));
 
-        } catch (IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error in updating oauth app & revoking access tokens and authz codes." + e);
-        } catch (IdentityApplicationManagementException e) {
-            throw new IdentityOAuthAdminException("Error in updating oauth app & revoking access tokens and authz codes." + e);
+        } catch (IdentityOAuth2Exception | IdentityApplicationManagementException e) {
+            throw new IdentityOAuthAdminException("Error in updating oauth app & revoking access tokens and authz codes.", e);
         }
     }
 
@@ -695,6 +690,7 @@ public class OAuthAdminService extends AbstractAdmin {
         }
         return allowedGrants.toArray(new String[allowedGrants.size()]);
     }
+
     /**
      * @return true if PKCE is supported by the database, false if not
      */

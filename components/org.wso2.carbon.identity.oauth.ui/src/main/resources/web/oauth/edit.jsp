@@ -120,14 +120,14 @@
             if (OAuthConstants.OAuthVersions.VERSION_2.equals(app.getOAuthVersion())) {
                 String grants = app.getGrantTypes();
                 if (grants != null) {
-                    codeGrant = grants.contains("authorization_code") ? true : false;
-                    implicitGrant = grants.contains("implicit") ? true : false;
-                    passowrdGrant = grants.contains("password") ? true : false;
-                    clientCredGrant = grants.contains("client_credentials") ? true : false;
-                    refreshGrant = grants.contains("refresh_token") ? true : false;
-                    samlGrant1 = grants.contains("urn:ietf:params:oauth:grant-type:saml1-bearer") ? true : false;
-                    samlGrant2 = grants.contains("urn:ietf:params:oauth:grant-type:saml2-bearer") ? true : false;
-                    ntlmGrant = grants.contains("iwa:ntlm") ? true : false;
+                    codeGrant = grants.contains("authorization_code");
+                    implicitGrant = grants.contains("implicit");
+                    passowrdGrant = grants.contains("password");
+                    clientCredGrant = grants.contains("client_credentials");
+                    refreshGrant = grants.contains("refresh_token");
+                    samlGrant1 = grants.contains("urn:ietf:params:oauth:grant-type:saml1-bearer");
+                    samlGrant2 = grants.contains("urn:ietf:params:oauth:grant-type:saml2-bearer");
+                    ntlmGrant = grants.contains("iwa:ntlm");
                 }
             }
         }

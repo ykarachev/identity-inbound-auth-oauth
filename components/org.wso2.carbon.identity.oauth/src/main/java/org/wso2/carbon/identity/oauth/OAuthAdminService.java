@@ -26,9 +26,11 @@ import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.core.AbstractAdmin;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
+import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
@@ -37,6 +39,7 @@ import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientExcepti
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
+import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO;
@@ -46,6 +49,7 @@ import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
+import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
@@ -55,6 +59,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 public class OAuthAdminService extends AbstractAdmin {
@@ -312,6 +317,108 @@ public class OAuthAdminService extends AbstractAdmin {
         dao.updateConsumerApplication(oauthappdo);
         if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
             appInfoCache.addToCache(oauthappdo.getOauthConsumerKey(), oauthappdo);
+        }
+    }
+
+    /**
+     * @return
+     * @throws IdentityOAuthAdminException
+     */
+    public String getOauthApplicationState(String consumerKey) throws IdentityOAuthAdminException {
+        OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
+        return oAuthAppDAO.getConsumerAppState(consumerKey);
+    }
+
+    /**
+     * @param consumerKey
+     * @param newState
+     * @throws IdentityOAuthAdminException
+     */
+    public void updateConsumerAppState(String consumerKey, String newState) throws IdentityOAuthAdminException {
+
+        OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
+        try {
+            if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+                OAuthAppDO oAuthAppDO = appInfoCache.getValueFromCache(consumerKey);
+                if (oAuthAppDO != null) {
+                    oAuthAppDO.setState(newState);
+                } else {
+                    oAuthAppDO = oAuthAppDAO.getAppInformation(consumerKey);
+                }
+                appInfoCache.addToCache(consumerKey, oAuthAppDO);
+
+                if (log.isDebugEnabled()) {
+                    log.debug("App state is updated in the cache.");
+                }
+            }
+
+            Properties properties = new Properties();
+            properties.setProperty(OAuthConstants.OAUTH_APP_NEW_STATE, newState);
+            properties.setProperty(OAuthConstants.ACTION_PROPERTY_KEY, OAuthConstants.ACTION_REVOKE);
+            updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties);
+
+        } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
+            throw new IdentityOAuthAdminException("Error while updating consumer application state", e);
+        }
+    }
+
+    /**
+     * @param consumerKey
+     * @throws IdentityOAuthAdminException
+     */
+    public void updateOauthSecretKey(String consumerKey) throws IdentityOAuthAdminException {
+
+        OAuthConsumerDAO oAuthConsumerDAO = new OAuthConsumerDAO();
+        String newSecretKey = OAuthUtil.getRandomNumber();
+        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+            CacheEntry clientCredentialDO = new ClientCredentialDO(newSecretKey);
+            OAuthCache.getInstance().addToCache(new OAuthCacheKey(consumerKey), clientCredentialDO);
+            if (log.isDebugEnabled()) {
+                log.debug("Client Secret is updated in the cache.");
+            }
+        }
+
+        Properties properties = new Properties();
+        properties.setProperty(OAuthConstants.OAUTH_APP_NEW_SECRET_KEY, newSecretKey);
+        properties.setProperty(OAuthConstants.ACTION_PROPERTY_KEY, OAuthConstants.ACTION_REGENERATE);
+        updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties);
+
+    }
+
+    private void updateAppAndRevokeTokensAndAuthzCodes(String consumerKey, Properties properties) throws IdentityOAuthAdminException {
+        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
+
+        try {
+            Set<String> accessTokens = tokenMgtDAO.getActiveTokensForConsumerKey(consumerKey);
+            if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+                OAuthCache oauthCache = OAuthCache.getInstance();
+                for (String accessToken : accessTokens) {
+                    OAuthCacheKey cacheKey = new OAuthCacheKey(accessToken);
+                    oauthCache.clearCacheEntry(cacheKey);
+                }
+                if (log.isDebugEnabled()) {
+                    log.debug("Access tokens are removed from the cache.");
+                }
+            }
+
+            Set<String> authorizationCodes = tokenMgtDAO.getActiveAuthorizationCodesForConsumerKey(consumerKey);
+            if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+                OAuthCache oauthCache = OAuthCache.getInstance();
+                for (String authorizationCode : authorizationCodes) {
+                    OAuthCacheKey cacheKey = new OAuthCacheKey(authorizationCode);
+                    oauthCache.clearCacheEntry(cacheKey);
+                }
+                if (log.isDebugEnabled()) {
+                    log.debug("Access tokens are removed from the cache.");
+                }
+            }
+
+            tokenMgtDAO.updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties,
+                    authorizationCodes.toArray(new String[authorizationCodes.size()]),
+                    accessTokens.toArray(new String[accessTokens.size()]));
+
+        } catch (IdentityOAuth2Exception | IdentityApplicationManagementException e) {
+            throw new IdentityOAuthAdminException("Error in updating oauth app & revoking access tokens and authz codes.", e);
         }
     }
 
@@ -583,6 +690,7 @@ public class OAuthAdminService extends AbstractAdmin {
         }
         return allowedGrants.toArray(new String[allowedGrants.size()]);
     }
+
     /**
      * @return true if PKCE is supported by the database, false if not
      */

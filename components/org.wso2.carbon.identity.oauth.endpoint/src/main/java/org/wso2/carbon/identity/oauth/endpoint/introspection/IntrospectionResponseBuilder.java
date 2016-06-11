@@ -50,9 +50,7 @@ public class IntrospectionResponseBuilder {
         parameters.put(IntrospectionResponse.ACTIVE, isActive);
         if (!isActive) {
             // if the token is not active we do not want to return back the expiration time.
-            if (parameters.containsKey(IntrospectionResponse.EXP)) {
-                parameters.remove(IntrospectionResponse.EXP);
-            }
+            parameters.remove(IntrospectionResponse.EXP);
             // if the token is not active we do not want to return back the nbf time.
             parameters.remove(IntrospectionResponse.NBF);
         }

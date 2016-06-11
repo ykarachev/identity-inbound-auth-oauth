@@ -81,7 +81,7 @@ public class OpenIDConnectUserEndpoint {
                 }
             } catch (IdentityOAuthAdminException | IdentityOAuth2Exception | OAuthSystemException e) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Error in getting oauth app state.");
+                    log.debug("Error in getting oauth app state.", e);
                 }
                 OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
                         .setError(OAuth2ErrorCodes.SERVER_ERROR)

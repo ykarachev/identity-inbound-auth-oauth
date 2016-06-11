@@ -20,7 +20,7 @@ package org.wso2.carbon.identity.oauth.endpoint.introspection;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.codehaus.jettison.json.JSONException;
+import org.json.JSONException;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.oauth2.OAuth2TokenValidationService;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2IntrospectionResponseDTO;
@@ -35,7 +35,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 @Path("/introspect")
-@Consumes({ MediaType.APPLICATION_FORM_URLENCODED })
+@Consumes({MediaType.APPLICATION_FORM_URLENCODED})
 @Produces(MediaType.APPLICATION_JSON)
 public class OAuth2IntrospectionEndpoint {
 
@@ -45,7 +45,6 @@ public class OAuth2IntrospectionEndpoint {
     private final static String JWT_TOKEN_TYPE = "JWT";
 
     /**
-     *
      * @param token access token or refresh token
      * @return
      */
@@ -55,8 +54,7 @@ public class OAuth2IntrospectionEndpoint {
     }
 
     /**
-     *
-     * @param token access token or refresh token
+     * @param token         access token or refresh token
      * @param tokenTypeHint hint for the type of the token submitted for introspection
      * @return
      */
@@ -66,7 +64,7 @@ public class OAuth2IntrospectionEndpoint {
         OAuth2TokenValidationRequestDTO introspectionRequest;
         OAuth2IntrospectionResponseDTO introspectionResponse;
 
-        if(tokenTypeHint == null) {
+        if (tokenTypeHint == null) {
             tokenTypeHint = DEFAULT_TOKEN_TYPE_HINT;
         }
 
@@ -97,13 +95,20 @@ public class OAuth2IntrospectionEndpoint {
             return Response.status(Response.Status.OK).entity("{'active':false}").build();
         }
 
-        IntrospectionResponseBuilder respBuilder = new IntrospectionResponseBuilder().setActive(introspectionResponse.isActive())
-                .setNotBefore(introspectionResponse.getNbf()).setScope(introspectionResponse.getScope()).setUsername(introspectionResponse.getUsername())
-                .setTokenType(DEFAULT_TOKEN_TYPE).setClientId(introspectionResponse.getClientId()).setIssuedAt(introspectionResponse.getIat())
+        IntrospectionResponseBuilder respBuilder = new IntrospectionResponseBuilder()
+                .setActive(introspectionResponse.isActive())
+                .setNotBefore(introspectionResponse.getNbf())
+                .setScope(introspectionResponse.getScope())
+                .setUsername(introspectionResponse.getUsername())
+                .setTokenType(DEFAULT_TOKEN_TYPE)
+                .setClientId(introspectionResponse.getClientId())
+                .setIssuedAt(introspectionResponse.getIat())
                 .setExpiration(introspectionResponse.getExp());
 
         if (tokenTypeHint.equalsIgnoreCase(JWT_TOKEN_TYPE)) {
-            respBuilder.setAudience(introspectionResponse.getAud()).setJwtId(introspectionResponse.getJti()).setSubject(introspectionResponse.getSub())
+            respBuilder.setAudience(introspectionResponse.getAud())
+                    .setJwtId(introspectionResponse.getJti())
+                    .setSubject(introspectionResponse.getSub())
                     .setIssuer(introspectionResponse.getIss());
         }
 

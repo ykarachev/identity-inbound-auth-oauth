@@ -77,7 +77,7 @@ public class DCRServiceComponent {
             componentContext.getBundleContext().registerService(UnRegistrationHandler.class.getName(),
                                                                 new UnRegistrationHandler(), null);
         } catch (Throwable e) {
-            log.error("Error occurred while activating DCRServiceComponent");
+            log.error("Error occurred while activating DCRServiceComponent", e);
         }
     }
 

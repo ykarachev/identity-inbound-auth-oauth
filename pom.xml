@@ -21,7 +21,7 @@
     <parent>
         <groupId>org.wso2.carbon.identity</groupId>
         <artifactId>identity-extension-parent</artifactId>
-        <version>5.1.0</version>
+        <version>5.1.1-SNAPSHOT</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -137,6 +137,21 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.wso2.carbon</groupId>
+                <artifactId>org.wso2.carbon.utils</artifactId>
+                <version>${carbon.kernel.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.identity</groupId>
+                <artifactId>org.wso2.carbon.identity.oauth.dcr</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.identity</groupId>
+                <artifactId>org.wso2.carbon.identity.oidc.dcr</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${com.google.code.gson.version}</version>
@@ -225,11 +240,13 @@
         <module>components/org.wso2.carbon.identity.oauth.ui</module>
         <module>components/org.wso2.carbon.identity.oauth.stub</module>
         <module>components/org.wso2.carbon.identity.oidc.session</module>
-
+        <module>components/org.wso2.carbon.identity.oauth.dcr</module>
+        <module>components/org.wso2.carbon.identity.oidc.dcr</module>
         <module>features/org.wso2.carbon.identity.oauth.common.feature</module>
         <module>features/org.wso2.carbon.identity.oauth.feature</module>
         <module>features/org.wso2.carbon.identity.oauth.server.feature</module>
         <module>features/org.wso2.carbon.identity.oauth.ui.feature</module>
+        <module>features/org.wso2.carbon.identity.oauth.dcr.server.feature</module>
     </modules>
 
     <properties>

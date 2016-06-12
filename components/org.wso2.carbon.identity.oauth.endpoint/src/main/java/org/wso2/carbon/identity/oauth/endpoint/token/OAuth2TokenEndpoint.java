@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.oauth.endpoint.token;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.as.response.OAuthASResponse;
@@ -28,9 +29,11 @@ import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
+import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.OAuthClientException;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.endpoint.OAuthRequestWrapper;
 import org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil;
 import org.wso2.carbon.identity.oauth2.ResponseHeader;
@@ -73,6 +76,31 @@ public class OAuth2TokenEndpoint {
 
             HttpServletRequestWrapper httpRequest = new OAuthRequestWrapper(request, paramMap);
 
+            String consumer_key = httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID);
+            OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
+            try {
+                if (StringUtils.isNotEmpty(consumer_key)) {
+                    String appState = oAuthAppDAO.getConsumerAppState(consumer_key);
+                    if (!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Oauth App is not in active state.");
+                        }
+                        OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
+                                .setError(OAuth2ErrorCodes.INVALID_CLIENT)
+                                .setErrorDescription("Oauth application is not in active state.").buildJSONMessage();
+                        return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
+                    }
+                }
+            } catch (IdentityOAuthAdminException e) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Error in getting oauth app state.", e);
+                }
+                OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
+                        .setError(OAuth2ErrorCodes.SERVER_ERROR)
+                        .setErrorDescription("Error in getting oauth app state.").buildJSONMessage();
+                return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
+            }
+
             // extract the basic auth credentials if present in the request and use for
             // authentication.
             if (request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ) != null) {
@@ -113,7 +141,7 @@ public class OAuth2TokenEndpoint {
                     // if there is an auth failure, HTTP 401 Status Code should be sent back to the client.
                     if (OAuth2ErrorCodes.INVALID_CLIENT.equals(oauth2AccessTokenResp.getErrorCode())) {
                         return handleBasicAuthFailure();
-                    } else if ("sql_error".equals(oauth2AccessTokenResp.getErrorCode())){
+                    } else if ("sql_error".equals(oauth2AccessTokenResp.getErrorCode())) {
                         return handleSQLError();
                     } else if (OAuth2ErrorCodes.SERVER_ERROR.equals(oauth2AccessTokenResp.getErrorCode())) {
                         return handleServerError();
@@ -201,7 +229,7 @@ public class OAuth2TokenEndpoint {
                 setError(OAuth2ErrorCodes.SERVER_ERROR).setErrorDescription("Internal Server Error.").buildJSONMessage();
 
         return Response.status(response.getResponseStatus()).header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE,
-                        EndpointUtil.getRealmInfo()).entity(response.getBody()).build();
+                EndpointUtil.getRealmInfo()).entity(response.getBody()).build();
 
     }
 

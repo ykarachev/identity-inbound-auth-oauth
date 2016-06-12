@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.oauth.dao;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
@@ -88,6 +89,24 @@ public class OAuthConsumerDAO {
 
         return consumerSecret;
 
+    }
+
+    public void updateSecretKey(String consumerKey, String newSecretKey) throws IdentityApplicationManagementException {
+        PreparedStatement statement = null;
+        Connection connection = null;
+
+        try {
+            connection = IdentityDatabaseUtil.getDBConnection();
+            statement = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.UPDATE_OAUTH_SECRET_KEY);
+            statement.setString(1, newSecretKey);
+            statement.setString(2, consumerKey);
+            statement.execute();
+            connection.commit();
+        } catch (SQLException e) {
+            throw new IdentityApplicationManagementException("Error while executing the SQL statement.", e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, null, statement);
+        }
     }
 
     /**

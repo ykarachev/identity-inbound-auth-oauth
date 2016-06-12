@@ -151,6 +151,11 @@
                 <artifactId>org.wso2.carbon.identity.oidc.dcr</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>${com.google.code.gson.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -266,6 +271,7 @@
         <opensaml.version>2.6.4</opensaml.version>
         <opensaml2.wso2.version>2.6.4.wso2v2</opensaml2.wso2.version>
         <opensaml2.wso2.osgi.version.range>[2.6.0,3.0.0)</opensaml2.wso2.osgi.version.range>
+        <com.google.code.gson.version>2.6.2</com.google.code.gson.version>
     </properties>
 
 </project>

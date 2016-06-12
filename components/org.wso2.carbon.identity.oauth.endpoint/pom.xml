@@ -97,6 +97,10 @@
             <artifactId>org.wso2.carbon.identity.oidc.session</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

@@ -156,6 +156,11 @@
                 <artifactId>gson</artifactId>
                 <version>${com.google.code.gson.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.googlecode.json-simple.wso2</groupId>
+                <artifactId>json-simple</artifactId>
+                <version>${json-simple.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -272,6 +277,7 @@
         <opensaml2.wso2.version>2.6.4.wso2v2</opensaml2.wso2.version>
         <opensaml2.wso2.osgi.version.range>[2.6.0,3.0.0)</opensaml2.wso2.osgi.version.range>
         <com.google.code.gson.version>2.6.2</com.google.code.gson.version>
+        <json-simple.version>1.1.wso2v1</json-simple.version>
     </properties>
 
 </project>

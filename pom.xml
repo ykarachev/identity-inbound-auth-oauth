@@ -71,7 +71,7 @@
             <dependency>
                 <groupId>org.wso2.carbon.identity</groupId>
                 <artifactId>org.wso2.carbon.identity.provider</artifactId>
-                <version>5.1.0</version>
+                <version>${identity.inbound.auth.openid.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.cxf.wso2</groupId>
@@ -255,6 +255,7 @@
     </modules>
 
     <properties>
+        <identity.inbound.auth.openid.version>5.1.1-m2</identity.inbound.auth.openid.version>
         <gdata-core.wso2.version>1.47.0.wso2v1</gdata-core.wso2.version>
         <gdata-core.imp.pkg.version.range>[1.47.0.wso2v1,2.0.0)</gdata-core.imp.pkg.version.range>
         <oltu.version>1.0.0.wso2v3</oltu.version>

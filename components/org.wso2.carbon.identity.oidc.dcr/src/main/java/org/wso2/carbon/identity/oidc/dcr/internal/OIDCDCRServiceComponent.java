@@ -43,6 +43,7 @@ public class OIDCDCRServiceComponent {
 
     @SuppressWarnings("unused")
     protected void activate(ComponentContext componentContext) {
+
         try {
 
             componentContext.getBundleContext().registerService(HttpIdentityRequestFactory.class.getName(),
@@ -58,6 +59,7 @@ public class OIDCDCRServiceComponent {
 
     @SuppressWarnings("unused")
     protected void deactivate(ComponentContext componentContext) {
+
         if (log.isDebugEnabled()) {
             log.debug("Stopping OIDCDCRServiceComponent");
         }
@@ -70,6 +72,7 @@ public class OIDCDCRServiceComponent {
      * @param applicationManagementService An instance of ApplicationManagementService
      */
     protected void setApplicationManagementService(ApplicationManagementService applicationManagementService) {
+
         if (log.isDebugEnabled()) {
             log.debug("Setting ApplicationManagement Service");
         }
@@ -83,6 +86,7 @@ public class OIDCDCRServiceComponent {
      * @param applicationManagementService An instance of ApplicationManagementService
      */
     protected void unsetApplicationManagementService(ApplicationManagementService applicationManagementService) {
+
         if (log.isDebugEnabled()) {
             log.debug("Unsetting ApplicationManagement.");
         }

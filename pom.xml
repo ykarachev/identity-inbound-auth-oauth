@@ -255,6 +255,13 @@
     </modules>
 
     <properties>
+        <!-- Identity Inbound Auth OAuth version -->
+        <identity.inbound.auth.oauth.version>5.2.0-SNAPSHOT</identity.inbound.auth.oauth.version>
+        <identity.inbound.auth.oauth.package.export.version>${identity.inbound.auth.oauth.version}
+        </identity.inbound.auth.oauth.package.export.version>
+        <identity.inbound.auth.oauth.package.import.version.range>[5.0.0,6.0.0)
+        </identity.inbound.auth.oauth.package.import.version.range>
+
         <gdata-core.wso2.version>1.47.0.wso2v1</gdata-core.wso2.version>
         <gdata-core.imp.pkg.version.range>[1.47.0.wso2v1,2.0.0)</gdata-core.imp.pkg.version.range>
         <oltu.version>1.0.0.wso2v3</oltu.version>

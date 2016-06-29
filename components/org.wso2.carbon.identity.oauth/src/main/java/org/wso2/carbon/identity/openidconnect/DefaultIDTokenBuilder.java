@@ -132,9 +132,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     public String buildIDToken(OAuthTokenReqMessageContext request, OAuth2AccessTokenRespDTO tokenRespDTO)
             throws IdentityOAuth2Exception {
 
-        //String issuer = OAuth2Util.getIDTokenIssuer();
         IdentityProvider identityProvider = null;
-
         try {
             String tenantDomain = request.getOauth2AccessTokenReqDTO().getTenantDomain();
             identityProvider = IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);
@@ -296,10 +294,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     public String buildIDToken(OAuthAuthzReqMessageContext request, OAuth2AuthorizeRespDTO tokenRespDTO)
             throws IdentityOAuth2Exception {
 
-        //String issuer = OAuth2Util.getIDTokenIssuer();
-
         IdentityProvider identityProvider = null;
-
         try {
             String tenantDomain = request.getAuthorizationReqDTO().getTenantDomain();
             identityProvider = IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);

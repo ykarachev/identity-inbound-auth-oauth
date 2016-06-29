@@ -114,6 +114,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     private static final String OPENID_CONNECT = "OpenIDConnect";
     private static final String OPENID_CONNECT_AUDIENCES = "Audiences";
     private static final String OPENID_CONNECT_AUDIENCE = "Audience";
+    private static final String OPENID_IDP_ENTITY_ID = "IdPEntityId";
 
     private static final Log log = LogFactory.getLog(DefaultIDTokenBuilder.class);
     private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<>();
@@ -150,7 +151,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                         IdentityApplicationConstants.Authenticator.OIDC.NAME);
         String issuer =
                 IdentityApplicationManagementUtil.getProperty(samlAuthenticatorConfig.getProperties(),
-                        IdentityApplicationConstants.Authenticator.SAML2SSO.IDP_ENTITY_ID).getValue();
+                        OPENID_IDP_ENTITY_ID).getValue();
 
         long lifetimeInMillis = Integer.parseInt(config.getOpenIDConnectIDTokenExpiration()) * 1000;
         long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
@@ -312,7 +313,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                         IdentityApplicationConstants.Authenticator.OIDC.NAME);
         String issuer =
                 IdentityApplicationManagementUtil.getProperty(samlAuthenticatorConfig.getProperties(),
-                        IdentityApplicationConstants.Authenticator.SAML2SSO.IDP_ENTITY_ID).getValue();
+                        OPENID_IDP_ENTITY_ID).getValue();
 
         long lifetimeInMillis = Integer.parseInt(config.getOpenIDConnectIDTokenExpiration()) * 1000;
         long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
@@ -811,14 +812,12 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             warnOnFaultyConfiguration("OAuth element is not available.");
             return Collections.EMPTY_LIST;
         }
-
         OMElement configOpenIDConnect = oauthElem.getFirstChildWithName(getQNameWithIdentityNS(OPENID_CONNECT));
 
         if (configOpenIDConnect == null) {
             warnOnFaultyConfiguration("OpenID element is not available.");
             return Collections.EMPTY_LIST;
         }
-
         OMElement configAudience = configOpenIDConnect.
                 getFirstChildWithName(getQNameWithIdentityNS(OPENID_CONNECT_AUDIENCES));
 
@@ -828,7 +827,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         Iterator<OMElement> iterator =
                 configAudience.getChildrenWithName(getQNameWithIdentityNS(OPENID_CONNECT_AUDIENCE));
-
         while (iterator.hasNext()) {
             OMElement supportedAudience = iterator.next();
             String supportedAudienceName = null;

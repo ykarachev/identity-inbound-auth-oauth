@@ -27,18 +27,27 @@ import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
 import com.nimbusds.jwt.SignedJWT;
+import org.apache.axiom.om.OMElement;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.Charsets;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
+import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
+import org.wso2.carbon.identity.application.common.model.IdentityProvider;
+import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
+import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
+import org.wso2.carbon.identity.application.common.util.IdentityApplicationManagementUtil;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.core.util.IdentityConfigParser;
+import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
@@ -58,18 +67,25 @@ import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.idp.mgt.IdentityProviderManagementException;
+import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
 
+import javax.xml.namespace.QName;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -94,6 +110,10 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     private static final String SHA512 = "SHA-512";
     private static final String AUTHORIZATION_CODE = "AuthorizationCode";
     private static final String INBOUND_AUTH2_TYPE = "oauth2";
+    private static final String CONFIG_ELEM_OAUTH = "OAuth";
+    private static final String OPENID_CONNECT = "OpenIDConnect";
+    private static final String OPENID_CONNECT_AUDIENCES = "Audiences";
+    private static final String OPENID_CONNECT_AUDIENCE = "Audience";
 
     private static final Log log = LogFactory.getLog(DefaultIDTokenBuilder.class);
     private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<>();
@@ -112,7 +132,28 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     public String buildIDToken(OAuthTokenReqMessageContext request, OAuth2AccessTokenRespDTO tokenRespDTO)
             throws IdentityOAuth2Exception {
 
-        String issuer = OAuth2Util.getIDTokenIssuer();
+        //String issuer = OAuth2Util.getIDTokenIssuer();
+        IdentityProvider identityProvider = null;
+
+        try {
+            String tenantDomain = request.getOauth2AccessTokenReqDTO().getTenantDomain();
+            identityProvider = IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);
+        } catch (IdentityProviderManagementException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Error while getting Federated Identity Provider ", e);
+            }
+        }
+        FederatedAuthenticatorConfig[] fedAuthnConfigs =
+                identityProvider.getFederatedAuthenticatorConfigs();
+
+        // Get OIDC authenticator
+        FederatedAuthenticatorConfig samlAuthenticatorConfig =
+                IdentityApplicationManagementUtil.getFederatedAuthenticator(fedAuthnConfigs,
+                        IdentityApplicationConstants.Authenticator.OIDC.NAME);
+        String issuer =
+                IdentityApplicationManagementUtil.getProperty(samlAuthenticatorConfig.getProperties(),
+                        IdentityApplicationConstants.Authenticator.SAML2SSO.IDP_ENTITY_ID).getValue();
+
         long lifetimeInMillis = Integer.parseInt(config.getOpenIDConnectIDTokenExpiration()) * 1000;
         long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
         // setting subject
@@ -219,10 +260,16 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             log.debug(stringBuilder.toString());
         }
 
+        ArrayList<String> audience = new ArrayList<String>();
+        audience.add(request.getOauth2AccessTokenReqDTO().getClientId());
+        if (CollectionUtils.isNotEmpty(getOIDCEndpointUrl())) {
+            audience.addAll(getOIDCEndpointUrl());
+        }
+
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         jwtClaimsSet.setIssuer(issuer);
         jwtClaimsSet.setSubject(subject);
-        jwtClaimsSet.setAudience(Arrays.asList(request.getOauth2AccessTokenReqDTO().getClientId()));
+        jwtClaimsSet.setAudience(audience);
         jwtClaimsSet.setClaim("azp", request.getOauth2AccessTokenReqDTO().getClientId());
         jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
         jwtClaimsSet.setIssueTime(new Date(curTimeInMillis));
@@ -249,7 +296,29 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     public String buildIDToken(OAuthAuthzReqMessageContext request, OAuth2AuthorizeRespDTO tokenRespDTO)
             throws IdentityOAuth2Exception {
 
-        String issuer = OAuth2Util.getIDTokenIssuer();
+        //String issuer = OAuth2Util.getIDTokenIssuer();
+
+        IdentityProvider identityProvider = null;
+
+        try {
+            String tenantDomain = request.getAuthorizationReqDTO().getTenantDomain();
+            identityProvider = IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);
+        } catch (IdentityProviderManagementException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Error while getting Federated Identity Provider ", e);
+            }
+        }
+        FederatedAuthenticatorConfig[] fedAuthnConfigs =
+                identityProvider.getFederatedAuthenticatorConfigs();
+
+        // Get OIDC authenticator
+        FederatedAuthenticatorConfig samlAuthenticatorConfig =
+                IdentityApplicationManagementUtil.getFederatedAuthenticator(fedAuthnConfigs,
+                        IdentityApplicationConstants.Authenticator.OIDC.NAME);
+        String issuer =
+                IdentityApplicationManagementUtil.getProperty(samlAuthenticatorConfig.getProperties(),
+                        IdentityApplicationConstants.Authenticator.SAML2SSO.IDP_ENTITY_ID).getValue();
+
         long lifetimeInMillis = Integer.parseInt(config.getOpenIDConnectIDTokenExpiration()) * 1000;
         long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
         // setting subject
@@ -302,10 +371,15 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             }
         }
 
+        ArrayList<String> audience = new ArrayList<String>();
+        audience.add(request.getAuthorizationReqDTO().getConsumerKey());
+        if (CollectionUtils.isNotEmpty(getOIDCEndpointUrl())) {
+            audience.addAll(getOIDCEndpointUrl());
+        }
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         jwtClaimsSet.setIssuer(issuer);
         jwtClaimsSet.setSubject(subject);
-        jwtClaimsSet.setAudience(Arrays.asList(request.getAuthorizationReqDTO().getConsumerKey()));
+        jwtClaimsSet.setAudience(audience);
         jwtClaimsSet.setClaim("azp", request.getAuthorizationReqDTO().getConsumerKey());
         jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
         jwtClaimsSet.setIssueTime(new Date(curTimeInMillis));
@@ -727,5 +801,60 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         return buf.toString();
     }
+
+    private List<String> getOIDCEndpointUrl() {
+        List<String> OIDCEntityId = getOIDCAudiences();
+        return OIDCEntityId;
+    }
+
+    private List<String> getOIDCAudiences() {
+        List<String> audiences = new ArrayList<String>();
+        IdentityConfigParser configParser = IdentityConfigParser.getInstance();
+        OMElement oauthElem = configParser.getConfigElement(CONFIG_ELEM_OAUTH);
+
+        if (oauthElem == null) {
+            warnOnFaultyConfiguration("OAuth element is not available.");
+            return Collections.EMPTY_LIST;
+        }
+
+        OMElement configOpenIDConnect = oauthElem.getFirstChildWithName(getQNameWithIdentityNS(OPENID_CONNECT));
+
+        if (configOpenIDConnect == null) {
+            warnOnFaultyConfiguration("OpenID element is not available.");
+            return Collections.EMPTY_LIST;
+        }
+
+        OMElement configAudience = configOpenIDConnect.
+                getFirstChildWithName(getQNameWithIdentityNS(OPENID_CONNECT_AUDIENCES));
+
+        if (configAudience == null) {
+            return Collections.EMPTY_LIST;
+        }
+
+        Iterator<OMElement> iterator =
+                configAudience.getChildrenWithName(getQNameWithIdentityNS(OPENID_CONNECT_AUDIENCE));
+
+        while (iterator.hasNext()) {
+            OMElement supportedAudience = iterator.next();
+            String supportedAudienceName = null;
+
+            if (supportedAudience != null) {
+                supportedAudienceName = IdentityUtil.fillURLPlaceholders(supportedAudience.getText());
+            }
+            if (StringUtils.isNotBlank(supportedAudienceName)) {
+                audiences.add(supportedAudienceName);
+            }
+        }
+        return audiences;
+    }
+
+    private void warnOnFaultyConfiguration(String logMsg) {
+        log.warn("Error in OAuth Configuration. " + logMsg);
+    }
+
+    private QName getQNameWithIdentityNS(String localPart) {
+        return new QName(IdentityCoreConstants.IDENTITY_DEFAULT_NAMESPACE, localPart);
+    }
+
 }
 

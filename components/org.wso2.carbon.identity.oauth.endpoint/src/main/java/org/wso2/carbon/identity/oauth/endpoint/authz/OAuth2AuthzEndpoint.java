@@ -72,6 +72,8 @@ import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -90,6 +92,7 @@ public class OAuth2AuthzEndpoint {
     private static final Log log = LogFactory.getLog(OAuth2AuthzEndpoint.class);
     public static final String APPROVE = "approve";
     private boolean isCacheAvailable = false;
+    private static final String REDIRECT_URI = "redirect_uri";
 
     @GET
     @Path("/")
@@ -343,9 +346,21 @@ public class OAuth2AuthzEndpoint {
             if (log.isDebugEnabled()) {
                 log.debug(e.getError(), e);
             }
-            return Response.status(HttpServletResponse.SC_FOUND).location(new URI(
-                    EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, e.getMessage(), null)))
-                    .build();
+            String errorPageURL = EndpointUtil
+                    .getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, e.getMessage(), null);
+            String redirectURI = request.getParameter(REDIRECT_URI);
+
+            if (redirectURI != null) {
+                try {
+                    errorPageURL = errorPageURL + "&" + REDIRECT_URI + "=" + URLEncoder.encode(redirectURI, "UTF-8");
+                } catch (UnsupportedEncodingException e1) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Error while encoding the error page url", e);
+                    }
+                }
+            }
+            return Response.status(HttpServletResponse.SC_FOUND).location(new URI(errorPageURL))
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_TYPE).build();
 
         } catch (OAuthSystemException e) {
 

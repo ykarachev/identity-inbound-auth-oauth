@@ -346,8 +346,7 @@ public class OAuth2AuthzEndpoint {
             if (log.isDebugEnabled()) {
                 log.debug(e.getError(), e);
             }
-            String errorPageURL = EndpointUtil
-                    .getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, e.getMessage(), null);
+            String errorPageURL = EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST, e.getMessage(), null);
             String redirectURI = request.getParameter(REDIRECT_URI);
 
             if (redirectURI != null) {

@@ -81,6 +81,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -350,7 +351,8 @@ public class OAuth2AuthzEndpoint {
 
             if (redirectURI != null) {
                 try {
-                    errorPageURL = errorPageURL + "&" + REDIRECT_URI + "=" + URLEncoder.encode(redirectURI, "UTF-8");
+                    errorPageURL = errorPageURL + "&" + REDIRECT_URI + "=" + URLEncoder
+                            .encode(redirectURI, StandardCharsets.UTF_8.name());
                 } catch (UnsupportedEncodingException e1) {
                     if (log.isDebugEnabled()) {
                         log.debug("Error while encoding the error page url", e);

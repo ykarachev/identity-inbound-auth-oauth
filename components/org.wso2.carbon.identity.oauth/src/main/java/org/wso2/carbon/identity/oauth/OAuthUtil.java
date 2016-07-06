@@ -19,9 +19,11 @@
 package org.wso2.carbon.identity.oauth;
 
 import org.apache.commons.io.Charsets;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.xml.security.utils.Base64;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
@@ -29,6 +31,7 @@ import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.registry.core.utils.UUIDGenerator;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -38,7 +41,7 @@ public final class OAuthUtil {
     public static final Log log = LogFactory.getLog(OAuthUtil.class);
     private static final String ALGORITHM = "HmacSHA1";
 
-    private OAuthUtil(){
+    private OAuthUtil() {
 
     }
 
@@ -104,6 +107,25 @@ public final class OAuthUtil {
             OAuthCacheKey cacheKey = new OAuthCacheKey(oauthCacheKey);
             oauthCache.clearCacheEntry(cacheKey);
         }
+    }
+
+    public static AuthenticatedUser getAuthenticatedUser(String fullyQualifiedUserName) {
+
+        if (StringUtils.isBlank(fullyQualifiedUserName)) {
+            throw new RuntimeException("Invalid username.");
+        }
+
+        AuthenticatedUser authenticatedUser = new AuthenticatedUser();
+        authenticatedUser.setUserName(IdentityUtil.extractDomainFromName(fullyQualifiedUserName));
+        authenticatedUser.setTenantDomain(MultitenantUtils.getTenantDomain(fullyQualifiedUserName));
+
+        String username = fullyQualifiedUserName;
+        if(fullyQualifiedUserName.startsWith(authenticatedUser.getUserStoreDomain())) {
+            username = UserCoreUtil.removeDomainFromName(fullyQualifiedUserName);
+        }
+        authenticatedUser.setUserName(MultitenantUtils.getTenantAwareUsername(username));
+
+        return authenticatedUser;
     }
 
 }

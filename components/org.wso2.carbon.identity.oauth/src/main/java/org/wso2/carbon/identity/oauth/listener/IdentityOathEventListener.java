@@ -30,6 +30,10 @@ import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
+import org.wso2.carbon.identity.oauth.util.ClaimCache;
+import org.wso2.carbon.identity.oauth.util.ClaimMetaDataCache;
+import org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheEntry;
+import org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheKey;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -73,6 +77,9 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
         if (!isEnable()) {
             return true;
         }
+
+        removeClaimCacheEntry(username, userStoreManager);
+
         return revokeTokens(username, userStoreManager);
 
     }
@@ -248,4 +255,24 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
         }
 
     }
+
+    /**
+     * Remove ClaimCache Entry if available.
+     * @param username
+     * @param userStoreManager
+     */
+    private void removeClaimCacheEntry(String username, UserStoreManager userStoreManager) {
+
+        AuthenticatedUser authenticatedUser = new AuthenticatedUser();
+        authenticatedUser.setUserName(username);
+        authenticatedUser.setTenantDomain(PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain());
+        authenticatedUser.setUserStoreDomain(UserCoreUtil.getDomainName(userStoreManager.getRealmConfiguration()));
+
+        ClaimMetaDataCacheEntry cacheEntry = ClaimMetaDataCache.getInstance().getValueFromCache(
+                new ClaimMetaDataCacheKey(authenticatedUser));
+        if(cacheEntry == null) {
+            return;
+        }
+        ClaimCache.getInstance().clearCacheEntry(cacheEntry.getClaimCacheKey());
+     }
 }

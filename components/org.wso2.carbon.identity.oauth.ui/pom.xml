@@ -119,7 +119,7 @@
                         </Import-Package>
                         <Export-Package>
                             !org.wso2.carbon.identity.oauth.ui.internal,
-                            org.wso2.carbon.identity.oauth.ui.*;version="${identity.inbound.auth.oauth.imp.pkg.version.range}"
+                            org.wso2.carbon.identity.oauth.ui.*;version="${identity.inbound.auth.oauth.exp.pkg.version}"
                         </Export-Package>
                         <Carbon-Component>UIBundle</Carbon-Component>
                     </instructions>

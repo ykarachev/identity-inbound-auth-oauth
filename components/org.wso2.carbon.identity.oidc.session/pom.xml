@@ -17,7 +17,8 @@
   ~ under the License.
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>org.wso2.carbon.identity</groupId>
         <artifactId>identity-inbound-auth-oauth</artifactId>
@@ -81,7 +82,6 @@
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
-
                 <extensions>true</extensions>
                 <configuration>
                     <instructions>
@@ -107,30 +107,22 @@
                             org.osgi.service.component; version="${osgi.service.component.imp.pkg.version.range}",
                             org.osgi.service.http; version="${osgi.service.http.imp.pkg.version.range}",
 
-                            org.wso2.carbon.identity.application.authentication.framework.*;
-                            version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.identity.application.common.cache;
-                            version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.identity.base; version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.identity.core.util;
-                            version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.identity.oauth.common.exception;
-                            version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.identity.oauth.config;
-                            version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.identity.oauth.dao;
-                            version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.identity.oauth2;
-                            version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.identity.oauth2.util;
-                            version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.utils.*; version="${carbon.kernel.package.import.version.range}",
+                            org.wso2.carbon.identity.application.authentication.framework.*;version="${carbon.identity.framework.imp.pkg.version.range}",
+                            org.wso2.carbon.identity.application.common.cache;version="${carbon.identity.framework.imp.pkg.version.range}",
+                            org.wso2.carbon.identity.base; version="${carbon.identity.framework.imp.pkg.version.range}",
+                            org.wso2.carbon.identity.core.util;version="${carbon.identity.framework.imp.pkg.version.range}",
 
+                            org.wso2.carbon.identity.oauth.common.exception;version="${identity.inbound.auth.oauth.imp.pkg.version.range}",
+                            org.wso2.carbon.identity.oauth.config;version="${identity.inbound.auth.oauth.imp.pkg.version.range}",
+                            org.wso2.carbon.identity.oauth.dao;version="${identity.inbound.auth.oauth.imp.pkg.version.range}",
+                            org.wso2.carbon.identity.oauth2;version="${identity.inbound.auth.oauth.imp.pkg.version.range}",
+                            org.wso2.carbon.identity.oauth2.util;version="${identity.inbound.auth.oauth.imp.pkg.version.range}",
+
+                            org.wso2.carbon.utils.*; version="${carbon.kernel.imp.pkg.version.range}",
                         </Import-Package>
                         <Export-Package>
                             !org.wso2.carbon.identity.oidc.session.internal,
-                            org.wso2.carbon.identity.oidc.session.*;
-                            version="${carbon.identity.package.export.version}",
+                            org.wso2.carbon.identity.oidc.session.*;version="${identity.inbound.auth.oauth.exp.pkg.version}",
                         </Export-Package>
                     </instructions>
                 </configuration>

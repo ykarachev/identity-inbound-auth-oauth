@@ -35,8 +35,7 @@
 
     <scm>
         <url>https://github.com/wso2-extensions/identity-inbound-auth-oauth.git</url>
-        <developerConnection>scm:git:https://github.com/wso2-extensions/identity-inbound-auth-oauth.git
-        </developerConnection>
+        <developerConnection>scm:git:https://github.com/wso2-extensions/identity-inbound-auth-oauth.git</developerConnection>
         <connection>scm:git:https://github.com/wso2-extensions/identity-inbound-auth-oauth.git</connection>
         <tag>HEAD</tag>
     </scm>
@@ -244,6 +243,8 @@
                 <artifactId>encoder</artifactId>
                 <version>${encoder.wso2.version}</version>
             </dependency>
+
+            <!-- Other Library dependencies -->
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-log4j12</artifactId>
@@ -459,10 +460,10 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!--Carbon Identity Governance Version-->
-        <identity.inbound.auth.oauth.exp.pkg.version>${project.version}</identity.inbound.auth.oauth.exp.pkg.version>
-        <identity.inbound.auth.oauth.imp.pkg.version.range>[5.0.0, 6.0.0)
-        </identity.inbound.auth.oauth.imp.pkg.version.range>
+        <!--Carbon Identity Inbound Authentication OAuth Version-->
+        <identity.inbound.auth.oauth.version>${project.version}</identity.inbound.auth.oauth.version>
+        <identity.inbound.auth.oauth.exp.pkg.version>${identity.inbound.auth.oauth.version}</identity.inbound.auth.oauth.exp.pkg.version>
+        <identity.inbound.auth.oauth.imp.pkg.version.range>[5.0.0, 6.0.0)</identity.inbound.auth.oauth.imp.pkg.version.range>
 
         <!-- OSGi/Equinox dependency version -->
         <equinox.javax.servlet.version>3.0.0.v201112011016</equinox.javax.servlet.version>

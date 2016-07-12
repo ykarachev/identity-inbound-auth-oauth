@@ -83,6 +83,7 @@ public class DCRServiceComponent {
 
     @SuppressWarnings("unused")
     protected void deactivate(ComponentContext componentContext) {
+
         if (log.isDebugEnabled()) {
             log.debug("Stopping DCRServiceComponent");
         }
@@ -94,6 +95,7 @@ public class DCRServiceComponent {
      * @param registrationHandler An instance of RegistrationHandler
      */
     protected void setRegistrationHandler(RegistrationHandler registrationHandler) {
+
         if (log.isDebugEnabled()) {
             log.debug("Setting RegistrationHandler Service");
         }
@@ -107,6 +109,7 @@ public class DCRServiceComponent {
      * @param registrationHandler An instance of RegistrationHandler
      */
     protected void unsetRegistrationHandler(RegistrationHandler registrationHandler) {
+
         if (log.isDebugEnabled()) {
             log.debug("Unsetting RegistrationHandler.");
         }
@@ -121,6 +124,7 @@ public class DCRServiceComponent {
      */
     protected void setUnRegistrationHandler(UnRegistrationHandler
                                                     unRegistrationHandler) {
+
         if (log.isDebugEnabled()) {
             log.debug("Setting DCRManagementService.");
         }
@@ -133,6 +137,7 @@ public class DCRServiceComponent {
      * @param unRegistrationHandler An instance of UnRegistrationHandler
      */
     protected void unsetUnRegistrationHandler(UnRegistrationHandler unRegistrationHandler) {
+
         if (log.isDebugEnabled()) {
             log.debug("Unsetting UnRegistrationHandler.");
         }
@@ -146,6 +151,7 @@ public class DCRServiceComponent {
      * @param applicationManagementService An instance of ApplicationManagementService
      */
     protected void setApplicationManagementService(ApplicationManagementService applicationManagementService) {
+
         if (log.isDebugEnabled()) {
             log.debug("Setting ApplicationManagement Service");
         }
@@ -159,6 +165,7 @@ public class DCRServiceComponent {
      * @param applicationManagementService An instance of ApplicationManagementService
      */
     protected void unsetApplicationManagementService(ApplicationManagementService applicationManagementService) {
+
         if (log.isDebugEnabled()) {
             log.debug("Unsetting ApplicationManagement.");
         }

@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.oauth.util;
 
 
 import org.wso2.carbon.identity.application.common.cache.BaseCache;
+import org.wso2.carbon.identity.oauth.listener.ClaimCacheRemoveListener;
 import org.wso2.carbon.utils.CarbonUtils;
 
 public class ClaimCache extends BaseCache<ClaimCacheKey, UserClaims> {
@@ -30,6 +31,7 @@ public class ClaimCache extends BaseCache<ClaimCacheKey, UserClaims> {
 
     private ClaimCache() {
         super(CLAIM_CACHE_NAME);
+        super.addListener(new ClaimCacheRemoveListener());
     }
 
     public static ClaimCache getInstance() {

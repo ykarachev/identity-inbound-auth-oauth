@@ -78,8 +78,15 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.LinkedHashSet;
 
 /**
  * This is the IDToken generator for the OpenID Connect Implementation. This

@@ -566,6 +566,7 @@ public class OAuth2AuthzEndpoint {
         if(pkceCodeChallengeMethodArray != null && pkceCodeChallengeMethodArray.length > 0) {
             pkceCodeChallengeMethod = pkceCodeChallengeMethodArray[0];
         }
+        authorizationGrantCacheEntry.setAcrValue(sessionDataCacheEntry.getoAuth2Parameters().getACRValues());
         authorizationGrantCacheEntry.setNonceValue(sessionDataCacheEntry.getoAuth2Parameters().getNonce());
         authorizationGrantCacheEntry.setCodeId(codeId);
         authorizationGrantCacheEntry.setPkceCodeChallenge(pkceCodeChallenge);

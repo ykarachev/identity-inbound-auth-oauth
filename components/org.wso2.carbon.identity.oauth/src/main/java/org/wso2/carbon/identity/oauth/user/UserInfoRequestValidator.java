@@ -40,6 +40,4 @@ public interface UserInfoRequestValidator {
     public String validateRequest(HttpServletRequest request) throws UserInfoEndpointException;
 
     public String validateRequestBody(HttpServletRequest request) throws UserInfoEndpointException;
-
-
 }

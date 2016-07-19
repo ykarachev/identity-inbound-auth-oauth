@@ -122,7 +122,7 @@ public class OpenIDConnectUserEndpoint {
     @POST
     @Path("/")
     @Produces("application/json")
-    public Response getUserClaims1(@Context HttpServletRequest request) throws OAuthSystemException {
+    public Response getUserClaimsPost(@Context HttpServletRequest request) throws OAuthSystemException {
 
         String response = null;
         try {

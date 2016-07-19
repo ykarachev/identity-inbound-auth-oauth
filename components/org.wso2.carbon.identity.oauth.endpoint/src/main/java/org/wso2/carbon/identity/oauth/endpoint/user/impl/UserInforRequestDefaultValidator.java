@@ -94,7 +94,6 @@ public class UserInforRequestDefaultValidator implements UserInfoRequestValidato
         }
     }
 
-
     public static boolean isPureAscii(String requestBody) {
         byte bytearray[] = requestBody.getBytes();
         CharsetDecoder charsetDecoder = Charset.forName(US_ASCII).newDecoder();
@@ -106,6 +105,4 @@ public class UserInforRequestDefaultValidator implements UserInfoRequestValidato
         }
         return true;
     }
-
-
 }

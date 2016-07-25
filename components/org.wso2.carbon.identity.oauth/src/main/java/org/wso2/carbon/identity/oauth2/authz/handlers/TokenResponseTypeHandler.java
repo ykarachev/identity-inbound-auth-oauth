@@ -391,7 +391,9 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             oauthAuthzMsgCtx) throws IdentityOAuth2Exception {
 
         for (OAuthEventListener oauthListener : oauthListeners) {
-            oauthListener.onPreTokenIssue(oauthAuthzMsgCtx);
+            if (oauthListener.isEnabled()) {
+                oauthListener.onPreTokenIssue(oauthAuthzMsgCtx);
+            }
         }
 
     }
@@ -401,7 +403,9 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
         for (OAuthEventListener oauthListener : oauthListeners) {
             try {
-                oauthListener.onPostTokenIssue(oauthAuthzMsgCtx, tokenDO, respDTO);
+                if (oauthListener.isEnabled()) {
+                    oauthListener.onPostTokenIssue(oauthAuthzMsgCtx, tokenDO, respDTO);
+                }
             } catch (IdentityOAuth2Exception e) {
                 log.error("Oauth post token issue listener " + oauthListener.getClass().getName() + " failed.", e);
             }

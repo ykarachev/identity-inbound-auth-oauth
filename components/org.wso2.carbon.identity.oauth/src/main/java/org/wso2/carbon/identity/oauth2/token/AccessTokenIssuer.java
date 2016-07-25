@@ -286,12 +286,16 @@ public class AccessTokenIssuer {
         if (isRefresh) {
             for (OAuthEventListener eventListener : listeners) {
                 //If listener fail, it will throw an exception and stop the token issue process
-                eventListener.onPreTokenRenewal(tokenReqDTO, tokReqMsgCtx);
+                if (eventListener.isEnabled()) {
+                    eventListener.onPreTokenRenewal(tokenReqDTO, tokReqMsgCtx);
+                }
             }
         } else {
             for (OAuthEventListener eventListener : listeners) {
                 //If listener fail, it will throw an exception and stop the token issue process
-                eventListener.onPreTokenIssue(tokenReqDTO, tokReqMsgCtx);
+                if(eventListener.isEnabled()) {
+                    eventListener.onPreTokenIssue(tokenReqDTO, tokReqMsgCtx);
+                }
             }
         }
     }
@@ -303,7 +307,9 @@ public class AccessTokenIssuer {
         if (isRefresh) {
             for (OAuthEventListener listener : listeners) {
                 try {
-                    listener.onPostTokenRenewal(tokenReqDTO, tokenRespDTO, tokReqMsgCtx);
+                    if(listener.isEnabled()) {
+                        listener.onPostTokenRenewal(tokenReqDTO, tokenRespDTO, tokReqMsgCtx);
+                    }
                 } catch (IdentityOAuth2Exception e) {
                     log.error("Oauth post renewal listener " + listener.getClass().getName() + " failed.", e);
                 }
@@ -311,7 +317,9 @@ public class AccessTokenIssuer {
         } else {
             for (OAuthEventListener listener : listeners) {
                 try {
-                    listener.onPostTokenIssue(tokenReqDTO, tokenRespDTO, tokReqMsgCtx);
+                    if (listener.isEnabled()) {
+                        listener.onPostTokenIssue(tokenReqDTO, tokenRespDTO, tokReqMsgCtx);
+                    }
                 } catch (IdentityOAuth2Exception e) {
                     log.error("Oauth post issuer listener " + listener.getClass().getName() + " failed.", e);
                 }

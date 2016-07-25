@@ -79,6 +79,7 @@ public class UserInforRequestDefaultValidator implements UserInfoRequestValidato
             }
             String[] arrAccessToken = new String[2];
             String requestBody = stringBuilder.toString();
+            String[] arrAccessTokenNew ;
             //to check whether the entity-body consist entirely of ASCII [USASCII] characters
             if (!isPureAscii(requestBody)) {
                 throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
@@ -86,6 +87,10 @@ public class UserInforRequestDefaultValidator implements UserInfoRequestValidato
             }
             if (requestBody.contains("access_token=")) {
                 arrAccessToken = requestBody.trim().split("=");
+                if(arrAccessToken[1].contains("&")){
+                    arrAccessTokenNew = arrAccessToken[1].split("&", 1);
+                    return arrAccessTokenNew[0];
+                }
             }
             return arrAccessToken[1];
         } else {

@@ -39,3 +39,4 @@ public interface UserInfoRequestValidator {
      */
     public String validateRequest(HttpServletRequest request) throws UserInfoEndpointException;
 
+}

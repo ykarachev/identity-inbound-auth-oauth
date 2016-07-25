@@ -86,7 +86,9 @@ public class OAuth2TokenValidationService extends AbstractAdmin {
 
         for (OAuthEventListener OAuthEventListener : oAuthEventListeners) {
             try {
-                OAuthEventListener.onPostTokenValidation(requestDTO, responseDTO);
+                if (OAuthEventListener.isEnabled()) {
+                    OAuthEventListener.onPostTokenValidation(requestDTO, responseDTO);
+                }
             } catch (IdentityOAuth2Exception e) {
                 log.error("Oauth post validation listener " + OAuthEventListener.getClass().getName() + " failed.", e);
             }

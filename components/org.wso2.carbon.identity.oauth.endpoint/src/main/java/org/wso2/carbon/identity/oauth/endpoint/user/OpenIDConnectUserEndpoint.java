@@ -123,72 +123,7 @@ public class OpenIDConnectUserEndpoint {
     @Path("/")
     @Produces("application/json")
     public Response getUserClaimsPost(@Context HttpServletRequest request) throws OAuthSystemException {
-
-        String response = null;
-        try {
-
-            UserInfoRequestValidator requestValidator = UserInfoEndpointConfig.getInstance().getUserInfoRequestValidator();
-            String accessToken = null;
-            // validate the request for bearer body
-            accessToken = requestValidator.validateRequestBody(request);
-            if (StringUtils.isEmpty(accessToken)) {
-                // validate the request for bearer header
-                accessToken = requestValidator.validateRequest(request);
-            }
-
-            //validate the app state
-            OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
-            TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
-            try {
-                AccessTokenDO accessTokenDO = tokenMgtDAO.retrieveAccessToken(accessToken, false);
-                if (accessTokenDO != null) {
-                    String appState = oAuthAppDAO.getConsumerAppState(accessTokenDO.getConsumerKey());
-                    if (!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("Oauth App is not in active state.");
-                        }
-                        OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
-                                .setError(OAuth2ErrorCodes.INVALID_CLIENT)
-                                .setErrorDescription("Oauth application is not in active state.").buildJSONMessage();
-                        return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
-                    }
-                }
-            } catch (IdentityOAuthAdminException | IdentityOAuth2Exception | OAuthSystemException e) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Error in getting oauth app state.", e);
-                }
-                OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
-                        .setError(OAuth2ErrorCodes.SERVER_ERROR)
-                        .setErrorDescription("Error in getting oauth app state.").buildJSONMessage();
-                return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
-            }
-
-            // validate the access token
-            UserInfoAccessTokenValidator tokenValidator = UserInfoEndpointConfig.getInstance().getUserInfoAccessTokenValidator();
-            OAuth2TokenValidationResponseDTO tokenResponse = tokenValidator.validateToken(accessToken);
-            // build the claims
-            //ToDO - Validate the grant type to be implicit or authorization_code before retrieving claims
-            UserInfoResponseBuilder userInfoResponseBuilder = UserInfoEndpointConfig.getInstance().getUserInfoResponseBuilder();
-            response = userInfoResponseBuilder.getResponseString(tokenResponse);
-
-        } catch (UserInfoEndpointException e) {
-            return handleError(e);
-        } catch (OAuthSystemException e) {
-            log.error("UserInfoEndpoint Failed", e);
-            throw new OAuthSystemException("UserInfoEndpoint Failed");
-        }
-
-        ResponseBuilder respBuilder =
-                Response.status(HttpServletResponse.SC_OK)
-                        .header(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
-                                OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE)
-                        .header(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
-                                OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
-
-        if (response != null) {
-            return respBuilder.entity(response).build();
-        }
-        return respBuilder.build();
+        return getUserClaims(request);
     }
 
 

@@ -44,7 +44,6 @@ import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
-import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -543,7 +542,9 @@ public class OAuthAdminService extends AbstractAdmin {
 
         for (OAuthEventListener listener : oauthListeners) {
             try {
-                listener.onPreTokenRevocationByResourceOwner(revokeRequestDTO);
+                if (listener.isEnabled()) {
+                    listener.onPreTokenRevocationByResourceOwner(revokeRequestDTO);
+                }
             } catch (IdentityOAuth2Exception e) {
                 throw new IdentityOAuthAdminException("Error occurred with Oauth pre-revoke listener " + listener
                         .getClass().getName(), e);
@@ -558,7 +559,9 @@ public class OAuthAdminService extends AbstractAdmin {
         for (AccessTokenDO accessTokenDO : accessTokenDOs) {
             for (OAuthEventListener listener : oauthListeners) {
                 try {
-                    listener.onPostTokenRevocationByResourceOwner(revokeRequestDTO, revokeRespDTO, accessTokenDO);
+                    if (listener.isEnabled()) {
+                        listener.onPostTokenRevocationByResourceOwner(revokeRequestDTO, revokeRespDTO, accessTokenDO);
+                    }
                 } catch (IdentityOAuth2Exception e) {
                     log.error("Error occurred with post revocation listener " + listener.getClass().getName(), e);
                 }

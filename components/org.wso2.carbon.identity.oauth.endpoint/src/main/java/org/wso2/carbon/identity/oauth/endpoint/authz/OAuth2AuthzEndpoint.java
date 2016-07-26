@@ -267,7 +267,7 @@ public class OAuth2AuthzEndpoint {
                     } else {
 
                         OAuthProblemException oauthException = OAuthProblemException.error(
-                                OAuth2ErrorCodes.ACCESS_DENIED, "Authentication required");
+                                OAuth2ErrorCodes.LOGIN_REQUIRED, "Authentication required");
                         redirectURL = EndpointUtil.getErrorRedirectURL(oauthException, oauth2Params);
                         if (isOIDCRequest) {
                             Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);

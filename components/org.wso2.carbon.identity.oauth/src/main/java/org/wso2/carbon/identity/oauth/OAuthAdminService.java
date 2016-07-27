@@ -43,7 +43,7 @@ import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO;
-import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
@@ -543,10 +543,7 @@ public class OAuthAdminService extends AbstractAdmin {
     public OAuthRevocationResponseDTO revokeAuthzForAppsByResoureOwner(
             OAuthRevocationRequestDTO revokeRequestDTO) throws IdentityOAuthAdminException {
 
-        List<OAuthEventListener> oauthListeners = OAuthComponentServiceHolder.getInstance().getoAuthEventListeners();
-
-        triggerPreRevokeListeners(oauthListeners, revokeRequestDTO);
-
+        triggerPreRevokeListeners(revokeRequestDTO);
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         if (revokeRequestDTO.getApps() != null && revokeRequestDTO.getApps().length > 0) {
             String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
@@ -616,7 +613,7 @@ public class OAuthAdminService extends AbstractAdmin {
                                     throw new IdentityOAuthAdminException(errorMsg, e);
                                 }
                             }
-                            triggerPostRevokeListeners(oauthListeners, revokeRequestDTO, new OAuthRevocationResponseDTO
+                            triggerPostRevokeListeners(revokeRequestDTO, new OAuthRevocationResponseDTO
                                     (), accessTokenDOs.toArray(new AccessTokenDO[accessTokenDOs.size()]));
                         }
 
@@ -638,39 +635,38 @@ public class OAuthAdminService extends AbstractAdmin {
             revokeRespDTO.setErrorMsg("Invalid revocation request");
 
             //passing a single element array with null element to make sure listeners are triggered at least once
-            triggerPostRevokeListeners(oauthListeners, revokeRequestDTO, revokeRespDTO, new AccessTokenDO[]{null});
+            triggerPostRevokeListeners(revokeRequestDTO, revokeRespDTO, new AccessTokenDO[]{null});
             return revokeRespDTO;
         }
         return new OAuthRevocationResponseDTO();
     }
 
-    private void triggerPreRevokeListeners(List<OAuthEventListener> oauthListeners, OAuthRevocationRequestDTO
-            revokeRequestDTO) throws IdentityOAuthAdminException {
+    private void triggerPreRevokeListeners(OAuthRevocationRequestDTO
+                                                   revokeRequestDTO) throws IdentityOAuthAdminException {
 
-        for (OAuthEventListener listener : oauthListeners) {
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
+        if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
             try {
-                if (listener.isEnabled()) {
-                    listener.onPreTokenRevocationByResourceOwner(revokeRequestDTO);
-                }
+                oAuthEventInterceptorProxy.onPreTokenRevocationByResourceOwner(revokeRequestDTO);
             } catch (IdentityOAuth2Exception e) {
-                throw new IdentityOAuthAdminException("Error occurred with Oauth pre-revoke listener " + listener
-                        .getClass().getName(), e);
+                throw new IdentityOAuthAdminException("Error occurred with Oauth pre-revoke listener ", e);
             }
         }
     }
 
-    private void triggerPostRevokeListeners(List<OAuthEventListener> oauthListeners,
-                                            OAuthRevocationRequestDTO revokeRequestDTO,
+    private void triggerPostRevokeListeners(OAuthRevocationRequestDTO revokeRequestDTO,
                                             OAuthRevocationResponseDTO revokeRespDTO, AccessTokenDO[] accessTokenDOs) {
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
 
         for (AccessTokenDO accessTokenDO : accessTokenDOs) {
-            for (OAuthEventListener listener : oauthListeners) {
+            if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
                 try {
-                    if (listener.isEnabled()) {
-                        listener.onPostTokenRevocationByResourceOwner(revokeRequestDTO, revokeRespDTO, accessTokenDO);
-                    }
+                    oAuthEventInterceptorProxy.onPostTokenRevocationByResourceOwner(revokeRequestDTO, revokeRespDTO, accessTokenDO);
+
                 } catch (IdentityOAuth2Exception e) {
-                    log.error("Error occurred with post revocation listener " + listener.getClass().getName(), e);
+                    log.error("Error occurred with post revocation listener ", e);
                 }
             }
         }

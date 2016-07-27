@@ -33,7 +33,7 @@ import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientExcepti
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
-import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.ResponseHeader;
@@ -113,8 +113,6 @@ public class AccessTokenIssuer {
 
         String grantType = tokenReqDTO.getGrantType();
         OAuth2AccessTokenRespDTO tokenRespDTO;
-        List<OAuthEventListener> oAuthEventListeners =
-                OAuthComponentServiceHolder.getInstance().getoAuthEventListeners();
 
         AuthorizationGrantHandler authzGrantHandler = authzGrantHandlers.get(grantType);
 
@@ -130,8 +128,7 @@ public class AccessTokenIssuer {
         OAuthTokenReqMessageContext tokReqMsgCtx = new OAuthTokenReqMessageContext(tokenReqDTO);
         boolean isRefreshRequest = GrantType.REFRESH_TOKEN.toString().equals(grantType);
 
-        triggerPreListeners(oAuthEventListeners, tokenReqDTO, tokReqMsgCtx, isRefreshRequest);
-
+        triggerPreListeners(tokenReqDTO, tokReqMsgCtx, isRefreshRequest);
 
         // If multiple client authentication methods have been used the authorization server must reject the request
         int authenticatorHandlerIndex = -1;
@@ -144,8 +141,7 @@ public class AccessTokenIssuer {
                             OAuthConstants.OAuthError.TokenResponse.UNSUPPORTED_CLIENT_AUTHENTICATION_METHOD,
                             "Unsupported Client Authentication Method!", tokenReqDTO);
                     setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
-                    triggerPostListeners(oAuthEventListeners, tokenReqDTO, tokenRespDTO, tokReqMsgCtx,
-                            isRefreshRequest);
+                    triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
                     return tokenRespDTO;
                 }
                 authenticatorHandlerIndex = i;
@@ -158,8 +154,7 @@ public class AccessTokenIssuer {
                     OAuthConstants.OAuthError.TokenResponse.UNSUPPORTED_CLIENT_AUTHENTICATION_METHOD,
                     "Unsupported Client Authentication Method!", tokenReqDTO);
             setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
-            triggerPostListeners(oAuthEventListeners, tokenReqDTO, tokenRespDTO, tokReqMsgCtx,
-                    isRefreshRequest);
+            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
             return tokenRespDTO;
         }
 
@@ -180,8 +175,7 @@ public class AccessTokenIssuer {
             tokenRespDTO = handleError(OAuthError.TokenResponse.INVALID_CLIENT,
                     "Client credentials are invalid.", tokenReqDTO);
             setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
-            triggerPostListeners(oAuthEventListeners, tokenReqDTO, tokenRespDTO, tokReqMsgCtx,
-                    isRefreshRequest);
+            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
             return tokenRespDTO;
         }
         if (!authzGrantHandler.isOfTypeApplicationUser()) {
@@ -205,8 +199,7 @@ public class AccessTokenIssuer {
             }
             tokenRespDTO = handleError(OAuthError.TokenResponse.INVALID_GRANT, error, tokenReqDTO);
             setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
-            triggerPostListeners(oAuthEventListeners, tokenReqDTO, tokenRespDTO, tokReqMsgCtx,
-                    isRefreshRequest);
+            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
             return tokenRespDTO;
         }
 
@@ -218,8 +211,7 @@ public class AccessTokenIssuer {
             tokenRespDTO = handleError(OAuthError.TokenResponse.UNAUTHORIZED_CLIENT,
                     "Unauthorized Client!", tokenReqDTO);
             setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
-            triggerPostListeners(oAuthEventListeners, tokenReqDTO, tokenRespDTO, tokReqMsgCtx,
-                    isRefreshRequest);
+            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
             return tokenRespDTO;
         }
 
@@ -230,8 +222,7 @@ public class AccessTokenIssuer {
             }
             tokenRespDTO = handleError(OAuthError.TokenResponse.INVALID_SCOPE, "Invalid Scope!", tokenReqDTO);
             setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
-            triggerPostListeners(oAuthEventListeners, tokenReqDTO, tokenRespDTO, tokReqMsgCtx,
-                    isRefreshRequest);
+            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
             return tokenRespDTO;
         }
 
@@ -240,8 +231,7 @@ public class AccessTokenIssuer {
             // IDENTITY-4111.
             OAuth2Util.setTokenRequestContext(tokReqMsgCtx);
             tokenRespDTO = authzGrantHandler.issue(tokReqMsgCtx);
-            triggerPostListeners(oAuthEventListeners, tokenReqDTO, tokenRespDTO, tokReqMsgCtx,
-                    isRefreshRequest);
+            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
         } finally {
             // clears the token request context.
             OAuth2Util.clearTokenRequestContext();
@@ -279,49 +269,43 @@ public class AccessTokenIssuer {
         return tokenRespDTO;
     }
 
-    private void triggerPreListeners(List<OAuthEventListener> listeners, OAuth2AccessTokenReqDTO tokenReqDTO,
+    private void triggerPreListeners(OAuth2AccessTokenReqDTO tokenReqDTO,
                                      OAuthTokenReqMessageContext tokReqMsgCtx,
                                      boolean isRefresh) throws IdentityOAuth2Exception {
 
-        if (isRefresh) {
-            for (OAuthEventListener eventListener : listeners) {
-                //If listener fail, it will throw an exception and stop the token issue process
-                if (eventListener.isEnabled()) {
-                    eventListener.onPreTokenRenewal(tokenReqDTO, tokReqMsgCtx);
-                }
-            }
-        } else {
-            for (OAuthEventListener eventListener : listeners) {
-                //If listener fail, it will throw an exception and stop the token issue process
-                if(eventListener.isEnabled()) {
-                    eventListener.onPreTokenIssue(tokenReqDTO, tokReqMsgCtx);
-                }
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
+        if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
+            if (isRefresh) {
+                oAuthEventInterceptorProxy.onPreTokenRenewal(tokenReqDTO, tokReqMsgCtx);
+            } else {
+                oAuthEventInterceptorProxy.onPreTokenIssue(tokenReqDTO, tokReqMsgCtx);
             }
         }
     }
 
-    private void triggerPostListeners(List<OAuthEventListener> listeners, OAuth2AccessTokenReqDTO tokenReqDTO,
+    private void triggerPostListeners(OAuth2AccessTokenReqDTO tokenReqDTO,
                                       OAuth2AccessTokenRespDTO tokenRespDTO, OAuthTokenReqMessageContext tokReqMsgCtx,
                                       boolean isRefresh) {
 
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
+
         if (isRefresh) {
-            for (OAuthEventListener listener : listeners) {
+            if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
                 try {
-                    if(listener.isEnabled()) {
-                        listener.onPostTokenRenewal(tokenReqDTO, tokenRespDTO, tokReqMsgCtx);
-                    }
+                    oAuthEventInterceptorProxy.onPostTokenRenewal(tokenReqDTO, tokenRespDTO, tokReqMsgCtx);
                 } catch (IdentityOAuth2Exception e) {
-                    log.error("Oauth post renewal listener " + listener.getClass().getName() + " failed.", e);
+                    log.error("Oauth post renewal listener failed", e);
                 }
             }
         } else {
-            for (OAuthEventListener listener : listeners) {
+            if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
                 try {
-                    if (listener.isEnabled()) {
-                        listener.onPostTokenIssue(tokenReqDTO, tokenRespDTO, tokReqMsgCtx);
-                    }
+
+                    oAuthEventInterceptorProxy.onPostTokenIssue(tokenReqDTO, tokenRespDTO, tokReqMsgCtx);
                 } catch (IdentityOAuth2Exception e) {
-                    log.error("Oauth post issuer listener " + listener.getClass().getName() + " failed.", e);
+                    log.error("Oauth post issuer listener failed.", e);
                 }
             }
         }

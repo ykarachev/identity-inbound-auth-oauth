@@ -94,6 +94,9 @@ public final class OAuthConstants {
     //Constants used for OAuth/OpenID Connect Configuration UI
     public static final String CALLBACK_URL_REGEXP_PREFIX = "regexp=";
 
+    //Oauth Event Interceptor Proxy Name
+    public static final String OAUTH_INTERCEPTOR_PROXY = "OauthDataInterceptorHandlerProxy";
+
     public static class GrantTypes {
         public static final String IMPLICIT = "implicit";
         public static final String TOKEN = "token";

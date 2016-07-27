@@ -32,7 +32,7 @@ import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientExcepti
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
-import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.authz.AuthorizationHandlerManager;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
@@ -45,7 +45,6 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuthRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuthRevocationResponseDTO;
-import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.RefreshTokenValidationDataDO;
 import org.wso2.carbon.identity.oauth2.token.AccessTokenIssuer;
@@ -258,17 +257,21 @@ public class OAuth2Service extends AbstractAdmin {
         //fix here remove associated cache entry
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         OAuthRevocationResponseDTO revokeResponseDTO = new OAuthRevocationResponseDTO();
-        List<OAuthEventListener> oauthListeners = OAuthComponentServiceHolder.getInstance().getoAuthEventListeners();
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
 
         //Invoke pre listeners
-        try {
-            invokePreRevocationListeners(oauthListeners, revokeRequestDTO);
-        } catch (IdentityOAuth2Exception e) {
-            log.error(e);
-            revokeResponseDTO.setError(true);
-            revokeResponseDTO.setErrorCode(OAuth2ErrorCodes.SERVER_ERROR);
-            revokeResponseDTO.setErrorMsg("Error occurred while revoking authorization grant for applications");
-            return revokeResponseDTO;
+
+        if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
+            try {
+                oAuthEventInterceptorProxy.onPreTokenRevocationByClient(revokeRequestDTO);
+            } catch (IdentityOAuth2Exception e) {
+                log.error(e);
+                revokeResponseDTO.setError(true);
+                revokeResponseDTO.setErrorCode(OAuth2ErrorCodes.SERVER_ERROR);
+                revokeResponseDTO.setErrorMsg("Error occurred while revoking authorization grant for applications");
+                return revokeResponseDTO;
+            }
         }
 
         RefreshTokenValidationDataDO refreshTokenDO = null;
@@ -311,8 +314,8 @@ public class OAuth2Service extends AbstractAdmin {
                                         .equals(refreshTokenDO.getRefreshTokenState()) ||
                                         OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED
                                                 .equals(refreshTokenDO.getRefreshTokenState()))) {
-                            invokePostRevocationListeners(oauthListeners, revokeRequestDTO, revokeResponseDTO,
-                                    accessTokenDO, refreshTokenDO);
+                            invokePostRevocationListeners(revokeRequestDTO, revokeResponseDTO, accessTokenDO,
+                                    refreshTokenDO);
                             return revokeResponseDTO;
                         }
                     }
@@ -335,7 +338,7 @@ public class OAuth2Service extends AbstractAdmin {
                     revokeRespDTO.setErrorCode(OAuth2ErrorCodes.UNAUTHORIZED_CLIENT);
                     revokeRespDTO.setErrorMsg("Unauthorized Client");
 
-                    invokePostRevocationListeners(oauthListeners, revokeRequestDTO, revokeResponseDTO, accessTokenDO,
+                    invokePostRevocationListeners(revokeRequestDTO, revokeResponseDTO, accessTokenDO,
                             refreshTokenDO);
                     return revokeRespDTO;
                 }
@@ -367,16 +370,14 @@ public class OAuth2Service extends AbstractAdmin {
                         throw new InvalidOAuthClientException("Unauthorized Client");
                     }
                 }
-                invokePostRevocationListeners(oauthListeners, revokeRequestDTO, revokeResponseDTO, accessTokenDO,
-                        refreshTokenDO);
+                invokePostRevocationListeners(revokeRequestDTO, revokeResponseDTO, accessTokenDO, refreshTokenDO);
                 return revokeResponseDTO;
 
             } else {
                 revokeResponseDTO.setError(true);
                 revokeResponseDTO.setErrorCode(OAuth2ErrorCodes.INVALID_REQUEST);
                 revokeResponseDTO.setErrorMsg("Invalid revocation request");
-                invokePostRevocationListeners(oauthListeners, revokeRequestDTO, revokeResponseDTO, accessTokenDO,
-                        refreshTokenDO);
+                invokePostRevocationListeners(revokeRequestDTO, revokeResponseDTO, accessTokenDO, refreshTokenDO);
                 return revokeResponseDTO;
             }
 
@@ -386,8 +387,7 @@ public class OAuth2Service extends AbstractAdmin {
             revokeRespDTO.setError(true);
             revokeRespDTO.setErrorCode(OAuth2ErrorCodes.UNAUTHORIZED_CLIENT);
             revokeRespDTO.setErrorMsg("Unauthorized Client");
-            invokePostRevocationListeners(oauthListeners, revokeRequestDTO, revokeResponseDTO, accessTokenDO,
-                    refreshTokenDO);
+            invokePostRevocationListeners(revokeRequestDTO, revokeResponseDTO, accessTokenDO, refreshTokenDO);
             return revokeRespDTO;
         } catch (IdentityException e) {
             log.error("Error occurred while revoking authorization grant for applications", e);
@@ -395,38 +395,24 @@ public class OAuth2Service extends AbstractAdmin {
             revokeRespDTO.setError(true);
             revokeRespDTO.setErrorCode(OAuth2ErrorCodes.SERVER_ERROR);
             revokeRespDTO.setErrorMsg("Error occurred while revoking authorization grant for applications");
-            invokePostRevocationListeners(oauthListeners, revokeRequestDTO, revokeResponseDTO, accessTokenDO,
-                    refreshTokenDO);
+            invokePostRevocationListeners(revokeRequestDTO, revokeResponseDTO, accessTokenDO, refreshTokenDO);
             return revokeRespDTO;
         }
     }
 
-    private void invokePreRevocationListeners(List<OAuthEventListener> listeners, OAuthRevocationRequestDTO
-            revokeRequestDTO) throws IdentityOAuth2Exception {
+    private void invokePostRevocationListeners(OAuthRevocationRequestDTO revokeRequestDTO, OAuthRevocationResponseDTO
+            revokeResponseDTO, AccessTokenDO accessTokenDO, RefreshTokenValidationDataDO refreshTokenDO) {
 
-        for (OAuthEventListener listener : listeners) {
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
+        if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
             try {
-                listener.onPreTokenRevocationByClient(revokeRequestDTO);
-            } catch (IdentityOAuth2Exception e) {
-                throw new IdentityOAuth2Exception("Error occured when invoking pre token revoke listener " + listener
-                        .getClass().getName(), e);
-            }
-        }
-    }
-
-    private void invokePostRevocationListeners(List<OAuthEventListener> listeners, OAuthRevocationRequestDTO
-            revokeRequestDTO, OAuthRevocationResponseDTO revokeResponseDTO, AccessTokenDO accessTokenDO,
-                                               RefreshTokenValidationDataDO refreshTokenDO) {
-
-        for (OAuthEventListener listener : listeners) {
-            try {
-                listener.onPostTokenRevocationByClient(revokeRequestDTO, revokeResponseDTO, accessTokenDO,
+                oAuthEventInterceptorProxy.onPostTokenRevocationByClient(revokeRequestDTO, revokeResponseDTO, accessTokenDO,
                         refreshTokenDO);
             } catch (IdentityOAuth2Exception e) {
-                log.error("Error occured when invoking post token revoke listener " + listener.getClass().getName(), e);
+                log.error("Error occurred when invoking post token revoke listener ", e);
             }
         }
-
     }
 
     /**

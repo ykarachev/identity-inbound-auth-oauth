@@ -20,19 +20,16 @@ package org.wso2.carbon.identity.oauth.internal;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.registry.api.RegistryService;
 import org.wso2.carbon.user.core.service.RealmService;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class OAuthComponentServiceHolder {
 
     private static OAuthComponentServiceHolder instance = new OAuthComponentServiceHolder();
     private RegistryService registryService;
     private RealmService realmService;
-    private List<OAuthEventListener> oAuthEventListeners;
+    private OAuthEventInterceptor oAuthEventInterceptorHandlerProxy;
     private static Log log = LogFactory.getLog(OAuthComponentServiceHolder.class);
 
     private OAuthComponentServiceHolder() {
@@ -64,29 +61,11 @@ public class OAuthComponentServiceHolder {
         this.realmService = realmService;
     }
 
-    public void addOauthEventListener(OAuthEventListener oAuthEventListener) {
-
-        if (oAuthEventListeners == null) {
-            oAuthEventListeners = new ArrayList<>();
-        }
-        oAuthEventListeners.add(oAuthEventListener);
+    public void addOauthEventInterceptorProxy(OAuthEventInterceptor oAuthEventInterceptorHandlerProxy) {
+        this.oAuthEventInterceptorHandlerProxy = oAuthEventInterceptorHandlerProxy;
     }
 
-    public void removeOauthEventListener(OAuthEventListener OAuthEventListener) {
-
-        if (oAuthEventListeners != null && OAuthEventListener != null) {
-            boolean isRemoved = oAuthEventListeners.remove(OAuthEventListener);
-            if (!isRemoved) {
-                log.warn(OAuthEventListener.getClass().getName() + " had not been registered as a listener");
-            }
-        }
-    }
-
-    public List<OAuthEventListener> getoAuthEventListeners() {
-
-        if (oAuthEventListeners == null) {
-            oAuthEventListeners = new ArrayList<>();
-        }
-        return oAuthEventListeners;
+    public OAuthEventInterceptor getOAuthEventInterceptorProxy() {
+        return this.oAuthEventInterceptorHandlerProxy;
     }
 }

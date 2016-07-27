@@ -23,8 +23,9 @@ import org.apache.commons.logging.LogFactory;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentContext;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.listener.IdentityOathEventListener;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.user.core.listener.UserOperationEventListener;
@@ -36,11 +37,11 @@ import org.wso2.carbon.user.core.service.RealmService;
  * interface="org.wso2.carbon.registry.core.service.RegistryService"
  * cardinality="1..1" policy="dynamic" bind="setRegistryService"
  * unbind="unsetRegistryService"
- * @scr.reference name="org.wso2.carbon.identity.oauth.event.OAuthEventListener"
- * interface="org.wso2.carbon.identity.oauth.event.OAuthEventListener"
+ * @scr.reference name="org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor"
+ * interface="org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor"
  * cardinality="0..n" policy="dynamic"
- * bind="setOauthEventListener"
- * unbind="unsetOauthEventListener"
+ * bind="setOAuthEventInterceptorProxy"
+ * unbind="unsetOAuthEventInterceptor"
  * @scr.reference name="user.realmservice.default"
  * interface="org.wso2.carbon.user.core.service.RealmService" cardinality="1..1"
  * policy="dynamic" bind="setRealmService" unbind="unsetRealmService"
@@ -118,29 +119,39 @@ public class OAuthServiceComponent {
         OAuthComponentServiceHolder.getInstance().setRealmService(null);
     }
 
-    protected void setOauthEventListener(OAuthEventListener oAuthEventListener) {
+    protected void setOAuthEventInterceptorProxy(OAuthEventInterceptor oAuthEventInterceptor) {
 
-        if (oAuthEventListener == null) {
-            log.warn("Null OAuthEventListener received, hence not registering");
+        if (oAuthEventInterceptor == null) {
+            log.warn("Null Oauth Event Interceptor received, hence not registering");
+            return;
+        }
+
+        if (!OAuthConstants.OAUTH_INTERCEPTOR_PROXY.equalsIgnoreCase(oAuthEventInterceptor.getName())) {
+            log.debug("Non proxy Oauth event interceptor received, hence not registering");
             return;
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("Setting OAuthEventListener :" + oAuthEventListener.getClass().getName());
+            log.debug("Setting oauth event interceptor proxy :" + oAuthEventInterceptor.getClass().getName());
         }
-        OAuthComponentServiceHolder.getInstance().addOauthEventListener(oAuthEventListener);
+        OAuthComponentServiceHolder.getInstance().addOauthEventInterceptorProxy(oAuthEventInterceptor);
     }
 
-    protected void unsetOauthEventListener(OAuthEventListener oAuthEventListener) {
+    protected void unsetOAuthEventInterceptor(OAuthEventInterceptor oAuthEventInterceptor) {
 
-        if (oAuthEventListener == null) {
-            log.warn("Null oAuthEventListener received, hence not unregistering");
+        if (oAuthEventInterceptor == null) {
+            log.warn("Null oauth event interceptor received, hence not registering");
+            return;
+        }
+
+        if (!OAuthConstants.OAUTH_INTERCEPTOR_PROXY.equalsIgnoreCase(oAuthEventInterceptor.getName())) {
+            log.debug("Non proxy Oauth event interceptor received, hence not un-setting");
             return;
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("Unsetting oAuthEventListener :" + oAuthEventListener.getClass().getName());
+            log.debug("Un-setting oauth event interceptor proxy :" + oAuthEventInterceptor.getClass().getName());
         }
-        OAuthComponentServiceHolder.getInstance().removeOauthEventListener(oAuthEventListener);
+        OAuthComponentServiceHolder.getInstance().addOauthEventInterceptorProxy(null);
     }
 }

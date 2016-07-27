@@ -21,15 +21,13 @@ package org.wso2.carbon.identity.oauth2;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.core.AbstractAdmin;
-import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2ClientApplicationDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2IntrospectionResponseDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.validators.TokenValidationHandler;
-
-import java.util.List;
 
 /**
  * This is the SOAP version of the OAuth validation service which will be used by the resource server.
@@ -45,11 +43,9 @@ public class OAuth2TokenValidationService extends AbstractAdmin {
     public OAuth2TokenValidationResponseDTO validate(OAuth2TokenValidationRequestDTO validationReqDTO) {
 
         TokenValidationHandler validationHandler = TokenValidationHandler.getInstance();
-        List<OAuthEventListener> oAuthEventListeners =
-                OAuthComponentServiceHolder.getInstance().getoAuthEventListeners();
         //trigger pre listeners
         try {
-            triggerPreValidationListeners(oAuthEventListeners, validationReqDTO);
+            triggerPreValidationListeners(validationReqDTO);
         } catch (IdentityOAuth2Exception e) {
             OAuth2TokenValidationResponseDTO errRespDTO = new OAuth2TokenValidationResponseDTO();
             errRespDTO.setValid(false);
@@ -67,30 +63,31 @@ public class OAuth2TokenValidationService extends AbstractAdmin {
             return errRespDTO;
         }
         //trigger post listeners
-        triggerPostValidationListeners(oAuthEventListeners, validationReqDTO, responseDTO);
+        triggerPostValidationListeners(validationReqDTO, responseDTO);
         return responseDTO;
     }
 
-    private void triggerPreValidationListeners(List<OAuthEventListener> oAuthEventListeners,
-                                               OAuth2TokenValidationRequestDTO requestDTO)
+    private void triggerPreValidationListeners(OAuth2TokenValidationRequestDTO requestDTO)
             throws IdentityOAuth2Exception {
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
 
-        for (OAuthEventListener OAuthEventListener : oAuthEventListeners) {
-            OAuthEventListener.onPreTokenValidation(requestDTO);
+        if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
+            oAuthEventInterceptorProxy.onPreTokenValidation(requestDTO);
         }
     }
 
-    private void triggerPostValidationListeners(List<OAuthEventListener> oAuthEventListeners,
-                                                OAuth2TokenValidationRequestDTO requestDTO,
+    private void triggerPostValidationListeners(OAuth2TokenValidationRequestDTO requestDTO,
                                                 OAuth2TokenValidationResponseDTO responseDTO) {
 
-        for (OAuthEventListener OAuthEventListener : oAuthEventListeners) {
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
+
+        if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
             try {
-                if (OAuthEventListener.isEnabled()) {
-                    OAuthEventListener.onPostTokenValidation(requestDTO, responseDTO);
-                }
+                oAuthEventInterceptorProxy.onPostTokenValidation(requestDTO, responseDTO);
             } catch (IdentityOAuth2Exception e) {
-                log.error("Oauth post validation listener " + OAuthEventListener.getClass().getName() + " failed.", e);
+                log.error("Oauth post validation listener failed.", e);
             }
         }
     }

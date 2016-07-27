@@ -35,7 +35,7 @@ import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.event.OAuthEventListener;
+import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
@@ -47,7 +47,6 @@ import org.wso2.carbon.identity.openidconnect.IDTokenBuilder;
 
 import java.sql.Timestamp;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -59,9 +58,12 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
     public OAuth2AuthorizeRespDTO issue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx)
             throws IdentityOAuth2Exception {
 
-        List<OAuthEventListener> oauthListeners = OAuthComponentServiceHolder.getInstance().getoAuthEventListeners();
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
 
-        triggerPreListeners(oauthListeners, oauthAuthzMsgCtx);
+        if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
+            oAuthEventInterceptorProxy.onPreTokenIssue(oauthAuthzMsgCtx);
+        }
 
         OAuth2AuthorizeRespDTO respDTO = new OAuth2AuthorizeRespDTO();
         OAuth2AuthorizeReqDTO authorizationReqDTO = oauthAuthzMsgCtx.getAuthorizationReqDTO();
@@ -139,7 +141,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                         respDTO.setScope(oauthAuthzMsgCtx.getApprovedScope());
                         respDTO.setTokenType(accessTokenDO.getTokenType());
                         buildIdToken(oauthAuthzMsgCtx, respDTO);
-                        triggerPostListeners(oauthListeners, oauthAuthzMsgCtx, accessTokenDO, respDTO);
+                        triggerPostListeners(oauthAuthzMsgCtx, accessTokenDO, respDTO);
                         return respDTO;
                     } else {
 
@@ -220,7 +222,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                     respDTO.setTokenType(existingAccessTokenDO.getTokenType());
 
                     buildIdToken(oauthAuthzMsgCtx, respDTO);
-                    triggerPostListeners(oauthListeners, oauthAuthzMsgCtx, existingAccessTokenDO, respDTO);
+                    triggerPostListeners(oauthAuthzMsgCtx, existingAccessTokenDO, respDTO);
                     return respDTO;
 
                 } else {
@@ -383,31 +385,21 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         }
 
         buildIdToken(oauthAuthzMsgCtx, respDTO);
-        triggerPostListeners(oauthListeners, oauthAuthzMsgCtx, tokenDO, respDTO);
+        triggerPostListeners(oauthAuthzMsgCtx, tokenDO, respDTO);
         return respDTO;
     }
 
-    private void triggerPreListeners(List<OAuthEventListener> oauthListeners, OAuthAuthzReqMessageContext
-            oauthAuthzMsgCtx) throws IdentityOAuth2Exception {
+    private void triggerPostListeners(OAuthAuthzReqMessageContext
+                                              oauthAuthzMsgCtx, AccessTokenDO tokenDO, OAuth2AuthorizeRespDTO respDTO) {
 
-        for (OAuthEventListener oauthListener : oauthListeners) {
-            if (oauthListener.isEnabled()) {
-                oauthListener.onPreTokenIssue(oauthAuthzMsgCtx);
-            }
-        }
+        OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
+                .getOAuthEventInterceptorProxy();
 
-    }
-
-    private void triggerPostListeners(List<OAuthEventListener> oauthListeners, OAuthAuthzReqMessageContext
-            oauthAuthzMsgCtx, AccessTokenDO tokenDO, OAuth2AuthorizeRespDTO respDTO) {
-
-        for (OAuthEventListener oauthListener : oauthListeners) {
+        if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
             try {
-                if (oauthListener.isEnabled()) {
-                    oauthListener.onPostTokenIssue(oauthAuthzMsgCtx, tokenDO, respDTO);
-                }
+                oAuthEventInterceptorProxy.onPostTokenIssue(oauthAuthzMsgCtx, tokenDO, respDTO);
             } catch (IdentityOAuth2Exception e) {
-                log.error("Oauth post token issue listener " + oauthListener.getClass().getName() + " failed.", e);
+                log.error("Oauth post token issue listener ", e);
             }
         }
     }

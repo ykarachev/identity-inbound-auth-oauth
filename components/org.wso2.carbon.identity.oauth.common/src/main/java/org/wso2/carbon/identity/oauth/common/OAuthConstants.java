@@ -103,6 +103,9 @@ public final class OAuthConstants {
     public static final String ACTION_REVOKE = "revoke";
     public static final String ACTION_REGENERATE = "regenerate";
 
+    //Oauth Event Interceptor Proxy Name
+    public static final String OAUTH_INTERCEPTOR_PROXY = "OauthDataInterceptorHandlerProxy";
+
     public static class GrantTypes {
         public static final String IMPLICIT = "implicit";
         public static final String TOKEN = "token";

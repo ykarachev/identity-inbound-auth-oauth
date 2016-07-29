@@ -45,8 +45,45 @@ public class UserInforRequestDefaultValidator implements UserInfoRequestValidato
     public String validateRequest(HttpServletRequest request) throws UserInfoEndpointException {
         String authzHeaders = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authzHeaders == null) {
-            throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
-                    "Authorization header missing");
+            String contentTypeHeaders = request.getHeader(HttpHeaders.CONTENT_TYPE);
+            //to validate the Content_Type header
+            if (StringUtils.isEmpty(contentTypeHeaders)) {
+                throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
+                        "Authorization or Content-Type header is missing");
+            }
+            if ((CONTENT_TYPE_HEADER_VALUE).equals(contentTypeHeaders.trim())) {
+                StringBuilder stringBuilder = new StringBuilder();
+
+                Scanner scanner = null;
+                try {
+                    scanner = new Scanner(request.getInputStream());
+                } catch (IOException e) {
+                    throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
+                            "can not read the request body");
+                }
+                while (scanner.hasNextLine()) {
+                    stringBuilder.append(scanner.nextLine());
+                }
+                String[] arrAccessToken = new String[2];
+                String requestBody = stringBuilder.toString();
+                String[] arrAccessTokenNew;
+                //to check whether the entity-body consist entirely of ASCII [USASCII] characters
+                if (!isPureAscii(requestBody)) {
+                    throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
+                            "Body contains non ASCII characters");
+                }
+                if (requestBody.contains("access_token=")) {
+                    arrAccessToken = requestBody.trim().split("=");
+                    if (arrAccessToken[1].contains("&")) {
+                        arrAccessTokenNew = arrAccessToken[1].split("&", 1);
+                        return arrAccessTokenNew[0];
+                    }
+                }
+                return arrAccessToken[1];
+            } else {
+                throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
+                        "Content-Type header is wrong");
+            }
         }
 
         String[] authzHeaderInfo = ((String) authzHeaders).trim().split(" ");
@@ -56,48 +93,6 @@ public class UserInforRequestDefaultValidator implements UserInfoRequestValidato
         return authzHeaderInfo[1];
     }
 
-    @Override
-    public String validateRequestBody(HttpServletRequest request) throws UserInfoEndpointException {
-        String contentTypeHeaders = request.getHeader(HttpHeaders.CONTENT_TYPE);
-        //to validate the Content_Type header
-        if (StringUtils.isEmpty(contentTypeHeaders)) {
-            throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
-                    "Content-Type header missing");
-        }
-        if ((CONTENT_TYPE_HEADER_VALUE).equals(contentTypeHeaders.trim())) {
-            StringBuilder stringBuilder = new StringBuilder();
-
-            Scanner scanner = null;
-            try {
-                scanner = new Scanner(request.getInputStream());
-            } catch (IOException e) {
-                throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
-                        "can not read the request body");
-            }
-            while (scanner.hasNextLine()) {
-                stringBuilder.append(scanner.nextLine());
-            }
-            String[] arrAccessToken = new String[2];
-            String requestBody = stringBuilder.toString();
-            String[] arrAccessTokenNew ;
-            //to check whether the entity-body consist entirely of ASCII [USASCII] characters
-            if (!isPureAscii(requestBody)) {
-                throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
-                        "Body contains non ASCII characters");
-            }
-            if (requestBody.contains("access_token=")) {
-                arrAccessToken = requestBody.trim().split("=");
-                if(arrAccessToken[1].contains("&")){
-                    arrAccessTokenNew = arrAccessToken[1].split("&", 1);
-                    return arrAccessTokenNew[0];
-                }
-            }
-            return arrAccessToken[1];
-        } else {
-            throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_REQUEST,
-                    "Content-Type header is wrong");
-        }
-    }
 
     public static boolean isPureAscii(String requestBody) {
         byte bytearray[] = requestBody.getBytes();

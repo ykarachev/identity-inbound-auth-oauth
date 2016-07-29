@@ -236,7 +236,7 @@ public class OAuth2AuthzEndpoint {
                 Long authTime =  Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
                         getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
                 sessionDataCacheEntry = resultFromLogin;
-                sessionDataCacheEntry.setTime(authTime);
+                sessionDataCacheEntry.setAuthTime(authTime);
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
                 AuthenticationResult authnResult = getAuthenticationResult(request, sessionDataKeyFromLogin);
                 if (authnResult != null) {
@@ -574,7 +574,7 @@ public class OAuth2AuthzEndpoint {
         authorizationGrantCacheEntry.setCodeId(codeId);
         authorizationGrantCacheEntry.setPkceCodeChallenge(pkceCodeChallenge);
         authorizationGrantCacheEntry.setPkceCodeChallengeMethod(pkceCodeChallengeMethod);
-        authorizationGrantCacheEntry.setAuthTime(sessionDataCacheEntry.getTime());
+        authorizationGrantCacheEntry.setAuthTime(sessionDataCacheEntry.getAuthTime());
         AuthorizationGrantCache.getInstance().addToCacheByCode(authorizationGrantCacheKey, authorizationGrantCacheEntry);
     }
 

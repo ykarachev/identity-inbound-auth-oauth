@@ -30,7 +30,7 @@ public class SessionDataCacheEntry extends CacheEntry {
     private static final long serialVersionUID = -4123547630178387354L;
     private AuthenticatedUser loggedInUser;
     private OAuth2Parameters oAuth2Parameters;
-    private long time;
+    private long authTime;
     private String authenticatedIdPs;
 
     private String queryString = null;
@@ -77,12 +77,12 @@ public class SessionDataCacheEntry extends CacheEntry {
         this.authenticatedIdPs = authenticatedIdPs;
     }
 
-    public long getTime() {
-        return time;
+    public long getAuthTime() {
+        return authTime;
     }
 
-    public void setTime(long time) {
-        this.time = time;
+    public void setAuthTime(long authTime) {
+        this.authTime = authTime;
     }
 
 }

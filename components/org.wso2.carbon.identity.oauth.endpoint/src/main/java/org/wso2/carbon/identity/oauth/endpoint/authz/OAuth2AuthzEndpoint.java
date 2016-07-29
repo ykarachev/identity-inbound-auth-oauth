@@ -233,8 +233,15 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromLogin != null) { // Authentication response
-                Long authTime =  Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
-                        getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                long authTime;
+                if (FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
+                        getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                    authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
+                            getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                } else {
+                    authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
+                            getAuthCookie(request).getValue()).getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                }
                 sessionDataCacheEntry = resultFromLogin;
                 sessionDataCacheEntry.setAuthTime(authTime);
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
@@ -296,8 +303,15 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromConsent != null) { // Consent submission
-                long authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.getAuthCookie(request)
-                        .getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                long authTime;
+                if (FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
+                        getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                    authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
+                            getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                } else {
+                    authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
+                            getAuthCookie(request).getValue()).getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                }
                 sessionDataCacheEntry = resultFromConsent;
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
                 oauth2Params.setAuthTime(authTime);

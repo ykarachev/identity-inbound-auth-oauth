@@ -35,6 +35,15 @@ public class OAuth2AuthorizeReqDTO {
     private String pkceCodeChallenge;
     private String pkceCodeChallengeMethod;
     private String tenantDomain;
+    private long authTime;
+
+    public long getAuthTime() {
+        return authTime;
+    }
+
+    public void setAuthTime(long authTime) {
+        this.authTime = authTime;
+    }
 
     private Properties properties = new Properties();
 

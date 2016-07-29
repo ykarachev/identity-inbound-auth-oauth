@@ -233,8 +233,10 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromLogin != null) { // Authentication response
-
+                Long authTime =  Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
+                        getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
                 sessionDataCacheEntry = resultFromLogin;
+                sessionDataCacheEntry.setTime(authTime);
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
                 AuthenticationResult authnResult = getAuthenticationResult(request, sessionDataKeyFromLogin);
                 if (authnResult != null) {
@@ -294,9 +296,11 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromConsent != null) { // Consent submission
-
+                long authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.getAuthCookie(request)
+                        .getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
                 sessionDataCacheEntry = resultFromConsent;
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
+                oauth2Params.setAuthTime(authTime);
                 boolean isOIDCRequest = OAuth2Util.isOIDCAuthzRequest(oauth2Params.getScopes());
 
                 String consent = request.getParameter("consent");
@@ -570,6 +574,7 @@ public class OAuth2AuthzEndpoint {
         authorizationGrantCacheEntry.setCodeId(codeId);
         authorizationGrantCacheEntry.setPkceCodeChallenge(pkceCodeChallenge);
         authorizationGrantCacheEntry.setPkceCodeChallengeMethod(pkceCodeChallengeMethod);
+        authorizationGrantCacheEntry.setAuthTime(sessionDataCacheEntry.getTime());
         AuthorizationGrantCache.getInstance().addToCacheByCode(authorizationGrantCacheKey, authorizationGrantCacheEntry);
     }
 
@@ -912,6 +917,7 @@ public class OAuth2AuthzEndpoint {
         authzReqDTO.setPkceCodeChallenge(oauth2Params.getPkceCodeChallenge());
         authzReqDTO.setPkceCodeChallengeMethod(oauth2Params.getPkceCodeChallengeMethod());
         authzReqDTO.setTenantDomain(oauth2Params.getTenantDomain());
+        authzReqDTO.setAuthTime(oauth2Params.getAuthTime());
         return EndpointUtil.getOAuth2Service().authorize(authzReqDTO);
     }
 

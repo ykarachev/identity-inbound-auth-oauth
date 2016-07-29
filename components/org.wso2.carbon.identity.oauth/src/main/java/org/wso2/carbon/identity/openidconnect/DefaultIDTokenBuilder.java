@@ -273,7 +273,9 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         jwtClaimsSet.setClaim("azp", request.getOauth2AccessTokenReqDTO().getClientId());
         jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
         jwtClaimsSet.setIssueTime(new Date(curTimeInMillis));
-        jwtClaimsSet.setClaim("auth_time", authTime);
+        if (authTime != 0) {
+            jwtClaimsSet.setClaim("auth_time", authTime / 1000);
+        }
         if(atHash != null){
             jwtClaimsSet.setClaim("at_hash", atHash);
         }
@@ -380,7 +382,9 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         jwtClaimsSet.setClaim("azp", request.getAuthorizationReqDTO().getConsumerKey());
         jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
         jwtClaimsSet.setIssueTime(new Date(curTimeInMillis));
-        jwtClaimsSet.setClaim("auth_time", request.getAuthorizationReqDTO().getAuthTime());
+        if (request.getAuthorizationReqDTO().getAuthTime() != 0) {
+            jwtClaimsSet.setClaim("auth_time", request.getAuthorizationReqDTO().getAuthTime() / 1000);
+        }
         if(atHash != null){
             jwtClaimsSet.setClaim("at_hash", atHash);
         }

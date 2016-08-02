@@ -17,6 +17,8 @@
  */
 package org.wso2.carbon.identity.oauth.endpoint.authz;
 
+import org.apache.commons.codec.digest.DigestUtils;
+import org.wso2.carbon.identity.application.authentication.framework.context.SessionContext;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -234,13 +236,13 @@ public class OAuth2AuthzEndpoint {
 
             } else if (resultFromLogin != null) { // Authentication response
                 long authTime;
-                if (FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
-                        getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
-                    authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
-                            getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                Cookie cookie = FrameworkUtils.getAuthCookie(request);
+                String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
+                SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
+                if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
                 } else {
-                    authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
-                            getAuthCookie(request).getValue()).getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
                 }
                 sessionDataCacheEntry = resultFromLogin;
                 sessionDataCacheEntry.setAuthTime(authTime);

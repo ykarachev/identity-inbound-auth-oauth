@@ -19,6 +19,7 @@ package org.wso2.carbon.identity.oauth.endpoint.jwks;
 
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyStore;
 import java.security.cert.Certificate;
@@ -55,10 +56,11 @@ public class JwksEndpoint {
     public String jwks(@PathParam("tenantDomain") String tenantDomain) {
         RSAPublicKey publicKey = null;
         JSONObject jwksJson = new JSONObject();
+        FileInputStream file = null;
         try {
             if (StringUtils.isEmpty(tenantDomain)) {
 
-                FileInputStream file = new FileInputStream(CarbonUtils.getServerConfiguration().getFirstProperty
+                file = new FileInputStream(CarbonUtils.getServerConfiguration().getFirstProperty
                         ("Security.KeyStore.Location"));
                 KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
                 keystore.load(file, "wso2carbon".toCharArray());
@@ -99,6 +101,12 @@ public class JwksEndpoint {
             String errorMesage = "Error while generating the keyset";
             log.error(errorMesage);
             return errorMesage;
+        }finally {
+            try {
+                file.close();
+            } catch (IOException e) {
+                log.error("Error while closing the FileInputStream");
+            }
         }
 
         return jwksJson.toString();

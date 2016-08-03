@@ -77,24 +77,26 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         }
         String[] arrRequestedScopeClaims = null;
         for (String requestedScope : tokenResponse.getScope()) {
-            Enumeration supporetdScopes = resource.getProperties().propertyNames();
-            while (supporetdScopes.hasMoreElements()) {
-                String supportedScope = (String) supporetdScopes.nextElement();
-                if (supportedScope.equals(requestedScope)) {
-                    requestedScopeClaims = resource.getProperty(requestedScope);
-                    if (requestedScopeClaims.contains(",")) {
-                        arrRequestedScopeClaims = requestedScopeClaims.split(",");
-                    } else {
-                        arrRequestedScopeClaims = new String[1];
-                        arrRequestedScopeClaims[0] = requestedScopeClaims;
-                    }
-                    for (Map.Entry<String, Object> entry : claims.entrySet()) {
-                        String requestedClaims = entry.getKey();
-                        if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaims)) {
-                            retunClaims.put(entry.getKey(), claims.get(entry.getKey()));
+            if (resource != null && resource.getProperties() != null) {
+                Enumeration supporetdScopes = resource.getProperties().propertyNames();
+                while (supporetdScopes.hasMoreElements()) {
+                    String supportedScope = (String) supporetdScopes.nextElement();
+                    if (supportedScope.equals(requestedScope)) {
+                        requestedScopeClaims = resource.getProperty(requestedScope);
+                        if (requestedScopeClaims.contains(",")) {
+                            arrRequestedScopeClaims = requestedScopeClaims.split(",");
+                        } else {
+                            arrRequestedScopeClaims = new String[1];
+                            arrRequestedScopeClaims[0] = requestedScopeClaims;
                         }
-                    }
+                        for (Map.Entry<String, Object> entry : claims.entrySet()) {
+                            String requestedClaims = entry.getKey();
+                            if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaims)) {
+                                retunClaims.put(entry.getKey(), claims.get(entry.getKey()));
+                            }
+                        }
 
+                    }
                 }
             }
         }

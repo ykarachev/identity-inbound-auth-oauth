@@ -30,6 +30,7 @@ import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.model.User;
+import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
@@ -941,12 +942,10 @@ public class OAuth2Util {
                     parser.close();
                 }
                 if (stream != null) {
-                    stream.close();
+                    IdentityIOStreamUtils.closeInputStream(stream);
                 }
             } catch (XMLStreamException e) {
                 log.error("Error while closing XML stream", e);
-            } catch (IOException e) {
-                log.error("Error while closing input stream", e);
             }
         }
         return scopes;

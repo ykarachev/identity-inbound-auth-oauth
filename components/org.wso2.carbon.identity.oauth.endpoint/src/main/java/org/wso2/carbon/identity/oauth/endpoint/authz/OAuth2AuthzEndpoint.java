@@ -306,13 +306,13 @@ public class OAuth2AuthzEndpoint {
 
             } else if (resultFromConsent != null) { // Consent submission
                 long authTime;
-                if (FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
-                        getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
-                    authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
-                            getAuthCookie(request).getValue()).getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                Cookie cookie = FrameworkUtils.getAuthCookie(request);
+                String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
+                SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
+                if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
                 } else {
-                    authTime = Long.parseLong(FrameworkUtils.getSessionContextFromCache(FrameworkUtils.
-                            getAuthCookie(request).getValue()).getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
                 }
                 sessionDataCacheEntry = resultFromConsent;
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();

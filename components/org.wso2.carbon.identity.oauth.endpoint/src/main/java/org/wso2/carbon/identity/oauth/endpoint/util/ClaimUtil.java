@@ -21,12 +21,18 @@ package org.wso2.carbon.identity.oauth.endpoint.util;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.application.common.model.ServiceProvider;
+import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.claim.metadata.mgt.ClaimMetadataHandler;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
+import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
+import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
+import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreManager;
@@ -39,6 +45,7 @@ import java.util.Map;
 
 public class ClaimUtil {
     static final String SP_DIALECT = "http://wso2.org/oidc/claim";
+    private final static String INBOUND_AUTH2_TYPE = "oauth2";
     private static final Log log = LogFactory.getLog(ClaimUtil.class);
 
     private ClaimUtil() {
@@ -65,12 +72,27 @@ public class ClaimUtil {
 
             UserStoreManager userstore = realm.getUserStoreManager();
 
-            // need to get all the requested claims
-            Map<String, String> requestedLocalClaimMap = ClaimMetadataHandler.getInstance()
-                    .getMappingsMapFromOtherDialectToCarbon(SP_DIALECT, null, tenantDomain, true);
-            if (MapUtils.isNotEmpty(requestedLocalClaimMap)) {
-                for (String s : requestedLocalClaimMap.keySet()) {
-                    claimURIList.add(s);
+            TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
+            AccessTokenDO accessTokenDO = tokenMgtDAO.retrieveAccessToken(tokenResponse.getAuthorizationContextToken()
+                    .getTokenString(), false);
+            ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
+            String clientId = null;
+            if (accessTokenDO != null) {
+                clientId = accessTokenDO.getConsumerKey();
+            }
+
+            String spName = applicationMgtService.getServiceProviderNameByClientId(clientId, INBOUND_AUTH2_TYPE,
+                    tenantDomain);
+            ServiceProvider serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(spName,
+                    tenantDomain);
+            if (serviceProvider == null) {
+                return mappedAppClaims;
+            }
+            ClaimMapping[] requestedLocalClaimMap = serviceProvider.getClaimConfig().getClaimMappings();
+
+            if (requestedLocalClaimMap != null && requestedLocalClaimMap.length > 0) {
+                for (ClaimMapping claimMapping : requestedLocalClaimMap) {
+                    claimURIList.add(claimMapping.getLocalClaim().getClaimUri());
 
                 }
                 if (log.isDebugEnabled()) {
@@ -78,10 +100,10 @@ public class ClaimUtil {
                 }
 
                 spToLocalClaimMappings = ClaimMetadataHandler.getInstance().getMappingsMapFromOtherDialectToCarbon
-                        (SP_DIALECT, null, tenantDomain, false);
+                        (SP_DIALECT, null, tenantDomain, true);
 
                 Map<String, String> userClaims = userstore.getUserClaimValues(MultitenantUtils.getTenantAwareUsername
-                        (username), claimURIList.toArray(new String[claimURIList.size()]), null);
+                        (username), claimURIList.toArray(new    String[claimURIList.size()]), null);
                 if (log.isDebugEnabled()) {
                     log.debug("User claims retrieved from user store: " + userClaims.size());
                 }
@@ -90,13 +112,13 @@ public class ClaimUtil {
                     return new HashMap<>();
                 }
 
-                for (Map.Entry<String, String> entry : spToLocalClaimMappings.entrySet()) {
-                    String value = userClaims.get(entry.getValue());
+                for (Map.Entry<String, String> entry : userClaims.entrySet()) {
+                    String value = spToLocalClaimMappings.get(entry.getKey());
                     if (value != null) {
-                        mappedAppClaims.put(entry.getKey(), value);
+                        mappedAppClaims.put(value, entry.getValue());
                         if (log.isDebugEnabled() &&
                                 IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_CLAIMS)) {
-                            log.debug("Mapped claim: key -  " + entry.getKey() + " value -" + value);
+                            log.debug("Mapped claim: key -  " + value + " value -" + entry.getValue());
                         }
                     }
                 }

@@ -52,6 +52,16 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
         this.acrValue = acrValue;
     }
 
+    private long authTime;
+
+    public long getAuthTime() {
+        return authTime;
+    }
+
+    public void setAuthTime(long authTime) {
+        this.authTime = authTime;
+    }
+
     public AuthorizationGrantCacheEntry(Map<ClaimMapping, String> userAttributes) {
         this.userAttributes = userAttributes;
     }

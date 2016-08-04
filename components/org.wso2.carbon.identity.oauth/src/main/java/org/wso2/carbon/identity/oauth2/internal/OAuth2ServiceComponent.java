@@ -74,7 +74,9 @@ public class OAuth2ServiceComponent {
         ServiceRegistration scopeTenantMgtListenerSR = bundleContext.registerService(
                 TenantMgtListener.class.getName(), scopeTenantMgtListener, null);
         if (scopeTenantMgtListenerSR != null) {
-            log.debug(" TenantMgtListener is registered");
+            if (log.isDebugEnabled()) {
+                log.debug(" TenantMgtListener is registered");
+            }
         } else {
             log.error("TenantMgtListener could not be registered");
         }
@@ -192,12 +194,16 @@ public class OAuth2ServiceComponent {
     }
 
     protected void setRegistryService(RegistryService registryService) {
-        log.debug("Setting the Registry Service");
+        if (log.isDebugEnabled()) {
+            log.debug("Setting the Registry Service");
+        }
         OAuth2ServiceComponentHolder.setRegistryService(registryService);
     }
 
     protected void unsetRegistryService(RegistryService registryService) {
-        log.debug("UnSetting the Registry Service");
+        if (log.isDebugEnabled()) {
+            log.debug("UnSetting the Registry Service");
+        }
         OAuth2ServiceComponentHolder.setRegistryService(null);
     }
 }

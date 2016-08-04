@@ -32,6 +32,7 @@ import org.apache.commons.logging.LogFactory;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.wso2.carbon.core.util.KeyStoreManager;
+import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.utils.CarbonUtils;
 
@@ -101,12 +102,8 @@ public class JwksEndpoint {
             String errorMesage = "Error while generating the keyset";
             log.error(errorMesage);
             return errorMesage;
-        }finally {
-            try {
-                file.close();
-            } catch (IOException e) {
-                log.error("Error while closing the FileInputStream");
-            }
+        } finally {
+            IdentityIOStreamUtils.closeInputStream(file);
         }
 
         return jwksJson.toString();

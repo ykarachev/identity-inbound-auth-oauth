@@ -103,7 +103,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         if (!retunClaims.containsKey("sub") || StringUtils.isBlank((String) claims.get("sub"))) {
             retunClaims.put("sub", tokenResponse.getAuthorizedUser());
         }
-        return JSONUtils.buildJSON(claims);
+        return JSONUtils.buildJSON(retunClaims);
     }
 
     private Map<ClaimMapping, String> getUserAttributesFromCache(OAuth2TokenValidationResponseDTO tokenResponse) {

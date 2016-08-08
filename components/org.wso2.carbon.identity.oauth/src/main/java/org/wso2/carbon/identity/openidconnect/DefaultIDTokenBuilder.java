@@ -114,6 +114,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     private static final String OPENID_CONNECT_AUDIENCES = "Audiences";
     private static final String OPENID_CONNECT_AUDIENCE = "Audience";
     private static final String OPENID_IDP_ENTITY_ID = "IdPEntityId";
+    private static final String kid = "d0ec514a32b6f88c0abd12a2840699bdd3deba9d";
 
     private static final Log log = LogFactory.getLog(DefaultIDTokenBuilder.class);
     private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<>();
@@ -463,6 +464,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             }
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
+            header.setKeyID(kid);
             header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
             SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
             signedJWT.sign(signer);
@@ -523,6 +525,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
             header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
+            header.setKeyID(kid);
             SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
             signedJWT.sign(signer);
             return signedJWT.serialize();

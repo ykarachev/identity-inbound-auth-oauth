@@ -119,7 +119,6 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
 
     private boolean useMultiValueSeparator = true;
 
-    private static final String kid = "d0ec514a32b6f88c0abd12a2840699bdd3deba9d";
 
     //constructor for testing purposes
     public JWTTokenGenerator(boolean includeClaims, boolean enableSigning) {
@@ -290,7 +289,6 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
         if(!JWSAlgorithm.NONE.equals(signatureAlgorithm)){
             JWSHeader header = new JWSHeader(JWSAlgorithm.RS256);
             header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantID)));
-            header.setKeyID(kid);
             jwt = new SignedJWT(header, claimsSet);
             jwt = signJWT((SignedJWT)jwt, tenantDomain, tenantID);
         } else {

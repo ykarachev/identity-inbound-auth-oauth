@@ -51,10 +51,10 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
     public String getResponseString(OAuth2TokenValidationResponseDTO tokenResponse)
             throws UserInfoEndpointException {
         Resource resource = null;
-               try {
-                        RegistryService registry = OAuth2ServiceComponentHolder.getRegistryService();
-                        resource = registry.getConfigSystemRegistry().get(OAuthConstants.SCOPE_RESOURCE_PATH);
-                    } catch (RegistryException e) {
+        try {
+            RegistryService registry = OAuth2ServiceComponentHolder.getRegistryService();
+            resource = registry.getConfigSystemRegistry().get(OAuthConstants.SCOPE_RESOURCE_PATH);
+        } catch (RegistryException e) {
             log.error("Error while obtaining registry collection from :" + OAuthConstants.SCOPE_RESOURCE_PATH, e);
         }
 

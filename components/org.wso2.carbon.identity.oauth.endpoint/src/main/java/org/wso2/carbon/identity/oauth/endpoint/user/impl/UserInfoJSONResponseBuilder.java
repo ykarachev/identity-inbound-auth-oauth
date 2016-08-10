@@ -107,7 +107,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
                 retunClaims.put(key, claims.get(key));
             }
         }
-        return JSONUtils.buildJSON(claims);
+        return JSONUtils.buildJSON(retunClaims);
     }
 
     private Map<ClaimMapping, String> getUserAttributesFromCache(OAuth2TokenValidationResponseDTO tokenResponse) {

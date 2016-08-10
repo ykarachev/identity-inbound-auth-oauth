@@ -36,6 +36,8 @@ public class OAuth2AuthorizeReqDTO {
     private String pkceCodeChallengeMethod;
     private String tenantDomain;
 
+    private String essentialClaims;
+
     private Properties properties = new Properties();
 
     public AuthenticatedUser getUser() {
@@ -133,5 +135,13 @@ public class OAuth2AuthorizeReqDTO {
 
     public void setTenantDomain(String tenantDomain) {
         this.tenantDomain = tenantDomain;
+    }
+
+    public String getEssentialClaims() {
+        return essentialClaims;
+    }
+
+    public void setEssentialClaims(String essentialClaims) {
+        this.essentialClaims = essentialClaims;
     }
 }

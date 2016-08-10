@@ -41,6 +41,8 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     private String pkceCodeChallengeMethod;
 
+    private String essentialClaims;
+
     public AuthorizationGrantCacheEntry(Map<ClaimMapping, String> userAttributes) {
         this.userAttributes = userAttributes;
     }
@@ -91,5 +93,13 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     public void setPkceCodeChallengeMethod(String pkceCodeChallengeMethod) {
         this.pkceCodeChallengeMethod = pkceCodeChallengeMethod;
+    }
+
+    public String getEssentialClaims() {
+        return essentialClaims;
+    }
+
+    public void setEssentialClaims(String essentialClaims) {
+        this.essentialClaims = essentialClaims;
     }
 }

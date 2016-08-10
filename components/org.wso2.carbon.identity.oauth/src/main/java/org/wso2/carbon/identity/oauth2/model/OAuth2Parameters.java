@@ -44,6 +44,7 @@ public class OAuth2Parameters implements Serializable {
     private String pkceCodeChallengeMethod;
     private LinkedHashSet acrValues;
     private String tenantDomain;
+    private String essentialClaims;
 
     public String getApplicationName() {
         return applicationName;
@@ -193,5 +194,13 @@ public class OAuth2Parameters implements Serializable {
 
     public void setTenantDomain(String tenantDomain) {
         this.tenantDomain = tenantDomain;
+    }
+
+    public String getEssentialClaims() {
+        return essentialClaims;
+    }
+
+    public void setEssentialClaims(String essentialClaims) {
+        this.essentialClaims = essentialClaims;
     }
 }

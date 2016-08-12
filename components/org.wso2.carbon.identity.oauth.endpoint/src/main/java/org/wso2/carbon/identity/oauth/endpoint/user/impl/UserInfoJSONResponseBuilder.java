@@ -65,7 +65,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
 
         Map<ClaimMapping, String> userAttributes = getUserAttributesFromCache(tokenResponse);
         Map<String, Object> claims = null;
-        Map<String, Object> retunClaims = new HashMap<>();
+        Map<String, Object> returnClaims = new HashMap<>();
         String requestedScopeClaims = null;
 
         if (userAttributes == null || userAttributes.isEmpty()) {
@@ -97,7 +97,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
                         for (Map.Entry<String, Object> entry : claims.entrySet()) {
                             String requestedClaims = entry.getKey();
                             if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaims)) {
-                                retunClaims.put(entry.getKey(), claims.get(entry.getKey()));
+                                returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
                                 if (requestedScope.equals("address")) {
                                     claimsforAddressScope.put(entry.getKey(), entry.getKey());
                                 }
@@ -108,22 +108,22 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
                 }
             }
         }
-        if (!retunClaims.containsKey("sub") || StringUtils.isBlank((String) claims.get("sub"))) {
-            retunClaims.put("sub", tokenResponse.getAuthorizedUser());
+        if (!returnClaims.containsKey("sub") || StringUtils.isBlank((String) claims.get("sub"))) {
+            returnClaims.put("sub", tokenResponse.getAuthorizedUser());
         }
         if (claimsforAddressScope != null) {
             for (Map.Entry<String, Object> entry : claimsforAddressScope.entrySet()) {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put(entry.getKey(), claims.get(entry.getKey()));
-                retunClaims.put("address", jsonObject);
+                returnClaims.put("address", jsonObject);
             }
         }
         if (lstEssential != null) {
             for (String key : lstEssential) {
-                retunClaims.put(key, claims.get(key));
+                returnClaims.put(key, claims.get(key));
             }
         }
-        return JSONUtils.buildJSON(retunClaims);
+        return JSONUtils.buildJSON(returnClaims);
     }
 
     private Map<ClaimMapping, String> getUserAttributesFromCache(OAuth2TokenValidationResponseDTO tokenResponse) {

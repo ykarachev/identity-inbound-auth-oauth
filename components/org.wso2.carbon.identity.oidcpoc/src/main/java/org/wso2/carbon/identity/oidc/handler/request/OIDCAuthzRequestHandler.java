@@ -19,12 +19,11 @@
 package org.wso2.carbon.identity.oidc.handler.request;
 
 import org.apache.oltu.oauth2.common.OAuth;
-import org.wso2.carbon.identity.application.authentication.framework.FrameworkHandlerResponse;
-import org.wso2.carbon.identity.application.authentication.framework.InboundConstants;
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.authentication.framework.context.IdentityMessageContext;
-import org.wso2.carbon.identity.application.authentication.framework.processor.handler.request.RequestHandlerException;
 import org.wso2.carbon.identity.core.bean.context.MessageContext;
+import org.wso2.carbon.identity.framework.FrameworkHandlerResponse;
+import org.wso2.carbon.identity.framework.InboundConstants;
+import org.wso2.carbon.identity.framework.authentication.context.AuthenticationContext;
+import org.wso2.carbon.identity.framework.authentication.processor.handler.request.RequestHandlerException;
 import org.wso2.carbon.identity.oauth2poc.handler.request.AuthzRequestHandler;
 import org.wso2.carbon.identity.oauth2poc.util.OAuth2Util;
 import org.wso2.carbon.identity.oidc.OIDC;

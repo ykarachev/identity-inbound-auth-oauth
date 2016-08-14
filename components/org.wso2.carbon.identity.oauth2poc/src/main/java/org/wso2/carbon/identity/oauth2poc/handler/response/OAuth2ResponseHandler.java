@@ -1,10 +1,14 @@
 package org.wso2.carbon.identity.oauth2poc.handler.response;
 
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.authentication.framework.processor.handler.response.AbstractResponseHandler;
-import org.wso2.carbon.identity.application.authentication.framework.processor.request.AuthenticationRequest;
+import org.wso2.carbon.identity.framework.authentication.context.AuthenticationContext;
+import org.wso2.carbon.identity.framework.authentication.processor.handler.response.AbstractResponseHandler;
+import org.wso2.carbon.identity.framework.authentication.processor.request.AuthenticationRequest;
+import org.wso2.carbon.identity.oauth2poc.bean.message.request.OAuth2IdentityRequest;
 import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.OAuth2AuthzRequest;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
+import org.wso2.carbon.identity.oauth2poc.model.OAuth2ServerConfig;
+
+import java.util.Set;
 
 
 public abstract class OAuth2ResponseHandler extends AbstractResponseHandler {
@@ -33,5 +37,15 @@ public abstract class OAuth2ResponseHandler extends AbstractResponseHandler {
      */
     protected boolean issueRefreshToken(OAuth2AuthzRequest request, AuthenticationContext messageContext) {
         return false;
+    }
+
+
+    protected void validateScopes(AuthenticationContext messageContext){
+        Set<String> approvedScopes = (Set<String>)messageContext.getParameter("ApprovedScopes");
+        OAuth2AuthzRequest initialAuthenticationRequest = (OAuth2AuthzRequest)messageContext.getInitialAuthenticationRequest();
+        initialAuthenticationRequest.getScopes();
+        if(messageContext.getParameter("ApprovedScopes") == null){
+            messageContext.addParameter("ApprovedScopes", initialAuthenticationRequest.getScopes());
+        }
     }
 }

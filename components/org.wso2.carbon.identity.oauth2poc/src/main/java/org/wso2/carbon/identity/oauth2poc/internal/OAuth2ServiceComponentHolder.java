@@ -32,7 +32,7 @@ public class OAuth2ServiceComponentHolder {
     private RealmService realmService;
     private RegistryService registryService;
     private IdentityCoreInitializedEvent identityCoreInitializedEvent;
-    private List<AccessTokenResponseIssuer> accessTokenIssuers = new ArrayList<>();
+    private List<AccessTokenResponseIssuer> accessTokenIssuers = new ArrayList<AccessTokenResponseIssuer>();
 
     private OAuth2ServiceComponentHolder() {
 

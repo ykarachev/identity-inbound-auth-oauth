@@ -19,7 +19,7 @@
 package org.wso2.carbon.identity.oauth2poc.util;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -27,7 +27,7 @@ import java.util.Set;
 public class OAuth2Util {
 
     public static Set<String> buildScopeSet(String scopes) {
-        Set<String> scopeSet = new HashSet<>();
+        Set<String> scopeSet = new HashSet<String>();
         if (StringUtils.isNotBlank(scopes)) {
             String[] scopeArray = scopes.split("\\s");
             for(String scope:scopeArray){

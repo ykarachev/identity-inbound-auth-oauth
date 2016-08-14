@@ -89,7 +89,7 @@ public class OIDCAuthzRequest extends OAuth2AuthzRequest {
         private String display;
         private String idTokenHint;
         private String loginHint;
-        private Set<String> prompts = new HashSet<>();
+        private Set<String> prompts = new HashSet<String>();
         private boolean isLoginRequired = false;
         private boolean isConsentRequired = false;
         private boolean isPromptNone = false;

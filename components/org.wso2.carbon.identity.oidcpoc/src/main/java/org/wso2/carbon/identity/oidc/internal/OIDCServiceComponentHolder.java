@@ -30,7 +30,7 @@ public class OIDCServiceComponentHolder {
     private static OIDCServiceComponentHolder instance = new OIDCServiceComponentHolder();
     private RealmService realmService;
     private RegistryService registryService;
-    private List<IDTokenHandler> idTokenHandlers = new ArrayList<>();
+    private List<IDTokenHandler> idTokenHandlers = new ArrayList<IDTokenHandler>();
 
     private OIDCServiceComponentHolder() {
 

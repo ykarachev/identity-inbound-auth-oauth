@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.identity.oauth2poc.model;
 
-import org.wso2.carbon.identity.application.authentication.framework.model.User;
+import org.wso2.carbon.identity.framework.authentication.model.User;
 
 import java.io.Serializable;
 import java.sql.Timestamp;

@@ -18,7 +18,8 @@
 
 package org.wso2.carbon.identity.oauth2poc.handler.request;
 
-import org.wso2.carbon.identity.application.authentication.framework.processor.handler.request.AbstractRequestHandler;
+
+import org.wso2.carbon.identity.framework.authentication.processor.handler.request.AbstractRequestHandler;
 
 public abstract class OAuth2RequestHandler extends AbstractRequestHandler {
 

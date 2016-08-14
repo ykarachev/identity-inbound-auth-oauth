@@ -20,15 +20,16 @@ package org.wso2.carbon.identity.oauth2poc.handler.issuer;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.authentication.framework.model.User;
-import org.wso2.carbon.identity.application.authentication.framework.processor.request.AuthenticationRequest;
 import org.wso2.carbon.identity.core.handler.AbstractIdentityHandler;
+import org.wso2.carbon.identity.framework.authentication.context.AuthenticationContext;
+import org.wso2.carbon.identity.framework.authentication.model.User;
+import org.wso2.carbon.identity.framework.authentication.processor.request.AuthenticationRequest;
 import org.wso2.carbon.identity.oauth2poc.OAuth2;
 import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.OAuth2AuthzRequest;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2Exception;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 import org.wso2.carbon.identity.oauth2poc.model.AccessToken;
+import org.wso2.carbon.identity.oauth2poc.model.OAuth2ServerConfig;
 
 import java.util.Set;
 
@@ -118,8 +119,16 @@ public abstract class AccessTokenResponseIssuer extends AbstractIdentityHandler 
         String clientId = authzRequest.getClientId();
         User user = null;
         Set<String> approvedScopes = (Set<String>)messageContext.getParameter("ApprovedScopes");
-        long accessTokenCallbackValidity = (Long)messageContext.getParameter("AccessTokenValidityPeriod");
-        long refreshTokenCallbackValidity = (Long)messageContext.getParameter("RefreshTokenValidityPeriod");
+        long accessTokenCallbackValidity =  0 ;
+        if(messageContext.getParameter("AccessTokenValidityPeriod") != null){
+            accessTokenCallbackValidity = (Long)messageContext.getParameter("AccessTokenValidityPeriod");
+        }else{
+            accessTokenCallbackValidity = OAuth2ServerConfig.getInstance().getUserAccessTokenValidity();
+        }
+        long refreshTokenCallbackValidity = 0;
+        if(messageContext.getParameter("RefreshTokenValidityPeriod") != null){
+            refreshTokenCallbackValidity = (Long)messageContext.getParameter("RefreshTokenValidityPeriod");
+        }
         String responseType = authzRequest.getResponseType();
 
         AccessToken accessToken = issueNewAccessToken(clientId, user, approvedScopes, isRefreshTokenValid,

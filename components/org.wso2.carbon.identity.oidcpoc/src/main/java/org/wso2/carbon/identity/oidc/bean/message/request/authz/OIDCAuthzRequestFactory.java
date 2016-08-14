@@ -19,8 +19,8 @@
 package org.wso2.carbon.identity.oidc.bean.message.request.authz;
 
 import org.apache.oltu.oauth2.common.OAuth;
-import org.wso2.carbon.identity.application.authentication.framework.FrameworkClientException;
-import org.wso2.carbon.identity.application.authentication.framework.IdentityRequest;
+import org.wso2.carbon.identity.framework.FrameworkClientException;
+import org.wso2.carbon.identity.framework.IdentityRequest;
 import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.AuthzRequestFactory;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2ClientException;
 import org.wso2.carbon.identity.oauth2poc.util.OAuth2Util;
@@ -30,7 +30,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Set;
 
-public class OIDCAuthzRequestFactory extends AuthzRequestFactory {
+public class OIDCAuthzRequestFactory<T extends OIDCAuthzRequest.OIDCAuthzRequestBuilder> extends AuthzRequestFactory<T> {
 
     @Override
     public String getName() {
@@ -59,42 +59,21 @@ public class OIDCAuthzRequestFactory extends AuthzRequestFactory {
 
         OIDCAuthzRequest.OIDCAuthzRequestBuilder builder = new OIDCAuthzRequest.OIDCAuthzRequestBuilder
                 (request, response);
-        try {
-            super.create(builder, request, response);
-        } catch (FrameworkClientException e) {
-            throw OAuth2ClientException.error(e.getMessage(), e);
-        }
-        builder.setNonce(request.getParameter(OIDC.NONCE));
-        builder.setDisplay(request.getParameter(OIDC.DISPLAY));
-        builder.setIdTokenHint(request.getParameter(OIDC.ID_TOKEN_HINT));
-        builder.setLoginHint(request.getParameter(OIDC.LOGIN_HINT));
-        Set<String> prompts = OAuth2Util.buildScopeSet(request.getParameter(OIDC.PROMPT));
-        if(prompts.contains(OIDC.Prompt.NONE) && prompts.size() > 1){
-            throw OAuth2ClientException.error("Prompt value 'none' cannot be used with other " +
-            "prompts. Prompt: " + request.getParameter(OIDC.PROMPT));
-        }
-        builder.setPrompts(prompts);
-        if (prompts.contains(OIDC.Prompt.LOGIN)) {
-            builder.setLoginRequired(true);
-        }
-        if(prompts.contains(OIDC.Prompt.CONSENT)) {
-            builder.setConsentRequired(true);
-        }
+        create((T)builder, request, response);
         return builder;
     }
 
     @Override
-    public OIDCAuthzRequest.OIDCAuthzRequestBuilder create(IdentityRequest.IdentityRequestBuilder builder,
+    public void create(T oidcAuthzRequestBuilder,
                                                            HttpServletRequest request,
                                                            HttpServletResponse response) throws OAuth2ClientException {
-
-        OIDCAuthzRequest.OIDCAuthzRequestBuilder oidcAuthzRequestBuilder =
-                (OIDCAuthzRequest.OIDCAuthzRequestBuilder)builder;
         try {
             super.create(oidcAuthzRequestBuilder, request, response);
         } catch (FrameworkClientException e) {
             throw OAuth2ClientException.error(e.getMessage(), e);
         }
+
+
         oidcAuthzRequestBuilder.setNonce(request.getParameter(OIDC.NONCE));
         oidcAuthzRequestBuilder.setDisplay(request.getParameter(OIDC.DISPLAY));
         oidcAuthzRequestBuilder.setIdTokenHint(request.getParameter(OIDC.ID_TOKEN_HINT));
@@ -111,6 +90,5 @@ public class OIDCAuthzRequestFactory extends AuthzRequestFactory {
         if(prompts.contains(OIDC.Prompt.CONSENT)) {
             oidcAuthzRequestBuilder.setConsentRequired(true);
         }
-        return oidcAuthzRequestBuilder;
     }
 }

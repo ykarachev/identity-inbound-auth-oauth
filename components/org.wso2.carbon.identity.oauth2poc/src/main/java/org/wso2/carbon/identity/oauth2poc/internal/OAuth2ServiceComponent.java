@@ -20,15 +20,25 @@ package org.wso2.carbon.identity.oauth2poc.internal;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext;
 import org.wso2.carbon.identity.core.util.IdentityCoreInitializedEvent;
+import org.wso2.carbon.identity.framework.HttpIdentityRequestFactory;
+import org.wso2.carbon.identity.framework.HttpIdentityResponseFactory;
+import org.wso2.carbon.identity.framework.authentication.processor.handler.request.AbstractRequestHandler;
+import org.wso2.carbon.identity.framework.authentication.processor.handler.response.AbstractResponseHandler;
+import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.AuthzRequestFactory;
+import org.wso2.carbon.identity.oauth2poc.bean.message.response.authz.HttpAuthzResponseFactory;
 import org.wso2.carbon.identity.oauth2poc.handler.issuer.AccessTokenResponseIssuer;
+import org.wso2.carbon.identity.oauth2poc.handler.issuer.BearerTokenResponseIssuer;
+import org.wso2.carbon.identity.oauth2poc.handler.request.AuthzRequestHandler;
+import org.wso2.carbon.identity.oauth2poc.handler.response.TokenResponseHandler;
 import org.wso2.carbon.identity.oauth2poc.model.OAuth2ServerConfig;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.user.core.service.RealmService;
 
 /**
- * @scr.component name="identity.oauth2.component" immediate="true"
+ * @scr.component name="identity.oauth2poc.component" immediate="true"
  * @scr.reference name="registry.service"
  * interface="org.wso2.carbon.registry.core.service.RegistryService"
  * cardinality="1..1" policy="dynamic" bind="setRegistryService"
@@ -40,7 +50,7 @@ import org.wso2.carbon.user.core.service.RealmService;
  * interface="org.wso2.carbon.identity.core.util.IdentityCoreInitializedEvent" cardinality="1..1"
  * policy="dynamic" bind="setIdentityCoreInitializedEventService" unbind="unsetIdentityCoreInitializedEventService"
  * @scr.reference name="oauth2.handler.issuer.token"
- * interface="org.wso2.carbon.identity.oauth2new.handler.issuer.AccessTokenResponseIssuer" cardinality="0..n"
+ * interface="org.wso2.carbon.identity.oauth2poc.handler.issuer.AccessTokenResponseIssuer" cardinality="0..n"
  * policy="dynamic" bind="addAccessTokenResponseIssuer" unbind="removeAccessTokenResponseIssuer"
  *
  */
@@ -49,7 +59,7 @@ public class OAuth2ServiceComponent {
     private static Log log = LogFactory.getLog(OAuth2ServiceComponent.class);
 
     protected void activate(ComponentContext context) {
-
+        BundleContext bundleContext = context.getBundleContext();
         try {
             OAuth2ServerConfig.getInstance();
             if (log.isDebugEnabled()) {
@@ -58,6 +68,16 @@ public class OAuth2ServiceComponent {
         } catch (Throwable e) {
             log.fatal("Error occurred while activating OAuth2 bundle");
         }
+        bundleContext.registerService(HttpIdentityRequestFactory.class, new AuthzRequestFactory(), null);
+        bundleContext.registerService(HttpIdentityResponseFactory.class, new HttpAuthzResponseFactory(), null);
+
+
+
+
+        bundleContext.registerService(AbstractRequestHandler.class, new AuthzRequestHandler(), null);
+        bundleContext.registerService(AbstractResponseHandler.class, new TokenResponseHandler(), null);
+        bundleContext.registerService(AccessTokenResponseIssuer.class, new BearerTokenResponseIssuer(), null);
+
     }
 
     protected void deactivate(ComponentContext context) {

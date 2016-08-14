@@ -18,8 +18,8 @@
 
 package org.wso2.carbon.identity.oauth2poc.handler;
 
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.core.handler.HandlerComparator;
+import org.wso2.carbon.identity.framework.authentication.context.AuthenticationContext;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 import org.wso2.carbon.identity.oauth2poc.handler.issuer.AccessTokenResponseIssuer;
 import org.wso2.carbon.identity.oauth2poc.internal.OAuth2ServiceComponentHolder;

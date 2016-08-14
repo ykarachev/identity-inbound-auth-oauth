@@ -18,8 +18,9 @@
 
 package org.wso2.carbon.identity.oauth2poc.bean.message.request.authz;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.oltu.oauth2.common.OAuth;
+import org.wso2.carbon.identity.framework.FrameworkClientException;
 import org.wso2.carbon.identity.oauth2poc.bean.message.request.OAuth2IdentityRequestFactory;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2ClientException;
 import org.wso2.carbon.identity.oauth2poc.util.OAuth2Util;
@@ -27,7 +28,7 @@ import org.wso2.carbon.identity.oauth2poc.util.OAuth2Util;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-public class AuthzRequestFactory extends OAuth2IdentityRequestFactory {
+public class AuthzRequestFactory<T extends OAuth2AuthzRequest.AuthzRequestBuilder> extends OAuth2IdentityRequestFactory<T> {
 
     @Override
     public String getName() {
@@ -41,17 +42,35 @@ public class AuthzRequestFactory extends OAuth2IdentityRequestFactory {
         }
         return false;
     }
-
+    @Override
     public OAuth2AuthzRequest.AuthzRequestBuilder create(HttpServletRequest request,
                                                          HttpServletResponse response) throws OAuth2ClientException {
 
         OAuth2AuthzRequest.AuthzRequestBuilder builder = new OAuth2AuthzRequest.AuthzRequestBuilder
                 (request, response);
+        try {
+            create((T) builder, request, response);
+        } catch (FrameworkClientException e) {
+            throw OAuth2ClientException.error(e.getMessage(), e);
+        }
+        return builder;
+    }
+
+    @Override
+    public void create(T builder,HttpServletRequest request,
+                                                         HttpServletResponse response) throws OAuth2ClientException {
+
+        try {
+            super.create(builder, request, response);
+        } catch (FrameworkClientException e) {
+            throw OAuth2ClientException.error(e.getMessage(), e);
+        }
+
         builder.setResponseType(request.getParameter(OAuth.OAUTH_RESPONSE_TYPE));
         builder.setClientId(request.getParameter(OAuth.OAUTH_CLIENT_ID));
         builder.setRedirectURI(request.getParameter(OAuth.OAUTH_REDIRECT_URI));
         builder.setState(request.getParameter(OAuth.OAUTH_STATE));
         builder.setScopes(OAuth2Util.buildScopeSet(request.getParameter(OAuth.OAUTH_SCOPE)));
-        return builder;
+
     }
 }

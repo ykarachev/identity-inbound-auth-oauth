@@ -31,22 +31,22 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.Charsets;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.core.util.KeyStoreManager;
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.authentication.framework.processor.request.ClientAuthenticationRequest;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.handler.AbstractIdentityHandler;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.framework.authentication.context.AuthenticationContext;
+import org.wso2.carbon.identity.framework.authentication.processor.request.ClientAuthenticationRequest;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 import org.wso2.carbon.identity.oauth2poc.model.AccessToken;
 import org.wso2.carbon.identity.oidc.bean.message.request.authz.OIDCAuthzRequest;
 import org.wso2.carbon.identity.oidc.exception.OIDCInternalException;
 import org.wso2.carbon.identity.oidc.exception.OIDCRuntimeException;
 
-import java.security.KeyStore;
-import java.security.cert.Certificate;
 import java.security.Key;
+import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -57,8 +57,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class IDTokenHandler extends AbstractIdentityHandler {
 
     private static final String SHA512_WITH_RSA = "SHA512withRSA";
-    private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<>();
-    private static Map<Integer, Certificate> publicCerts = new ConcurrentHashMap<>();
+    private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<Integer, Key>();
+    private static Map<Integer, Certificate> publicCerts = new ConcurrentHashMap<Integer, Certificate>();
 
     @Override
     public String getName() {

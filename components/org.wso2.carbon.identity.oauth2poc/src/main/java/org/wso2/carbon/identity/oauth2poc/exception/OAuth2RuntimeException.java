@@ -18,7 +18,7 @@
 
 package org.wso2.carbon.identity.oauth2poc.exception;
 
-import org.wso2.carbon.identity.application.authentication.framework.FrameworkRuntimeException;
+import org.wso2.carbon.identity.framework.FrameworkRuntimeException;
 
 public class OAuth2RuntimeException extends FrameworkRuntimeException {
 

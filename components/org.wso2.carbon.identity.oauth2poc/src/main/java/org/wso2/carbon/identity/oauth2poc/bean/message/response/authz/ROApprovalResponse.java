@@ -18,8 +18,8 @@
 
 package org.wso2.carbon.identity.oauth2poc.bean.message.response.authz;
 
-import org.wso2.carbon.identity.application.authentication.framework.IdentityResponse;
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
+import org.wso2.carbon.identity.framework.IdentityResponse;
+import org.wso2.carbon.identity.framework.authentication.context.AuthenticationContext;
 
 public class ROApprovalResponse extends IdentityResponse {
 

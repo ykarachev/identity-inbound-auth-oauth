@@ -18,7 +18,9 @@
 
 package org.wso2.carbon.identity.oauth2poc.bean.message.request;
 
-import org.wso2.carbon.identity.application.authentication.framework.processor.request.ClientAuthenticationRequest;
+
+import org.wso2.carbon.identity.framework.FrameworkRuntimeException;
+import org.wso2.carbon.identity.framework.authentication.processor.request.ClientAuthenticationRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -27,8 +29,10 @@ public abstract class OAuth2IdentityRequest extends ClientAuthenticationRequest 
 
     private static final long serialVersionUID = 5255384558894431030L;
 
-    protected OAuth2IdentityRequest(OAuth2IdentityRequestBuilder builder) {
-        super(builder);
+
+    public OAuth2IdentityRequest(
+            ClientAuthenticationRequestBuilder builder, String uniqueId) {
+        super(builder, uniqueId, "oauth2");
     }
 
     public static class OAuth2IdentityRequestBuilder extends ClientAuthenticationRequestBuilder {
@@ -38,6 +42,8 @@ public abstract class OAuth2IdentityRequest extends ClientAuthenticationRequest 
         }
 
         public OAuth2IdentityRequestBuilder() {
+
         }
     }
+
 }

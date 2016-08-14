@@ -21,11 +21,12 @@
 
     <parent>
         <groupId>org.wso2.carbon.identity</groupId>
-        <artifactId>identity-inbound-auth-oauth</artifactId>
-        <version>5.1.1-SNAPSHOT</version>
+        <artifactId>identity-inbound-auth-oauth-poc</artifactId>
+        <version>5.5.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
+    <version>5.5.0-SNAPSHOT</version>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>org.wso2.carbon.identity.oauth2poc</artifactId>
     <packaging>bundle</packaging>
@@ -83,7 +84,12 @@
         </dependency>
         <dependency>
             <groupId>org.wso2.carbon.identity</groupId>
-            <artifactId>org.wso2.carbon.identity.application.authentication.framework</artifactId>
+            <artifactId>org.wso2.carbon.identity.framework</artifactId>
+            <version>5.5.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.identity</groupId>
+            <artifactId>org.wso2.carbon.identity.framework.authentication</artifactId>
             <version>5.5.0-SNAPSHOT</version>
         </dependency>
         <dependency>
@@ -97,6 +103,12 @@
 
             <plugin>
                 <groupId>org.apache.felix</groupId>
+                <artifactId>maven-scr-plugin</artifactId>
+            </plugin>
+
+
+            <plugin>
+                <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
 
                 <extensions>true</extensions>
@@ -107,7 +119,7 @@
                         </Bundle-SymbolicName>
 
                         <Private-Package>
-                            org.wso2.carbon.identity.oauth.internal,
+                            org.wso2.carbon.identity.oauth2poc.internal,
                         </Private-Package>
                         <Import-Package>
                             javax.cache,
@@ -135,9 +147,10 @@
                             version="${carbon.identity.package.import.version.range}",
                             org.wso2.carbon.identity.application.common.*;
                             version="${carbon.identity.package.import.version.range}",
-                            org.wso2.carbon.identity.application.authentication.framework.*;
+                            org.wso2.carbon.identity.framework.*;
                             version="${carbon.identity.package.import.version.range}",
-
+                            org.wso2.carbon.identity.framework.authentication.*;
+                            version="${carbon.identity.package.import.version.range}",
                             org.wso2.carbon.base; version="${carbon.base.imp.pkg.version.range}",
                             org.wso2.carbon.registry.api;version="${carbon.kernel.registry.imp.pkg.version}",
                             org.wso2.carbon.registry.core.*;version="${carbon.kernel.registry.imp.pkg.version}",
@@ -153,6 +166,7 @@
                             !org.wso2.carbon.identity.oauth2poc.internal,
                             org.wso2.carbon.identity.oauth2poc.*; version="${carbon.identity.package.export.version}",
                         </Export-Package>
+                        <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
                 </configuration>
             </plugin>

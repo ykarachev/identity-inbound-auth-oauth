@@ -20,8 +20,16 @@ package org.wso2.carbon.identity.oidc.internal;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext;
+import org.wso2.carbon.identity.framework.HttpIdentityRequestFactory;
+import org.wso2.carbon.identity.framework.authentication.processor.handler.request.AbstractRequestHandler;
+import org.wso2.carbon.identity.framework.authentication.processor.handler.response.AbstractResponseHandler;
+import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.AuthzRequestFactory;
+import org.wso2.carbon.identity.oidc.bean.message.request.authz.OIDCAuthzRequestFactory;
 import org.wso2.carbon.identity.oidc.handler.IDTokenHandler;
+import org.wso2.carbon.identity.oidc.handler.request.OIDCAuthzRequestHandler;
+import org.wso2.carbon.identity.oidc.handler.response.OIDCTokenResponseHandler;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.user.core.service.RealmService;
 
@@ -44,6 +52,12 @@ public class OIDCServiceComponent {
     private static Log log = LogFactory.getLog(OIDCServiceComponent.class);
 
     protected void activate(ComponentContext context) {
+        BundleContext bundleContext = context.getBundleContext();
+        bundleContext.registerService(HttpIdentityRequestFactory.class, new OIDCAuthzRequestFactory(), null);
+        bundleContext.registerService(AbstractRequestHandler.class, new OIDCAuthzRequestHandler(), null);
+        bundleContext.registerService(AbstractResponseHandler.class, new OIDCTokenResponseHandler(), null);
+
+        bundleContext.registerService(IDTokenHandler.class, new IDTokenHandler(), null);
 
         if (log.isDebugEnabled()) {
             log.debug("OIDC bundle is activated");

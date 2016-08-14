@@ -22,8 +22,11 @@ import com.nimbusds.jwt.JWT;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.OAuth;
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.core.bean.context.MessageContext;
+import org.wso2.carbon.identity.framework.IdentityMessageContext;
+import org.wso2.carbon.identity.framework.authentication.context.AuthenticationContext;
+import org.wso2.carbon.identity.framework.authentication.processor.request.AuthenticationRequest;
+import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.OAuth2AuthzRequest;
 import org.wso2.carbon.identity.oauth2poc.bean.message.response.authz.AuthzResponse;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2InternalException;
 import org.wso2.carbon.identity.oauth2poc.handler.response.TokenResponseHandler;
@@ -42,11 +45,10 @@ public class OIDCTokenResponseHandler extends TokenResponseHandler {
         return "OIDCTokenResponseHandler";
     }
 
-    public boolean canHandle(MessageContext messageContext) {
+    public boolean canHandle(AuthenticationContext messageContext) {
         if(super.canHandle(messageContext)) {
-            String scope = ((AuthenticationContext) messageContext).getInitialAuthenticationRequest()
-                    .getParameter(OAuth.OAUTH_SCOPE);
-            Set<String> scopes = OAuth2Util.buildScopeSet(scope);
+            OAuth2AuthzRequest initialAuthenticationRequest= (OAuth2AuthzRequest)messageContext.getInitialAuthenticationRequest();
+            Set<String> scopes = initialAuthenticationRequest.getScopes();
             if (scopes.contains(OIDC.OPENID_SCOPE)) {
                 return true;
             }

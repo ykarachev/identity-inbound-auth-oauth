@@ -35,21 +35,22 @@ public class OAuth2AuthzRequest extends OAuth2IdentityRequest {
     private String state;
     private Set<String> scopes = new HashSet<>();
 
-    protected OAuth2AuthzRequest(AuthzRequestBuilder builder) {
-        super(builder);
+
+    public OAuth2AuthzRequest(
+            AuthzRequestBuilder builder) {
+        super(builder, builder.clientId);
         this.responseType = builder.responseType;
-        this.clientId = builder.clientId;
         this.redirectURI = builder.redirectURI;
         this.state = builder.state;
-        this.scopes = builder.scopes;
+        this.scopes = builder.scopes ;
+        this.clientId = builder.clientId ;
     }
 
     public String getResponseType() {
         return responseType;
     }
-
-    public String getClientId() {
-        return clientId;
+    public Set<String> getScopes() {
+        return scopes;
     }
 
     public String getRedirectURI() {
@@ -60,8 +61,8 @@ public class OAuth2AuthzRequest extends OAuth2IdentityRequest {
         return state;
     }
 
-    public Set<String> getScopes() {
-        return scopes;
+    public String getClientId() {
+        return clientId;
     }
 
     public static class AuthzRequestBuilder extends OAuth2IdentityRequestBuilder {
@@ -85,10 +86,16 @@ public class OAuth2AuthzRequest extends OAuth2IdentityRequest {
             return this;
         }
 
+        public AuthzRequestBuilder setScopes(Set<String> scopes) {
+            this.scopes = scopes;
+            return this;
+        }
+
         public AuthzRequestBuilder setClientId(String clientId) {
             this.clientId = clientId;
             return this;
         }
+
 
         public AuthzRequestBuilder setRedirectURI(String redirectURI) {
             this.redirectURI = redirectURI;
@@ -97,16 +104,6 @@ public class OAuth2AuthzRequest extends OAuth2IdentityRequest {
 
         public AuthzRequestBuilder setState(String state) {
             this.state = state;
-            return this;
-        }
-
-        public AuthzRequestBuilder setScopes(Set<String> scopes) {
-            this.scopes = scopes;
-            return this;
-        }
-
-        public AuthzRequestBuilder addScope(String scope) {
-            this.scopes.add(scope);
             return this;
         }
 

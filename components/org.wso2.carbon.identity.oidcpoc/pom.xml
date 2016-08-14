@@ -21,13 +21,14 @@
 
     <parent>
         <groupId>org.wso2.carbon.identity</groupId>
-        <artifactId>identity-inbound-auth-oauth</artifactId>
-        <version>5.1.1-SNAPSHOT</version>
+        <artifactId>identity-inbound-auth-oauth-poc</artifactId>
+        <version>5.5.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
+    <version>5.5.0-SNAPSHOT</version>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>org.wso2.carbon.identity.oidcpoc</artifactId>
+    <artifactId>org.wso2.carbon.identity.oidc.poc</artifactId>
     <packaging>bundle</packaging>
     <name>WSO2 Carbon - OAuth</name>
     <description>A custom wso2 products or solution</description>
@@ -41,12 +42,15 @@
         <dependency>
             <groupId>org.wso2.carbon.identity</groupId>
             <artifactId>org.wso2.carbon.identity.oauth2poc</artifactId>
-            <version>5.1.1-SNAPSHOT</version>
+            <version>5.5.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.wso2.carbon.identity</groupId>
-            <artifactId>org.wso2.carbon.identity.application.authentication.framework</artifactId>
-            <version>5.5.0-SNAPSHOT</version>
+            <artifactId>org.wso2.carbon.identity.framework</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.identity</groupId>
+            <artifactId>org.wso2.carbon.identity.framework.authentication</artifactId>
         </dependency>
         <dependency>
             <groupId>org.wso2.orbit.org.apache.oltu.oauth2</groupId>
@@ -77,15 +81,18 @@
                             ${project.artifactId}
                         </Bundle-SymbolicName>
                         <Private-Package>
-                            org.wso2.carbon.identity.oauth2ext.oidc.internal
+                            org.wso2.carbon.identity.oidc.internal
                         </Private-Package>
                         <Import-Package>
-                            org.wso2.carbon.identity.oauth2poc.*;version="${carbon.identity.package.import.version.range}"
+                            org.wso2.carbon.identity.oauth2poc.*;version="${carbon.identity.package.import.version.range}",
+                            org.wso2.carbon.identity.framework.*;
+                            version="${carbon.identity.package.import.version.range}",
+                            org.wso2.carbon.identity.framework.authentication.*;
+                            version="${carbon.identity.package.import.version.range}",
                         </Import-Package>
                         <Export-Package>
-                            !org.wso2.carbon.identity.oauth2ext.oidc.internal,
-                            org.wso2.carbon.identity.oauth2ext.oidc.*;
-                            version="${carbon.identity.package.export.version}"
+                            !org.wso2.carbon.identity.oidc.internal,
+                            org.wso2.carbon.identity.oidc.*;version="${carbon.identity.package.export.version}"
                         </Export-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>

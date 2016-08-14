@@ -19,8 +19,8 @@
 package org.wso2.carbon.identity.oidc.handler;
 
 import com.nimbusds.jwt.JWT;
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.core.handler.HandlerComparator;
+import org.wso2.carbon.identity.framework.authentication.context.AuthenticationContext;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2InternalException;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 import org.wso2.carbon.identity.oidc.internal.OIDCServiceComponentHolder;

@@ -18,15 +18,15 @@
 
 package org.wso2.carbon.identity.oauth2poc.handler.response;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.oltu.oauth2.as.response.OAuthASResponse;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
-import org.wso2.carbon.identity.application.authentication.framework.FrameworkHandlerResponse;
-import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
-import org.wso2.carbon.identity.application.authentication.framework.context.IdentityMessageContext;
-import org.wso2.carbon.identity.application.authentication.framework.processor.handler.response.ResponseException;
 import org.wso2.carbon.identity.core.bean.context.MessageContext;
+import org.wso2.carbon.identity.framework.FrameworkHandlerResponse;
+import org.wso2.carbon.identity.framework.IdentityMessageContext;
+import org.wso2.carbon.identity.framework.authentication.context.AuthenticationContext;
+import org.wso2.carbon.identity.framework.authentication.processor.handler.response.ResponseException;
 import org.wso2.carbon.identity.oauth2poc.bean.message.request.authz.OAuth2AuthzRequest;
 import org.wso2.carbon.identity.oauth2poc.bean.message.response.authz.AuthzResponse;
 import org.wso2.carbon.identity.oauth2poc.handler.HandlerManager;
@@ -71,6 +71,10 @@ public class TokenResponseHandler extends OAuth2ResponseHandler {
      * @return OAuth2 authorization endpoint response
      */
     protected AuthzResponse.AuthzResponseBuilder buildAuthzResponse(AuthenticationContext messageContext) {
+
+
+        //TODO: Validation scopes from request and approved list, but this code should move to consent handler after introduce that
+        validateScopes(messageContext);
 
         AccessToken accessToken = HandlerManager.getInstance().issueAccessToken(messageContext);
 

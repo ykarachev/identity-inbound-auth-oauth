@@ -20,9 +20,9 @@ package org.wso2.carbon.identity.oauth2poc.bean.message.response.authz;
 
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
-import org.wso2.carbon.identity.application.authentication.framework.HttpIdentityResponse;
-import org.wso2.carbon.identity.application.authentication.framework.HttpIdentityResponseFactory;
-import org.wso2.carbon.identity.application.authentication.framework.IdentityResponse;
+import org.wso2.carbon.identity.framework.HttpIdentityResponse;
+import org.wso2.carbon.identity.framework.HttpIdentityResponseFactory;
+import org.wso2.carbon.identity.framework.IdentityResponse;
 import org.wso2.carbon.identity.oauth2poc.OAuth2;
 import org.wso2.carbon.identity.oauth2poc.exception.OAuth2RuntimeException;
 

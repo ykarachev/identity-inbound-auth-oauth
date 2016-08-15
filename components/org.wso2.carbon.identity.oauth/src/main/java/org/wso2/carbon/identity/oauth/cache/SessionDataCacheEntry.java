@@ -39,6 +39,16 @@ public class SessionDataCacheEntry extends CacheEntry {
 
     private String essentialClaims ;
 
+    private long authTime;
+
+    public long getAuthTime() {
+        return authTime;
+    }
+
+    public void setAuthTime(long authTime) {
+        this.authTime = authTime;
+    }
+
     public OAuth2Parameters getoAuth2Parameters() {
         return oAuth2Parameters;
     }

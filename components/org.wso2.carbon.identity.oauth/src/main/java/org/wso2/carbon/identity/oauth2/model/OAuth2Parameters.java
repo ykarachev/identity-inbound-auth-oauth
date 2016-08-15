@@ -45,6 +45,15 @@ public class OAuth2Parameters implements Serializable {
     private LinkedHashSet acrValues;
     private String tenantDomain;
     private String essentialClaims;
+    private long authTime;
+
+    public long getAuthTime() {
+        return authTime;
+    }
+
+    public void setAuthTime(long authTime) {
+        this.authTime = authTime;
+    }
 
     public String getApplicationName() {
         return applicationName;

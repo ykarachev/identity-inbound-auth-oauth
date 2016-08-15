@@ -208,8 +208,18 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromLogin != null) { // Authentication response
+                long authTime;
+                Cookie cookie = FrameworkUtils.getAuthCookie(request);
+                String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
+                SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
+                if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                } else {
+                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                                    }
 
                 sessionDataCacheEntry = resultFromLogin;
+                sessionDataCacheEntry.setAuthTime(authTime);
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
                 AuthenticationResult authnResult = getAuthenticationResult(request, sessionDataKeyFromLogin);
                 if (authnResult != null) {
@@ -269,9 +279,18 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromConsent != null) { // Consent submission
-
+                long authTime;
+                Cookie cookie = FrameworkUtils.getAuthCookie(request);
+                String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
+                SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
+                if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                } else {
+                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                }
                 sessionDataCacheEntry = resultFromConsent;
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
+                oauth2Params.setAuthTime(authTime);
                 boolean isOIDCRequest = OAuth2Util.isOIDCAuthzRequest(oauth2Params.getScopes());
 
                 String consent = request.getParameter("consent");
@@ -545,6 +564,7 @@ public class OAuth2AuthzEndpoint {
         authorizationGrantCacheEntry.setPkceCodeChallenge(pkceCodeChallenge);
         authorizationGrantCacheEntry.setPkceCodeChallengeMethod(pkceCodeChallengeMethod);
         authorizationGrantCacheEntry.setEssentialClaims(sessionDataCacheEntry.getoAuth2Parameters().getEssentialClaims());
+        authorizationGrantCacheEntry.setAuthTime(sessionDataCacheEntry.getAuthTime());
         AuthorizationGrantCache.getInstance().addToCacheByCode(authorizationGrantCacheKey, authorizationGrantCacheEntry);
     }
 
@@ -891,6 +911,7 @@ public class OAuth2AuthzEndpoint {
         authzReqDTO.setPkceCodeChallengeMethod(oauth2Params.getPkceCodeChallengeMethod());
         authzReqDTO.setTenantDomain(oauth2Params.getTenantDomain());
         authzReqDTO.setEssentialClaims(oauth2Params.getEssentialClaims());
+        authzReqDTO.setAuthTime(oauth2Params.getAuthTime());
         return EndpointUtil.getOAuth2Service().authorize(authzReqDTO);
     }
 

@@ -23,6 +23,7 @@ import org.apache.commons.logging.LogFactory;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentContext;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.application.mgt.listener.ApplicationMgtListener;
 import org.wso2.carbon.identity.base.IdentityRuntimeException;
@@ -32,7 +33,10 @@ import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.OAuth2Service;
 import org.wso2.carbon.identity.oauth2.OAuth2TokenValidationService;
 import org.wso2.carbon.identity.oauth2.dao.SQLQueries;
+import org.wso2.carbon.identity.oauth2.listener.TenantCreationEventListener;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.user.store.configuration.listener.UserStoreConfigListener;
+import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.stratos.common.listeners.TenantMgtListener;
 
 import java.sql.Connection;
@@ -51,15 +55,33 @@ import java.sql.SQLException;
  * @scr.reference name="identityCoreInitializedEventService"
  * interface="org.wso2.carbon.identity.core.util.IdentityCoreInitializedEvent" cardinality="1..1"
  * policy="dynamic" bind="setIdentityCoreInitializedEventService" unbind="unsetIdentityCoreInitializedEventService"
+ * @scr.reference name="registry.service"
+ * interface="org.wso2.carbon.registry.core.service.RegistryService" cardinality="1..1"
+ * policy="dynamic" bind="setRegistryService" unbind="unsetRegistryService"
  */
 public class OAuth2ServiceComponent {
     private static Log log = LogFactory.getLog(OAuth2ServiceComponent.class);
     private static BundleContext bundleContext;
 
     protected void activate(ComponentContext context) {
+        int tenantId = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantId();
+        OAuth2Util.initiateOIDCScopes(tenantId);
+        TenantCreationEventListener scopeTenantMgtListener = new TenantCreationEventListener();
         //Registering OAuth2Service as a OSGIService
         bundleContext = context.getBundleContext();
         bundleContext.registerService(OAuth2Service.class.getName(), new OAuth2Service(), null);
+        //Registering TenantCreationEventListener
+        ServiceRegistration scopeTenantMgtListenerSR = bundleContext.registerService(
+                TenantMgtListener.class.getName(), scopeTenantMgtListener, null);
+        if (scopeTenantMgtListenerSR != null) {
+            if (log.isDebugEnabled()) {
+                log.debug(" TenantMgtListener is registered");
+            }
+        } else {
+            if (log.isDebugEnabled()) {
+                log.error("TenantMgtListener could not be registered");
+            }
+        }
         // exposing server configuration as a service 
         OAuthServerConfiguration oauthServerConfig = OAuthServerConfiguration.getInstance();
         bundleContext.registerService(OAuthServerConfiguration.class.getName(), oauthServerConfig, null);
@@ -171,5 +193,19 @@ public class OAuth2ServiceComponent {
             }
         }
         return false;
+    }
+
+    protected void setRegistryService(RegistryService registryService) {
+        if (log.isDebugEnabled()) {
+            log.debug("Setting the Registry Service");
+        }
+        OAuth2ServiceComponentHolder.setRegistryService(registryService);
+    }
+
+    protected void unsetRegistryService(RegistryService registryService) {
+        if (log.isDebugEnabled()) {
+            log.debug("UnSetting the Registry Service");
+        }
+        OAuth2ServiceComponentHolder.setRegistryService(null);
     }
 }

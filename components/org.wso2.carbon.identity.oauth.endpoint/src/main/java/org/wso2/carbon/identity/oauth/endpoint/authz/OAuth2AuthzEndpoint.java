@@ -544,6 +544,7 @@ public class OAuth2AuthzEndpoint {
         authorizationGrantCacheEntry.setCodeId(codeId);
         authorizationGrantCacheEntry.setPkceCodeChallenge(pkceCodeChallenge);
         authorizationGrantCacheEntry.setPkceCodeChallengeMethod(pkceCodeChallengeMethod);
+        authorizationGrantCacheEntry.setEssentialClaims(sessionDataCacheEntry.getoAuth2Parameters().getEssentialClaims());
         AuthorizationGrantCache.getInstance().addToCacheByCode(authorizationGrantCacheKey, authorizationGrantCacheEntry);
     }
 
@@ -673,6 +674,9 @@ public class OAuth2AuthzEndpoint {
                 list.add(acrValue);
             }
             params.setACRValues(list);
+        }
+        if (StringUtils.isNotBlank(oauthRequest.getParam("claims"))) {
+            params.setEssentialClaims(oauthRequest.getParam("claims"));
         }
         String prompt = oauthRequest.getParam(OAuthConstants.OAuth20Params.PROMPT);
         params.setPrompt(prompt);
@@ -886,6 +890,7 @@ public class OAuth2AuthzEndpoint {
         authzReqDTO.setPkceCodeChallenge(oauth2Params.getPkceCodeChallenge());
         authzReqDTO.setPkceCodeChallengeMethod(oauth2Params.getPkceCodeChallengeMethod());
         authzReqDTO.setTenantDomain(oauth2Params.getTenantDomain());
+        authzReqDTO.setEssentialClaims(oauth2Params.getEssentialClaims());
         return EndpointUtil.getOAuth2Service().authorize(authzReqDTO);
     }
 

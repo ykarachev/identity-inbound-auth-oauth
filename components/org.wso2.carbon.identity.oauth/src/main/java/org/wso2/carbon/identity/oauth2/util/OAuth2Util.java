@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.identity.oauth2.util;
 
+import org.apache.axiom.om.OMElement;
+import org.apache.axiom.om.impl.builder.StAXOMBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.Charsets;
@@ -25,8 +27,10 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.model.User;
+import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
@@ -44,11 +48,19 @@ import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.registry.core.Registry;
+import org.wso2.carbon.registry.core.Resource;
+import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
+import javax.xml.namespace.QName;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+import java.nio.file.Paths;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -59,6 +71,14 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileInputStream;
+import java.io.InputStream;
+
+
 
 /**
  * Utility methods for OAuth 2.0 implementation
@@ -870,5 +890,86 @@ public class OAuth2Util {
             return true;
         }
         return false;
+    }
+
+    public static void initiateOIDCScopes(int tenantId) {
+        try {
+            Map<String, String> scopes = loadScopeConfigFile();
+            Registry registry = OAuth2ServiceComponentHolder.getRegistryService().getConfigSystemRegistry(tenantId);
+
+            if (!registry
+                    .resourceExists(OAuthConstants.SCOPE_RESOURCE_PATH)) {
+
+                Resource resource = registry.newResource();
+                if (scopes.size() > 0) {
+                    for (Map.Entry<String, String> entry : scopes.entrySet()) {
+                        String valueStr = entry.getValue().toString();
+                        resource.setProperty(entry.getKey(), valueStr);
+                    }
+                }
+
+                registry.put(OAuthConstants.SCOPE_RESOURCE_PATH, resource);
+            }
+        } catch (RegistryException e) {
+            log.error("Error while creating registry collection for :" + OAuthConstants.SCOPE_RESOURCE_PATH, e);
+        }
+    }
+
+    private static Map<String, String> loadScopeConfigFile() {
+        Map<String, String> scopes = new HashMap<>();
+        String carbonHome = System.getProperty(CarbonBaseConstants.CARBON_HOME);
+        String confXml =
+                Paths.get(carbonHome, "repository", "conf", "identity", OAuthConstants.OIDC_SCOPE_CONFIG_PATH)
+                        .toString();
+        File configfile = new File(confXml);
+        if (!configfile.exists()) {
+            log.warn("OIDC scope-claim Configuration File is not present at: " + confXml);
+        }
+
+        XMLStreamReader parser = null;
+        InputStream stream = null;
+
+        try {
+            stream = new FileInputStream(configfile);
+            parser = XMLInputFactory.newInstance()
+                    .createXMLStreamReader(stream);
+            StAXOMBuilder builder = new StAXOMBuilder(parser);
+            OMElement documentElement = builder.getDocumentElement();
+            Iterator iterator = documentElement.getChildElements();
+            while (iterator.hasNext()) {
+                OMElement omElement = (OMElement) iterator.next();
+                String configType = omElement.getAttributeValue(new QName(
+                        "id"));
+                scopes.put(configType, loadClaimConfig(omElement));
+            }
+        } catch (XMLStreamException e) {
+            log.warn("Error while loading scope config.", e);
+        } catch (FileNotFoundException e) {
+            log.warn("Error while loading email config.", e);
+        } finally {
+            try {
+                if (parser != null) {
+                    parser.close();
+                }
+                if (stream != null) {
+                    IdentityIOStreamUtils.closeInputStream(stream);
+                }
+            } catch (XMLStreamException e) {
+                log.error("Error while closing XML stream", e);
+            }
+        }
+        return scopes;
+    }
+
+    private static String loadClaimConfig(OMElement configElement) {
+        StringBuilder claimConfig = new StringBuilder();
+        Iterator it = configElement.getChildElements();
+        while (it.hasNext()) {
+            OMElement element = (OMElement) it.next();
+            if ("Claim".equals(element.getLocalName())) {
+                claimConfig.append(element.getText());
+            }
+        }
+        return claimConfig.toString();
     }
 }

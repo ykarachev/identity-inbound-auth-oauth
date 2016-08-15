@@ -37,6 +37,8 @@ public class SessionDataCacheEntry extends CacheEntry {
 
     private ConcurrentMap<String, String[]> paramMap = new ConcurrentHashMap<String, String[]>();
 
+    private String essentialClaims ;
+
     public OAuth2Parameters getoAuth2Parameters() {
         return oAuth2Parameters;
     }
@@ -75,6 +77,14 @@ public class SessionDataCacheEntry extends CacheEntry {
 
     public void setAuthenticatedIdPs(String authenticatedIdPs) {
         this.authenticatedIdPs = authenticatedIdPs;
+    }
+
+    public String getEssentialClaims() {
+        return essentialClaims;
+    }
+
+    public void setEssentialClaims(String essentialClaims) {
+        this.essentialClaims = essentialClaims;
     }
 
 }

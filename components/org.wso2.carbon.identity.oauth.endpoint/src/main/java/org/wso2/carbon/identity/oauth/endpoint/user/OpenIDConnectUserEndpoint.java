@@ -35,6 +35,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
@@ -82,6 +83,13 @@ public class OpenIDConnectUserEndpoint {
             return respBuilder.entity(response).build();
         }
         return respBuilder.build();
+    }
+
+    @POST
+    @Path("/")
+    @Produces("application/json")
+    public Response getUserClaimsPost(@Context HttpServletRequest request) throws OAuthSystemException {
+        return getUserClaims(request);
     }
 
     /**

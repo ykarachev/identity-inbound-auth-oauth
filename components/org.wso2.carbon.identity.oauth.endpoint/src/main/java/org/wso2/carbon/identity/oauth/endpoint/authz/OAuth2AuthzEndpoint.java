@@ -562,6 +562,7 @@ public class OAuth2AuthzEndpoint {
         }
         authorizationGrantCacheEntry.setNonceValue(sessionDataCacheEntry.getoAuth2Parameters().getNonce());
         authorizationGrantCacheEntry.setCodeId(codeId);
+        authorizationGrantCacheEntry.setAcrValue(sessionDataCacheEntry.getoAuth2Parameters().getACRValues());
         authorizationGrantCacheEntry.setPkceCodeChallenge(pkceCodeChallenge);
         authorizationGrantCacheEntry.setPkceCodeChallengeMethod(pkceCodeChallengeMethod);
         authorizationGrantCacheEntry.setEssentialClaims(sessionDataCacheEntry.getoAuth2Parameters().getEssentialClaims());

@@ -172,7 +172,24 @@ public class OAuth2ServiceComponent {
 
         if(connection != null) {
             try {
-                PreparedStatement preparedStatement = connection.prepareStatement(SQLQueries.RETRIEVE_PKCE_TABLE);
+                String sql;
+                if (connection.getMetaData().getDriverName().contains("MySQL")
+                        || connection.getMetaData().getDriverName().contains("H2")) {
+                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_MYSQL;
+                } else if (connection.getMetaData().getDatabaseProductName().contains("DB2")) {
+                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_DB2SQL;
+                } else if (connection.getMetaData().getDriverName().contains("MS SQL") ||
+                        connection.getMetaData().getDriverName().contains("Microsoft")) {
+                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_MSSQL;
+                } else if (connection.getMetaData().getDriverName().contains("PostgreSQL")) {
+                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_MYSQL;
+                } else if (connection.getMetaData().getDriverName().contains("Informix")){
+                    // Driver name = "IBM Informix JDBC Driver for IBM Informix Dynamic Server"
+                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_INFORMIX;
+                } else {
+                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_ORACLE;
+                }
+                PreparedStatement preparedStatement = connection.prepareStatement(sql);
                 ResultSet resultSet = preparedStatement.executeQuery();
                 if(resultSet != null) {
                     //following statement will throw SQLException if the column is not found

@@ -128,7 +128,8 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         }
         if (returnClaims.containsKey(PHONE_NUMBER_VERIFIED) && returnClaims.get(PHONE_NUMBER_VERIFIED) != null) {
             if (returnClaims.get(PHONE_NUMBER_VERIFIED) instanceof String) {
-                returnClaims.put(PHONE_NUMBER_VERIFIED, (Boolean.valueOf((String) (returnClaims.get(PHONE_NUMBER_VERIFIED)))));
+                returnClaims.put(PHONE_NUMBER_VERIFIED, (Boolean.valueOf((String)
+                        (returnClaims.get(PHONE_NUMBER_VERIFIED)))));
             }
         }
         if (returnClaims.containsKey(EMAIL_VERIFIED) && returnClaims.get(EMAIL_VERIFIED) != null) {

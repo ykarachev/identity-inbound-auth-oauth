@@ -50,6 +50,9 @@ import java.util.Iterator;
 public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
     private static final Log log = LogFactory.getLog(UserInfoJSONResponseBuilder.class);
     private ArrayList<String> lstEssential = new ArrayList<>();
+    private static final String UPDATED_AT = "updated_at";
+    private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
+    private static final String EMAIL_VERIFIED = "email_verified";
     Map<String, Object> claimsforAddressScope = new HashMap<>();
 
     @Override
@@ -116,6 +119,21 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
                 JSONObject jsonObject = new JSONObject();
                 jsonObject.put(entry.getKey(), claims.get(entry.getKey()));
                 returnClaims.put("address", jsonObject);
+            }
+        }
+        if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
+            if (returnClaims.get(UPDATED_AT) instanceof String) {
+                returnClaims.put(UPDATED_AT, Integer.parseInt((String) (returnClaims.get(UPDATED_AT))));
+            }
+        }
+        if (returnClaims.containsKey(PHONE_NUMBER_VERIFIED) && returnClaims.get(PHONE_NUMBER_VERIFIED) != null) {
+            if (returnClaims.get(PHONE_NUMBER_VERIFIED) instanceof String) {
+                returnClaims.put(PHONE_NUMBER_VERIFIED, (Boolean.valueOf((String) (returnClaims.get(PHONE_NUMBER_VERIFIED)))));
+            }
+        }
+        if (returnClaims.containsKey(EMAIL_VERIFIED) && returnClaims.get(EMAIL_VERIFIED) != null) {
+            if (returnClaims.get(EMAIL_VERIFIED) instanceof String) {
+                returnClaims.put(EMAIL_VERIFIED, (Boolean.valueOf((String) (returnClaims.get(EMAIL_VERIFIED)))));
             }
         }
         if (lstEssential != null) {

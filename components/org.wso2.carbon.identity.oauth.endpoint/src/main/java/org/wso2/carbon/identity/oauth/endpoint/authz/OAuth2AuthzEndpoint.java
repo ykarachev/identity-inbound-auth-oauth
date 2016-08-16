@@ -17,7 +17,6 @@
  */
 package org.wso2.carbon.identity.oauth.endpoint.authz;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -212,7 +211,7 @@ public class OAuth2AuthzEndpoint {
             } else if (resultFromLogin != null) { // Authentication response
                 long authTime;
                 Cookie cookie = FrameworkUtils.getAuthCookie(request);
-                String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
+                String sessionContextKey = cookie.getValue();
                 SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
                 if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
                     authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
@@ -282,7 +281,7 @@ public class OAuth2AuthzEndpoint {
             } else if (resultFromConsent != null) { // Consent submission
                 long authTime;
                 Cookie cookie = FrameworkUtils.getAuthCookie(request);
-                String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
+                String sessionContextKey = cookie.getValue();
                 SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
                 if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
                     authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());

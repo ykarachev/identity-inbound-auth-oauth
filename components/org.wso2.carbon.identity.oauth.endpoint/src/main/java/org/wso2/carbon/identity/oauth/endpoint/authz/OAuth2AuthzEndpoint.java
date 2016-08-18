@@ -209,14 +209,16 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromLogin != null) { // Authentication response
-                long authTime;
+                long authTime = 0;
                 Cookie cookie = FrameworkUtils.getAuthCookie(request);
-                String sessionContextKey = cookie.getValue();
-                SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
-                if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
-                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
-                } else {
-                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                if (cookie != null) {
+                    String sessionContextKey = cookie.getValue();
+                    SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
+                    if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                        authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                    } else {
+                        authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                    }
                 }
                 sessionDataCacheEntry = resultFromLogin;
                 sessionDataCacheEntry.setAuthTime(authTime);
@@ -279,14 +281,16 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromConsent != null) { // Consent submission
-                long authTime;
+                long authTime = 0;
                 Cookie cookie = FrameworkUtils.getAuthCookie(request);
-                String sessionContextKey = cookie.getValue();
-                SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
-                if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
-                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
-                } else {
-                    authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                if (cookie != null) {
+                    String sessionContextKey = cookie.getValue();
+                    SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
+                    if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                        authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                    } else {
+                        authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                    }
                 }
                 sessionDataCacheEntry = resultFromConsent;
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();

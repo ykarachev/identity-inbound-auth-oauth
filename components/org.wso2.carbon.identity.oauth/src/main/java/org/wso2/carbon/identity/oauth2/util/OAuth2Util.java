@@ -617,7 +617,7 @@ public class OAuth2Util {
 
         long issuedTime = accessTokenDO.getIssuedTime().getTime();
         currentTime = System.currentTimeMillis();
-        long validityMillis = issuedTime + validityPeriodMillis - (currentTime + timestampSkew);
+        long validityMillis = issuedTime + validityPeriodMillis - (currentTime - timestampSkew);
         if (validityMillis > 1000) {
             return validityMillis;
         } else {

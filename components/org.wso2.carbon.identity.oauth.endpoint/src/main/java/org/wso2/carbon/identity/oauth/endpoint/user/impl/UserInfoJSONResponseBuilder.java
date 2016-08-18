@@ -21,6 +21,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.utils.JSONUtils;
+import org.json.JSONObject;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
@@ -46,6 +47,10 @@ import java.util.Map;
  */
 public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
     private static final Log log = LogFactory.getLog(UserInfoJSONResponseBuilder.class);
+    private static final String UPDATED_AT = "updated_at";
+    private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
+    private static final String EMAIL_VERIFIED = "email_verified";
+    Map<String, Object> claimsforAddressScope = new HashMap<>();
 
     @Override
     public String getResponseString(OAuth2TokenValidationResponseDTO tokenResponse)
@@ -60,7 +65,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
 
         Map<ClaimMapping, String> userAttributes = getUserAttributesFromCache(tokenResponse);
         Map<String, Object> claims = null;
-        Map<String, Object> retunClaims = new HashMap<>();
+        Map<String, Object> returnClaims = new HashMap<>();
         String requestedScopeClaims = null;
 
         if (userAttributes == null || userAttributes.isEmpty()) {
@@ -92,7 +97,10 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
                         for (Map.Entry<String, Object> entry : claims.entrySet()) {
                             String requestedClaims = entry.getKey();
                             if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaims)) {
-                                retunClaims.put(entry.getKey(), claims.get(entry.getKey()));
+                                returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
+                                if (requestedScope.equals("address")) {
+                                    claimsforAddressScope.put(entry.getKey(), entry.getKey());
+                                }
                             }
                         }
 
@@ -100,10 +108,33 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
                 }
             }
         }
-        if (!retunClaims.containsKey("sub") || StringUtils.isBlank((String) claims.get("sub"))) {
-            retunClaims.put("sub", tokenResponse.getAuthorizedUser());
+        if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
+            if (returnClaims.get(UPDATED_AT) instanceof String) {
+                returnClaims.put(UPDATED_AT, Integer.parseInt((String) (returnClaims.get(UPDATED_AT))));
+            }
         }
-        return JSONUtils.buildJSON(retunClaims);
+        if (returnClaims.containsKey(PHONE_NUMBER_VERIFIED) && returnClaims.get(PHONE_NUMBER_VERIFIED) != null) {
+            if (returnClaims.get(PHONE_NUMBER_VERIFIED) instanceof String) {
+                returnClaims.put(PHONE_NUMBER_VERIFIED, (Boolean.valueOf((String)
+                        (returnClaims.get(PHONE_NUMBER_VERIFIED)))));
+            }
+        }
+        if (returnClaims.containsKey(EMAIL_VERIFIED) && returnClaims.get(EMAIL_VERIFIED) != null) {
+            if (returnClaims.get(EMAIL_VERIFIED) instanceof String) {
+                returnClaims.put(EMAIL_VERIFIED, (Boolean.valueOf((String) (returnClaims.get(EMAIL_VERIFIED)))));
+            }
+        }
+        if (claimsforAddressScope != null) {
+            for (Map.Entry<String, Object> entry : claimsforAddressScope.entrySet()) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put(entry.getKey(), claims.get(entry.getKey()));
+                returnClaims.put("address", jsonObject);
+            }
+        }
+        if (!returnClaims.containsKey("sub") || StringUtils.isBlank((String) claims.get("sub"))) {
+            returnClaims.put("sub", tokenResponse.getAuthorizedUser());
+        }
+        return JSONUtils.buildJSON(returnClaims);
     }
 
     private Map<ClaimMapping, String> getUserAttributesFromCache(OAuth2TokenValidationResponseDTO tokenResponse) {

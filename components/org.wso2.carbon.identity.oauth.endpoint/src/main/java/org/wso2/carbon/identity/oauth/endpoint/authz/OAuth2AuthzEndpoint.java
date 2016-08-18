@@ -221,7 +221,9 @@ public class OAuth2AuthzEndpoint {
                     }
                 }
                 sessionDataCacheEntry = resultFromLogin;
-                sessionDataCacheEntry.setAuthTime(authTime);
+                if (authTime > 0) {
+                    sessionDataCacheEntry.setAuthTime(authTime);
+                }
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
                 AuthenticationResult authnResult = getAuthenticationResult(request, sessionDataKeyFromLogin);
                 if (authnResult != null) {
@@ -294,7 +296,9 @@ public class OAuth2AuthzEndpoint {
                 }
                 sessionDataCacheEntry = resultFromConsent;
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
-                oauth2Params.setAuthTime(authTime);
+                if (authTime > 0) {
+                    oauth2Params.setAuthTime(authTime);
+                }
                 boolean isOIDCRequest = OAuth2Util.isOIDCAuthzRequest(oauth2Params.getScopes());
 
                 String consent = request.getParameter("consent");

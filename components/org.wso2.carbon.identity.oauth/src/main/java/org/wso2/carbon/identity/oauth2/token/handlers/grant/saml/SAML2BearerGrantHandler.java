@@ -162,25 +162,27 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             return false;
         }
 
-        /**
-         * The Assertion MUST contain a <Subject> element.  The subject MAY identify the resource owner for whom
-         * the access token is being requested.  For client authentication, the Subject MUST be the "client_id"
-         * of the OAuth client.  When using an Assertion as an authorization grant, the Subject SHOULD identify
-         * an authorized accessor for whom the access token is being requested (typically the resource owner, or
-         * an authorized delegate).  Additional information identifying the subject/principal of the transaction
-         * MAY be included in an <AttributeStatement>.
+        /*
+          The Assertion MUST contain a <Subject> element.  The subject MAY identify the resource owner for whom
+          the access token is being requested.  For client authentication, the Subject MUST be the "client_id"
+          of the OAuth client.  When using an Assertion as an authorization grant, the Subject SHOULD identify
+          an authorized accessor for whom the access token is being requested (typically the resource owner, or
+          an authorized delegate).  Additional information identifying the subject/principal of the transaction
+          MAY be included in an <AttributeStatement>.
          */
         if (assertion.getSubject() != null) {
-            String resourceOwnerUserName = assertion.getSubject().getNameID().getValue();
-            if (StringUtils.isBlank(resourceOwnerUserName)) {
+            String subjectIdentifier = assertion.getSubject().getNameID().getValue();
+            if (StringUtils.isBlank(subjectIdentifier)) {
                 if (log.isDebugEnabled()){
                     log.debug("NameID in Assertion cannot be empty");
                 }
                 return false;
             }
-            AuthenticatedUser user = OAuth2Util.getUserFromUserName(resourceOwnerUserName);
-            user.setAuthenticatedSubjectIdentifier(resourceOwnerUserName);
-            user.setFederatedUser(true);
+            AuthenticatedUser user =
+                    AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier(subjectIdentifier);
+            user.setUserName(subjectIdentifier);
+            // we take a tenant domain of the authorized user to be the tenant domain of the OAuth app
+            user.setTenantDomain(tenantDomain);
             tokReqMsgCtx.setAuthorizedUser(user);
         } else {
             if (log.isDebugEnabled()) {
@@ -255,16 +257,16 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
                     return false;
                 }
             } catch (IdentityProviderManagementException e) {
-                log.error("Error while getting Federated Identity Provider ", e);
+                throw new IdentityOAuth2Exception("Error while getting Federated Identity Provider.", e);
             }
         }
 
-        /**
-         * The Assertion MUST contain <Conditions> element with an <AudienceRestriction> element with an <Audience>
-         * element containing a URI reference that identifies the authorization server, or the service provider
-         * SAML entity of its controlling domain, as an intended audience.  The token endpoint URL of the
-         * authorization server MAY be used as an acceptable value for an <Audience> element.  The authorization
-         * server MUST verify that it is an intended audience for the Assertion.
+        /*
+          The Assertion MUST contain <Conditions> element with an <AudienceRestriction> element with an <Audience>
+          element containing a URI reference that identifies the authorization server, or the service provider
+          SAML entity of its controlling domain, as an intended audience.  The token endpoint URL of the
+          authorization server MAY be used as an acceptable value for an <Audience> element.  The authorization
+          server MUST verify that it is an intended audience for the Assertion.
          */
 
         if (StringUtils.isBlank(tokenEndpointAlias)) {
@@ -321,26 +323,26 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         }
 
 
-        /**
-         * The Assertion MUST have an expiry that limits the time window during which it can be used.  The expiry
-         * can be expressed either as the NotOnOrAfter attribute of the <Conditions> element or as the NotOnOrAfter
-         * attribute of a suitable <SubjectConfirmationData> element.
+        /*
+          The Assertion MUST have an expiry that limits the time window during which it can be used.  The expiry
+          can be expressed either as the NotOnOrAfter attribute of the <Conditions> element or as the NotOnOrAfter
+          attribute of a suitable <SubjectConfirmationData> element.
          */
 
-        /**
-         * The <Subject> element MUST contain at least one <SubjectConfirmation> element that allows the
-         * authorization server to confirm it as a Bearer Assertion.  Such a <SubjectConfirmation> element MUST
-         * have a Method attribute with a value of "urn:oasis:names:tc:SAML:2.0:cm:bearer".  The
-         * <SubjectConfirmation> element MUST contain a <SubjectConfirmationData> element, unless the Assertion
-         * has a suitable NotOnOrAfter attribute on the <Conditions> element, in which case the
-         * <SubjectConfirmationData> element MAY be omitted. When present, the <SubjectConfirmationData> element
-         * MUST have a Recipient attribute with a value indicating the token endpoint URL of the authorization
-         * server (or an acceptable alias).  The authorization server MUST verify that the value of the Recipient
-         * attribute matches the token endpoint URL (or an acceptable alias) to which the Assertion was delivered.
-         * The <SubjectConfirmationData> element MUST have a NotOnOrAfter attribute that limits the window during
-         * which the Assertion can be confirmed.  The <SubjectConfirmationData> element MAY also contain an Address
-         * attribute limiting the client address from which the Assertion can be delivered.  Verification of the
-         * Address is at the discretion of the authorization server.
+        /*
+          The <Subject> element MUST contain at least one <SubjectConfirmation> element that allows the
+          authorization server to confirm it as a Bearer Assertion.  Such a <SubjectConfirmation> element MUST
+          have a Method attribute with a value of "urn:oasis:names:tc:SAML:2.0:cm:bearer".  The
+          <SubjectConfirmation> element MUST contain a <SubjectConfirmationData> element, unless the Assertion
+          has a suitable NotOnOrAfter attribute on the <Conditions> element, in which case the
+          <SubjectConfirmationData> element MAY be omitted. When present, the <SubjectConfirmationData> element
+          MUST have a Recipient attribute with a value indicating the token endpoint URL of the authorization
+          server (or an acceptable alias).  The authorization server MUST verify that the value of the Recipient
+          attribute matches the token endpoint URL (or an acceptable alias) to which the Assertion was delivered.
+          The <SubjectConfirmationData> element MUST have a NotOnOrAfter attribute that limits the window during
+          which the Assertion can be confirmed.  The <SubjectConfirmationData> element MAY also contain an Address
+          attribute limiting the client address from which the Assertion can be delivered.  Verification of the
+          Address is at the discretion of the authorization server.
          */
 
         DateTime notOnOrAfterFromConditions = null;
@@ -411,14 +413,14 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             return false;
         }
 
-        /**
-         * The authorization server MUST verify that the NotOnOrAfter instant has not passed, subject to allowable
-         * clock skew between systems.  An invalid NotOnOrAfter instant on the <Conditions> element invalidates
-         * the entire Assertion.  An invalid NotOnOrAfter instant on a <SubjectConfirmationData> element only
-         * invalidates the individual <SubjectConfirmation>.  The authorization server MAY reject Assertions with
-         * a NotOnOrAfter instant that is unreasonably far in the future.  The authorization server MAY ensure
-         * that Bearer Assertions are not replayed, by maintaining the set of used ID values for the length of
-         * time for which the Assertion would be considered valid based on the applicable NotOnOrAfter instant.
+        /*
+          The authorization server MUST verify that the NotOnOrAfter instant has not passed, subject to allowable
+          clock skew between systems.  An invalid NotOnOrAfter instant on the <Conditions> element invalidates
+          the entire Assertion.  An invalid NotOnOrAfter instant on a <SubjectConfirmationData> element only
+          invalidates the individual <SubjectConfirmation>.  The authorization server MAY reject Assertions with
+          a NotOnOrAfter instant that is unreasonably far in the future.  The authorization server MAY ensure
+          that Bearer Assertions are not replayed, by maintaining the set of used ID values for the length of
+          time for which the Assertion would be considered valid based on the applicable NotOnOrAfter instant.
          */
         if (notOnOrAfterFromConditions != null && notOnOrAfterFromConditions.compareTo(new DateTime()) < 1) {
             // notOnOrAfter is an expired timestamp
@@ -442,9 +444,9 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             return false;
         }
 
-        /**
-         * The Assertion MUST be digitally signed by the issuer and the authorization server MUST verify the
-         * signature.
+        /*
+          The Assertion MUST be digitally signed by the issuer and the authorization server MUST verify the
+          signature.
          */
 
         try {
@@ -478,12 +480,12 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         }
 
 
-        /**
-         * The authorization server MUST verify that the Assertion is valid in all other respects per
-         * [OASIS.saml-core-2.0-os], such as (but not limited to) evaluating all content within the Conditions
-         * element including the NotOnOrAfter and NotBefore attributes, rejecting unknown condition types, etc.
-         *
-         * [OASIS.saml-core-2.0-os] - http://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf
+        /*
+          The authorization server MUST verify that the Assertion is valid in all other respects per
+          [OASIS.saml-core-2.0-os], such as (but not limited to) evaluating all content within the Conditions
+          element including the NotOnOrAfter and NotBefore attributes, rejecting unknown condition types, etc.
+
+          [OASIS.saml-core-2.0-os] - http://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf
          */
 
         // TODO: Throw the SAML request through the general SAML2 validation routines

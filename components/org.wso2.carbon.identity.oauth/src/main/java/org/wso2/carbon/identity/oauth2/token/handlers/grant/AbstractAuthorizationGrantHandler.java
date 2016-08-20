@@ -42,6 +42,7 @@ import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientExcepti
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2UnAuthorizedClientException;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
@@ -498,7 +499,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                 //Do not change this log format as these logs use by external applications
                 log.debug("Unsupported Grant Type : " + grantType + " for client id : " + tokenReqDTO.getClientId());
             }
-            return false;
+            throw new IdentityOAuth2UnAuthorizedClientException("The authenticated client is not authorized to use " +
+                    "this authorization grant type");
         }
         return true;
     }

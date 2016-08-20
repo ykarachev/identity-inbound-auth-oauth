@@ -626,6 +626,9 @@ public class TokenMgtDAO {
                         revokeToken(tokenId, authorizedUser);
                     }
 
+                } else {
+                    // this means we were not able to find the authorization code in the database table.
+                    return null;
                 }
             } else {
                 prepStmt = connection.prepareStatement(SQLQueries.VALIDATE_AUTHZ_CODE);
@@ -659,13 +662,17 @@ public class TokenMgtDAO {
                         String tokenId = resultSet.getString(9);
                         revokeToken(tokenId, authorizedUser);
                     }
+                } else {
+                    // this means we were not able to find the authorization code in the database table.
+                    return null;
                 }
             }
 
             connection.commit();
+
             return new AuthzCodeDO(user, OAuth2Util.buildScopeArray(scopeString), issuedTime, validityPeriod,
-                    callbackUrl, consumerKey, authorizationKey, codeId, codeState, pkceCodeChallenge,
-                    pkceCodeChallengeMethod);
+                        callbackUrl, consumerKey, authorizationKey, codeId, codeState, pkceCodeChallenge,
+                        pkceCodeChallengeMethod);
 
         } catch (SQLException e) {
             throw new IdentityOAuth2Exception("Error when validating an authorization code", e);

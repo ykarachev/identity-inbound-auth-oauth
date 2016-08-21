@@ -22,6 +22,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
+import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
@@ -129,24 +130,14 @@ public abstract class AbstractResponseTypeHandler implements ResponseTypeHandler
 
         String grantType = null;
 
-        if (OAuthConstants.CODE.equals(authzReqDTO.getResponseType())) {
-            grantType = OAuthConstants.GrantTypes.AUTHORIZATION_CODE;
-        } else if (OAuthConstants.TOKEN.equals(authzReqDTO.getResponseType())) {
+        if (ResponseType.CODE.equals(authzReqDTO.getResponseType())) {
+            grantType = GrantType.AUTHORIZATION_CODE.toString();
+        } else if (ResponseType.TOKEN.toString().equals(authzReqDTO.getResponseType())) {
             grantType = OAuthConstants.GrantTypes.IMPLICIT;
         }
 
-        // Load application data from the cache
-        AppInfoCache appInfoCache = AppInfoCache.getInstance();
+        OAuthAppDO oAuthAppDO = (OAuthAppDO)authzReqMsgCtx.getProperty("OAuthAppDO");
         String consumerKey = authzReqDTO.getConsumerKey();
-        OAuthAppDO oAuthAppDO = appInfoCache.getValueFromCache(consumerKey);
-        if (oAuthAppDO == null) {
-            try {
-                oAuthAppDO = new OAuthAppDAO().getAppInformation(consumerKey);
-                appInfoCache.addToCache(consumerKey, oAuthAppDO);
-            } catch (InvalidOAuthClientException e) {
-                throw new IdentityOAuth2Exception(e.getMessage(), e);
-            }
-        }
 
         if (StringUtils.isBlank(oAuthAppDO.getGrantTypes())) {
             if (log.isDebugEnabled()) {

@@ -486,17 +486,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         OAuth2AccessTokenReqDTO tokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
         String grantType = tokenReqDTO.getGrantType();
 
-        // Load application data from the cache
-        AppInfoCache appInfoCache = AppInfoCache.getInstance();
-        OAuthAppDO oAuthAppDO = appInfoCache.getValueFromCache(tokenReqDTO.getClientId());
-        if (oAuthAppDO == null) {
-            try {
-                oAuthAppDO = new OAuthAppDAO().getAppInformation(tokenReqDTO.getClientId());
-                appInfoCache.addToCache(tokenReqDTO.getClientId(), oAuthAppDO);
-            } catch (InvalidOAuthClientException e) {
-                throw new IdentityOAuth2Exception(e.getMessage(), e);
-            }
-        }
+        OAuthAppDO oAuthAppDO = (OAuthAppDO)tokReqMsgCtx.getProperty("OAuthAppDO");
 
         if (StringUtils.isBlank(oAuthAppDO.getGrantTypes())) {
             if (log.isDebugEnabled()) {

@@ -126,6 +126,7 @@ public class AccessTokenIssuer {
         tokenReqDTO.setTenantDomain(appDeveloper.getTenantDomain());
 
         OAuthTokenReqMessageContext tokReqMsgCtx = new OAuthTokenReqMessageContext(tokenReqDTO);
+        tokReqMsgCtx.addProperty("OAuthAppDO", oAuthAppDO);
         boolean isRefreshRequest = GrantType.REFRESH_TOKEN.toString().equals(grantType);
 
         triggerPreListeners(tokenReqDTO, tokReqMsgCtx, isRefreshRequest);

@@ -813,7 +813,6 @@ public class OAuth2AuthzEndpoint {
             }
         }
 
-
         String sessionDataKey = UUIDGenerator.generateUUID();
         SessionDataCacheKey cacheKey = new SessionDataCacheKey(sessionDataKey);
         SessionDataCacheEntry sessionDataCacheEntryNew = new SessionDataCacheEntry();

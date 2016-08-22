@@ -118,6 +118,24 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
         return revokeTokensOfLockedUser(userName, userStoreManager) && revokeTokensOfDisabledUser(userName, userStoreManager);
     }
 
+    @Override
+    public boolean doPostUpdateCredential(String userName, Object credential, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (!isEnable()) {
+            return true;
+        }
+        return revokeTokens(userName, userStoreManager);
+    }
+
+    @Override
+    public boolean doPostUpdateCredentialByAdmin(String userName, Object credential, UserStoreManager userStoreManager) throws UserStoreException {
+
+        if (!isEnable()) {
+            return true;
+        }
+        return revokeTokens(userName, userStoreManager);
+    }
+
     private boolean revokeTokensOfLockedUser(String userName, UserStoreManager userStoreManager) {
 
         IdentityErrorMsgContext errorContext = IdentityUtil.getIdentityErrorMsg();

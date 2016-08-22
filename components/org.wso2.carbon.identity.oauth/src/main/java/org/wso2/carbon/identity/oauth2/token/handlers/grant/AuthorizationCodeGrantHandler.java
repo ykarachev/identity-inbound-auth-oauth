@@ -128,7 +128,9 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         if (authzCodeDO == null) {
             if (log.isDebugEnabled()) {
                 log.debug("Invalid access token request with " +
-                        "Client Id : " + clientId);
+                        "Client Id : " + clientId +
+                        ", Invalid authorization code provided."
+                );
             }
             return false;
         }
@@ -139,14 +141,14 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                 if (log.isDebugEnabled()) {
                     log.debug("Invalid access token request with " +
                             "Client Id : " + clientId +
-                            "redirect_uri not present in request");
+                            " redirect_uri not present in request");
                 }
                 return false;
             } else if (!oAuth2AccessTokenReqDTO.getCallbackURI().equals(authzCodeDO.getCallbackUrl())) {
                 if (log.isDebugEnabled()) {
                     log.debug("Invalid access token request with " +
                             "Client Id : " + clientId +
-                            "redirect_uri does not match previously presented redirect_uri to authorization endpoint");
+                            " redirect_uri does not match previously presented redirect_uri to authorization endpoint");
                 }
                 return false;
             }

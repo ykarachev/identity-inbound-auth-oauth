@@ -33,6 +33,7 @@ import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
+import org.wso2.carbon.user.api.Claim;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreManager;
@@ -87,11 +88,12 @@ public class ClaimUtil {
                 return mappedAppClaims;
             }
             ClaimMapping[] requestedLocalClaimMap = serviceProvider.getClaimConfig().getClaimMappings();
+            String subjectClaimURI = serviceProvider.getLocalAndOutBoundAuthenticationConfig().getSubjectClaimUri();
+            claimURIList.add(subjectClaimURI);
 
-            if (requestedLocalClaimMap != null && requestedLocalClaimMap.length > 0) {
+            if (subjectClaimURI != null || requestedLocalClaimMap != null && requestedLocalClaimMap.length > 0) {
                 for (ClaimMapping claimMapping : requestedLocalClaimMap) {
                     claimURIList.add(claimMapping.getLocalClaim().getClaimUri());
-
                 }
                 if (log.isDebugEnabled()) {
                     log.debug("Requested number of local claims: " + claimURIList.size());
@@ -113,6 +115,10 @@ public class ClaimUtil {
                 for (Map.Entry<String, String> entry : userClaims.entrySet()) {
                     String value = spToLocalClaimMappings.get(entry.getKey());
                     if (value != null) {
+                        if(entry.getKey().equals(subjectClaimURI)){
+                            mappedAppClaims.put("sub", entry.getValue());
+                            continue;
+                        }
                         mappedAppClaims.put(value, entry.getValue());
                         if (log.isDebugEnabled() &&
                                 IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_CLAIMS)) {

@@ -91,9 +91,13 @@ public class ClaimUtil {
             String subjectClaimURI = serviceProvider.getLocalAndOutBoundAuthenticationConfig().getSubjectClaimUri();
             claimURIList.add(subjectClaimURI);
 
+            boolean isSubjectClaimInRequested = false;
             if (subjectClaimURI != null || requestedLocalClaimMap != null && requestedLocalClaimMap.length > 0) {
                 for (ClaimMapping claimMapping : requestedLocalClaimMap) {
                     claimURIList.add(claimMapping.getLocalClaim().getClaimUri());
+                    if(claimMapping.getLocalClaim().getClaimUri().equals(subjectClaimURI)) {
+                        isSubjectClaimInRequested = true;
+                    }
                 }
                 if (log.isDebugEnabled()) {
                     log.debug("Requested number of local claims: " + claimURIList.size());
@@ -117,7 +121,9 @@ public class ClaimUtil {
                     if (value != null) {
                         if(entry.getKey().equals(subjectClaimURI)){
                             mappedAppClaims.put("sub", entry.getValue());
-                            continue;
+                            if(!isSubjectClaimInRequested) {
+                                continue;
+                            }
                         }
                         mappedAppClaims.put(value, entry.getValue());
                         if (log.isDebugEnabled() &&

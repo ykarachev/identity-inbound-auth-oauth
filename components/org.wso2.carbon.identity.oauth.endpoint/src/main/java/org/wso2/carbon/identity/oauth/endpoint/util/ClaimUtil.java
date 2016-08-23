@@ -28,6 +28,8 @@ import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth.OAuthUtil;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
@@ -55,12 +57,12 @@ public class ClaimUtil {
     public static Map<String, Object> getClaimsFromUserStore(OAuth2TokenValidationResponseDTO tokenResponse) throws
             UserInfoEndpointException {
         String username = tokenResponse.getAuthorizedUser();
-        String tenantDomain = MultitenantUtils.getTenantDomain(tokenResponse.getAuthorizedUser());
+        String userTenantDomain = MultitenantUtils.getTenantDomain(tokenResponse.getAuthorizedUser());
         UserRealm realm;
         List<String> claimURIList = new ArrayList<>();
         Map<String, Object> mappedAppClaims = new HashMap<>();
         try {
-            realm = IdentityTenantUtil.getRealm(tenantDomain, username);
+            realm = IdentityTenantUtil.getRealm(userTenantDomain, username);
 
             if (realm == null) {
                 log.warn("No valid tenant domain provider. Empty claim returned back");
@@ -78,11 +80,13 @@ public class ClaimUtil {
             if (accessTokenDO != null) {
                 clientId = accessTokenDO.getConsumerKey();
             }
+            OAuthAppDO oAuthAppDO = OAuthUtil.getAppInformationByClientId(clientId);
+            String spTenantDomain = OAuthUtil.getTenantDomainOfOauthApp(oAuthAppDO);
 
             String spName = applicationMgtService.getServiceProviderNameByClientId(clientId, INBOUND_AUTH2_TYPE,
-                    tenantDomain);
+                    spTenantDomain);
             ServiceProvider serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(spName,
-                    tenantDomain);
+                    spTenantDomain);
             if (serviceProvider == null) {
                 return mappedAppClaims;
             }
@@ -98,7 +102,7 @@ public class ClaimUtil {
                 }
 
                 spToLocalClaimMappings = ClaimManagerHandler.getInstance().getMappingsMapFromOtherDialectToCarbon
-                        (SP_DIALECT, null, tenantDomain, true);
+                        (SP_DIALECT, null, userTenantDomain, true);
 
                 Map<String, String> userClaims = userstore.getUserClaimValues(MultitenantUtils.getTenantAwareUsername
                         (username), claimURIList.toArray(new String[claimURIList.size()]), null);

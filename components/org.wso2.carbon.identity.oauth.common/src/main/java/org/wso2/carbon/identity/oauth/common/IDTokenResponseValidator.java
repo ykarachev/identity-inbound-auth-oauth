@@ -19,19 +19,16 @@
 package org.wso2.carbon.identity.oauth.common;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.oltu.oauth2.as.validator.TokenValidator;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
-import org.apache.oltu.oauth2.common.validators.AbstractValidator;
 
 import javax.servlet.http.HttpServletRequest;
 
-public class IDTokenResponseValidator extends AbstractValidator<HttpServletRequest> {
+public class IDTokenResponseValidator extends TokenValidator {
 
     public IDTokenResponseValidator() {
-        requiredParams.add(OAuth.OAUTH_RESPONSE_TYPE);
-        requiredParams.add(OAuth.OAUTH_CLIENT_ID);
-        requiredParams.add(OAuth.OAUTH_REDIRECT_URI);
     }
 
     public void validateRequiredParameters(HttpServletRequest request) throws OAuthProblemException {
@@ -39,9 +36,16 @@ public class IDTokenResponseValidator extends AbstractValidator<HttpServletReque
         super.validateRequiredParameters(request);
 
         String nonce = request.getParameter("nonce");
-        if(StringUtils.isBlank(nonce)){
+        if (StringUtils.isBlank(nonce)) {
             throw OAuthProblemException.error(OAuthError.TokenResponse.INVALID_REQUEST)
                     .description("\'response_type\' contains \'id_token\'; but \'nonce\' parameter not found");
+        }
+
+        // for id_token response type, the scope parameter should contain 'openid' as one of the scopes.
+        String openIdScope = request.getParameter("scope");
+        if (StringUtils.isBlank(openIdScope) || !containOIDCScope(openIdScope)) {
+            throw OAuthProblemException.error(OAuthError.TokenResponse.INVALID_REQUEST)
+                    .description("\'response_type\' contains \'id_token\'; but \'openid\' scope not found.");
         }
     }
 
@@ -56,6 +60,26 @@ public class IDTokenResponseValidator extends AbstractValidator<HttpServletReque
 
     @Override
     public void validateContentType(HttpServletRequest request) throws OAuthProblemException {
+    }
+
+    /**
+     * Method to check whether the scope parameter string contains 'openid' as a scope.
+     *
+     * @param scope
+     * @return
+     */
+    private static boolean containOIDCScope(String scope) {
+        if (StringUtils.isBlank(scope)) {
+            return false;
+        }
+
+        String[] scopeArray = scope.split("\\s+");
+        for (String openidscope : scopeArray) {
+            if (openidscope.equals(OAuthConstants.Scope.OPENID)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

@@ -64,9 +64,8 @@ public class AuthPersistenceTask implements Runnable {
                         AuthzCodeDO authzCodeDO = new AuthzCodeDO();
                         authzCodeDO.setAuthorizationCode(authContextTokenDO.getAuthzCode());
                         authzCodeDO.setOauthTokenId(authContextTokenDO.getTokenId());
-                        List<AuthzCodeDO> authzCodeDOList = new ArrayList<>(Arrays.asList(authzCodeDO));
                         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
-                        tokenMgtDAO.deactivateAuthorizationCode(authzCodeDOList);
+                        tokenMgtDAO.deactivateAuthorizationCode(authzCodeDO);
                     } else {
                         if (log.isDebugEnabled()) {
                             log.debug("Auth Token Data persisting Task is started to run");
@@ -78,7 +77,7 @@ public class AuthPersistenceTask implements Runnable {
                     }
                 }
             } catch (InterruptedException | IdentityOAuth2Exception e) {
-                log.error(e);
+                log.error("Error when executing AuthPersistenceTask", e);
             }
 
         }

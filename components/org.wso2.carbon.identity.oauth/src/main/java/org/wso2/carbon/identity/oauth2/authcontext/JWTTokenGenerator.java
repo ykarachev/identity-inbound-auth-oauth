@@ -232,9 +232,13 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
 
             ClaimCacheKey cacheKey = null;
             UserClaims result = null;
+            AuthenticatedUser authenticatedUser = new AuthenticatedUser();
+            authenticatedUser.setUserName(UserCoreUtil.removeDomainFromName(tenantAwareUsername));
+            authenticatedUser.setUserStoreDomain(IdentityUtil.extractDomainFromName(tenantAwareUsername));
+            authenticatedUser.setTenantDomain(tenantDomain);
 
-            if(requestedClaims != null) {
-                cacheKey = new ClaimCacheKey(authzUser, requestedClaims);
+            if (requestedClaims != null) {
+                cacheKey = new ClaimCacheKey(authenticatedUser);
                 result = claimsLocalCache.getValueFromCache(cacheKey);
             }
 
@@ -246,10 +250,6 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
                 UserClaims userClaims = new UserClaims(claimValues);
                 claimsLocalCache.addToCache(cacheKey, userClaims);
 
-                AuthenticatedUser authenticatedUser = new AuthenticatedUser();
-                authenticatedUser.setUserName(UserCoreUtil.removeDomainFromName(tenantAwareUsername));
-                authenticatedUser.setUserStoreDomain(IdentityUtil.extractDomainFromName(tenantAwareUsername));
-                authenticatedUser.setTenantDomain(tenantDomain);
                 ClaimMetaDataCache.getInstance().addToCache(new ClaimMetaDataCacheKey(authenticatedUser),
                         new ClaimMetaDataCacheEntry(cacheKey));
             }

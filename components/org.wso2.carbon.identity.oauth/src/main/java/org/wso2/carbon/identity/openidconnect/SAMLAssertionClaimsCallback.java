@@ -83,6 +83,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private static final String UPDATED_AT = "updated_at";
     private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
     private static final String EMAIL_VERIFIED = "email_verified";
+    private static final String ADDRESS = "address";
 
     private static String userAttributeSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
 
@@ -266,9 +267,9 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
         String spName = applicationMgtService
                 .getServiceProviderNameByClientId(requestMsgCtx.getOauth2AccessTokenReqDTO().getClientId(),
-                                                  INBOUND_AUTH2_TYPE, tenantDomain);
+                        INBOUND_AUTH2_TYPE, tenantDomain);
         ServiceProvider serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(spName,
-                                                                                                    tenantDomain);
+                tenantDomain);
         if (serviceProvider == null) {
             return mappedAppClaims;
         }
@@ -528,8 +529,8 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                             String requestedClaims = entry.getKey();
                             if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaims)) {
                                 returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
-                                if (requestedScope.equals("address")) {
-                                    if (!requestedScope.equals("address")) {
+                                if (requestedScope.equals(ADDRESS)) {
+                                    if (!requestedScope.equals(ADDRESS)) {
                                         returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
                                     } else {
                                         claimsforAddressScope.put(entry.getKey(), claims.get(entry.getKey()));
@@ -547,7 +548,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             for (Map.Entry<String, Object> entry : claimsforAddressScope.entrySet()) {
                 jsonObject.put(entry.getKey(), claims.get(entry.getKey()));
             }
-            returnClaims.put("address", jsonObject);
+            returnClaims.put(ADDRESS, jsonObject);
         }
         if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
             if (returnClaims.get(UPDATED_AT) instanceof String) {

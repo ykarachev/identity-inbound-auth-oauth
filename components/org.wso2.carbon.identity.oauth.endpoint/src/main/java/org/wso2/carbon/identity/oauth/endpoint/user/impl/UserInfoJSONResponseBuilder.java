@@ -116,7 +116,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         if (!returnClaims.containsKey("sub") || StringUtils.isBlank((String) claims.get("sub"))) {
             returnClaims.put("sub", tokenResponse.getAuthorizedUser());
         }
-        if (claimsforAddressScope != null) {
+        if (claimsforAddressScope.size() > 0) {
             JSONObject jsonObject = new JSONObject();
             for (Map.Entry<String, Object> entry : claimsforAddressScope.entrySet()) {
                 jsonObject.put(entry.getKey(), claims.get(entry.getKey()));

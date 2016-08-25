@@ -25,12 +25,14 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
+import org.json.JSONObject;
 import org.opensaml.saml2.core.Assertion;
 import org.opensaml.saml2.core.Attribute;
 import org.opensaml.saml2.core.AttributeStatement;
 import org.opensaml.xml.XMLObject;
 import org.w3c.dom.Element;
 import org.wso2.carbon.base.MultitenantConstants;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
@@ -50,6 +52,9 @@ import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.registry.api.RegistryException;
+import org.wso2.carbon.registry.api.Resource;
+import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.user.api.RealmConfiguration;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -64,6 +69,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.Enumeration;
+import java.util.Arrays;
 
 /**
  * Returns the claims of the SAML assertion
@@ -73,6 +80,10 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private final static Log log = LogFactory.getLog(SAMLAssertionClaimsCallback.class);
     private final static String INBOUND_AUTH2_TYPE = "oauth2";
     private final static String SP_DIALECT = "http://wso2.org/oidc/claim";
+    private static final String UPDATED_AT = "updated_at";
+    private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
+    private static final String EMAIL_VERIFIED = "email_verified";
+
 
     private static String userAttributeSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
 
@@ -192,7 +203,9 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         } else {
             claims = getClaimsMap(userAttributes);
         }
-        return claims;
+        String tenantDomain = requestMsgCtx.getAuthorizedUser().getTenantDomain();
+        Map<String, Object> returnClaims = controlClaimsFromScope(requestMsgCtx.getScope(), tenantDomain, claims);
+        return returnClaims;
     }
 
     private Map<String, Object> getResponse(OAuthAuthzReqMessageContext requestMsgCtx)
@@ -216,7 +229,9 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         } else {
             claims = getClaimsMap(userAttributes);
         }
-        return claims;
+        String tenantDomain = requestMsgCtx.getAuthorizationReqDTO().getTenantDomain();
+        Map<String, Object> returnClaims = controlClaimsFromScope(requestMsgCtx.getApprovedScope(), tenantDomain, claims);
+        return returnClaims;
     }
 
     /**
@@ -471,6 +486,91 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 jwtClaimsSet.setClaim(entry.getKey(), value);
             }
         }
+    }
+
+    /**
+     * Use to controll claims based on the requested scopes and defined scopes in the registry
+     *
+     * @param requestedScopes String[] requestedScopes
+     * @param tenantDomain    String tenantDomain
+     * @param claims          Object> claims
+     * @return
+     */
+    private Map<String, Object> controlClaimsFromScope(String[] requestedScopes, String tenantDomain,
+                                                       Map<String, Object> claims) {
+        Resource resource = null;
+        String requestedScopeClaims = null;
+        String[] arrRequestedScopeClaims = null;
+        Map<String, Object> returnClaims = new HashMap<>();
+        Map<String, Object> claimsforAddressScope = new HashMap<>();
+        try {
+            PrivilegedCarbonContext.startTenantFlow();
+            PrivilegedCarbonContext carbonContext = PrivilegedCarbonContext.getThreadLocalCarbonContext();
+            int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
+            carbonContext.setTenantId(tenantId);
+            carbonContext.setTenantDomain(tenantDomain);
+            RegistryService registry = OAuth2ServiceComponentHolder.getRegistryService();
+            resource = registry.getConfigSystemRegistry(tenantId).get(OAuthConstants.SCOPE_RESOURCE_PATH);
+        } catch (RegistryException e) {
+            log.error("Error while obtaining registry collection from :" + OAuthConstants.SCOPE_RESOURCE_PATH, e);
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
+        }
+        for (String requestedScope : requestedScopes) {
+            if (resource != null && resource.getProperties() != null) {
+                Enumeration supporetdScopes = resource.getProperties().propertyNames();
+                while (supporetdScopes.hasMoreElements()) {
+                    String supportedScope = (String) supporetdScopes.nextElement();
+                    if (supportedScope.equals(requestedScope)) {
+                        requestedScopeClaims = resource.getProperty(requestedScope);
+                        if (requestedScopeClaims.contains(",")) {
+                            arrRequestedScopeClaims = requestedScopeClaims.split(",");
+                        } else {
+                            arrRequestedScopeClaims = new String[1];
+                            arrRequestedScopeClaims[0] = requestedScopeClaims;
+                        }
+                        for (Map.Entry<String, Object> entry : claims.entrySet()) {
+                            String requestedClaims = entry.getKey();
+                            if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaims)) {
+                                returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
+                                if (requestedScope.equals("address")) {
+                                    if (!requestedScope.equals("address")) {
+                                        returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
+                                    } else {
+                                        claimsforAddressScope.put(entry.getKey(), claims.get(entry.getKey()));
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                }
+            }
+        }
+        if (claimsforAddressScope.size() > 0) {
+            JSONObject jsonObject = new JSONObject();
+            for (Map.Entry<String, Object> entry : claimsforAddressScope.entrySet()) {
+                jsonObject.put(entry.getKey(), claims.get(entry.getKey()));
+            }
+            returnClaims.put("address", jsonObject);
+        }
+        if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
+            if (returnClaims.get(UPDATED_AT) instanceof String) {
+                returnClaims.put(UPDATED_AT, Integer.parseInt((String) (returnClaims.get(UPDATED_AT))));
+            }
+        }
+        if (returnClaims.containsKey(PHONE_NUMBER_VERIFIED) && returnClaims.get(PHONE_NUMBER_VERIFIED) != null) {
+            if (returnClaims.get(PHONE_NUMBER_VERIFIED) instanceof String) {
+                returnClaims.put(PHONE_NUMBER_VERIFIED, (Boolean.valueOf((String)
+                        (returnClaims.get(PHONE_NUMBER_VERIFIED)))));
+            }
+        }
+        if (returnClaims.containsKey(EMAIL_VERIFIED) && returnClaims.get(EMAIL_VERIFIED) != null) {
+            if (returnClaims.get(EMAIL_VERIFIED) instanceof String) {
+                returnClaims.put(EMAIL_VERIFIED, (Boolean.valueOf((String) (returnClaims.get(EMAIL_VERIFIED)))));
+            }
+        }
+        return returnClaims;
     }
 
 }

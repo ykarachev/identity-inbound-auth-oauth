@@ -84,7 +84,6 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
     private static final String EMAIL_VERIFIED = "email_verified";
 
-
     private static String userAttributeSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
 
     static {

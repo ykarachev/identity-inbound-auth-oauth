@@ -34,7 +34,6 @@ import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
-import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
@@ -82,7 +81,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
         addClientSecret(serviceProvider);
         updateAuthApplication(serviceProvider);
         if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            removeAccessTokensAndAuthCodeFromCache(serviceProvider, tenantDomain, userName, false);
+            removeEntriesFromCache(serviceProvider, tenantDomain, userName, false);
         }
         return true;
     }
@@ -98,7 +97,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
         ServiceProvider serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(applicationName, tenantDomain);
         if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            removeAccessTokensAndAuthCodeFromCache(serviceProvider, tenantDomain, userName, true);
+            removeEntriesFromCache(serviceProvider, tenantDomain, userName, true);
         }
         return true;
     }
@@ -212,7 +211,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                 authenticationRequestConfigConfig.getInboundAuthKey());
     }
 
-    private void removeAccessTokensAndAuthCodeFromCache(ServiceProvider serviceProvider, String tenantDomain, String
+    private void removeEntriesFromCache(ServiceProvider serviceProvider, String tenantDomain, String
             userName, boolean isAppDeleted) throws IdentityApplicationManagementException {
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         Set<String> accessTokens = new HashSet<>();
@@ -238,6 +237,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                     accessTokens.addAll(tokenMgtDAO.getActiveTokensForConsumerKey(oauthKey));
                     authorizationCodes.addAll(tokenMgtDAO.getAuthorizationCodesForConsumerKey(oauthKey));
                     if (isAppDeleted) {
+                        // Remove client credential from AppInfoCache
                         appInfoCache.clearCacheEntry(oauthKey);
                     }
                 }
@@ -265,7 +265,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
 
             if (authorizationCodes.size() > 0) {
                 for (String authorizationCode : authorizationCodes) {
-                    // Remove authorization codes from AuthorizationGrantCache
+                    // Remove authorization code from AuthorizationGrantCache
                     AuthorizationGrantCacheKey grantCacheKey = new AuthorizationGrantCacheKey(authorizationCode);
                     AuthorizationGrantCacheEntry grantCacheEntry = (AuthorizationGrantCacheEntry) AuthorizationGrantCache
                             .getInstance().getValueFromCacheByToken(grantCacheKey);
@@ -274,7 +274,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                     }
 
                     if (isAppDeleted) {
-                        // Remove authorization codes from OAuthCache
+                        // Remove authorization code from OAuthCache
                         OAuthCacheKey oauthCacheKey = new OAuthCacheKey(authorizationCode);
                         CacheEntry oauthCacheEntry = OAuthCache.getInstance().getValueFromCache(oauthCacheKey);
                         if (oauthCacheEntry != null) {

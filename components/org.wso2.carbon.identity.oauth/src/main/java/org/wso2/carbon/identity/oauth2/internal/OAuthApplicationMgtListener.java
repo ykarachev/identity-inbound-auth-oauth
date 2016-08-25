@@ -24,15 +24,21 @@ import org.wso2.carbon.identity.application.common.model.InboundAuthenticationCo
 import org.wso2.carbon.identity.application.common.model.InboundAuthenticationRequestConfig;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
+import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.application.mgt.listener.AbstractApplicationMgtListener;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
+import org.wso2.carbon.identity.oauth.cache.CacheEntry;
+import org.wso2.carbon.identity.oauth.cache.OAuthCache;
+import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
+import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
+import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -84,6 +90,14 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
         return true;
     }
 
+    @Override
+    public boolean doPreDeleteApplication(String applicationName, String tenantDomain, String userName) throws IdentityApplicationManagementException {
+        ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
+        ServiceProvider serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(applicationName, tenantDomain);
+        removeAccessTokensAndAuthCodeFromCache(serviceProvider, tenantDomain, userName);
+        return true;
+    }
+
 
     private void removeClientSecret(ServiceProvider serviceProvider) {
         InboundAuthenticationConfig inboundAuthenticationConfig = serviceProvider.getInboundAuthenticationConfig();
@@ -119,7 +133,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
     private void addClientSecret(ServiceProvider serviceProvider) throws IdentityApplicationManagementException {
 
         if (serviceProvider == null) {
-            return ; // if service provider is not present no need to add this information
+            return; // if service provider is not present no need to add this information
         }
 
         try {
@@ -162,6 +176,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
 
     /**
      * Update the application name if OAuth application presents.
+     *
      * @param serviceProvider Service provider
      * @throws IdentityApplicationManagementException
      */
@@ -220,21 +235,42 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
             }
             if (accessTokens.size() > 0) {
                 for (String accessToken : accessTokens) {
-                    AuthorizationGrantCacheKey cacheKey = new AuthorizationGrantCacheKey(accessToken);
-                    AuthorizationGrantCacheEntry cacheEntry = (AuthorizationGrantCacheEntry) AuthorizationGrantCache
-                            .getInstance().getValueFromCacheByToken(cacheKey);
-                    if (cacheEntry != null) {
-                        AuthorizationGrantCache.getInstance().clearCacheEntryByToken(cacheKey);
+                    // Remove access token from AuthorizationGrantCache
+                    AuthorizationGrantCacheKey grantCacheKey = new AuthorizationGrantCacheKey(accessToken);
+                    AuthorizationGrantCacheEntry grantCacheEntry = (AuthorizationGrantCacheEntry) AuthorizationGrantCache
+                            .getInstance().getValueFromCacheByToken(grantCacheKey);
+                    if (grantCacheEntry != null) {
+                        AuthorizationGrantCache.getInstance().clearCacheEntryByToken(grantCacheKey);
+                    }
+
+                    // Remove access token from OAuthCache
+                    if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+                        OAuthCacheKey oauthCacheKey = new OAuthCacheKey(accessToken);
+                        CacheEntry oauthCacheEntry = OAuthCache.getInstance().getValueFromCache(oauthCacheKey);
+                        if (oauthCacheEntry != null) {
+                            OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
+                        }
                     }
                 }
             }
             if (authorizationCodes.size() > 0) {
-                for (String accessToken : authorizationCodes) {
-                    AuthorizationGrantCacheKey cacheKey = new AuthorizationGrantCacheKey(accessToken);
-                    AuthorizationGrantCacheEntry cacheEntry = (AuthorizationGrantCacheEntry) AuthorizationGrantCache
-                            .getInstance().getValueFromCacheByToken(cacheKey);
-                    if (cacheEntry != null) {
-                        AuthorizationGrantCache.getInstance().clearCacheEntryByCode(cacheKey);
+                for (String authorizationCode : authorizationCodes) {
+
+                    // Remove authorization codes from AuthorizationGrantCache
+                    AuthorizationGrantCacheKey grantCacheKey = new AuthorizationGrantCacheKey(authorizationCode);
+                    AuthorizationGrantCacheEntry grantCacheEntry = (AuthorizationGrantCacheEntry) AuthorizationGrantCache
+                            .getInstance().getValueFromCacheByToken(grantCacheKey);
+                    if (grantCacheEntry != null) {
+                        AuthorizationGrantCache.getInstance().clearCacheEntryByCode(grantCacheKey);
+                    }
+
+                    // Remove authorization codes from OAuthCache
+                    if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+                        OAuthCacheKey oauthCacheKey = new OAuthCacheKey(authorizationCode);
+                        CacheEntry oauthCacheEntry = OAuthCache.getInstance().getValueFromCache(oauthCacheKey);
+                        if (oauthCacheEntry != null) {
+                            OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
+                        }
                     }
                 }
             }

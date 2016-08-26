@@ -219,9 +219,7 @@ public class OIDCLogoutServlet extends HttpServlet {
      * @return
      */
     private static boolean getOpenIDConnectSkipeUserConsent() {
-
-        boolean errorPageUrl = OAuthServerConfiguration.getInstance().getOpenIDConnectSkipeUserConsentConfig();
-        return errorPageUrl;
+        return OAuthServerConfiguration.getInstance().getOpenIDConnectSkipeUserConsentConfig();
 
     }
 }

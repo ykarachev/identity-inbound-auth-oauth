@@ -98,7 +98,13 @@ public class OIDCLogoutServlet extends HttpServlet {
             }
         } else {
             // Get user consent to logout
-            redirectURL = OIDCSessionManagementUtil.getOIDCLogoutConsentURL();
+            boolean skipConsent = OIDCSessionManagementUtil.getOpenIDConnectSkipeUserConsent();
+            if (skipConsent) {
+                sendToFrameworkForLogout(request, response);
+                return;
+            } else {
+                redirectURL = OIDCSessionManagementUtil.getOIDCLogoutConsentURL();
+            }
         }
 
         response.sendRedirect(redirectURL);

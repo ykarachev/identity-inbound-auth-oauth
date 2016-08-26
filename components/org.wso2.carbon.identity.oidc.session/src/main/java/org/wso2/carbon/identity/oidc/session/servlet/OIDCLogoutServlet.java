@@ -12,6 +12,7 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Commo
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oidc.session.OIDCSessionConstants;
 import org.wso2.carbon.identity.oidc.session.cache.OIDCSessionDataCache;
 import org.wso2.carbon.identity.oidc.session.cache.OIDCSessionDataCacheEntry;
@@ -98,7 +99,13 @@ public class OIDCLogoutServlet extends HttpServlet {
             }
         } else {
             // Get user consent to logout
-            redirectURL = OIDCSessionManagementUtil.getOIDCLogoutConsentURL();
+            boolean skipConsent = getOpenIDConnectSkipeUserConsent();
+            if (skipConsent) {
+                sendToFrameworkForLogout(request, response);
+                return;
+            } else {
+                redirectURL = OIDCSessionManagementUtil.getOIDCLogoutConsentURL();
+            }
         }
 
         response.sendRedirect(redirectURL);
@@ -204,5 +211,15 @@ public class OIDCLogoutServlet extends HttpServlet {
 
         OIDCSessionDataCacheKey cacheKey = new OIDCSessionDataCacheKey(sessionDataKey);
         OIDCSessionDataCache.getInstance().clearCacheEntry(cacheKey);
+    }
+
+    /**
+     * Returns the OpenIDConnect User Consent.
+     *
+     * @return
+     */
+    private static boolean getOpenIDConnectSkipeUserConsent() {
+        return OAuthServerConfiguration.getInstance().getOpenIDConnectSkipeUserConsentConfig();
+
     }
 }

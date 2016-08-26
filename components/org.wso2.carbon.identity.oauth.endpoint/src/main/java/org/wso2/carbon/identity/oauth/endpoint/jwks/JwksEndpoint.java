@@ -34,6 +34,7 @@ import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.utils.CarbonUtils;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 
 import javax.ws.rs.GET;
@@ -43,7 +44,6 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.core.MediaType;
 
 
-@Path("/jwks/{tenantDomain : (/tenantDomain)?}")
 public class JwksEndpoint {
     private static final Log log = LogFactory.getLog(JwksEndpoint.class);
     private static final char[] ENCODE_MAP = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".toCharArray();
@@ -52,14 +52,14 @@ public class JwksEndpoint {
     private static final String kid = "d0ec514a32b6f88c0abd12a2840699bdd3deba9d";
 
     @GET
+    @Path(value = "/jwks/{tenantDomain:([\\w.]+)?}")
     @Produces(MediaType.APPLICATION_JSON)
     public String jwks(@PathParam("tenantDomain") String tenantDomain) {
         RSAPublicKey publicKey = null;
         JSONObject jwksJson = new JSONObject();
         FileInputStream file = null;
         try {
-            if (StringUtils.isEmpty(tenantDomain)) {
-
+            if (StringUtils.isEmpty(tenantDomain) || tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
                 file = new FileInputStream(CarbonUtils.getServerConfiguration().getFirstProperty
                         ("Security.KeyStore.Location"));
                 KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());

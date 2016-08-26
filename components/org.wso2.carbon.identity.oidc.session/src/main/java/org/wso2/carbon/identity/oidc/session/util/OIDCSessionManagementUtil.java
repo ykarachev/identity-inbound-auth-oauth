@@ -288,8 +288,8 @@ public class OIDCSessionManagementUtil {
      * @return
      */
     public static boolean getOpenIDConnectSkipeUserConsent() {
-        return OAuthServerConfiguration.getInstance().getOpenIDConnectSkipeUserConsentConfig();
 
+        return OAuthServerConfiguration.getInstance().getOpenIDConnectSkipeUserConsentConfig();
     }
 
     private static String generateSaltValue() throws NoSuchAlgorithmException {

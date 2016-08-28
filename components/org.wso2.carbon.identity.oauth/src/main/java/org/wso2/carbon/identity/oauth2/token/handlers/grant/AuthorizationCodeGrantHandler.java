@@ -83,7 +83,8 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
             authzCodeDO = (AuthzCodeDO) oauthCache.getValueFromCache(cacheKey);
         }
         oAuthAppDO = appInfoCache.getValueFromCache(clientId);
-        if (oAuthAppDO != null) {
+        if (oAuthAppDO == null) {
+            // we need to pull App info from the DB since it was not found in the cache.
             try {
                 oAuthAppDO = new OAuthAppDAO().getAppInformation(clientId);
             } catch (InvalidOAuthClientException e) {

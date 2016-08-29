@@ -53,6 +53,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
     private static final String UPDATED_AT = "updated_at";
     private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
     private static final String EMAIL_VERIFIED = "email_verified";
+    private static final String ADDRESS = "address";
     Map<String, Object> claimsforAddressScope = new HashMap<>();
 
     @Override
@@ -100,9 +101,10 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
                         for (Map.Entry<String, Object> entry : claims.entrySet()) {
                             String requestedClaims = entry.getKey();
                             if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaims)) {
-                                returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
-                                if (requestedScope.equals("address")) {
-                                    claimsforAddressScope.put(entry.getKey(), entry.getKey());
+                                if (!requestedScope.equals(ADDRESS)) {
+                                    returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
+                                } else {
+                                    claimsforAddressScope.put(entry.getKey(), claims.get(entry.getKey()));
                                 }
                             }
                         }
@@ -114,12 +116,12 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         if (!returnClaims.containsKey("sub") || StringUtils.isBlank((String) claims.get("sub"))) {
             returnClaims.put("sub", tokenResponse.getAuthorizedUser());
         }
-        if (claimsforAddressScope != null) {
+        if (claimsforAddressScope.size() > 0) {
+            JSONObject jsonObject = new JSONObject();
             for (Map.Entry<String, Object> entry : claimsforAddressScope.entrySet()) {
-                JSONObject jsonObject = new JSONObject();
                 jsonObject.put(entry.getKey(), claims.get(entry.getKey()));
-                returnClaims.put("address", jsonObject);
             }
+            returnClaims.put(ADDRESS, jsonObject);
         }
         if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
             if (returnClaims.get(UPDATED_AT) instanceof String) {

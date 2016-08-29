@@ -22,8 +22,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
-import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
@@ -31,7 +31,6 @@ import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
@@ -118,13 +117,12 @@ public class AccessTokenIssuer {
         AuthorizationGrantHandler authzGrantHandler = authzGrantHandlers.get(grantType);
 
         // loading the stored application data
-        OAuthAppDO oAuthAppDO = getAppInformation(tokenReqDTO);
-        AuthenticatedUser appDeveloper = oAuthAppDO.getUser();
+        OAuthAppDO oAuthAppDO = OAuthUtil.getAppInformationByClientId(tokenReqDTO.getClientId());
 
         // set the tenantDomain of the SP in the tokenReqDTO
         // indirectly we can say that the tenantDomain of the SP is the tenantDomain of the user who created SP
         // this is done to avoid having to send the tenantDomain as a query param to the token endpoint
-        tokenReqDTO.setTenantDomain(appDeveloper.getTenantDomain());
+        tokenReqDTO.setTenantDomain(OAuthUtil.getTenantDomainOfOauthApp(oAuthAppDO));
 
         OAuthTokenReqMessageContext tokReqMsgCtx = new OAuthTokenReqMessageContext(tokenReqDTO);
         boolean isRefreshRequest = GrantType.REFRESH_TOKEN.toString().equals(grantType);
@@ -180,7 +178,7 @@ public class AccessTokenIssuer {
             return tokenRespDTO;
         }
         if (!authzGrantHandler.isOfTypeApplicationUser()) {
-            tokReqMsgCtx.setAuthorizedUser(appDeveloper);
+            tokReqMsgCtx.setAuthorizedUser(oAuthAppDO.getUser());
         }
 
         boolean isValidGrant = false;
@@ -347,27 +345,6 @@ public class AccessTokenIssuer {
                     //if the user attributes are already saved for access token, no need to add again.
                 }
             }
-        }
-    }
-
-    /**
-     * Get Oauth application information
-     *
-     * @param tokenReqDTO
-     * @return Oauth app information
-     * @throws IdentityOAuth2Exception
-     * @throws InvalidOAuthClientException
-     */
-    private OAuthAppDO getAppInformation(OAuth2AccessTokenReqDTO tokenReqDTO)
-            throws IdentityOAuth2Exception, InvalidOAuthClientException {
-
-        OAuthAppDO oAuthAppDO = appInfoCache.getValueFromCache(tokenReqDTO.getClientId());
-        if (oAuthAppDO != null) {
-            return oAuthAppDO;
-        } else {
-            oAuthAppDO = new OAuthAppDAO().getAppInformation(tokenReqDTO.getClientId());
-            appInfoCache.addToCache(tokenReqDTO.getClientId(), oAuthAppDO);
-            return oAuthAppDO;
         }
     }
 

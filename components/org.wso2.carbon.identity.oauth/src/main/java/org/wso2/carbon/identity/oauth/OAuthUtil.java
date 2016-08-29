@@ -23,12 +23,19 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.xml.security.utils.Base64;
+import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.registry.core.utils.UUIDGenerator;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
@@ -126,6 +133,43 @@ public final class OAuthUtil {
         authenticatedUser.setUserName(MultitenantUtils.getTenantAwareUsername(username));
 
         return authenticatedUser;
+    }
+
+
+    /**
+     * Get Oauth application information
+     *
+     * @param clientId
+     * @return Oauth app information
+     * @throws IdentityOAuth2Exception
+     * @throws InvalidOAuthClientException
+     */
+    public static OAuthAppDO getAppInformationByClientId(String clientId)
+            throws IdentityOAuth2Exception, InvalidOAuthClientException {
+
+        OAuthAppDO oAuthAppDO = AppInfoCache.getInstance().getValueFromCache(clientId);
+        if (oAuthAppDO != null) {
+            return oAuthAppDO;
+        } else {
+            oAuthAppDO = new OAuthAppDAO().getAppInformation(clientId);
+            AppInfoCache.getInstance().addToCache(clientId, oAuthAppDO);
+            return oAuthAppDO;
+        }
+    }
+
+    /**
+     * Get the tenant domain of an oauth application
+     *
+     * @param oAuthAppDO
+     * @return
+     */
+    public static String getTenantDomainOfOauthApp(OAuthAppDO oAuthAppDO) {
+        String tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+        if (oAuthAppDO != null) {
+            AuthenticatedUser appDeveloper = oAuthAppDO.getUser();
+            tenantDomain = appDeveloper.getTenantDomain();
+        }
+        return tenantDomain;
     }
 
 }

@@ -29,6 +29,7 @@ import org.wso2.carbon.identity.oauth.callback.OAuthCallback;
 import org.wso2.carbon.identity.oauth.callback.OAuthCallbackManager;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2UnAuthorizedClientException;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
@@ -71,18 +72,20 @@ public abstract class AbstractResponseTypeHandler implements ResponseTypeHandler
                 if (!oAuthAppDO.getGrantTypes().contains("authorization_code")) {
                     log.debug("Unsupported Response Type : " + responseType +
                             " for client id : " + authzReqDTO.getConsumerKey());
-                    handleErrorRequest(oauthAuthzMsgCtx, OAuthError.CodeResponse.UNSUPPORTED_RESPONSE_TYPE,
-                            "Unsupported Response Type!");
-                    return false;
+                    handleErrorRequest(oauthAuthzMsgCtx, OAuthError.CodeResponse.UNAUTHORIZED_CLIENT,
+                            "The authenticated client is not authorized to use this authorization grant type");
+                    throw new IdentityOAuth2UnAuthorizedClientException("The authenticated client is not authorized " +
+                            "to use this authorization grant type");
                 }
             } else if (StringUtils.contains(responseType, ResponseType.TOKEN.toString()) &&
                     !oAuthAppDO.getGrantTypes().contains(IMPLICIT)) {
                 //Do not change this log format as these logs use by external applications
                 log.debug("Unsupported Response Type : " + responseType + " for client id : " + authzReqDTO
                         .getConsumerKey());
-                handleErrorRequest(oauthAuthzMsgCtx, OAuthError.CodeResponse.UNSUPPORTED_RESPONSE_TYPE,
-                        "Unsupported Response Type!");
-                return false;
+                handleErrorRequest(oauthAuthzMsgCtx, OAuthError.CodeResponse.UNAUTHORIZED_CLIENT,
+                        "The authenticated client is not authorized to use this authorization grant type");
+                throw new IdentityOAuth2UnAuthorizedClientException("The authenticated client is not authorized to" +
+                        " use this authorization grant type");
             }
         }
 

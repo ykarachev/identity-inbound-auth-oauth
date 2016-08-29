@@ -29,6 +29,7 @@ import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientExcepti
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2UnAuthorizedClientException;
 import org.wso2.carbon.identity.oauth2.authz.handlers.ResponseTypeHandler;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
@@ -95,8 +96,15 @@ public class AuthorizationHandlerManager {
         OAuthAppDO oAuthAppDO = getAppInformation(authzReqDTO);
 
         authzReqMsgCtx.addProperty("OAuthAppDO", oAuthAppDO);
-
-        boolean accessDelegationAuthzStatus = authzHandler.validateAccessDelegation(authzReqMsgCtx);
+        boolean accessDelegationAuthzStatus = false;
+        try {
+            accessDelegationAuthzStatus = authzHandler.validateAccessDelegation(authzReqMsgCtx);
+        } catch (IdentityOAuth2UnAuthorizedClientException e) {
+            handleErrorRequest(authorizeRespDTO, OAuthError.CodeResponse.UNAUTHORIZED_CLIENT,
+                    "The authenticated client is not authorized to use this authorization grant type");
+            authorizeRespDTO.setCallbackURI(authzReqDTO.getCallbackUrl());
+            return authorizeRespDTO;
+        }
         if(authzReqMsgCtx.getProperty("ErrorCode") != null){
             authorizeRespDTO.setErrorCode((String)authzReqMsgCtx.getProperty("ErrorCode"));
             authorizeRespDTO.setErrorMsg((String)authzReqMsgCtx.getProperty("ErrorMsg"));

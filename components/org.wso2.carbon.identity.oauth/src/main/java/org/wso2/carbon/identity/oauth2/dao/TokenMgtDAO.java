@@ -215,8 +215,7 @@ public class TokenMgtDAO {
             AuthzCodeDO authzCodeDO = new AuthzCodeDO();
             authzCodeDO.setAuthorizationCode(authzCode);
             authzCodeDO.setOauthTokenId(tokenId);
-            List<AuthzCodeDO> authzCodeDOList = new ArrayList<>(Arrays.asList(authzCodeDO));
-            deactivateAuthorizationCode(authzCodeDOList);
+            deactivateAuthorizationCode(authzCodeDO);
         }
     }
 
@@ -325,22 +324,19 @@ public class TokenMgtDAO {
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         try {
+            connection.setAutoCommit(false);
             if (existingAccessTokenDO != null) {
                 //  Mark the existing access token as expired on database if a token exist for the user
                 setAccessTokenState(connection, existingAccessTokenDO.getTokenId(), OAuthConstants.TokenStates
                         .TOKEN_STATE_EXPIRED, UUID.randomUUID().toString(), userStoreDomain);
             }
-
+            storeAccessToken(accessToken, consumerKey, newAccessTokenDO, connection, userStoreDomain);
             if (newAccessTokenDO.getAuthorizationCode() != null) {
-                storeAccessToken(accessToken, consumerKey, newAccessTokenDO, connection, userStoreDomain);
                 // expire authz code and insert issued access token against authz code
                 AuthzCodeDO authzCodeDO = new AuthzCodeDO();
                 authzCodeDO.setAuthorizationCode(newAccessTokenDO.getAuthorizationCode());
                 authzCodeDO.setOauthTokenId(newAccessTokenDO.getTokenId());
-                List<AuthzCodeDO> authzCodeDOList = new ArrayList<>(Arrays.asList(authzCodeDO));
-                deactivateAuthorizationCode(authzCodeDOList);
-            } else {
-                storeAccessToken(accessToken, consumerKey, newAccessTokenDO, connection, userStoreDomain);
+                deactivateAuthorizationCode(authzCodeDO, connection);
             }
             connection.commit();
             return true;
@@ -723,6 +719,34 @@ public class TokenMgtDAO {
             throw new IdentityOAuth2Exception("Error when deactivating authorization code", e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, prepStmt);
+        }
+    }
+
+    public void deactivateAuthorizationCode(AuthzCodeDO authzCodeDO) throws IdentityOAuth2Exception {
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        try {
+            deactivateAuthorizationCode(authzCodeDO, connection);
+            connection.commit();
+        } catch (SQLException e) {
+            throw new IdentityOAuth2Exception("Error when deactivating authorization code", e);
+        } finally {
+            IdentityDatabaseUtil.closeConnection(connection);
+        }
+
+    }
+
+    private void deactivateAuthorizationCode(AuthzCodeDO authzCodeDO, Connection connection) throws
+            IdentityOAuth2Exception {
+        PreparedStatement prepStmt = null;
+        try {
+            prepStmt = connection.prepareStatement(SQLQueries.DEACTIVATE_AUTHZ_CODE_AND_INSERT_CURRENT_TOKEN);
+            prepStmt.setString(1, authzCodeDO.getOauthTokenId());
+            prepStmt.setString(2, persistenceProcessor.getPreprocessedAuthzCode(authzCodeDO.getAuthorizationCode()));
+            prepStmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new IdentityOAuth2Exception("Error when deactivating authorization code", e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(null, null, prepStmt);
         }
     }
 

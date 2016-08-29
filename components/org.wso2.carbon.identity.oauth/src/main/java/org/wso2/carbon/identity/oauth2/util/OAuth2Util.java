@@ -816,7 +816,7 @@ public class OAuth2Util {
         if(!isPKCESupportEnabled()) {
             return true;
         }
-        if(oAuthAppDO.isPkceMandatory() || referenceCodeChallenge != null){
+        if (oAuthAppDO != null && oAuthAppDO.isPkceMandatory() || referenceCodeChallenge != null) {
 
             //As per RFC 7636 Fallback to 'plain' if no code_challenge_method parameter is sent
             if(challenge_method == null || challenge_method.trim().length() == 0) {

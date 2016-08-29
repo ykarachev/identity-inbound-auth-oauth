@@ -22,7 +22,12 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
+import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
+import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.callback.OAuthCallback;
@@ -117,4 +122,39 @@ public abstract class AbstractResponseTypeHandler implements ResponseTypeHandler
         authzReqMessageContext.addProperty("ErrorCode", errorCode);
         authzReqMessageContext.addProperty("ErrorMsg", errorMsg);
     }
+
+    @Override
+    public boolean isAuthorizedClient(OAuthAuthzReqMessageContext authzReqMsgCtx) throws IdentityOAuth2Exception {
+
+        OAuth2AuthorizeReqDTO authzReqDTO = authzReqMsgCtx.getAuthorizationReqDTO();
+
+        String grantType = null;
+
+        if (ResponseType.CODE.equals(authzReqDTO.getResponseType())) {
+            grantType = GrantType.AUTHORIZATION_CODE.toString();
+        } else if (ResponseType.TOKEN.toString().equals(authzReqDTO.getResponseType())) {
+            grantType = OAuthConstants.GrantTypes.IMPLICIT;
+        }
+
+        OAuthAppDO oAuthAppDO = (OAuthAppDO)authzReqMsgCtx.getProperty("OAuthAppDO");
+        String consumerKey = authzReqDTO.getConsumerKey();
+
+        if (StringUtils.isBlank(oAuthAppDO.getGrantTypes())) {
+            if (log.isDebugEnabled()) {
+                log.debug("Could not find authorized grant types for client id: " + consumerKey);
+            }
+            return false;
+        }
+        // If the application has defined a limited set of grant types, then check the grant
+        if (!oAuthAppDO.getGrantTypes().contains(grantType)) {
+            if (log.isDebugEnabled()) {
+                //Do not change this log format as these logs use by external applications
+                log.debug("Unsupported Grant Type : " + grantType + " for client id : " + consumerKey);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
 }

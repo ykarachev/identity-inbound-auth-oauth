@@ -81,7 +81,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
         addClientSecret(serviceProvider);
         updateAuthApplication(serviceProvider);
         if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            removeEntriesFromCache(serviceProvider, tenantDomain, userName, false);
+            removeEntriesFromCache(serviceProvider, tenantDomain, userName);
         }
         return true;
     }
@@ -97,7 +97,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
         ServiceProvider serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(applicationName, tenantDomain);
         if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            removeEntriesFromCache(serviceProvider, tenantDomain, userName, true);
+            removeEntriesFromCache(serviceProvider, tenantDomain, userName);
         }
         return true;
     }
@@ -211,8 +211,8 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                 authenticationRequestConfigConfig.getInboundAuthKey());
     }
 
-    private void removeEntriesFromCache(ServiceProvider serviceProvider, String tenantDomain, String
-            userName, boolean isAppDeleted) throws IdentityApplicationManagementException {
+    private void removeEntriesFromCache(ServiceProvider serviceProvider, String tenantDomain, String userName)
+            throws IdentityApplicationManagementException {
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         Set<String> accessTokens = new HashSet<>();
         Set<String> authorizationCodes = new HashSet<>();
@@ -236,10 +236,8 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                 for (String oauthKey : oauthKeys) {
                     accessTokens.addAll(tokenMgtDAO.getActiveTokensForConsumerKey(oauthKey));
                     authorizationCodes.addAll(tokenMgtDAO.getAuthorizationCodesForConsumerKey(oauthKey));
-                    if (isAppDeleted) {
-                        // Remove client credential from AppInfoCache
-                        appInfoCache.clearCacheEntry(oauthKey);
-                    }
+                    // Remove client credential from AppInfoCache
+                    appInfoCache.clearCacheEntry(oauthKey);
                 }
             }
             if (accessTokens.size() > 0) {
@@ -252,13 +250,11 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                         AuthorizationGrantCache.getInstance().clearCacheEntryByToken(grantCacheKey);
                     }
 
-                    if (isAppDeleted) {
-                        // Remove access token from OAuthCache
-                        OAuthCacheKey oauthCacheKey = new OAuthCacheKey(accessToken);
-                        CacheEntry oauthCacheEntry = OAuthCache.getInstance().getValueFromCache(oauthCacheKey);
-                        if (oauthCacheEntry != null) {
-                            OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
-                        }
+                    // Remove access token from OAuthCache
+                    OAuthCacheKey oauthCacheKey = new OAuthCacheKey(accessToken);
+                    CacheEntry oauthCacheEntry = OAuthCache.getInstance().getValueFromCache(oauthCacheKey);
+                    if (oauthCacheEntry != null) {
+                        OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
                     }
                 }
             }
@@ -273,13 +269,11 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
                         AuthorizationGrantCache.getInstance().clearCacheEntryByCode(grantCacheKey);
                     }
 
-                    if (isAppDeleted) {
-                        // Remove authorization code from OAuthCache
-                        OAuthCacheKey oauthCacheKey = new OAuthCacheKey(authorizationCode);
-                        CacheEntry oauthCacheEntry = OAuthCache.getInstance().getValueFromCache(oauthCacheKey);
-                        if (oauthCacheEntry != null) {
-                            OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
-                        }
+                    // Remove authorization code from OAuthCache
+                    OAuthCacheKey oauthCacheKey = new OAuthCacheKey(authorizationCode);
+                    CacheEntry oauthCacheEntry = OAuthCache.getInstance().getValueFromCache(oauthCacheKey);
+                    if (oauthCacheEntry != null) {
+                        OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
                     }
                 }
             }

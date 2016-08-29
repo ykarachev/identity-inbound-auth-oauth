@@ -423,6 +423,9 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         Map<ClaimMapping, String> userAttributes = authorizeReqDTO.getUser().getUserAttributes();
         AuthorizationGrantCacheKey authorizationGrantCacheKey = new AuthorizationGrantCacheKey(accessToken);
         AuthorizationGrantCacheEntry authorizationGrantCacheEntry = new AuthorizationGrantCacheEntry(userAttributes);
+        if (StringUtils.isNotBlank(authorizationGrantCacheEntry.getEssentialClaims())) {
+            authorizationGrantCacheEntry.setEssentialClaims(authorizeReqDTO.getEssentialClaims());
+        }
 
         String sub = userAttributes.get(OAuth2Util.SUB);
 

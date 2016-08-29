@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.oauth.endpoint.user.impl;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.json.JSONObject;
 import org.apache.oltu.oauth2.common.utils.JSONUtils;
 import org.json.JSONObject;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
@@ -41,12 +42,18 @@ import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Enumeration;
+import java.util.Arrays;
+import java.util.Iterator;
 
 /**
  *
  */
 public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
     private static final Log log = LogFactory.getLog(UserInfoJSONResponseBuilder.class);
+    private ArrayList<String> lstEssential = new ArrayList<>();
     private static final String UPDATED_AT = "updated_at";
     private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
     private static final String EMAIL_VERIFIED = "email_verified";
@@ -134,6 +141,11 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         if (!returnClaims.containsKey("sub") || StringUtils.isBlank((String) claims.get("sub"))) {
             returnClaims.put("sub", tokenResponse.getAuthorizedUser());
         }
+        if (lstEssential != null) {
+            for (String key : lstEssential) {
+                returnClaims.put(key, claims.get(key));
+            }
+        }
         return JSONUtils.buildJSON(returnClaims);
     }
 
@@ -147,7 +159,40 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
             return new HashMap<ClaimMapping, String>();
         }
 
+        if (StringUtils.isNotEmpty(cacheEntry.getEssentialClaims())) {
+            lstEssential = getEssentialClaims(cacheEntry.getEssentialClaims());
+        }
         return cacheEntry.getUserAttributes();
+    }
+
+    private ArrayList<String> getEssentialClaims(String essentialClaims) {
+        JSONObject jsonObjectClaims = new JSONObject(essentialClaims);
+        String key;
+        ArrayList essentailClaimslist = new ArrayList();
+        if ((jsonObjectClaims != null) && jsonObjectClaims.toString().contains("userinfo")) {
+            JSONObject newJSON = jsonObjectClaims.getJSONObject("userinfo");
+            Iterator<?> keys = newJSON.keys();
+            while (keys.hasNext()) {
+                key = (String) keys.next();
+                String value = null;
+                if (newJSON != null) {
+                    value = newJSON.get(key).toString();
+                }
+                JSONObject jsonObjectValues = new JSONObject(value);
+                if (jsonObjectValues != null) {
+                    Iterator<?> claimKeyValues = jsonObjectValues.keys();
+                    while (claimKeyValues.hasNext()) {
+                        String claimKeys = (String) claimKeyValues.next();
+                        String claimValues = jsonObjectValues.get(claimKeys).toString();
+                        if (claimValues.equals("true") && claimKeys.equals("essential")) {
+                            essentailClaimslist.add(key);
+                        }
+                    }
+                }
+            }
+        }
+
+        return essentailClaimslist;
     }
 
 }

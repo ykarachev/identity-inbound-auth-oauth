@@ -24,7 +24,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.core.dao.OpenIDSQLQueries;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
@@ -1393,11 +1395,51 @@ public class TokenMgtDAO {
         try {
             connection.setAutoCommit(false);
 
-            String sql = SQLQueries.DELETE_IDN_OPENID_USER_RPS;
+            String sql = OpenIDSQLQueries.DELETE_USER_RPS;
 
             ps = connection.prepareStatement(sql);
             ps.setString(1, username);
             ps.setString(2, applicationName);
+            ps.execute();
+            connection.commit();
+
+        } catch (SQLException e) {
+            String errorMsg = "Error deleting OAuth consent of Application " + applicationName + " and User " + username;
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+        }
+    }
+
+    /**
+     * Revoke the OAuth Consent which is recorded in the IDN_OPENID_USER_RPS table against the user for a particular
+     * Application
+     *
+     * @param username        - Username of the Consent owner
+     * @param tenantDomain    - Tenant Domain of the User
+     * @param applicationName - Name of the OAuth App
+     * @throws org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception - If an unexpected error occurs.
+     */
+    public void revokeOAuthConsentByApplicationAndUser(String username, String tenantDomain, String applicationName)
+            throws IdentityOAuth2Exception {
+
+        if (username == null || applicationName == null) {
+            log.error("Could not remove consent of user " + username + " for application " + applicationName);
+            return;
+        }
+
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        PreparedStatement ps = null;
+
+        try {
+            connection.setAutoCommit(false);
+
+            String sql = OpenIDSQLQueries.DELETE_USER_RPS_IN_TENANT;
+
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, username);
+            ps.setInt(2, IdentityTenantUtil.getTenantId(tenantDomain));
+            ps.setString(3, applicationName);
             ps.execute();
             connection.commit();
 

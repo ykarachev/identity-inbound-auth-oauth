@@ -511,7 +511,7 @@ public class OAuthAdminService extends AbstractAdmin {
                         }
 
                         try {
-                            tokenMgtDAO.revokeOAuthConsentByApplicationAndUser(userName, appName);
+                            tokenMgtDAO.revokeOAuthConsentByApplicationAndUser(tenantAwareUserName, tenantDomain, appName);
                         } catch (IdentityOAuth2Exception e) {
                             String errorMsg = "Error occurred while removing OAuth Consent of Application " + appName +
                                     " of user " + userName;

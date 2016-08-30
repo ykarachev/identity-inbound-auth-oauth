@@ -1431,7 +1431,7 @@ public class TokenMgtDAO {
         try {
             connection.setAutoCommit(false);
 
-            String sql = SQLQueries.DELETE_IDN_OPENID_USER_RPS;
+            String sql = OpenIDSQLQueries.DELETE_USER_RPS;
 
             ps = connection.prepareStatement(sql);
             ps.setString(1, username);
@@ -1469,7 +1469,7 @@ public class TokenMgtDAO {
         try {
             connection.setAutoCommit(false);
 
-            String sql = OpenIDSQLQueries.DELETE_IDN_OPENID_USER_RPS;
+            String sql = OpenIDSQLQueries.DELETE_USER_RPS_IN_TENANT;
 
             ps = connection.prepareStatement(sql);
             ps.setString(1, username);

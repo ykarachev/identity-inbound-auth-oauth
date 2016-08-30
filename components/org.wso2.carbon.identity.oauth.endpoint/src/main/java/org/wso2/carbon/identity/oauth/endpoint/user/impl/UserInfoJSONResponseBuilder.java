@@ -22,7 +22,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.utils.JSONUtils;
 import org.json.JSONObject;
-import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
@@ -36,17 +35,17 @@ import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
 import org.wso2.carbon.identity.oauth.user.UserInfoResponseBuilder;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.registry.core.service.RegistryService;
-import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import java.util.ArrayList;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Enumeration;
 import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 /**
  *
@@ -67,7 +66,12 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         try {
             PrivilegedCarbonContext.startTenantFlow();
             PrivilegedCarbonContext carbonContext = PrivilegedCarbonContext.getThreadLocalCarbonContext();
-            int tenantId = IdentityTenantUtil.getTenantIdOfUser(tokenResponse.getAuthorizedUser());
+            /*
+                We can't get any information related to SP tenantDomain using the tokenResponse directly or indirectly.
+                Therefore we make use of the thread local variable set at the UserInfo endpoint to get the tenantId
+                of the service provider
+             */
+            int tenantId = OAuth2Util.getClientTenatId();
             String tenantDomain = IdentityTenantUtil.getTenantDomain(tenantId);
             carbonContext.setTenantId(tenantId);
             carbonContext.setTenantDomain(tenantDomain);
@@ -76,6 +80,8 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         } catch (RegistryException e) {
             log.error("Error while obtaining registry collection from :" + OAuthConstants.SCOPE_RESOURCE_PATH, e);
         } finally {
+            // clear the thread local that contained the SP tenantId
+            OAuth2Util.clearClientTenantId();
             PrivilegedCarbonContext.endTenantFlow();
         }
 

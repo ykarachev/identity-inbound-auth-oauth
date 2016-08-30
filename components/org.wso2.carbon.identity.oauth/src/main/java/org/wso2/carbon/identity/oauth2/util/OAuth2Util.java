@@ -29,7 +29,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
-import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
@@ -44,6 +43,7 @@ import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
+import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
@@ -56,27 +56,27 @@ import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
-import javax.xml.namespace.QName;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-import java.nio.file.Paths;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileInputStream;
-import java.io.InputStream;
+import javax.xml.namespace.QName;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
 
 
@@ -913,6 +913,49 @@ public class OAuth2Util {
         } catch (RegistryException e) {
             log.error("Error while creating registry collection for :" + OAuthConstants.SCOPE_RESOURCE_PATH, e);
         }
+    }
+
+    public static AccessTokenDO getAccessTokenDOfromTokenIdentifier(String accessTokenIdentifier) throws
+            IdentityOAuth2Exception {
+        boolean cacheHit = false;
+        AccessTokenDO accessTokenDO = null;
+        // check the cache, if caching is enabled.
+        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+            OAuthCache oauthCache = OAuthCache.getInstance();
+            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+            CacheEntry result = oauthCache.getValueFromCache(cacheKey);
+            // cache hit, do the type check.
+            if (result instanceof AccessTokenDO) {
+                accessTokenDO = (AccessTokenDO) result;
+                cacheHit = true;
+            }
+        }
+        // cache miss, load the access token info from the database.
+        if (accessTokenDO == null) {
+            accessTokenDO = new TokenMgtDAO().retrieveAccessToken(accessTokenIdentifier, false);
+        }
+
+        if (accessTokenDO == null) {
+            throw new IllegalArgumentException("Invalid access token");
+        }
+
+        // add the token back to the cache in the case of a cache miss
+        if (OAuthServerConfiguration.getInstance().isCacheEnabled() && !cacheHit) {
+            OAuthCache oauthCache = OAuthCache.getInstance();
+            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+            oauthCache.addToCache(cacheKey, accessTokenDO);
+            if (log.isDebugEnabled()) {
+                log.debug("Access Token Info object was added back to the cache.");
+            }
+        }
+
+        return accessTokenDO;
+    }
+
+
+    public static String getClientIdForAccessToken(String accessTokenIdentifier) throws IdentityOAuth2Exception {
+        AccessTokenDO accessTokenDO = getAccessTokenDOfromTokenIdentifier(accessTokenIdentifier);
+        return accessTokenDO.getConsumerKey();
     }
 
     private static Map<String, String> loadScopeConfigFile() {

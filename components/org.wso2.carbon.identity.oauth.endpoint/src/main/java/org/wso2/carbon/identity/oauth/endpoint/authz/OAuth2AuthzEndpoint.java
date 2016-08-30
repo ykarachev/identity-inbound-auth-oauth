@@ -63,6 +63,17 @@ import org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtil;
 import org.wso2.carbon.registry.core.utils.UUIDGenerator;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -78,17 +89,6 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLEncoder;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.List;
-import java.util.Arrays;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Path("/authorize")
 public class OAuth2AuthzEndpoint {
@@ -745,8 +745,10 @@ public class OAuth2AuthzEndpoint {
 
         boolean forceAuthenticate = false;
         boolean checkAuthentication = false;
-        // values {none, login, consent, select_profile}
-        String[] arrPrompt = new String[]{"none", "login", "consent", "select_profile"};
+        // prompt values = {none, login, consent, select_account}
+        String[] arrPrompt = new String[]{OAuthConstants.Prompt.NONE, OAuthConstants.Prompt.LOGIN,
+                OAuthConstants.Prompt.CONSENT, OAuthConstants.Prompt.SELECT_ACCOUNT};
+
         List lstPrompt = Arrays.asList(arrPrompt);
         boolean contains_none = (OAuthConstants.Prompt.NONE).equals(prompt);
         String[] prompts;

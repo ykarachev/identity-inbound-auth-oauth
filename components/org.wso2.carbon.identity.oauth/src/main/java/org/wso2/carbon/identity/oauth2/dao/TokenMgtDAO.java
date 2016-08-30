@@ -25,11 +25,12 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.core.dao.OpenIDSQLQueries;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessor;
 import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
@@ -1440,6 +1441,85 @@ public class TokenMgtDAO {
 
         } catch (SQLException e) {
             String errorMsg = "Error deleting OAuth consent of Application " + applicationName + " and User " + username;
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+        }
+    }
+
+    /**
+     * Revoke the OAuth Consent which is recorded in the IDN_OPENID_USER_RPS table against the user for a particular
+     * Application
+     *
+     * @param username        - Username of the Consent owner
+     * @param applicationName - Name of the OAuth App
+     * @throws org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception - If an unexpected error occurs.
+     */
+    public void revokeOAuthConsentByApplicationAndUser(String username, String tenantDomain, String applicationName)
+            throws IdentityOAuth2Exception {
+
+        if (username == null || applicationName == null) {
+            log.error("Could not remove consent of user " + username + " for application " + applicationName);
+            return;
+        }
+
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        PreparedStatement ps = null;
+
+        try {
+            connection.setAutoCommit(false);
+
+            String sql = OpenIDSQLQueries.DELETE_IDN_OPENID_USER_RPS;
+
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, username);
+            ps.setInt(2, IdentityTenantUtil.getTenantId(tenantDomain));
+            ps.setString(3, applicationName);
+            ps.execute();
+            connection.commit();
+
+        } catch (SQLException e) {
+            String errorMsg = "Error deleting OAuth consent of Application " + applicationName + " and User " + username;
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+        }
+    }
+
+    /**
+     * Update the OAuth Consent Approve Always which is recorded in the IDN_OPENID_USER_RPS table against the user for a particular
+     * Application
+     *
+     * @param tenantAwareUserName - Username of the Consent owner
+     * @param applicationName     - Name of the OAuth App
+     * @throws org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception - If an unexpected error occurs.
+     */
+    public void updateApproveAlwaysForAppConsentByResourceOwner(String tenantAwareUserName, String tenantDomain, String applicationName, String state)
+            throws IdentityOAuth2Exception {
+
+        if (tenantAwareUserName == null || applicationName == null) {
+            log.error("Could not remove consent of user " + tenantAwareUserName + " for application " + applicationName);
+            return;
+        }
+
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        PreparedStatement ps = null;
+
+        try {
+            connection.setAutoCommit(false);
+
+            String sql = OpenIDSQLQueries.UPDATE_TRUSTED_ALWAYS_IDN_OPENID_USER_RPS;
+
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, state);
+            ps.setString(2, tenantAwareUserName);
+            ps.setInt(3, IdentityTenantUtil.getTenantId(tenantDomain));
+            ps.setString(4, applicationName);
+            ps.execute();
+            connection.commit();
+
+        } catch (SQLException e) {
+            String errorMsg = "Error updating trusted always in a consent of Application " + applicationName + " and User " + tenantAwareUserName;
             throw new IdentityOAuth2Exception(errorMsg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);

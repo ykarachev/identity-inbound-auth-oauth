@@ -33,17 +33,20 @@ import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
+import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
+import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
@@ -54,6 +57,7 @@ import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import javax.xml.namespace.QName;
@@ -77,7 +81,7 @@ public class OAuth2Util {
 
     public static final String REMOTE_ACCESS_TOKEN = "REMOTE_ACCESS_TOKEN";
     public static final String JWT_ACCESS_TOKEN = "JWT_ACCESS_TOKEN";
-    
+
 
     /*
      * OPTIONAL. A JSON string containing a space-separated list of scopes associated with this token, in the format
@@ -140,7 +144,7 @@ public class OAuth2Util {
      */
     public static final String IAT = "iat";
 
-    
+
     private static Log log = LogFactory.getLog(OAuth2Util.class);
     private static boolean cacheEnabled = OAuthServerConfiguration.getInstance().isCacheEnabled();
     private static OAuthCache cache = OAuthCache.getInstance();
@@ -154,9 +158,9 @@ public class OAuth2Util {
     private OAuth2Util(){
 
     }
-    
+
     /**
-     * 
+     *
      * @return
      */
     public static OAuthAuthzReqMessageContext getAuthzRequestContext() {
@@ -167,7 +171,7 @@ public class OAuth2Util {
     }
 
     /**
-     * 
+     *
      * @param context
      */
     public static void setAuthzRequestContext(OAuthAuthzReqMessageContext context) {
@@ -178,7 +182,7 @@ public class OAuth2Util {
     }
 
     /**
-     * 
+     *
      */
     public static void clearAuthzRequestContext() {
 	authzRequestContext.remove();
@@ -186,9 +190,9 @@ public class OAuth2Util {
 	    log.debug("Cleared OAuthAuthzReqMessageContext");
 	}
     }
-    
+
     /**
-     * 
+     *
      * @return
      */
     public static OAuthTokenReqMessageContext getTokenRequestContext() {
@@ -199,7 +203,7 @@ public class OAuth2Util {
     }
 
     /**
-     * 
+     *
      * @param context
      */
     public static void setTokenRequestContext(OAuthTokenReqMessageContext context) {
@@ -210,7 +214,7 @@ public class OAuth2Util {
     }
 
     /**
-     * 
+     *
      */
     public static void clearTokenRequestContext() {
 	tokenRequestContext.remove();
@@ -905,6 +909,49 @@ public class OAuth2Util {
         }
     }
 
+    public static AccessTokenDO getAccessTokenDOfromTokenIdentifier(String accessTokenIdentifier) throws
+            IdentityOAuth2Exception {
+        boolean cacheHit = false;
+        AccessTokenDO accessTokenDO = null;
+        // check the cache, if caching is enabled.
+        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+            OAuthCache oauthCache = OAuthCache.getInstance();
+            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+            CacheEntry result = oauthCache.getValueFromCache(cacheKey);
+            // cache hit, do the type check.
+            if (result instanceof AccessTokenDO) {
+                accessTokenDO = (AccessTokenDO) result;
+                cacheHit = true;
+            }
+        }
+        // cache miss, load the access token info from the database.
+        if (accessTokenDO == null) {
+            accessTokenDO = new TokenMgtDAO().retrieveAccessToken(accessTokenIdentifier, false);
+        }
+
+        if (accessTokenDO == null) {
+            throw new IllegalArgumentException("Invalid access token");
+        }
+
+        // add the token back to the cache in the case of a cache miss
+        if (OAuthServerConfiguration.getInstance().isCacheEnabled() && !cacheHit) {
+            OAuthCache oauthCache = OAuthCache.getInstance();
+            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+            oauthCache.addToCache(cacheKey, accessTokenDO);
+            if (log.isDebugEnabled()) {
+                log.debug("Access Token Info object was added back to the cache.");
+            }
+        }
+
+        return accessTokenDO;
+    }
+
+
+    public static String getClientIdForAccessToken(String accessTokenIdentifier) throws IdentityOAuth2Exception {
+        AccessTokenDO accessTokenDO = getAccessTokenDOfromTokenIdentifier(accessTokenIdentifier);
+        return accessTokenDO.getConsumerKey();
+    }
+
     private static Map<String, String> loadScopeConfigFile() {
         Map<String, String> scopes = new HashMap<>();
         String carbonHome = System.getProperty(CarbonBaseConstants.CARBON_HOME);
@@ -962,4 +1009,41 @@ public class OAuth2Util {
         }
         return claimConfig.toString();
     }
+
+    /**
+     * Get Oauth application information
+     *
+     * @param clientId
+     * @return Oauth app information
+     * @throws IdentityOAuth2Exception
+     * @throws InvalidOAuthClientException
+     */
+    public static OAuthAppDO getAppInformationByClientId(String clientId)
+            throws IdentityOAuth2Exception, InvalidOAuthClientException {
+
+        OAuthAppDO oAuthAppDO = AppInfoCache.getInstance().getValueFromCache(clientId);
+        if (oAuthAppDO != null) {
+            return oAuthAppDO;
+        } else {
+            oAuthAppDO = new OAuthAppDAO().getAppInformation(clientId);
+            AppInfoCache.getInstance().addToCache(clientId, oAuthAppDO);
+            return oAuthAppDO;
+        }
+    }
+
+    /**
+     * Get the tenant domain of an oauth application
+     *
+     * @param oAuthAppDO
+     * @return
+     */
+    public static String getTenantDomainOfOauthApp(OAuthAppDO oAuthAppDO) {
+        String tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+        if (oAuthAppDO != null) {
+            AuthenticatedUser appDeveloper = oAuthAppDO.getUser();
+            tenantDomain = appDeveloper.getTenantDomain();
+        }
+        return tenantDomain;
+    }
+
 }

@@ -94,11 +94,26 @@ public class ClaimUtil {
                 return mappedAppClaims;
             }
             ClaimMapping[] requestedLocalClaimMap = serviceProvider.getClaimConfig().getClaimMappings();
+            String subjectClaimURI = serviceProvider.getLocalAndOutBoundAuthenticationConfig().getSubjectClaimUri();
+            if (serviceProvider.getClaimConfig().getClaimMappings() != null) {
+                for (ClaimMapping claimMapping : serviceProvider.getClaimConfig().getClaimMappings()) {
+                    if (claimMapping.getRemoteClaim().getClaimUri().equals(subjectClaimURI)) {
+                        subjectClaimURI = claimMapping.getLocalClaim().getClaimUri();
+                        break;
+                    }
+                }
+            }
+            claimURIList.add(subjectClaimURI);
 
-            if (requestedLocalClaimMap != null && requestedLocalClaimMap.length > 0) {
+            boolean isSubjectClaimInRequested = false;
+            if (subjectClaimURI != null || requestedLocalClaimMap != null && requestedLocalClaimMap.length > 0) {
                 for (ClaimMapping claimMapping : requestedLocalClaimMap) {
-                    claimURIList.add(claimMapping.getLocalClaim().getClaimUri());
-
+                    if (claimMapping.isRequested()) {
+                        claimURIList.add(claimMapping.getLocalClaim().getClaimUri());
+                        if (claimMapping.getLocalClaim().getClaimUri().equals(subjectClaimURI)) {
+                            isSubjectClaimInRequested = true;
+                        }
+                    }
                 }
                 if (log.isDebugEnabled()) {
                     log.debug("Requested number of local claims: " + claimURIList.size());
@@ -120,6 +135,12 @@ public class ClaimUtil {
                 for (Map.Entry<String, String> entry : userClaims.entrySet()) {
                     String value = spToLocalClaimMappings.get(entry.getKey());
                     if (value != null) {
+                        if (entry.getKey().equals(subjectClaimURI)) {
+                            mappedAppClaims.put("sub", entry.getValue());
+                            if (!isSubjectClaimInRequested) {
+                                continue;
+                            }
+                        }
                         mappedAppClaims.put(value, entry.getValue());
                         if (log.isDebugEnabled() &&
                                 IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_CLAIMS)) {
@@ -130,7 +151,7 @@ public class ClaimUtil {
             }
 
         } catch (Exception e) {
-            if(e instanceof UserStoreException){
+            if (e instanceof UserStoreException){
                 if (e.getMessage().contains("UserNotFound")) {
                     if (log.isDebugEnabled()) {
                         log.debug("User " + username + " not found in user store");

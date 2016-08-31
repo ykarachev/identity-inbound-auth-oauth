@@ -24,7 +24,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityException;
-import org.wso2.carbon.identity.core.dao.OpenIDSQLQueries;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -1395,7 +1394,7 @@ public class TokenMgtDAO {
         try {
             connection.setAutoCommit(false);
 
-            String sql = OpenIDSQLQueries.DELETE_USER_RPS;
+            String sql = SQLQueries.DELETE_USER_RPS;
 
             ps = connection.prepareStatement(sql);
             ps.setString(1, username);
@@ -1434,7 +1433,7 @@ public class TokenMgtDAO {
         try {
             connection.setAutoCommit(false);
 
-            String sql = OpenIDSQLQueries.DELETE_USER_RPS_IN_TENANT;
+            String sql = SQLQueries.DELETE_USER_RPS_IN_TENANT;
 
             ps = connection.prepareStatement(sql);
             ps.setString(1, username);

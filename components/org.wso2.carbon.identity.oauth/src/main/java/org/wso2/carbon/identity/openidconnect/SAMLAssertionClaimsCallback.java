@@ -202,9 +202,8 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         } else {
             claims = getClaimsMap(userAttributes);
         }
-        String tenantDomain = requestMsgCtx.getAuthorizedUser().getTenantDomain();
-        Map<String, Object> returnClaims = controlClaimsFromScope(requestMsgCtx.getScope(), tenantDomain, claims);
-        return returnClaims;
+        String tenantDomain = requestMsgCtx.getOauth2AccessTokenReqDTO().getTenantDomain();
+        return controlClaimsFromScope(requestMsgCtx.getScope(), tenantDomain, claims);
     }
 
     private Map<String, Object> getResponse(OAuthAuthzReqMessageContext requestMsgCtx)
@@ -229,8 +228,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             claims = getClaimsMap(userAttributes);
         }
         String tenantDomain = requestMsgCtx.getAuthorizationReqDTO().getTenantDomain();
-        Map<String, Object> returnClaims = controlClaimsFromScope(requestMsgCtx.getApprovedScope(), tenantDomain, claims);
-        return returnClaims;
+        return controlClaimsFromScope(requestMsgCtx.getApprovedScope(), tenantDomain, claims);
     }
 
     /**
@@ -488,7 +486,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     }
 
     /**
-     * Use to controll claims based on the requested scopes and defined scopes in the registry
+     * Use to control claims based on the requested scopes and defined scopes in the registry
      *
      * @param requestedScopes String[] requestedScopes
      * @param tenantDomain    String tenantDomain

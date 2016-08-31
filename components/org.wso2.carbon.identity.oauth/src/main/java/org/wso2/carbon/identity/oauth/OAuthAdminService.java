@@ -618,7 +618,7 @@ public class OAuthAdminService extends AbstractAdmin {
                         }
 
                         try {
-                            tokenMgtDAO.revokeOAuthConsentByApplicationAndUser(userName, appName);
+                            tokenMgtDAO.revokeOAuthConsentByApplicationAndUser(tenantAwareUserName, tenantDomain, appName);
                         } catch (IdentityOAuth2Exception e) {
                             String errorMsg = "Error occurred while removing OAuth Consent of Application " + appName +
                                     " of user " + userName;
@@ -639,6 +639,33 @@ public class OAuthAdminService extends AbstractAdmin {
             return revokeRespDTO;
         }
         return new OAuthRevocationResponseDTO();
+    }
+
+    /**
+     * Revoke approve always of the consent for OAuth apps by resource owners
+     *
+     * @param appName name of the app
+     * @param state   state of the approve always
+     * @return revokeRespDTO DTO representing success or failure message
+     */
+    public OAuthRevocationResponseDTO updateApproveAlwaysForAppConsentByResourceOwner(String appName, String state)
+            throws IdentityOAuthAdminException {
+        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
+        OAuthRevocationResponseDTO revokeRespDTO = new OAuthRevocationResponseDTO();
+        String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
+        String tenantAwareUserName = PrivilegedCarbonContext.getThreadLocalCarbonContext().getUsername();
+
+        try {
+            tokenMgtDAO.updateApproveAlwaysForAppConsentByResourceOwner(tenantAwareUserName, tenantDomain, appName, state);
+        } catch (IdentityOAuth2Exception e) {
+            String errorMsg = "Error occurred while revoking OAuth Consent approve always of Application " + appName +
+                    " of user " + tenantAwareUserName;
+            log.error(errorMsg, e);
+            revokeRespDTO.setError(true);
+            revokeRespDTO.setErrorCode(OAuth2ErrorCodes.INVALID_REQUEST);
+            revokeRespDTO.setErrorMsg("Invalid revocation request");
+        }
+        return revokeRespDTO;
     }
 
     private void triggerPreRevokeListeners(OAuthRevocationRequestDTO

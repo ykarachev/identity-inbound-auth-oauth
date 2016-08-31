@@ -20,10 +20,11 @@ package org.wso2.carbon.identity.oauth.endpoint.user.impl;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.json.JSONObject;
 import org.apache.oltu.oauth2.common.utils.JSONUtils;
 import org.json.JSONObject;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
@@ -34,19 +35,17 @@ import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
 import org.wso2.carbon.identity.oauth.user.UserInfoResponseBuilder;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.registry.core.service.RegistryService;
 
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Enumeration;
 import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
 /**
  *
@@ -65,10 +64,25 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
             throws UserInfoEndpointException {
         Resource resource = null;
         try {
+            PrivilegedCarbonContext.startTenantFlow();
+            PrivilegedCarbonContext carbonContext = PrivilegedCarbonContext.getThreadLocalCarbonContext();
+            /*
+                We can't get any information related to SP tenantDomain using the tokenResponse directly or indirectly.
+                Therefore we make use of the thread local variable set at the UserInfo endpoint to get the tenantId
+                of the service provider
+             */
+            int tenantId = OAuth2Util.getClientTenatId();
+            String tenantDomain = IdentityTenantUtil.getTenantDomain(tenantId);
+            carbonContext.setTenantId(tenantId);
+            carbonContext.setTenantDomain(tenantDomain);
             RegistryService registry = OAuth2ServiceComponentHolder.getRegistryService();
-            resource = registry.getConfigSystemRegistry().get(OAuthConstants.SCOPE_RESOURCE_PATH);
+            resource = registry.getConfigSystemRegistry(tenantId).get(OAuthConstants.SCOPE_RESOURCE_PATH);
         } catch (RegistryException e) {
             log.error("Error while obtaining registry collection from :" + OAuthConstants.SCOPE_RESOURCE_PATH, e);
+        } finally {
+            // clear the thread local that contained the SP tenantId
+            OAuth2Util.clearClientTenantId();
+            PrivilegedCarbonContext.endTenantFlow();
         }
 
         Map<ClaimMapping, String> userAttributes = getUserAttributesFromCache(tokenResponse);

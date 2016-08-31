@@ -25,9 +25,12 @@ import org.apache.oltu.oauth2.as.response.OAuthASResponse;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
+import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.endpoint.user.impl.UserInfoEndpointConfig;
 import org.wso2.carbon.identity.oauth.user.UserInfoAccessTokenValidator;
 import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
@@ -37,6 +40,7 @@ import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -94,6 +98,15 @@ public class OpenIDConnectUserEndpoint {
             // validate the access token
             UserInfoAccessTokenValidator tokenValidator = UserInfoEndpointConfig.getInstance().getUserInfoAccessTokenValidator();
             OAuth2TokenValidationResponseDTO tokenResponse = tokenValidator.validateToken(accessToken);
+
+            /*
+               We need to pass the SP's tenantId to the UserInfoResponseBuilder to retrieve the correct OIDC scope
+               configurations. We can't do this currently as OAuth2TokenValidationResponseDTO does not contain any
+               contextual information that could be used to derive the tenantId of the SP. Therefore we are setting
+               the tenantId in a thread local variable.
+             */
+            setServiceProviderTenantId(accessToken);
+
             // build the claims
             //ToDO - Validate the grant type to be implicit or authorization_code before retrieving claims
             UserInfoResponseBuilder userInfoResponseBuilder = UserInfoEndpointConfig.getInstance().getUserInfoResponseBuilder();
@@ -151,6 +164,29 @@ public class OpenIDConnectUserEndpoint {
             return Response.status(response.getResponseStatus()).entity(response.getBody()).build();
         }
         return Response.status(res.getResponseStatus()).entity(res.getBody()).build();
+    }
+
+    /**
+     * Derive the tenantId of the SP from the accessToken identifier and set a threadLocal variable to be used by
+     * the UserInfoResponseBuilder.
+     *
+     * @param accessToken
+     * @throws OAuthSystemException
+     */
+    private void setServiceProviderTenantId(String accessToken) throws OAuthSystemException {
+        try {
+            // get client id of OAuth app from the introspection
+            String clientId = OAuth2Util.getClientIdForAccessToken(accessToken);
+            if (StringUtils.isBlank(clientId)) {
+                throw new OAuthSystemException("Cannot find the clientID of the SP that issued the token.");
+            }
+            OAuthAppDO appDO = OAuth2Util.getAppInformationByClientId(clientId);
+            int spTenantId = OAuth2Util.getTenantId(OAuth2Util.getTenantDomainOfOauthApp(appDO));
+            // set the tenant id in the thread local variable
+            OAuth2Util.setClientTenatId(spTenantId);
+        } catch (IdentityOAuth2Exception | InvalidOAuthClientException e) {
+            throw new OAuthSystemException("Error when obtaining the tenant information of SP.", e);
+        }
     }
 
 }

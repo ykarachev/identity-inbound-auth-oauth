@@ -46,6 +46,7 @@ import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
+import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
@@ -906,6 +907,49 @@ public class OAuth2Util {
         } catch (RegistryException e) {
             log.error("Error while creating registry collection for :" + OAuthConstants.SCOPE_RESOURCE_PATH, e);
         }
+    }
+
+    public static AccessTokenDO getAccessTokenDOfromTokenIdentifier(String accessTokenIdentifier) throws
+            IdentityOAuth2Exception {
+        boolean cacheHit = false;
+        AccessTokenDO accessTokenDO = null;
+        // check the cache, if caching is enabled.
+        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
+            OAuthCache oauthCache = OAuthCache.getInstance();
+            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+            CacheEntry result = oauthCache.getValueFromCache(cacheKey);
+            // cache hit, do the type check.
+            if (result instanceof AccessTokenDO) {
+                accessTokenDO = (AccessTokenDO) result;
+                cacheHit = true;
+            }
+        }
+        // cache miss, load the access token info from the database.
+        if (accessTokenDO == null) {
+            accessTokenDO = new TokenMgtDAO().retrieveAccessToken(accessTokenIdentifier, false);
+        }
+
+        if (accessTokenDO == null) {
+            throw new IllegalArgumentException("Invalid access token");
+        }
+
+        // add the token back to the cache in the case of a cache miss
+        if (OAuthServerConfiguration.getInstance().isCacheEnabled() && !cacheHit) {
+            OAuthCache oauthCache = OAuthCache.getInstance();
+            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+            oauthCache.addToCache(cacheKey, accessTokenDO);
+            if (log.isDebugEnabled()) {
+                log.debug("Access Token Info object was added back to the cache.");
+            }
+        }
+
+        return accessTokenDO;
+    }
+
+
+    public static String getClientIdForAccessToken(String accessTokenIdentifier) throws IdentityOAuth2Exception {
+        AccessTokenDO accessTokenDO = getAccessTokenDOfromTokenIdentifier(accessTokenIdentifier);
+        return accessTokenDO.getConsumerKey();
     }
 
     private static Map<String, String> loadScopeConfigFile() {

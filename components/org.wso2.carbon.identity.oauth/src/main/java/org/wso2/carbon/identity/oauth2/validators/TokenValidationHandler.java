@@ -24,10 +24,6 @@ import java.util.TreeMap;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.common.model.User;
-import org.wso2.carbon.identity.oauth.cache.CacheEntry;
-import org.wso2.carbon.identity.oauth.cache.CacheKey;
-import org.wso2.carbon.identity.oauth.cache.OAuthCache;
-import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
@@ -458,40 +454,7 @@ public class TokenValidationHandler {
      * @throws IdentityOAuth2Exception
      */
     private AccessTokenDO findAccessToken(String tokenIdentifier) throws IdentityOAuth2Exception {
-
-	boolean cacheHit = false;
-	AccessTokenDO accessTokenDO = null;
-	// check the cache, if caching is enabled.
-	if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-	    OAuthCache oauthCache = OAuthCache.getInstance();
-        OAuthCacheKey cacheKey = new OAuthCacheKey(tokenIdentifier);
-	    CacheEntry result = oauthCache.getValueFromCache(cacheKey);
-	    // cache hit, do the type check.
-	    if (result instanceof AccessTokenDO) {
-		accessTokenDO = (AccessTokenDO) result;
-		cacheHit = true;
-	    }
-	}
-	// cache miss, load the access token info from the database.
-	if (accessTokenDO == null) {
-	    accessTokenDO = tokenMgtDAO.retrieveAccessToken(tokenIdentifier, false);
-	}
-	
-	if (accessTokenDO == null) {
-	    throw new IllegalArgumentException("Invalid access token");
-	}
-
-	// add the token back to the cache in the case of a cache miss
-	if (OAuthServerConfiguration.getInstance().isCacheEnabled() && !cacheHit) {
-	    OAuthCache oauthCache = OAuthCache.getInstance();
-        OAuthCacheKey cacheKey = new OAuthCacheKey(tokenIdentifier);
-	    oauthCache.addToCache(cacheKey, accessTokenDO);
-	    if (log.isDebugEnabled()) {
-		log.debug("Access Token Info object was added back to the cache.");
-	    }
-	}
-
-	return accessTokenDO;
+		return OAuth2Util.getAccessTokenDOfromTokenIdentifier(tokenIdentifier);
     }
     
 }

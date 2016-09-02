@@ -337,8 +337,11 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             newAccessTokenDO.setAccessToken(accessToken);
             newAccessTokenDO.setRefreshToken(refreshToken);
             newAccessTokenDO.setTokenState(OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
-            newAccessTokenDO.setTokenId(UUID.randomUUID().toString());
             newAccessTokenDO.setGrantType(grantType);
+
+            String tokenId = UUID.randomUUID().toString();
+            newAccessTokenDO.setTokenId(tokenId);
+            oauthAuthzMsgCtx.addProperty(OAuth2Util.ACCESS_TOKEN_DO, newAccessTokenDO);
 
             // Persist the access token in database
             try {
@@ -408,7 +411,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             throws IdentityOAuth2Exception {
 
         if (StringUtils.isNotBlank(authzRespDTO.getAccessToken())) {
-            addUserAttributesToCache(authzRespDTO.getAccessToken(), msgCtx.getAuthorizationReqDTO());
+            addUserAttributesToCache(authzRespDTO.getAccessToken(), msgCtx.getAuthorizationReqDTO(), msgCtx);
         }
 
         if (StringUtils.contains(msgCtx.getAuthorizationReqDTO().getResponseType(), "id_token") &&
@@ -418,7 +421,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         }
     }
 
-    private void addUserAttributesToCache(String accessToken, OAuth2AuthorizeReqDTO authorizeReqDTO) {
+    private void addUserAttributesToCache(String accessToken, OAuth2AuthorizeReqDTO authorizeReqDTO, OAuthAuthzReqMessageContext msgCtx) {
 
         Map<ClaimMapping, String> userAttributes = authorizeReqDTO.getUser().getUserAttributes();
         AuthorizationGrantCacheKey authorizationGrantCacheKey = new AuthorizationGrantCacheKey(accessToken);
@@ -426,6 +429,8 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         if (StringUtils.isNotBlank(authorizationGrantCacheEntry.getEssentialClaims())) {
             authorizationGrantCacheEntry.setEssentialClaims(authorizeReqDTO.getEssentialClaims());
         }
+        AccessTokenDO accessTokenDO = (AccessTokenDO)msgCtx.getProperty(OAuth2Util.ACCESS_TOKEN_DO);
+        authorizationGrantCacheEntry.setTokenId(accessTokenDO.getTokenId());
 
         String sub = userAttributes.get(OAuth2Util.SUB);
 

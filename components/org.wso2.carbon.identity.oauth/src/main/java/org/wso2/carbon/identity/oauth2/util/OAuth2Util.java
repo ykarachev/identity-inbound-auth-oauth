@@ -81,6 +81,7 @@ public class OAuth2Util {
 
     public static final String REMOTE_ACCESS_TOKEN = "REMOTE_ACCESS_TOKEN";
     public static final String JWT_ACCESS_TOKEN = "JWT_ACCESS_TOKEN";
+    public static final String ACCESS_TOKEN_DO = "AccessTokenDo";
 
 
     /*

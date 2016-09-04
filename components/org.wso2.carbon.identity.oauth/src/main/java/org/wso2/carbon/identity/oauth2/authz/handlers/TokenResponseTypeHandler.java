@@ -344,6 +344,11 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             try {
                 tokenMgtDAO.storeAccessToken(accessToken, authorizationReqDTO.getConsumerKey(),
                         newAccessTokenDO, existingAccessTokenDO, userStoreDomain);
+                if (!accessToken.equals(newAccessTokenDO.getAccessToken())) {
+                    // Using latest active token.
+                    accessToken = newAccessTokenDO.getAccessToken();
+                    refreshToken = newAccessTokenDO.getRefreshToken();
+                }
             } catch (IdentityException e) {
                 throw new IdentityOAuth2Exception(
                         "Error occurred while storing new access token : " + accessToken, e);

@@ -24,6 +24,7 @@ import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2IntrospectionResponseDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuthRevocationRequestDTO;
@@ -158,5 +159,15 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      */
     void onPostTokenValidation(OAuth2TokenValidationRequestDTO validationReqDTO,
                                OAuth2TokenValidationResponseDTO validationResponseDTO) throws IdentityOAuth2Exception;
+
+    /**
+     * Called after validating a token through token introspection endpoint
+     * @param validationReqDTO ValidationRequestDTO
+     * @param validationIntrospectionResponseDTO ValidationIntrospectionResponseDTO
+     * @throws IdentityOAuth2Exception
+     */
+    void onPostTokenValidation(OAuth2TokenValidationRequestDTO validationReqDTO, OAuth2IntrospectionResponseDTO
+            validationIntrospectionResponseDTO)
+            throws IdentityOAuth2Exception;
 
 }

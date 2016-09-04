@@ -38,7 +38,7 @@ import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 /**
  * Oauth Event Interceptor implemented for publishing oauth data to DAS
  */
-public class AbstractOAuthDataPublisher extends AbstractIdentityHandler implements OAuthEventInterceptor {
+public class AbstractOAuthEventInterceptor extends AbstractIdentityHandler implements OAuthEventInterceptor {
 
 
     @Override

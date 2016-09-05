@@ -130,9 +130,9 @@ public abstract class AbstractResponseTypeHandler implements ResponseTypeHandler
 
         String grantType = null;
 
-        if (ResponseType.CODE.equals(authzReqDTO.getResponseType())) {
+        if (StringUtils.equals(ResponseType.CODE.toString(), authzReqDTO.getResponseType())) {
             grantType = GrantType.AUTHORIZATION_CODE.toString();
-        } else if (ResponseType.TOKEN.toString().equals(authzReqDTO.getResponseType())) {
+        } else if (StringUtils.equals(ResponseType.TOKEN.toString(), authzReqDTO.getResponseType())) {
             grantType = OAuthConstants.GrantTypes.IMPLICIT;
         }
 

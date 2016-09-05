@@ -129,21 +129,6 @@ public class AbstractOAuthEventInterceptor extends AbstractIdentityHandler imple
 
     }
 
-    public void publishTokenIssueEvent(String user, String tenantDomain, String userstoreDomain, String clientId,
-                                       String grantType, String tokenId, String authzScopes, String unAuthzScopes,
-                                       boolean isSuccess, String errorCode, String errorMsg,
-                                       long accessTokenValidityMillis, long refreshTokenValidityMillis,
-                                       long issuedTime) {
-        // Nothing to implement
-
-    }
-
-
-    public void publishTokenRevocationEvent(String clientId, boolean isSuccess,
-                                            String errorMsg, String errorCode, String tokenId, String revokedBy) {
-        // Nothing to implement
-    }
-
     public boolean isEnabled() {
         IdentityEventListenerConfig identityEventListenerConfig = IdentityUtil.readEventListenerProperty
                 (AbstractIdentityHandler.class.getName(), this.getClass().getName());

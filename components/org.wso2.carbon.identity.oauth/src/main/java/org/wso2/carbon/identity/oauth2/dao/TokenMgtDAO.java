@@ -443,7 +443,6 @@ public class TokenMgtDAO {
             }
 
             resultSet = prepStmt.executeQuery();
-            connection.commit();
 
             if (resultSet.next()) {
                 boolean returnToken = false;
@@ -2072,7 +2071,6 @@ public class TokenMgtDAO {
             }
 
             resultSet = prepStmt.executeQuery();
-            connection.commit();
 
             if (resultSet.next()) {
                     String accessToken = persistenceProcessor.getPreprocessedAccessTokenIdentifier(

@@ -411,7 +411,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             throws IdentityOAuth2Exception {
 
         if (StringUtils.isNotBlank(authzRespDTO.getAccessToken())) {
-            addUserAttributesToCache(authzRespDTO.getAccessToken(), msgCtx.getAuthorizationReqDTO(), msgCtx);
+            addUserAttributesToCache(authzRespDTO.getAccessToken(), msgCtx);
         }
 
         if (StringUtils.contains(msgCtx.getAuthorizationReqDTO().getResponseType(), "id_token") &&
@@ -421,9 +421,9 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         }
     }
 
-    private void addUserAttributesToCache(String accessToken, OAuth2AuthorizeReqDTO authorizeReqDTO,
-                                          OAuthAuthzReqMessageContext msgCtx) {
+    private void addUserAttributesToCache(String accessToken, OAuthAuthzReqMessageContext msgCtx) {
 
+        OAuth2AuthorizeReqDTO authorizeReqDTO = msgCtx.getAuthorizationReqDTO();
         Map<ClaimMapping, String> userAttributes = authorizeReqDTO.getUser().getUserAttributes();
         AuthorizationGrantCacheKey authorizationGrantCacheKey = new AuthorizationGrantCacheKey(accessToken);
         AuthorizationGrantCacheEntry authorizationGrantCacheEntry = new AuthorizationGrantCacheEntry(userAttributes);

@@ -229,18 +229,17 @@ public class TokenMgtDAO {
 
     public void storeAccessToken(String accessToken, String consumerKey,
                                  AccessTokenDO accessTokenDO, Connection connection,
-                                 String userStoreDomain, String lastTokenStatus) throws IdentityOAuth2Exception {
+                                 String userStoreDomain) throws IdentityOAuth2Exception {
 
         if (!enablePersist) {
             return;
         }
 
-        storeAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain, lastTokenStatus, 0);
+        storeAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain, 0);
     }
 
     private void storeAccessToken(String accessToken, String consumerKey, AccessTokenDO accessTokenDO,
-                                  Connection connection, String userStoreDomain, String lastTokenStatus,
-                                  int retryAttempt)
+                                  Connection connection, String userStoreDomain, int retryAttempt)
             throws IdentityOAuth2Exception {
 
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
@@ -310,13 +309,30 @@ public class TokenMgtDAO {
             }
 
             IdentityDatabaseUtil.closeAllConnections(null, null, prepStmt);
-            recoverFromConAppKeyConstraintViolation(accessToken, consumerKey, accessTokenDO,
-                    connection, userStoreDomain, lastTokenStatus, retryAttempt + 1);
+            recoverFromConAppKeyConstraintViolation(accessToken, consumerKey, accessTokenDO, connection,
+                    userStoreDomain, retryAttempt + 1);
         } catch (DataTruncation e) {
             throw new IdentityOAuth2Exception("Invalid request", e);
         } catch (SQLException e) {
-            throw new IdentityOAuth2Exception(
-                    "Error when storing the access token for consumer key : " + consumerKey, e);
+            // Handle constrain violation issue in JDBC drivers which does not throw
+            // SQLIntegrityConstraintViolationException
+            if (e.getMessage().contains("CON_APP_KEY")) {
+                if (retryAttempt >= tokenPersistRetryCount) {
+                    log.error("'CON_APP_KEY' constrain violation retry count exceeds above the maximum count - " +
+                            tokenPersistRetryCount);
+                    String errorMsg = "Access Token for consumer key : " + consumerKey + ", user : " +
+                            accessTokenDO.getAuthzUser() + " and scope : " +
+                            OAuth2Util.buildScopeString(accessTokenDO.getScope()) + "already exists";
+                    throw new IdentityOAuth2Exception(errorMsg, e);
+                }
+
+                IdentityDatabaseUtil.closeAllConnections(null, null, prepStmt);
+                recoverFromConAppKeyConstraintViolation(accessToken, consumerKey, accessTokenDO,
+                        connection, userStoreDomain, retryAttempt + 1);
+            } else {
+                throw new IdentityOAuth2Exception(
+                        "Error when storing the access token for consumer key : " + consumerKey, e);
+            }
         } finally {
             IdentityDatabaseUtil.closeAllConnections(null, null, prepStmt);
         }
@@ -358,8 +374,7 @@ public class TokenMgtDAO {
                 setAccessTokenState(connection, existingAccessTokenDO.getTokenId(), OAuthConstants.TokenStates
                         .TOKEN_STATE_EXPIRED, UUID.randomUUID().toString(), userStoreDomain);
             }
-            storeAccessToken(accessToken, consumerKey, newAccessTokenDO, connection, userStoreDomain, OAuthConstants
-                    .TokenStates.TOKEN_STATE_EXPIRED);
+            storeAccessToken(accessToken, consumerKey, newAccessTokenDO, connection, userStoreDomain);
             if (newAccessTokenDO.getAuthorizationCode() != null) {
                 // expire authz code and insert issued access token against authz code
                 AuthzCodeDO authzCodeDO = new AuthzCodeDO();
@@ -1383,7 +1398,7 @@ public class TokenMgtDAO {
 
             String newAccessToken = accessTokenDO.getAccessToken();
             // store new token in the DB
-            storeAccessToken(newAccessToken, consumerKey, accessTokenDO, connection, userStoreDomain, tokenState);
+            storeAccessToken(newAccessToken, consumerKey, accessTokenDO, connection, userStoreDomain);
 
             // update new access token against authorization code if token obtained via authorization code grant type
             updateTokenIdIfAutzCodeGrantType(oldAccessTokenId, accessTokenDO.getTokenId(), connection);
@@ -1926,7 +1941,7 @@ public class TokenMgtDAO {
     }
 
     private void recoverFromConAppKeyConstraintViolation(String accessToken, String consumerKey, AccessTokenDO
-            accessTokenDO, Connection connection, String userStoreDomain, String lastTokenStatus, int retryAttempt)
+            accessTokenDO, Connection connection, String userStoreDomain, int retryAttempt)
             throws IdentityOAuth2Exception {
 
         log.warn("Retry attempt to recover 'CON_APP_KEY' constraint violation : " + retryAttempt);
@@ -1958,31 +1973,29 @@ public class TokenMgtDAO {
                     // received that token
 
                     // Inactivate latest active token.
-                    setAccessTokenState(connection, latestActiveToken.getTokenId(), lastTokenStatus,
+                    setAccessTokenState(connection, latestActiveToken.getTokenId(), "INACTIVE",
                             UUID.randomUUID().toString(), userStoreDomain);
 
-                    // Update token issued time & try to store it again.
+                    // Update token issued time make this token as latest token & try to store it again.
                     accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
                     storeAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain,
-                            lastTokenStatus, retryAttempt);
+                            retryAttempt);
                 }
             } else {
                 // Inactivate latest active token.
-                setAccessTokenState(connection, latestActiveToken.getTokenId(), lastTokenStatus,
+                setAccessTokenState(connection, latestActiveToken.getTokenId(), "INACTIVE",
                         UUID.randomUUID().toString(), userStoreDomain);
 
-                // Update token issued time & try to store it again.
+                // Update token issued time make this token as latest token & try to store it again.
                 accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
-                storeAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain,
-                        lastTokenStatus, retryAttempt);
+                storeAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain, retryAttempt);
             }
         } else {
             // In this case another process already updated the latest active token to inactive.
 
-            // Update token issued time & try to store it again.
+            // Update token issued time make this token as latest token & try to store it again.
             accessTokenDO.setIssuedTime(new Timestamp(new Date().getTime()));
-            storeAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain, lastTokenStatus,
-                    retryAttempt);
+            storeAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain, retryAttempt);
         }
     }
 

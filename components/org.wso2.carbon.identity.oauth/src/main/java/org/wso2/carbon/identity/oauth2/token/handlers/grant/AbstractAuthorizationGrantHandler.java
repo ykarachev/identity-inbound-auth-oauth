@@ -375,6 +375,11 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
             // Persist the access token in database
             storeAccessToken(oAuth2AccessTokenReqDTO, userStoreDomain, newAccessTokenDO, newAccessToken,
                     existingAccessTokenDO);
+            if (!newAccessToken.equals(newAccessTokenDO.getAccessToken())) {
+                // Using latest active token.
+                newAccessToken = newAccessTokenDO.getAccessToken();
+                refreshToken = newAccessTokenDO.getRefreshToken();
+            }
 
             if (log.isDebugEnabled()) {
                 log.debug("Persisted Access Token for " +

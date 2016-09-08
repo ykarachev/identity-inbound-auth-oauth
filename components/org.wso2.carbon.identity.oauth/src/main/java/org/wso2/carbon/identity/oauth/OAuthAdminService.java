@@ -199,9 +199,8 @@ public class OAuthAdminService extends AbstractAdmin {
      */
     public void registerOAuthApplicationData(OAuthConsumerAppDTO application) throws IdentityOAuthAdminException {
 
-        String userName = CarbonContext.getThreadLocalCarbonContext().getUsername();
-        if (userName != null) {
-            String tenantUser = MultitenantUtils.getTenantAwareUsername(userName);
+        String tenantAwareUser = CarbonContext.getThreadLocalCarbonContext().getUsername();
+        if (tenantAwareUser != null) {
             int tenantId = CarbonContext.getThreadLocalCarbonContext().getTenantId();
             String tenantDomain = CarbonContext.getThreadLocalCarbonContext().getTenantDomain();
 
@@ -223,9 +222,9 @@ public class OAuthAdminService extends AbstractAdmin {
                 }
 
                 AuthenticatedUser user = new AuthenticatedUser();
-                user.setUserName(UserCoreUtil.removeDomainFromName(tenantUser));
+                user.setUserName(UserCoreUtil.removeDomainFromName(tenantAwareUser));
                 user.setTenantDomain(tenantDomain);
-                user.setUserStoreDomain(IdentityUtil.extractDomainFromName(userName));
+                user.setUserStoreDomain(IdentityUtil.extractDomainFromName(tenantAwareUser));
 
                 String applicationUser = application.getUsername();
 
@@ -237,7 +236,7 @@ public class OAuthAdminService extends AbstractAdmin {
                             user.setUserStoreDomain(IdentityUtil.extractDomainFromName(applicationUser));
                         } else {
                             log.warn("OAuth application registrant user name " + applicationUser +
-                                    " does not exist in the user store. Using logged-in user name " + tenantUser +
+                                    " does not exist in the user store. Using logged-in user name " + tenantAwareUser +
                                     " as registrant name");
                         }
                     } catch (UserStoreException e) {

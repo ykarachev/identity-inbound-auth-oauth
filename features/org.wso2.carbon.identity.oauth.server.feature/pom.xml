@@ -63,7 +63,7 @@
             <type>war</type>
         </dependency>
         <dependency>
-            <groupId>org.wso2.carbon.identity</groupId>
+            <groupId>org.wso2.carbon.identity.framework</groupId>
             <artifactId>org.wso2.carbon.identity.application.authentication.endpoint</artifactId>
             <type>war</type>
         </dependency>

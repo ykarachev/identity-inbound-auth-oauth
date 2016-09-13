@@ -66,11 +66,11 @@
             <artifactId>encoder</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.wso2.carbon.identity</groupId>
+            <groupId>org.wso2.carbon.identity.framework</groupId>
             <artifactId>org.wso2.carbon.identity.core</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.wso2.carbon.identity</groupId>
+            <groupId>org.wso2.carbon.identity.framework</groupId>
             <artifactId>org.wso2.carbon.identity.core.ui</artifactId>
         </dependency>
     </dependencies>

@@ -132,52 +132,52 @@
 
             <!-- Carbon Identity Framework dependencies -->
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.identity.core</artifactId>
                 <version>${carbon.identity.framework.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.idp.mgt</artifactId>
                 <version>${carbon.identity.framework.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.identity.application.mgt</artifactId>
                 <version>${carbon.identity.framework.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.identity.application.common</artifactId>
                 <version>${carbon.identity.framework.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.identity.entitlement</artifactId>
                 <version>${carbon.identity.framework.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.identity.application.authentication.framework</artifactId>
                 <version>${carbon.identity.framework.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.identity.user.store.configuration</artifactId>
                 <version>${carbon.identity.framework.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.identity.core.ui</artifactId>
                 <version>${carbon.identity.framework.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.identity.claim.metadata.mgt</artifactId>
                 <version>${carbon.identity.framework.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.wso2.carbon.identity</groupId>
+                <groupId>org.wso2.carbon.identity.framework</groupId>
                 <artifactId>org.wso2.carbon.identity.application.authentication.endpoint</artifactId>
                 <version>${carbon.identity.framework.version}</version>
                 <type>war</type>

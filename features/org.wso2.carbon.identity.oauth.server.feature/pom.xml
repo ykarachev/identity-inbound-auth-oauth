@@ -175,6 +175,8 @@
                                 <bundleDef>org.wso2.orbit.com.github.dblock.waffle:waffle-jna</bundleDef>
                                 <bundleDef>org.wso2.orbit.org.opensaml:opensaml</bundleDef>
                                 <bundleDef>org.wso2.orbit.joda-time:joda-time</bundleDef>
+                                <bundleDef>org.wso2.carbon.identity.inbound.auth.oauth2:org.wso2.carbon.identity.webfinger</bundleDef>
+                                <bundleDef>org.wso2.carbon.identity.inbound.auth.oauth2:org.wso2.carbon.identity.discovery</bundleDef>
                             </bundles>
                             <importFeatures>
                                 <importFeatureDef>org.wso2.carbon.core:compatible:${carbon.kernel.version}</importFeatureDef>

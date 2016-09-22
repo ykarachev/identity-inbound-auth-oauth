@@ -48,6 +48,8 @@
         <module>components/org.wso2.carbon.identity.oidc.session</module>
         <module>components/org.wso2.carbon.identity.oauth.dcr</module>
         <module>components/org.wso2.carbon.identity.oidc.dcr</module>
+        <module>components/org.wso2.carbon.identity.discovery</module>
+        <module>components/org.wso2.carbon.identity.webfinger</module>
 
         <module>features/org.wso2.carbon.identity.oauth.common.feature</module>
         <module>features/org.wso2.carbon.identity.oauth.feature</module>
@@ -294,6 +296,16 @@
                 <artifactId>org.wso2.carbon.identity.oauth</artifactId>
                 <version>${project.version}</version>
                 <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.identity.inbound.auth.oauth2</groupId>
+                <artifactId>org.wso2.carbon.identity.discovery</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.wso2.carbon.identity.inbound.auth.oauth2</groupId>
+                <artifactId>org.wso2.carbon.identity.webfinger</artifactId>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.wso2.carbon.identity.inbound.auth.oauth2</groupId>

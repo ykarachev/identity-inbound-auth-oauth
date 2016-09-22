@@ -910,6 +910,28 @@ public class OAuth2Util {
         }
     }
 
+    public static List<String> getOIDCScopes(String tenantDomain) {
+        try {
+            int tenantId = OAuthComponentServiceHolder.getInstance().getRealmService().getTenantManager()
+                    .getTenantId(tenantDomain);
+            Registry registry = OAuth2ServiceComponentHolder.getRegistryService().getConfigSystemRegistry(tenantId);
+
+            if (registry.resourceExists(OAuthConstants.SCOPE_RESOURCE_PATH)) {
+                Resource resource = registry.get(OAuthConstants.SCOPE_RESOURCE_PATH);
+                Properties properties = resource.getProperties();
+                Enumeration e = properties.propertyNames();
+                List<String> scopes = new ArrayList();
+                while (e.hasMoreElements()) {
+                    scopes.add((String) e.nextElement());
+                }
+                return scopes;
+            }
+        } catch (RegistryException | UserStoreException e) {
+            log.error("Error while retrieving registry collection for :" + OAuthConstants.SCOPE_RESOURCE_PATH, e);
+        }
+        return new ArrayList<>();
+    }
+
     public static AccessTokenDO getAccessTokenDOfromTokenIdentifier(String accessTokenIdentifier) throws
             IdentityOAuth2Exception {
         boolean cacheHit = false;

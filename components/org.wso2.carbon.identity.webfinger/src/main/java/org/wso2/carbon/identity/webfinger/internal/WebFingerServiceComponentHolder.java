@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.identity.webfinger.internal;
 
+import org.osgi.service.http.HttpService;
+import org.wso2.carbon.identity.webfinger.WebFingerProcessor;
 import org.wso2.carbon.user.core.service.RealmService;
 
 /**
@@ -25,6 +27,8 @@ import org.wso2.carbon.user.core.service.RealmService;
  */
 public class WebFingerServiceComponentHolder {
     private static RealmService realmService;
+    private static WebFingerProcessor webFingerProcessor;
+    private static HttpService httpService;
 
     private WebFingerServiceComponentHolder() {
 
@@ -36,5 +40,22 @@ public class WebFingerServiceComponentHolder {
 
     public static void setRealmService(RealmService realmService) {
         WebFingerServiceComponentHolder.realmService = realmService;
+    }
+
+    public static WebFingerProcessor getWebFingerProcessor() {
+        return webFingerProcessor;
+    }
+
+    public static void setWebFingerProcessor(WebFingerProcessor webFingerProcessor) {
+        WebFingerServiceComponentHolder.webFingerProcessor = webFingerProcessor;
+    }
+
+
+    public static HttpService getHttpService() {
+        return httpService;
+    }
+
+    public static void setHttpService(HttpService httpService) {
+        WebFingerServiceComponentHolder.httpService = httpService;
     }
 }

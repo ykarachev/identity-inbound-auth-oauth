@@ -33,6 +33,8 @@ import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.RefreshTokenValidationDataDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 
+import java.util.Map;
+
 public interface OAuthEventInterceptor extends IdentityHandler {
 
     /**
@@ -43,8 +45,8 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      * @param tokReqMsgCtx
      * @throws IdentityOAuth2Exception
      */
-    void onPreTokenIssue(OAuth2AccessTokenReqDTO tokenReqDTO, OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception;
+    void onPreTokenIssue(OAuth2AccessTokenReqDTO tokenReqDTO, OAuthTokenReqMessageContext tokReqMsgCtx, Map<String,
+            Object> params) throws IdentityOAuth2Exception;
 
     /**
      * Called after issuing tokens
@@ -56,7 +58,8 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      * @throws IdentityOAuth2Exception
      */
     void onPostTokenIssue(OAuth2AccessTokenReqDTO tokenReqDTO, OAuth2AccessTokenRespDTO tokenRespDTO,
-                          OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception;
+                          OAuthTokenReqMessageContext tokReqMsgCtx, Map<String, Object> params) throws
+            IdentityOAuth2Exception;
 
     /**
      * Called prior to issuing tokens in implicit grant
@@ -64,7 +67,7 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      * @param oauthAuthzMsgCtx
      * @throws IdentityOAuth2Exception
      */
-    void onPreTokenIssue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx)
+    void onPreTokenIssue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx, Map<String, Object> params)
             throws IdentityOAuth2Exception;
 
     /**
@@ -75,18 +78,18 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      * @throws IdentityOAuth2Exception
      */
     void onPostTokenIssue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx, AccessTokenDO tokenDO, OAuth2AuthorizeRespDTO
-            respDTO) throws IdentityOAuth2Exception;
+            respDTO, Map<String, Object> params) throws IdentityOAuth2Exception;
 
 
     /**
-     * Called prior to renewing tokens (Refresh grant)
+     * Called prior to renewing tokens (Refresh  grant)
      *
      * @param tokenReqDTO
      * @param tokReqMsgCtx
      * @throws IdentityOAuth2Exception
      */
-    void onPreTokenRenewal(OAuth2AccessTokenReqDTO tokenReqDTO, OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception;
+    void onPreTokenRenewal(OAuth2AccessTokenReqDTO tokenReqDTO, OAuthTokenReqMessageContext tokReqMsgCtx, Map<String,
+            Object> params) throws IdentityOAuth2Exception;
 
     /**
      * Called after renewing a token
@@ -97,7 +100,8 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      * @throws IdentityOAuth2Exception
      */
     void onPostTokenRenewal(OAuth2AccessTokenReqDTO tokenReqDTO, OAuth2AccessTokenRespDTO tokenRespDTO,
-                            OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception;
+                            OAuthTokenReqMessageContext tokReqMsgCtx, Map<String, Object> params) throws
+            IdentityOAuth2Exception;
 
     /**
      * Called prior to revoking a token by oauth client
@@ -105,7 +109,8 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      * @param revokeRequestDTO
      * @throws IdentityOAuth2Exception
      */
-    void onPreTokenRevocationByClient(OAuthRevocationRequestDTO revokeRequestDTO) throws IdentityOAuth2Exception;
+    void onPreTokenRevocationByClient(OAuthRevocationRequestDTO revokeRequestDTO, Map<String, Object> params) throws
+            IdentityOAuth2Exception;
 
     /**
      * Called after revoking a token by oauth client
@@ -118,7 +123,8 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      */
     void onPostTokenRevocationByClient(OAuthRevocationRequestDTO revokeRequestDTO,
                                        OAuthRevocationResponseDTO revokeResponseDTO, AccessTokenDO accessTokenDO,
-                                       RefreshTokenValidationDataDO refreshTokenDO) throws IdentityOAuth2Exception;
+                                       RefreshTokenValidationDataDO refreshTokenDO, Map<String, Object> params)
+            throws IdentityOAuth2Exception;
 
 
     /**
@@ -128,8 +134,8 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      * @throws IdentityOAuth2Exception
      */
     void onPreTokenRevocationByResourceOwner(
-            org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO revokeRequestDTO) throws
-            IdentityOAuth2Exception;
+            org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO revokeRequestDTO, Map<String, Object>
+            params) throws IdentityOAuth2Exception;
 
     /**
      * Called after to revoking a token by oauth client
@@ -139,8 +145,8 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      */
     void onPostTokenRevocationByResourceOwner(
             org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO revokeRequestDTO,
-            org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO revokeRespDTO, AccessTokenDO accessTokenDO)
-            throws IdentityOAuth2Exception;
+            org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO revokeRespDTO, AccessTokenDO accessTokenDO,
+            Map<String, Object> params) throws IdentityOAuth2Exception;
 
     /**
      * Called prior to validate an issued token
@@ -148,7 +154,8 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      * @param validationReqDTO
      * @throws IdentityOAuth2Exception
      */
-    void onPreTokenValidation(OAuth2TokenValidationRequestDTO validationReqDTO) throws IdentityOAuth2Exception;
+    void onPreTokenValidation(OAuth2TokenValidationRequestDTO validationReqDTO, Map<String, Object> params) throws
+            IdentityOAuth2Exception;
 
     /**
      * Called after validating an issued token
@@ -158,16 +165,17 @@ public interface OAuthEventInterceptor extends IdentityHandler {
      * @throws IdentityOAuth2Exception
      */
     void onPostTokenValidation(OAuth2TokenValidationRequestDTO validationReqDTO,
-                               OAuth2TokenValidationResponseDTO validationResponseDTO) throws IdentityOAuth2Exception;
+                               OAuth2TokenValidationResponseDTO validationResponseDTO, Map<String, Object> params)
+            throws IdentityOAuth2Exception;
 
     /**
      * Called after validating a token through token introspection endpoint
-     * @param validationReqDTO ValidationRequestDTO
+     *
+     * @param validationReqDTO                   ValidationRequestDTO
      * @param validationIntrospectionResponseDTO ValidationIntrospectionResponseDTO
      * @throws IdentityOAuth2Exception
      */
     void onPostTokenValidation(OAuth2TokenValidationRequestDTO validationReqDTO, OAuth2IntrospectionResponseDTO
-            validationIntrospectionResponseDTO)
-            throws IdentityOAuth2Exception;
+            validationIntrospectionResponseDTO, Map<String, Object> params) throws IdentityOAuth2Exception;
 
 }

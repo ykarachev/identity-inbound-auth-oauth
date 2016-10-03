@@ -56,8 +56,10 @@ import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -681,7 +683,8 @@ public class OAuthAdminService extends AbstractAdmin {
                 .getOAuthEventInterceptorProxy();
         if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
             try {
-                oAuthEventInterceptorProxy.onPreTokenRevocationByResourceOwner(revokeRequestDTO);
+                Map<String, Object> paramMap = new HashMap<>();
+                oAuthEventInterceptorProxy.onPreTokenRevocationByResourceOwner(revokeRequestDTO, paramMap);
             } catch (IdentityOAuth2Exception e) {
                 throw new IdentityOAuthAdminException("Error occurred with Oauth pre-revoke listener ", e);
             }
@@ -696,8 +699,9 @@ public class OAuthAdminService extends AbstractAdmin {
         for (AccessTokenDO accessTokenDO : accessTokenDOs) {
             if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
                 try {
-                    oAuthEventInterceptorProxy.onPostTokenRevocationByResourceOwner(revokeRequestDTO, revokeRespDTO, accessTokenDO);
-
+                    Map<String, Object> paramMap = new HashMap<>();
+                    oAuthEventInterceptorProxy.onPostTokenRevocationByResourceOwner(revokeRequestDTO, revokeRespDTO,
+                            accessTokenDO, paramMap);
                 } catch (IdentityOAuth2Exception e) {
                     log.error("Error occurred with post revocation listener ", e);
                 }

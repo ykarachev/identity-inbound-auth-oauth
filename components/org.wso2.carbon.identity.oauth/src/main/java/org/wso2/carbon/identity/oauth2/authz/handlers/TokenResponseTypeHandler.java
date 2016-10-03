@@ -47,6 +47,7 @@ import org.wso2.carbon.identity.openidconnect.IDTokenBuilder;
 
 import java.sql.Timestamp;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -62,7 +63,8 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                 .getOAuthEventInterceptorProxy();
 
         if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
-            oAuthEventInterceptorProxy.onPreTokenIssue(oauthAuthzMsgCtx);
+            Map<String, Object> paramMap = new HashMap<>();
+            oAuthEventInterceptorProxy.onPreTokenIssue(oauthAuthzMsgCtx, paramMap);
         }
 
         OAuth2AuthorizeRespDTO respDTO = new OAuth2AuthorizeRespDTO();
@@ -405,7 +407,8 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
         if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
             try {
-                oAuthEventInterceptorProxy.onPostTokenIssue(oauthAuthzMsgCtx, tokenDO, respDTO);
+                Map<String, Object> paramMap = new HashMap<>();
+                oAuthEventInterceptorProxy.onPostTokenIssue(oauthAuthzMsgCtx, tokenDO, respDTO, paramMap);
             } catch (IdentityOAuth2Exception e) {
                 log.error("Oauth post token issue listener ", e);
             }

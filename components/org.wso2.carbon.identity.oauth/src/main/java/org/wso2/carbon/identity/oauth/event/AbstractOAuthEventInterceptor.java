@@ -35,6 +35,8 @@ import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.RefreshTokenValidationDataDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 
+import java.util.Map;
+
 /**
  * Oauth Event Interceptor implemented for publishing oauth data to DAS
  */
@@ -42,43 +44,46 @@ public class AbstractOAuthEventInterceptor extends AbstractIdentityHandler imple
 
 
     @Override
-    public void onPreTokenIssue(OAuth2AccessTokenReqDTO tokenReqDTO, OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
+    public void onPreTokenIssue(OAuth2AccessTokenReqDTO tokenReqDTO, OAuthTokenReqMessageContext tokReqMsgCtx,
+                                Map<String, Object> params) throws IdentityOAuth2Exception {
         // Nothing to implement
     }
 
     @Override
     public void onPostTokenIssue(OAuth2AccessTokenReqDTO tokenReqDTO, OAuth2AccessTokenRespDTO tokenRespDTO,
-                                 OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
+                                 OAuthTokenReqMessageContext tokReqMsgCtx, Map<String, Object> params) throws
+            IdentityOAuth2Exception {
         // Nothing to implement
     }
 
     @Override
-    public void onPreTokenIssue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx) throws IdentityOAuth2Exception {
+    public void onPreTokenIssue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx, Map<String, Object> params) throws
+            IdentityOAuth2Exception {
         // Nothing to implement
     }
 
     @Override
     public void onPostTokenIssue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx, AccessTokenDO tokenDO,
-                                 OAuth2AuthorizeRespDTO respDTO)
+                                 OAuth2AuthorizeRespDTO respDTO, Map<String, Object> params)
             throws IdentityOAuth2Exception {
         // Nothing to implement
     }
 
     @Override
-    public void onPreTokenRenewal(OAuth2AccessTokenReqDTO tokenReqDTO, OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
+    public void onPreTokenRenewal(OAuth2AccessTokenReqDTO tokenReqDTO, OAuthTokenReqMessageContext tokReqMsgCtx,
+                                  Map<String, Object> params) throws IdentityOAuth2Exception {
         // Nothing to implement
     }
 
     @Override
     public void onPostTokenRenewal(OAuth2AccessTokenReqDTO tokenReqDTO, OAuth2AccessTokenRespDTO tokenRespDTO,
-                                   OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
+                                   OAuthTokenReqMessageContext tokReqMsgCtx, Map<String, Object> params) throws
+            IdentityOAuth2Exception {
         // Nothing to implement
     }
 
     @Override
-    public void onPreTokenRevocationByClient(OAuthRevocationRequestDTO revokeRequestDTO)
+    public void onPreTokenRevocationByClient(OAuthRevocationRequestDTO revokeRequestDTO, Map<String, Object> params)
             throws IdentityOAuth2Exception {
         // Nothing to implement
 
@@ -87,14 +92,14 @@ public class AbstractOAuthEventInterceptor extends AbstractIdentityHandler imple
     @Override
     public void onPostTokenRevocationByClient(OAuthRevocationRequestDTO revokeRequestDTO,
                                               OAuthRevocationResponseDTO revokeResponseDTO, AccessTokenDO accessTokenDO,
-                                              RefreshTokenValidationDataDO refreshTokenDO)
+                                              RefreshTokenValidationDataDO refreshTokenDO, Map<String, Object> params)
             throws IdentityOAuth2Exception {
         // Nothing to implement
     }
 
     @Override
     public void onPreTokenRevocationByResourceOwner(
-            org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO revokeRequestDTO)
+            org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO revokeRequestDTO, Map<String, Object> params)
             throws IdentityOAuth2Exception {
         // Nothing to implement
 
@@ -104,27 +109,28 @@ public class AbstractOAuthEventInterceptor extends AbstractIdentityHandler imple
     public void onPostTokenRevocationByResourceOwner(
             org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO revokeRequestDTO,
             org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO revokeRespDTO,
-            AccessTokenDO accessTokenDO) throws IdentityOAuth2Exception {
+            AccessTokenDO accessTokenDO, Map<String, Object> params) throws IdentityOAuth2Exception {
         // Nothing to implement
     }
 
     @Override
-    public void onPreTokenValidation(OAuth2TokenValidationRequestDTO validationReqDTO) throws IdentityOAuth2Exception {
+    public void onPreTokenValidation(OAuth2TokenValidationRequestDTO validationReqDTO, Map<String, Object> params)
+            throws IdentityOAuth2Exception {
         // Nothing to implement
     }
 
     @Override
     public void onPostTokenValidation(OAuth2TokenValidationRequestDTO validationReqDTO,
-                                      OAuth2TokenValidationResponseDTO validationResponseDTO)
-            throws IdentityOAuth2Exception {
+                                      OAuth2TokenValidationResponseDTO validationResponseDTO, Map<String, Object>
+                                              params) throws IdentityOAuth2Exception {
         // Nothing to implement
 
     }
 
     @Override
     public void onPostTokenValidation(OAuth2TokenValidationRequestDTO oAuth2TokenValidationRequestDTO,
-                                      OAuth2IntrospectionResponseDTO oAuth2IntrospectionResponseDTO) throws
-            IdentityOAuth2Exception {
+                                      OAuth2IntrospectionResponseDTO oAuth2IntrospectionResponseDTO, Map<String,
+            Object> params) throws IdentityOAuth2Exception {
         // Nothing to implement
 
     }

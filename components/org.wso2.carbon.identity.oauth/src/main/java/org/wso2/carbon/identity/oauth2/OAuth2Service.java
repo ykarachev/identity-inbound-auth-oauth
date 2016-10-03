@@ -56,6 +56,7 @@ import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -265,7 +266,8 @@ public class OAuth2Service extends AbstractAdmin {
 
         if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
             try {
-                oAuthEventInterceptorProxy.onPreTokenRevocationByClient(revokeRequestDTO);
+                Map<String, Object> paramMap = new HashMap<>();
+                oAuthEventInterceptorProxy.onPreTokenRevocationByClient(revokeRequestDTO, paramMap);
             } catch (IdentityOAuth2Exception e) {
                 log.error(e);
                 revokeResponseDTO.setError(true);
@@ -408,8 +410,9 @@ public class OAuth2Service extends AbstractAdmin {
                 .getOAuthEventInterceptorProxy();
         if (oAuthEventInterceptorProxy != null && oAuthEventInterceptorProxy.isEnabled()) {
             try {
+                Map<String, Object> paramMap = new HashMap<>();
                 oAuthEventInterceptorProxy.onPostTokenRevocationByClient(revokeRequestDTO, revokeResponseDTO, accessTokenDO,
-                        refreshTokenDO);
+                        refreshTokenDO, paramMap);
             } catch (IdentityOAuth2Exception e) {
                 log.error("Error occurred when invoking post token revoke listener ", e);
             }

@@ -46,4 +46,6 @@ public class WebFingerConstants {
     public static final String ERROR_MESSAGE_JSON_EXCEPTION = "Error occured building response.";
     public static final String ERROR_MESSAGE_INVALID_REQUEST = "Request is invalid.";
     public static final String ERROR_MESSAGE_INVALID_TENANT = "Provided tenant is invalid.";
+    public static final String ACCT_SCHEME = "acct";
+    public static final String RESPONSE_CONTENT_TYPE = "application/jrd+json";
 }

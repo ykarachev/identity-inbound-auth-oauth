@@ -32,7 +32,6 @@
             <ref bean="userinfoEndpointBean"/>
             <ref bean="jwksEndpointBean"/>
             <ref bean="oidcdiscoveryEndpointBean"/>
-            <ref bean="webFingerEndpointBean"/>
         </jaxrs:serviceBeans>
     </jaxrs:server>
 
@@ -43,5 +42,4 @@
     <bean id="userinfoEndpointBean" class="org.wso2.carbon.identity.oauth.endpoint.user.OpenIDConnectUserEndpoint"/>
     <bean id="jwksEndpointBean" class="org.wso2.carbon.identity.oauth.endpoint.jwks.JwksEndpoint"/>
     <bean id = "oidcdiscoveryEndpointBean" class="org.wso2.carbon.identity.oauth.endpoint.oidcdiscovery.OIDCDiscoveryEndpoint"/>
-    <bean id = "webFingerEndpointBean" class="org.wso2.carbon.identity.oauth.endpoint.webfinger.WebFingerEndPoint"/>
 </beans>

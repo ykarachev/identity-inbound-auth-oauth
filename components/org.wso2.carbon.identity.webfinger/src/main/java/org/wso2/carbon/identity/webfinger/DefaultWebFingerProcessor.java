@@ -54,18 +54,21 @@ public class DefaultWebFingerProcessor implements WebFingerProcessor {
     }
 
     public int handleError(WebFingerEndpointException error) {
-        if (log.isDebugEnabled()) {
-            log.debug(error);
-        }
         String errorCode = error.getErrorCode();
         if (WebFingerConstants.ERROR_CODE_INVALID_REQUEST.equals(errorCode)) {
-            log.error(WebFingerConstants.ERROR_MESSAGE_INVALID_REQUEST, error);
+            if (log.isDebugEnabled()) {
+                log.debug(error);
+            }
             return HttpServletResponse.SC_BAD_REQUEST;
         } else if (WebFingerConstants.ERROR_CODE_INVALID_RESOURCE.equals(errorCode)) {
-            log.error(WebFingerConstants.ERROR_MESSAGE_INVALID_RESOURCE, error);
+            if (log.isDebugEnabled()) {
+                log.debug(error);
+            }
             return HttpServletResponse.SC_NOT_FOUND;
         } else if (WebFingerConstants.ERROR_CODE_JSON_EXCEPTION.equals(errorCode)) {
-            log.error(WebFingerConstants.ERROR_MESSAGE_JSON_EXCEPTION, error);
+            if (log.isDebugEnabled()) {
+                log.debug(error);
+            }
             return HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE;
         } else if (WebFingerConstants.ERROR_CODE_NO_WEBFINGER_CONFIG.equals(errorCode)) {
             log.error(WebFingerConstants.ERROR_MESSAGE_NO_WEBFINGER_CONFIG, error);

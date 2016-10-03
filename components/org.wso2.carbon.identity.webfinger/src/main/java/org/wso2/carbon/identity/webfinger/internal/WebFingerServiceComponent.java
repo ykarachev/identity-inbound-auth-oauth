@@ -20,17 +20,25 @@ package org.wso2.carbon.identity.webfinger.internal;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.eclipse.equinox.http.helper.ContextPathServletAdaptor;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.http.HttpService;
 import org.wso2.carbon.identity.webfinger.DefaultWebFingerProcessor;
 import org.wso2.carbon.identity.webfinger.WebFingerProcessor;
+import org.wso2.carbon.identity.webfinger.servlet.WebFingerServlet;
 import org.wso2.carbon.user.core.service.RealmService;
+
+import javax.servlet.Servlet;
 
 /**
  * @scr.component name="identity.webfinger.component" immediate="true"
  * @scr.reference name="user.realmservice.default"
  * interface="org.wso2.carbon.user.core.service.RealmService" cardinality="1..1"
  * policy="dynamic" bind="setRealmService" unbind="unsetRealmService"
+ * @scr.reference name="osgi.httpservice" interface="org.osgi.service.http.HttpService"
+ * cardinality="1..1" policy="dynamic" bind="setHttpService"
+ * unbind="unsetHttpService"
  */
 
 public class WebFingerServiceComponent {
@@ -44,11 +52,23 @@ public class WebFingerServiceComponent {
     protected void activate(ComponentContext context) {
         try {
             bundleContext = context.getBundleContext();
-            bundleContext.registerService(WebFingerProcessor.class.getName(), DefaultWebFingerProcessor.getInstance(),
-                    null);
-            // exposing server configuration as a service
+            WebFingerProcessor webFingerProcessor = DefaultWebFingerProcessor.getInstance();
+            bundleContext.registerService(WebFingerProcessor.class.getName(), webFingerProcessor, null);
+            WebFingerServiceComponentHolder.setWebFingerProcessor(webFingerProcessor);
             if (log.isDebugEnabled()) {
                 log.debug("OpenID WebFinger bundle is activated.");
+            }
+
+            // Register SAML SSO servlet
+            HttpService httpService = WebFingerServiceComponentHolder.getHttpService();
+            Servlet samlSSOServlet = new ContextPathServletAdaptor(new WebFingerServlet(),
+                    "/.well-known/webfinger");
+            try {
+                httpService.registerServlet("/.well-known/webfinger", samlSSOServlet, null, null);
+            } catch (Exception e) {
+                String errMsg = "Error when registering SAML SSO Servlet via the HttpService.";
+                log.error(errMsg, e);
+                throw new RuntimeException(errMsg, e);
             }
         } catch (Throwable e) {
             log.error("Error while activating the WebFingerServiceComponent", e);
@@ -67,5 +87,19 @@ public class WebFingerServiceComponent {
             log.info("Unsetting the Realm Service");
         }
         WebFingerServiceComponentHolder.setRealmService(null);
+    }
+
+    protected void setHttpService(HttpService httpService) {
+        if (log.isDebugEnabled()) {
+            log.debug("HTTP Service is set in the SAML SSO bundle");
+        }
+        WebFingerServiceComponentHolder.setHttpService(httpService);
+    }
+
+    protected void unsetHttpService(HttpService httpService) {
+        if (log.isDebugEnabled()) {
+            log.debug("HTTP Service is unset in the SAML SSO bundle");
+        }
+        WebFingerServiceComponentHolder.setHttpService(null);
     }
 }

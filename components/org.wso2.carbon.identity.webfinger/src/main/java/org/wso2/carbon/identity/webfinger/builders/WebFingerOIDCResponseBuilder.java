@@ -22,6 +22,7 @@ import org.apache.axiom.om.OMElement;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.base.ServerConfigurationException;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityConfigParser;
@@ -47,7 +48,7 @@ public class WebFingerOIDCResponseBuilder {
         WebFingerResponse response = this.getLinkFromIdentityConfig(request.getRel(), request.getResource());
         if (response == null) {
             try {
-                response = this.getIssuerFromServerURL(request.getResource());
+                response = this.getIssuerFromServerURL(request);
             } catch (IdentityException e) {
                 log.error("error occured when finding issuer from server url.", e);
                 throw new WebFingerEndpointException(WebFingerConstants.ERROR_CODE_NO_WEBFINGER_CONFIG, "Error in " +
@@ -96,16 +97,19 @@ public class WebFingerOIDCResponseBuilder {
      * @return WebFingerResponse with http://openid.net/specs/connect/1.0/issuer, ServerUrl added ti the WebLink list.
      * @resource resource parameter in the web finger request
      */
-    private WebFingerResponse getIssuerFromServerURL(String resource) throws IdentityException {
+    private WebFingerResponse getIssuerFromServerURL(WebFingerRequest request) throws IdentityException {
         String issuer = IdentityUtil.getServerURL("", false, false);
         if (StringUtils.isBlank(issuer)) {
             return null;
         }
         issuer = issuer + WebFingerConstants.OPENID_CONNECT_ENDPOINT;
+        if (request.getTenant() != null && !MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(request.getTenant())) {
+            issuer = issuer + "/" + request.getTenant();
+        }
         //TODO
         //get the tenant using the user and append from here.
         WebFingerResponse response = new WebFingerResponse();
-        response.setSubject(resource);
+        response.setSubject(request.getResource());
         response.addLink(WebFingerConstants.OPENID_CONNETCT_ISSUER_REL, issuer);
         return response;
     }

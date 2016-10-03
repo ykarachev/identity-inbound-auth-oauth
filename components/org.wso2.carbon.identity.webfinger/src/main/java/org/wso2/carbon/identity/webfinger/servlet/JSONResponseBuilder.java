@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package org.wso2.carbon.identity.oauth.endpoint.webfinger.impl;
+package org.wso2.carbon.identity.webfinger.servlet;
 
 
 import com.google.gson.Gson;
@@ -26,6 +26,9 @@ import org.wso2.carbon.identity.webfinger.WebFingerEndpointException;
 import org.wso2.carbon.identity.webfinger.WebFingerResponse;
 import org.wso2.carbon.identity.webfinger.builders.WebFingerResponseBuilder;
 
+/**
+ * Webfinger response builder
+ */
 public class JSONResponseBuilder implements WebFingerResponseBuilder {
     private static final Log log = LogFactory.getLog(JSONResponseBuilder.class);
 

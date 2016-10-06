@@ -197,9 +197,9 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
             //TODO:This parameter is a custom one and we have to remove if we can collect the user name by having
             // some authentication mechanism.
             String username = CarbonContext.getThreadLocalCarbonContext().getUsername();
-            if(StringUtils.isBlank(username)){
+            if (StringUtils.isBlank(username)) {
                 Object objOwner = jsonData.get(RegistrationRequest.RegisterRequestConstant.EXT_PARAM_OWNER);
-                if(objOwner != null){
+                if (objOwner != null) {
                     username = (String) objOwner;
                 } else {
                     throw FrameworkClientException.error("Invalid application owner.");

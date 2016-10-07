@@ -341,7 +341,7 @@ public class OAuth2Service extends AbstractAdmin {
                     revokeRespDTO.setErrorCode(OAuth2ErrorCodes.UNAUTHORIZED_CLIENT);
                     revokeRespDTO.setErrorMsg("Unauthorized Client");
 
-                    invokePostRevocationListeners(revokeRequestDTO, revokeResponseDTO, accessTokenDO,
+                    invokePostRevocationListeners(revokeRequestDTO, revokeRespDTO, accessTokenDO,
                             refreshTokenDO);
                     return revokeRespDTO;
                 }

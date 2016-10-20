@@ -311,13 +311,18 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 throw e;
             }
         }
+
+        if (MapUtils.isEmpty(userClaims)) {
+	     if (log.isDebugEnabled()) {
+	         log.debug("Number of user claims retrieved from user store: none (userClaims is null");
+	    }
+            return new HashMap<>();
+        }
+        
         if (log.isDebugEnabled()) {
             log.debug("Number of user claims retrieved from user store: " + userClaims.size());
         }
 
-        if (MapUtils.isEmpty(userClaims)) {
-            return new HashMap<>();
-        }
 
         for (Iterator<Map.Entry<String, String>> iterator = spToLocalClaimMappings.entrySet().iterator(); iterator
                 .hasNext(); ) {
@@ -401,13 +406,16 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 throw e;
             }
         }
+        if (MapUtils.isEmpty(userClaims)) {
+ 	    if (log.isDebugEnabled()) {
+	        log.debug("Number of user claims retrieved from user store: none (userClaims is null");
+	    }
+            return new HashMap<>();
+        }
         if (log.isDebugEnabled()) {
             log.debug("Number of user claims retrieved from user store: " + userClaims.size());
         }
 
-        if (MapUtils.isEmpty(userClaims)) {
-            return new HashMap<>();
-        }
 
         for (Iterator<Map.Entry<String, String>> iterator = spToLocalClaimMappings.entrySet().iterator(); iterator
                 .hasNext(); ) {

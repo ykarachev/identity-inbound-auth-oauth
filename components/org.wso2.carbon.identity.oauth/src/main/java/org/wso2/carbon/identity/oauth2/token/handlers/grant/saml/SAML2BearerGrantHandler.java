@@ -202,7 +202,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
                         getIdPByAuthenticatorPropertyValue("IdPEntityId",
                                 assertion.getIssuer().getValue(), tenantDomain, false);
                 // IF Federated IDP not found get the resident IDP and check,
-                // resident IDP entitiID == issuer
+                // resident IDP entityID == issuer
                 if (identityProvider != null) {
                     if (IdentityApplicationConstants.RESIDENT_IDP_RESERVED_NAME.equals(
                             identityProvider.getIdentityProviderName())) {
@@ -257,7 +257,8 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
                     return false;
                 }
             } catch (IdentityProviderManagementException e) {
-                throw new IdentityOAuth2Exception("Error while getting Federated Identity Provider.", e);
+                throw new IdentityOAuth2Exception("Error while getting an Identity Provider for issuer value : " +
+                        assertion.getIssuer().getValue(), e);
             }
         }
 

@@ -254,12 +254,11 @@ public class AccessTokenIssuer {
             OAuth2Util.setTokenRequestContext(tokReqMsgCtx);
             tokenRespDTO = authzGrantHandler.issue(tokReqMsgCtx);
             if (tokenRespDTO.isError()) {
-	    	    setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
-                triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
-	    	    return tokenRespDTO;
-	        }
-            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
+                setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
+                return tokenRespDTO;
+            }    
         } finally {
+            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
             // clears the token request context.
             OAuth2Util.clearTokenRequestContext();
         }

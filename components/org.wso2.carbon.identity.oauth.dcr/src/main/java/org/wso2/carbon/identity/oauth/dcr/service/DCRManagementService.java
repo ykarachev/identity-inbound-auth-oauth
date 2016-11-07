@@ -110,11 +110,6 @@ public class DCRManagementService {
 
         String applicationName = profile.getOwner() + "_" + profile.getClientName();
         String grantType = StringUtils.join(profile.getGrantTypes(), " ");
-
-        if (StringUtils.isEmpty(profile.getOwner())) {
-            return null;
-        }
-
         String baseUser = CarbonContext.getThreadLocalCarbonContext().getUsername();
         String userName = MultitenantUtils.getTenantAwareUsername(profile.getOwner());
 
@@ -148,8 +143,11 @@ public class DCRManagementService {
                 existingServiceProvider = appMgtService.getServiceProvider(applicationName, profile.getTenantDomain());
                 if (existingServiceProvider == null) {
                     appMgtService.createApplication(serviceProvider, profile.getTenantDomain(), userName);
+                    createdServiceProvider = appMgtService.getServiceProvider(applicationName, profile.getTenantDomain());
+                } else {
+                    createdServiceProvider = existingServiceProvider;
                 }
-                createdServiceProvider = appMgtService.getServiceProvider(applicationName, profile.getTenantDomain());
+
             } catch (IdentityApplicationManagementException e) {
                 String errorMessage = "Error occurred while reading service provider, " + applicationName;
                 throw DCRExceptionBuilder.buildException(new DCRException(errorMessage, e), ErrorCodes.BAD_REQUEST

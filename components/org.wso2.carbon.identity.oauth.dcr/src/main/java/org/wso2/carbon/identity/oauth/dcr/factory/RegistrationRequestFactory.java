@@ -18,12 +18,14 @@
 
 package org.wso2.carbon.identity.oauth.dcr.factory;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.FrameworkClientException;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.FrameworkRuntimeException;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityRequestFactory;
@@ -33,6 +35,7 @@ import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequest;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
+import org.wso2.carbon.registry.core.utils.UUIDGenerator;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -42,6 +45,8 @@ import javax.ws.rs.core.MediaType;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.regex.Matcher;
+
+import static org.wso2.carbon.identity.oauth.dcr.factory.HttpRegistrationResponseFactory.INVALID_CLIENT_METADATA;
 
 /**
  * RegistrationRequestFactory build the request for DCR Registry Request.
@@ -91,7 +96,6 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
 
         super.create(registerRequestBuilder, request, response);
 
-
         try {
             Reader requestBodyReader = request.getReader();
             JSONParser jsonParser = new JSONParser();
@@ -114,6 +118,8 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                 }
             } else if (obj != null) {
                 registrationRequestProfile.getRedirectUris().add((String) obj);
+            } else {
+                throw FrameworkClientException.error("RedirectUris property must have at least one URI value.");
             }
 
             registrationRequestProfile.setTokenEndpointAuthMethod((String) jsonData
@@ -141,8 +147,13 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                 registrationRequestProfile.getResponseTypes().add((String) obj);
             }
 
-            registrationRequestProfile
-                    .setClientName((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.CLIENT_NAME));
+            // Get client Name if not available generate a uuid
+            Object objClient = jsonData.get(RegistrationRequest.RegisterRequestConstant.CLIENT_NAME);
+            if (objClient != null) {
+                registrationRequestProfile.setClientName((String) objClient);
+            } else {
+                registrationRequestProfile.setClientName(UUIDGenerator.generateUUID());
+            }
 
             registrationRequestProfile.setClientUri((String) jsonData
                     .get(RegistrationRequest.RegisterRequestConstant.CLIENT_URI));
@@ -185,9 +196,16 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
 
             //TODO:This parameter is a custom one and we have to remove if we can collect the user name by having
             // some authentication mechanism.
-            registrationRequestProfile
-                    .setOwner((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.EXT_PARAM_OWNER));
-
+            String username = CarbonContext.getThreadLocalCarbonContext().getUsername();
+            if (StringUtils.isBlank(username)) {
+                Object objOwner = jsonData.get(RegistrationRequest.RegisterRequestConstant.EXT_PARAM_OWNER);
+                if (objOwner != null) {
+                    username = (String) objOwner;
+                } else {
+                    throw FrameworkClientException.error("Invalid application owner.");
+                }
+            }
+            registrationRequestProfile.setOwner(username);
             registerRequestBuilder.setRegistrationRequestProfile(registrationRequestProfile);
 
 
@@ -206,7 +224,7 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                                                                             HttpServletResponse response) {
         HttpIdentityResponse.HttpIdentityResponseBuilder builder =
                 new HttpIdentityResponse.HttpIdentityResponseBuilder();
-        String errorMessage = generateErrorResponse("ddd", exception.getMessage()).toJSONString();
+        String errorMessage = generateErrorResponse(INVALID_CLIENT_METADATA, exception.getMessage()).toJSONString();
         builder.setBody(errorMessage);
         builder.setStatusCode(HttpServletResponse.SC_BAD_REQUEST);
         builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,

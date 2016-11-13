@@ -85,8 +85,8 @@
         app.setPkceMandatory(pkceMandatory);
         app.setPkceSupportPlain(pkceSupportPlain);
         String[] grantTypes = client.getAllowedOAuthGrantTypes();
-        for (String grantType : grantTypes){
-            String grant = request.getParameter("grant_"+grantType);
+        for (String grantType : grantTypes) {
+            String grant = request.getParameter("grant_" + grantType);
             if (grant != null) {
                 buff.append(grantType + " ");
             }

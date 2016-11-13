@@ -24,10 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
-import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
-import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.callback.OAuthCallback;
@@ -38,6 +35,10 @@ import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
 import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class AbstractResponseTypeHandler implements ResponseTypeHandler {
 
@@ -127,31 +128,37 @@ public abstract class AbstractResponseTypeHandler implements ResponseTypeHandler
     public boolean isAuthorizedClient(OAuthAuthzReqMessageContext authzReqMsgCtx) throws IdentityOAuth2Exception {
 
         OAuth2AuthorizeReqDTO authzReqDTO = authzReqMsgCtx.getAuthorizationReqDTO();
-
-        String grantType = null;
-
-        if (StringUtils.equals(ResponseType.CODE.toString(), authzReqDTO.getResponseType())) {
-            grantType = GrantType.AUTHORIZATION_CODE.toString();
-        } else if (StringUtils.equals(ResponseType.TOKEN.toString(), authzReqDTO.getResponseType())) {
-            grantType = OAuthConstants.GrantTypes.IMPLICIT;
-        }
-
-        OAuthAppDO oAuthAppDO = (OAuthAppDO)authzReqMsgCtx.getProperty("OAuthAppDO");
         String consumerKey = authzReqDTO.getConsumerKey();
 
+        OAuthAppDO oAuthAppDO = (OAuthAppDO)authzReqMsgCtx.getProperty("OAuthAppDO");
         if (StringUtils.isBlank(oAuthAppDO.getGrantTypes())) {
             if (log.isDebugEnabled()) {
                 log.debug("Could not find authorized grant types for client id: " + consumerKey);
             }
             return false;
         }
-        // If the application has defined a limited set of grant types, then check the grant
-        if (!oAuthAppDO.getGrantTypes().contains(grantType)) {
-            if (log.isDebugEnabled()) {
-                //Do not change this log format as these logs use by external applications
-                log.debug("Unsupported Grant Type : " + grantType + " for client id : " + consumerKey);
+
+        List<String> grantTypes = new ArrayList();
+
+        String responseType = authzReqDTO.getResponseType();
+
+        if (StringUtils.contains(responseType, ResponseType.CODE.toString())) {
+            grantTypes.add(GrantType.AUTHORIZATION_CODE.toString());
+        }
+
+        if (OAuth2Util.isImplicitResponseType(responseType)) {
+            grantTypes.add(OAuthConstants.GrantTypes.IMPLICIT.toString());
+        }
+
+        for (String grantType : grantTypes) {
+            // If the application has defined a limited set of grant types, then check the grant
+            if (!oAuthAppDO.getGrantTypes().contains(grantType)) {
+                if (log.isDebugEnabled()) {
+                    //Do not change this log format as these logs use by external applications
+                    log.debug("Unsupported Grant Type : " + grantType + " for client id : " + consumerKey);
+                }
+                return false;
             }
-            return false;
         }
 
         return true;

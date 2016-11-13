@@ -295,18 +295,28 @@
                                     <table>
                                     <%
                                         try {
+                                            if (allowedGrants.contains("authorization_code")) {
+                                                allowedGrants.remove("authorization_code");
+                                                %><tr><td><label><input type="checkbox" id="grant_authorization_code" name="grant_authorization_code" value="authorization_code" <%=(grants.contains("authorization_code") ? "checked=\"checked\"" : "")%> onclick="toggleCallback()"/>Code</label></td></tr><%
+                                            }
+                                            if (allowedGrants.contains("implicit")) {
+                                                allowedGrants.remove("implicit");
+                                                %><tr><td><label><input type="checkbox" id="grant_implicit" name="grant_implicit" value="implicit" <%=(grants.contains("implicit") ? "checked=\"checked\"" : "")%> onclick="toggleCallback()"/>Implicit</label></td></tr><%
+                                            }
+                                            if (allowedGrants.contains("password")) {
+                                                allowedGrants.remove("password");
+                                                %><tr><td><lable><input type="checkbox" id="grant_password" name="grant_password" value="password" <%=(grants.contains("password") ? "checked=\"checked\"" : "")%>/>Password</lable></td></tr><%
+                                            }
+                                            if (allowedGrants.contains("client_credentials")) {
+                                                allowedGrants.remove("client_credentials");
+                                                %><tr><td><label><input type="checkbox" id="grant_client_credentials" name="grant_client_credentials" value="client_credentials" <%=(grants.contains("client_credentials") ? "checked=\"checked\"" : "")%>/>Client Credential</label></td></tr><%
+                                            }
+                                            if (allowedGrants.contains("refresh_token")) {
+                                                allowedGrants.remove("refresh_token");
+                                                %><tr><td><label><input type="checkbox" id="grant_refresh_token" name="grant_refresh_token" value="refresh_token" <%=(grants.contains("refresh_token") ? "checked=\"checked\"" : "")%>/>Refresh Token</label></td></tr><%
+                                            }
                                             for (String grantType : allowedGrants) {
-                                                if (grantType.equals("authorization_code")) {
-                                                    %><tr><td><label><input type="checkbox" id="grant_authorization_code" name="grant_authorization_code" value="authorization_code" <%=(grants.contains(grantType) ? "checked=\"checked\"" : "")%> onclick="toggleCallback()"/>Code</label></td></tr><%
-                                                } else if (grantType.equals("implicit")) {
-                                                    %><tr><td><label><input type="checkbox" id="grant_implicit" name="grant_implicit" value="implicit" <%=(grants.contains(grantType) ? "checked=\"checked\"" : "")%> onclick="toggleCallback()"/>Implicit</label></td></tr><%
-                                                } else if (grantType.equals("password")) {
-                                                    %><tr><td><lable><input type="checkbox" id="grant_password" name="grant_password" value="password" <%=(grants.contains(grantType) ? "checked=\"checked\"" : "")%>/>Password</lable></td></tr><%
-                                                } else if (grantType.equals("client_credentials")) {
-                                                    %><tr><td><label><input type="checkbox" id="grant_client_credentials" name="grant_client_credentials" value="client_credentials" <%=(grants.contains(grantType) ? "checked=\"checked\"" : "")%>/>Client Credential</label></td></tr><%
-                                                } else if (grantType.equals("refresh_token")) {
-                                                    %><tr><td><label><input type="checkbox" id="grant_refresh_token" name="grant_refresh_token" value="refresh_token" <%=(grants.contains(grantType) ? "checked=\"checked\"" : "")%>/>Refresh Token</label></td></tr><%
-                                                } else if (grantType.equals("urn:ietf:params:oauth:grant-type:saml1-bearer")) {
+                                                if (grantType.equals("urn:ietf:params:oauth:grant-type:saml1-bearer")) {
                                                     %><tr><td><label><input type="checkbox" id="grant_urn:ietf:params:oauth:grant-type:saml1-bearer" name="grant_urn:ietf:params:oauth:grant-type:saml1-bearer" value="urn:ietf:params:oauth:grant-type:saml1-bearer" <%=(grants.contains(grantType) ? "checked=\"checked\"" : "")%>/>SAML1</label></td></tr><%
                                                 } else if (grantType.equals("urn:ietf:params:oauth:grant-type:saml2-bearer")) {
                                                     %><tr><td><label><input type="checkbox" id="grant_urn:ietf:params:oauth:grant-type:saml2-bearer" name="grant_urn:ietf:params:oauth:grant-type:saml2-bearer" value="urn:ietf:params:oauth:grant-type:saml2-bearer" <%=(grants.contains(grantType) ? "checked=\"checked\"" : "")%>/>SAML2</label></td></tr><%

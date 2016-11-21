@@ -660,9 +660,12 @@ public class OAuth2AuthzEndpoint {
 
         //When responseType equal to "id_token" the resulting token is passed back as a query parameter
         //According to the specification it should pass as URL Fragment
-        return oauthResponse.getBody() == null ?
-                oauthResponse.getLocationUri().replace("?", "#") :
-                oauthResponse.getBody().replace("?", "#");
+        if (authzRespDTO.getCallbackURI().contains("?")) {
+            return authzRespDTO.getCallbackURI() + "#" + oauthResponse.getLocationUri().substring(
+                    authzRespDTO.getCallbackURI().length() + 1, oauthResponse.getLocationUri().length());
+        } else {
+            return oauthResponse.getLocationUri().replace("?", "#");
+        }
     }
 
     private void addUserAttributesToCache(SessionDataCacheEntry sessionDataCacheEntry, String code, String codeId) {

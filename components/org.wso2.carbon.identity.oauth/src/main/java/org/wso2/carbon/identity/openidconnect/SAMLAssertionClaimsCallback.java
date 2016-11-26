@@ -184,7 +184,8 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 getUserAttributesFromCache(requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN).toString());
         Map<String, Object> claims = Collections.emptyMap();
 
-        if (userAttributes.isEmpty() && requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE) != null) {
+        if ((userAttributes == null || userAttributes.isEmpty())
+                && requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE) != null) {
             userAttributes =
                     getUserAttributesFromCache(requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE).toString());
         }

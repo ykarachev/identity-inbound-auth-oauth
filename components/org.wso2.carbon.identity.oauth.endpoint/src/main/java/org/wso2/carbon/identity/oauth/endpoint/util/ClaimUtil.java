@@ -103,7 +103,10 @@ public class ClaimUtil {
                     }
                 }
             }
-            claimURIList.add(subjectClaimURI);
+
+            if (subjectClaimURI != null) {
+                claimURIList.add(subjectClaimURI);
+            }
 
             boolean isSubjectClaimInRequested = false;
             if (subjectClaimURI != null || requestedLocalClaimMap != null && requestedLocalClaimMap.length > 0) {

@@ -115,8 +115,14 @@ public class DCRProcessor extends IdentityProcessor {
     @Override
     public boolean canHandle(IdentityRequest identityRequest) {
         boolean canHandle = false;
-        if (identityRequest != null && identityRequest instanceof RegistrationRequest) {
-            canHandle = true ;
+        if (identityRequest != null) {
+            Matcher registerMatcher =
+                    DCRConstants.DCR_ENDPOINT_REGISTER_URL_PATTERN.matcher(identityRequest.getRequestURI());
+            Matcher unRegisterMatcher =
+                    DCRConstants.DCR_ENDPOINT_UNREGISTER_URL_PATTERN.matcher(identityRequest.getRequestURI());
+            if (registerMatcher.matches() || unRegisterMatcher.matches()) {
+                canHandle = true;
+            }
         }
         if (log.isDebugEnabled()) {
             log.debug("canHandle " + canHandle + " by DCRProcessor.");

@@ -18,9 +18,7 @@
 
 package org.wso2.carbon.identity.oauth.dto;
 
-import java.io.Serializable;
-
-public class OAuthConsumerAppDTO implements Serializable {
+public class OAuthConsumerAppDTO {
 
     private String oauthConsumerKey;
     private String oauthConsumerSecret;

@@ -127,12 +127,13 @@ public class OIDCLogoutServlet extends HttpServlet {
                 return;
             }
             // Get user consent to logout
-            boolean skipConsent = OIDCSessionManagementUtil.getOpenIDConnectSkipeUserConsent();
+            boolean skipConsent = getOpenIDConnectSkipeUserConsent();
             if (skipConsent) {
                 sendToFrameworkForLogout(request, response);
                 return;
             } else {
-                redirectURL = OIDCSessionManagementUtil.getOIDCLogoutConsentURL();
+                sendToConsentUri(request, response);
+                return;
             }
         }
 
@@ -141,8 +142,8 @@ public class OIDCLogoutServlet extends HttpServlet {
 
     /**
      * Validate Id token signature
-     * @param idToken
-     * @return is validation state
+     * @param idToken Id token
+     * @return validation state
      */
     private boolean validateIdToken(String idToken) {
 
@@ -181,7 +182,7 @@ public class OIDCLogoutServlet extends HttpServlet {
      * Get tenant domain for signature validation.
      * There is a problem If Id token signed using SP's tenant and there is no direct way to get the tenant domain
      * using client id. So have iterate all the Tenants until get the right client id.
-     * @param idToken
+     * @param idToken id token
      * @return Tenant domain
      */
     private String getTenantDomainForSignatureValidation(String idToken) {
@@ -226,8 +227,8 @@ public class OIDCLogoutServlet extends HttpServlet {
 
     /**
      * Send request to consent URI
-     * @param request
-     * @param response
+     * @param request Http servlet request
+     * @param response Http servlet response
      * @throws IOException
      */
     private void sendToConsentUri(HttpServletRequest request, HttpServletResponse response)
@@ -288,9 +289,9 @@ public class OIDCLogoutServlet extends HttpServlet {
 
     /**
      * Append state query parameter
-     * @param redirectURL
-     * @param stateParam
-     * @return
+     * @param redirectURL redirect URL
+     * @param stateParam state query parameter
+     * @return Redirect URL after appending state query param if exist
      */
     private String appendStateQueryParam(String redirectURL, String stateParam) {
 
@@ -302,9 +303,9 @@ public class OIDCLogoutServlet extends HttpServlet {
 
     /**
      * Validate post logout URI with registered callback URI
-     * @param postLogoutUri
-     * @param registeredCallbackUri
-     * @return
+     * @param postLogoutUri Post logout redirect URI
+     * @param registeredCallbackUri registered callback URI
+     * @return Validation state
      */
     private boolean validatePostLogoutUri(String postLogoutUri, String registeredCallbackUri) {
 
@@ -325,7 +326,7 @@ public class OIDCLogoutServlet extends HttpServlet {
 
     /**
      * Extract Client Id from Id token
-     * @param idToken
+     * @param idToken id token
      * @return Client Id
      * @throws ParseException
      */
@@ -446,5 +447,15 @@ public class OIDCLogoutServlet extends HttpServlet {
 
         OIDCSessionDataCacheKey cacheKey = new OIDCSessionDataCacheKey(sessionDataKey);
         OIDCSessionDataCache.getInstance().clearCacheEntry(cacheKey);
+    }
+
+    /**
+     * Returns the OpenIDConnect User Consent.
+     *
+     * @return
+     */
+    private static boolean getOpenIDConnectSkipeUserConsent() {
+        return OAuthServerConfiguration.getInstance().getOpenIDConnectSkipeUserConsentConfig();
+
     }
 }

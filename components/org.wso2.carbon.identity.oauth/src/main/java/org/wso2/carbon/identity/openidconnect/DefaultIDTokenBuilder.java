@@ -71,7 +71,6 @@ import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
 
-import javax.xml.namespace.QName;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.MessageDigest;
@@ -83,10 +82,11 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.LinkedHashSet;
+import javax.xml.namespace.QName;
 
 /**
  * This is the IDToken generator for the OpenID Connect Implementation. This
@@ -140,9 +140,10 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             if (log.isDebugEnabled()) {
                 log.debug("Error while getting Federated Identity Provider ", e);
             }
+            throw new IdentityOAuth2Exception("Error getting Federated Identity Provider", e);
         }
-        FederatedAuthenticatorConfig[] fedAuthnConfigs =
-                identityProvider.getFederatedAuthenticatorConfigs();
+
+        FederatedAuthenticatorConfig[] fedAuthnConfigs = identityProvider.getFederatedAuthenticatorConfigs();
 
         // Get OIDC authenticator
         FederatedAuthenticatorConfig samlAuthenticatorConfig =
@@ -311,9 +312,9 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             if (log.isDebugEnabled()) {
                 log.debug("Error while getting Federated Identity Provider ", e);
             }
+            throw new IdentityOAuth2Exception("Error getting Federated Identity Provider", e);
         }
-        FederatedAuthenticatorConfig[] fedAuthnConfigs =
-                identityProvider.getFederatedAuthenticatorConfigs();
+        FederatedAuthenticatorConfig[] fedAuthnConfigs = identityProvider.getFederatedAuthenticatorConfigs();
 
         // Get OIDC authenticator
         FederatedAuthenticatorConfig samlAuthenticatorConfig =

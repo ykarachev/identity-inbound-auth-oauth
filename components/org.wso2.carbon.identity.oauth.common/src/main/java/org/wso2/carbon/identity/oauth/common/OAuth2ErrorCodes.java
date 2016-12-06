@@ -28,6 +28,7 @@ public class OAuth2ErrorCodes {
     public static final String INVALID_CLIENT = "invalid_client";
     public static final String UNSUPPORTED_GRANT_TYPE = "unsupported_grant_type";
     public static final String LOGIN_REQUIRED = "login_required";
+    public static final String TEMPORARY_UNAVAILABLE = "temporarily_unavailable";
 
     private OAuth2ErrorCodes(){
 

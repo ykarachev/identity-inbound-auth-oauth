@@ -93,8 +93,10 @@ public class AuthorizationHandlerManager {
 
         // loading the stored application data
         OAuthAppDO oAuthAppDO = getAppInformation(authzReqDTO);
-
         authzReqMsgCtx.addProperty("OAuthAppDO", oAuthAppDO);
+
+        // load the SP tenant domain from the OAuth App info
+        authzReqMsgCtx.getAuthorizationReqDTO().setTenantDomain(OAuth2Util.getTenantDomainOfOauthApp(oAuthAppDO));
 
         boolean isAuthorizedClient = authzHandler.isAuthorizedClient(authzReqMsgCtx);
 

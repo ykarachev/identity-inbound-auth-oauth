@@ -122,6 +122,9 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     private OAuthServerConfiguration config = null;
     private Algorithm signatureAlgorithm = null;
 
+    private static final String ERROR_GET_RESIDENT_IDP =
+            "Error while getting Resident Identity Provider of '%s' tenant.";
+
     public DefaultIDTokenBuilder() throws IdentityOAuth2Exception {
 
         config = OAuthServerConfiguration.getInstance();
@@ -132,16 +135,9 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     @Override
     public String buildIDToken(OAuthTokenReqMessageContext request, OAuth2AccessTokenRespDTO tokenRespDTO)
             throws IdentityOAuth2Exception {
-        IdentityProvider identityProvider = null;
-        try {
-            String tenantDomain = request.getOauth2AccessTokenReqDTO().getTenantDomain();
-            identityProvider = IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);
-        } catch (IdentityProviderManagementException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Error while getting Federated Identity Provider ", e);
-            }
-            throw new IdentityOAuth2Exception("Error getting Federated Identity Provider", e);
-        }
+
+        String tenantDomain = request.getOauth2AccessTokenReqDTO().getTenantDomain();
+        IdentityProvider identityProvider = getResidentIdp(tenantDomain);
 
         FederatedAuthenticatorConfig[] fedAuthnConfigs = identityProvider.getFederatedAuthenticatorConfigs();
 
@@ -167,7 +163,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             ServiceProvider serviceProvider = null;
 
             try {
-                String tenantDomain = request.getOauth2AccessTokenReqDTO().getTenantDomain();
                 String spName = applicationMgtService.getServiceProviderNameByClientId(
                         request.getOauth2AccessTokenReqDTO().getClientId(), INBOUND_AUTH2_TYPE, tenantDomain);
                 serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(spName, tenantDomain);
@@ -181,7 +176,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                 if (claim != null) {
                     String username = request.getAuthorizedUser().getUserName();
                     String userStore = request.getAuthorizedUser().getUserStoreDomain();
-                    String tenantDomain = request.getAuthorizedUser().getTenantDomain();
+                    tenantDomain = request.getAuthorizedUser().getTenantDomain();
                     String fqdnUsername = request.getAuthorizedUser().toString();
                     try {
                         UserStoreManager usm = IdentityTenantUtil.getRealm(tenantDomain,
@@ -304,16 +299,10 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     @Override
     public String buildIDToken(OAuthAuthzReqMessageContext request, OAuth2AuthorizeRespDTO tokenRespDTO)
             throws IdentityOAuth2Exception {
-        IdentityProvider identityProvider = null;
-        try {
-            String tenantDomain = request.getAuthorizationReqDTO().getTenantDomain();
-            identityProvider = IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);
-        } catch (IdentityProviderManagementException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Error while getting Federated Identity Provider ", e);
-            }
-            throw new IdentityOAuth2Exception("Error getting Federated Identity Provider", e);
-        }
+
+        String tenantDomain = request.getAuthorizationReqDTO().getTenantDomain();
+        IdentityProvider identityProvider = getResidentIdp(tenantDomain);
+
         FederatedAuthenticatorConfig[] fedAuthnConfigs = identityProvider.getFederatedAuthenticatorConfigs();
 
         // Get OIDC authenticator
@@ -844,6 +833,15 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
     private QName getQNameWithIdentityNS(String localPart) {
         return new QName(IdentityCoreConstants.IDENTITY_DEFAULT_NAMESPACE, localPart);
+    }
+
+    private IdentityProvider getResidentIdp(String tenantDomain) throws IdentityOAuth2Exception {
+        try {
+            return IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);
+        } catch (IdentityProviderManagementException e) {
+            String errorMsg = String.format(ERROR_GET_RESIDENT_IDP, tenantDomain);
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        }
     }
 
 }

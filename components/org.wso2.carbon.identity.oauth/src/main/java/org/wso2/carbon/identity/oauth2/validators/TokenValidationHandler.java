@@ -188,8 +188,7 @@ public class TokenValidationHandler {
         if (tokenGenerator != null) {
             tokenGenerator.generateToken(messageContext);
             if (log.isDebugEnabled()) {
-                log.debug(tokenGenerator.getClass().getName() + "generated token set to response : " +
-                        responseDTO.getAuthorizationContextToken().getTokenString());
+                log.debug(tokenGenerator.getClass().getName() + " generated token set to response");
             }
         }
 
@@ -285,6 +284,8 @@ public class TokenValidationHandler {
 	    messageContext.addProperty("AccessTokenDO", accessTokenDO);
 	}
 
+	responseDTO.setAuthorizedUser(introResp.getUsername());
+
 	if (!tokenValidator.validateAccessDelegation(messageContext)) {
 	    return buildIntrospectionErrorResponse("Invalid access delegation");
 	}
@@ -322,7 +323,7 @@ public class TokenValidationHandler {
 	    // add user attributes to the introspection response.
 	    tokenGenerator.generateToken(messageContext);
 	    if (log.isDebugEnabled()) {
-		log.debug(tokenGenerator.getClass().getName() + "generated token set to response.");
+		log.debug(tokenGenerator.getClass().getName() + " generated token set to response");
 	    }
 	    if (responseDTO.getAuthorizationContextToken() != null) {
 		introResp.setUserContext(responseDTO.getAuthorizationContextToken().getTokenString());

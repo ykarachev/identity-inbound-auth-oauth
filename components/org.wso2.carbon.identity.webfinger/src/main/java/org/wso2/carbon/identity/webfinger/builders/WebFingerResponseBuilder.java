@@ -27,6 +27,6 @@ import org.wso2.carbon.identity.webfinger.WebFingerResponse;
  * which represents the information in WebFingerResponse instance
  */
 public interface WebFingerResponseBuilder {
-    public String getOIDProviderIssuerString(WebFingerResponse webFingerResponse) throws
+    String getOIDProviderIssuerString(WebFingerResponse webFingerResponse) throws
             WebFingerEndpointException;
 }

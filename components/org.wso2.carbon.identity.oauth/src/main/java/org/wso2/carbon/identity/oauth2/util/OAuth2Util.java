@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.oauth2.util;
 
+import com.nimbusds.jose.JWSAlgorithm;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.impl.builder.StAXOMBuilder;
 import org.apache.commons.codec.binary.Base64;
@@ -29,7 +30,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
-import org.wso2.carbon.identity.application.common.model.User;
 import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
@@ -60,19 +60,33 @@ import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
-import javax.xml.namespace.QName;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.xml.namespace.QName;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
 /**
  * Utility methods for OAuth 2.0 implementation
@@ -84,7 +98,7 @@ public class OAuth2Util {
     public static final String ACCESS_TOKEN_DO = "AccessTokenDo";
     public static final String OAUTH2_VALIDATION_MESSAGE_CONTEXT = "OAuth2TokenValidationMessageContext";
 
-
+    private static final String ALGORITHM_NONE = "NONE";
     /*
      * OPTIONAL. A JSON string containing a space-separated list of scopes associated with this token, in the format
      * described in Section 3.3 of OAuth 2.0
@@ -726,6 +740,50 @@ public class OAuth2Util {
             return oauth2TokenEPUrl;
         }
 
+        public static String getOAuth2DCREPUrl(String tenantDomain) throws URISyntaxException {
+            String oauth2TokenEPUrl = OAuthServerConfiguration.getInstance().getOAuth2DCREPUrl();
+            if (StringUtils.isBlank(oauth2TokenEPUrl)) {
+                oauth2TokenEPUrl = IdentityUtil.getServerURL("/identity/connect/register", true, false);
+            }
+            if (StringUtils.isNotBlank(tenantDomain) && !MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals
+                    (tenantDomain)) {
+                oauth2TokenEPUrl = getTenantUrl(oauth2TokenEPUrl, tenantDomain);
+            }
+            return oauth2TokenEPUrl;
+        }
+
+        public static String getOAuth2JWKSPageUrl(String tenantDomain) throws URISyntaxException {
+            String auth2JWKSPageUrl = OAuthServerConfiguration.getInstance().getOAuth2JWKSPageUrl();
+            if (StringUtils.isBlank(auth2JWKSPageUrl)) {
+                auth2JWKSPageUrl = IdentityUtil.getServerURL("/oauth2/jwks", true, false);
+            }
+            if (StringUtils.isNotBlank(tenantDomain) && !MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals
+                    (tenantDomain)) {
+                auth2JWKSPageUrl = getTenantUrl(auth2JWKSPageUrl, tenantDomain);
+            }
+            return auth2JWKSPageUrl;
+        }
+
+        public static String getOidcWebFingerEPUrl() {
+            String oauth2TokenEPUrl = OAuthServerConfiguration.getInstance().getOidcWebFingerEPUrl();
+            if (StringUtils.isBlank(oauth2TokenEPUrl)) {
+                oauth2TokenEPUrl = IdentityUtil.getServerURL(".well-know/webfinger", true, false);
+            }
+            return oauth2TokenEPUrl;
+        }
+
+        public static String getOidcDiscoveryEPUrl(String tenantDomain) throws URISyntaxException {
+            String oidcDiscoveryEPUrl = OAuthServerConfiguration.getInstance().getOidcDiscoveryUrl();
+            if (StringUtils.isBlank(oidcDiscoveryEPUrl)) {
+                oidcDiscoveryEPUrl = IdentityUtil.getServerURL("/oauth2/oidcdiscovery", true, false);
+            }
+            if (StringUtils.isNotBlank(tenantDomain) && !MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals
+                    (tenantDomain)) {
+                oidcDiscoveryEPUrl = getTenantUrl(oidcDiscoveryEPUrl, tenantDomain);
+            }
+            return oidcDiscoveryEPUrl;
+        }
+
         public static String getOAuth2UserInfoEPUrl() {
             String oauth2UserInfoEPUrl = OAuthServerConfiguration.getInstance().getOauth2UserInfoEPUrl();
             if(StringUtils.isBlank(oauth2UserInfoEPUrl)){
@@ -758,6 +816,13 @@ public class OAuth2Util {
                 oAuth2ErrorPageUrl = IdentityUtil.getServerURL("/authenticationendpoint/oauth2_error.do", false, false);
             }
             return oAuth2ErrorPageUrl;
+        }
+
+        private static String getTenantUrl(String url, String tenantDomain) throws URISyntaxException {
+            URI uri = new URI(url);
+            URI uriModified = new URI(uri.getScheme(), uri.getUserInfo(), uri.getHost(), uri.getPort(), ("/t/" +
+                    tenantDomain + uri.getPath()), uri.getQuery(), uri.getFragment());
+            return uriModified.toString();
         }
     }
 
@@ -1071,6 +1136,41 @@ public class OAuth2Util {
             tenantDomain = appDeveloper.getTenantDomain();
         }
         return tenantDomain;
+    }
+
+    /**
+     * This method map signature algorithm define in identity.xml to nimbus
+     * signature algorithm
+     *
+     * @param signatureAlgorithm
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    public static String mapSignatureAlgorithm(String signatureAlgorithm)
+            throws IdentityOAuth2Exception {
+        if ("SHA256withRSA".equals(signatureAlgorithm)) {
+            return JWSAlgorithm.RS256.getName();
+        } else if ("SHA384withRSA".equals(signatureAlgorithm)) {
+            return JWSAlgorithm.RS384.getName();
+        } else if ("SHA512withRSA".equals(signatureAlgorithm)) {
+            return JWSAlgorithm.RS512.getName();
+        } else if ("SHA256withHMAC".equals(signatureAlgorithm)) {
+            return JWSAlgorithm.HS256.getName();
+        } else if ("SHA384withHMAC".equals(signatureAlgorithm)) {
+            return JWSAlgorithm.HS384.getName();
+        } else if ("SHA512withHMAC".equals(signatureAlgorithm)) {
+            return JWSAlgorithm.HS512.getName();
+        } else if ("SHA256withEC".equals(signatureAlgorithm)) {
+            return JWSAlgorithm.ES256.getName();
+        } else if ("SHA384withEC".equals(signatureAlgorithm)) {
+            return JWSAlgorithm.ES384.getName();
+        } else if ("SHA512withEC".equals(signatureAlgorithm)) {
+            return JWSAlgorithm.ES512.getName();
+        } else if (ALGORITHM_NONE.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.NONE.getName();
+        }
+        log.error("Unsupported Signature Algorithm in identity.xml");
+        throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
     }
 
 }

@@ -18,12 +18,16 @@
 
 package org.wso2.carbon.identity.oauth.endpoint.oidcdiscovery;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.base.ServerConfigurationException;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.discovery.OIDCDiscoveryEndPointException;
 import org.wso2.carbon.identity.discovery.OIDCProcessor;
 import org.wso2.carbon.identity.discovery.builders.OIDProviderResponseBuilder;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.endpoint.oidcdiscovery.impl.OIDProviderJSONResponseBuilder;
 import org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil;
 
@@ -42,18 +46,20 @@ public class OIDCDiscoveryEndpoint {
     private static final Log log = LogFactory.getLog(OIDCDiscoveryEndpoint.class);
 
     @GET
-    @Path("{tenant}/.well-known/openid-configuration")
-    @Produces("application/json")
-    public Response getOIDProviderConfiguration(@Context HttpServletRequest request, @PathParam("tenant") String
-            tenant) {
-        return this.getResponse(request, tenant);
-    }
-
-    @GET
     @Path("/.well-known/openid-configuration")
     @Produces("application/json")
     public Response getOIDProviderConfiguration(@Context HttpServletRequest request) {
-        return this.getResponse(request, null);
+
+        String tenantDomain = null;
+        Object tenantObj = IdentityUtil.threadLocalProperties.get().get(OAuthConstants.TENANT_NAME_FROM_CONTEXT);
+        if (tenantObj != null){
+            tenantDomain = (String) tenantObj;
+        }
+        if (StringUtils.isEmpty(tenantDomain)){
+            tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+        }
+
+        return this.getResponse(request, tenantDomain);
     }
 
     private Response getResponse(HttpServletRequest request, String tenant) {

@@ -110,6 +110,8 @@ public final class OAuthConstants {
     public static final String OIDC_SCOPE_CONFIG_PATH = "oidc-scope-config.xml";
     public static final String SCOPE_RESOURCE_PATH = "/oidc";
 
+    public static final String TENANT_NAME_FROM_CONTEXT = "TenantNameFromContext";
+
     public static class GrantTypes {
         public static final String IMPLICIT = "implicit";
         public static final String TOKEN = "token";

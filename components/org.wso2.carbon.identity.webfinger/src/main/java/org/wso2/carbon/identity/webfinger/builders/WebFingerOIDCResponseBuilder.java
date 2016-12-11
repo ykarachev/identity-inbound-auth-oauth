@@ -18,22 +18,16 @@
 
 package org.wso2.carbon.identity.webfinger.builders;
 
-import org.apache.axiom.om.OMElement;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.base.ServerConfigurationException;
-import org.wso2.carbon.identity.base.IdentityException;
-import org.wso2.carbon.identity.core.util.IdentityConfigParser;
-import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.webfinger.WebFingerConstants;
 import org.wso2.carbon.identity.webfinger.WebFingerEndpointException;
 import org.wso2.carbon.identity.webfinger.WebFingerRequest;
 import org.wso2.carbon.identity.webfinger.WebFingerResponse;
 
-import java.util.Iterator;
-import javax.xml.namespace.QName;
+import java.net.URISyntaxException;
 
 /**
  * Build the WebFingerResponse only with the OpenID Provider Issuer.
@@ -45,72 +39,17 @@ public class WebFingerOIDCResponseBuilder {
 
     public WebFingerResponse buildWebFingerResponse(WebFingerRequest request) throws WebFingerEndpointException,
             ServerConfigurationException {
-        WebFingerResponse response = this.getLinkFromIdentityConfig(request.getRel(), request.getResource());
-        if (response == null) {
-            try {
-                response = this.getIssuerFromServerURL(request);
-            } catch (IdentityException e) {
-                log.error("error occured when finding issuer from server url.", e);
-                throw new WebFingerEndpointException(WebFingerConstants.ERROR_CODE_NO_WEBFINGER_CONFIG, "Error in " +
-                        "getting server url.\n" + e.getMessage());
-            }
-        }
-        if (response == null) {
-            throw new WebFingerEndpointException(WebFingerConstants.ERROR_CODE_NO_WEBFINGER_CONFIG, "No WebFinger " +
-                    "settings set at the server.");
-        }
-        return response;
-    }
 
-    /**
-     * This is a generic method.
-     *
-     * @return WebFingerResponse with the respective Rel,Href added to the WebLink list.
-     * @rel rel parameter in the request
-     * @resource resource parameter in the request
-     */
-    private WebFingerResponse getLinkFromIdentityConfig(String rel, String resource) throws
-            WebFingerEndpointException, ServerConfigurationException {
-        WebFingerResponse response = null;
-        IdentityConfigParser configParser = IdentityConfigParser.getInstance();
-        OMElement webFingerElement = configParser.getConfigElement(WebFingerConstants.CONFIG_WEBFINGER_TAG);
-        if (webFingerElement != null) {
-            Iterator<OMElement> links = webFingerElement.getChildrenWithName(configParser.getQNameWithIdentityNS
-                    (WebFingerConstants.CONFIG_LINK));
-            while (links.hasNext()) {
-                OMElement link = links.next();
-                String linkRel = link.getAttributeValue(new QName(WebFingerConstants.REL));
-                if (linkRel.equals(rel)) {
-                    response = new WebFingerResponse();
-                    response.setSubject(resource);
-                    response.addLink(rel, link.getText());
-                    break;
-                }
-            }
+        WebFingerResponse response;
+        String oidcDiscoveryUrl;
+        try {
+            oidcDiscoveryUrl = OAuth2Util.OAuthURL.getOidcDiscoveryEPUrl(request.getTenant());
+        } catch (URISyntaxException e) {
+            throw new ServerConfigurationException("Error while building discovery endpoint");
         }
-        return response;
-    }
-
-    /**
-     * This is not generic. This is intended to get the web finger issuer only.
-     *
-     * @return WebFingerResponse with http://openid.net/specs/connect/1.0/issuer, ServerUrl added ti the WebLink list.
-     * @resource resource parameter in the web finger request
-     */
-    private WebFingerResponse getIssuerFromServerURL(WebFingerRequest request) throws IdentityException {
-        String issuer = IdentityUtil.getServerURL("", false, false);
-        if (StringUtils.isBlank(issuer)) {
-            return null;
-        }
-        issuer = issuer + WebFingerConstants.OPENID_CONNECT_ENDPOINT;
-        if (request.getTenant() != null && !MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(request.getTenant())) {
-            issuer = issuer + "/" + request.getTenant();
-        }
-        //TODO
-        //get the tenant using the user and append from here.
-        WebFingerResponse response = new WebFingerResponse();
+        response = new WebFingerResponse();
         response.setSubject(request.getResource());
-        response.addLink(WebFingerConstants.OPENID_CONNETCT_ISSUER_REL, issuer);
+        response.addLink(WebFingerConstants.OPENID_CONNETCT_ISSUER_REL, oidcDiscoveryUrl);
         return response;
     }
 }

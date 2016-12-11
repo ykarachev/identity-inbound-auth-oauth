@@ -29,5 +29,5 @@ import javax.servlet.http.HttpServletRequest;
  * context, using the HttpServletRequest.
  */
 public interface WebFingerRequestBuilder {
-    public WebFingerRequest buildRequest(HttpServletRequest request) throws WebFingerEndpointException;
+    WebFingerRequest buildRequest(HttpServletRequest request) throws WebFingerEndpointException;
 }

@@ -56,9 +56,6 @@ import org.wso2.carbon.identity.openidconnect.CustomClaimsCallbackHandler;
 import org.wso2.carbon.identity.openidconnect.IDTokenBuilder;
 import org.wso2.carbon.utils.CarbonUtils;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.xml.namespace.QName;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -69,6 +66,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import javax.servlet.http.HttpServletRequest;
+import javax.xml.namespace.QName;
 
 /**
  * Runtime representation of the OAuth Configuration as configured through
@@ -99,6 +98,10 @@ public class OAuthServerConfiguration {
     private static String oauth2TokenEPUrl = null;
     private static String oauth2UserInfoEPUrl = null;
     private static String oidcConsentPageUrl = null;
+    private static String oauth2DCREPUrl = null;
+    private static String oauth2JWKSPageUrl = null;
+    private static String oidcWebFingerEPUrl = null;
+    private static String oidcDiscoveryUrl = null;
     private static String oauth2ConsentPageUrl = null;
     private static String oauth2ErrorPageUrl = null;
     private long authorizationCodeValidityPeriodInSeconds = 300;
@@ -277,6 +280,22 @@ public class OAuthServerConfiguration {
 
     public String getOAuth2TokenEPUrl() {
         return oauth2TokenEPUrl;
+    }
+
+    public String getOAuth2DCREPUrl() {
+        return oauth2DCREPUrl;
+    }
+
+    public String getOAuth2JWKSPageUrl() {
+        return oauth2JWKSPageUrl;
+    }
+
+    public String getOidcDiscoveryUrl() {
+        return oidcDiscoveryUrl;
+    }
+
+    public String getOidcWebFingerEPUrl() {
+        return oidcWebFingerEPUrl;
     }
 
     public String getOauth2UserInfoEPUrl() {
@@ -537,6 +556,10 @@ public class OAuthServerConfiguration {
             }
         }
         return supportedResponseTypes;
+    }
+
+    public Set<String> getSupportedResponseTypeNames() {
+        return supportedResponseTypeClassNames.keySet();
     }
 
     public String[] getSupportedClaims() {
@@ -1025,6 +1048,34 @@ public class OAuthServerConfiguration {
         if (elem != null) {
             if(StringUtils.isNotBlank(elem.getText())) {
                 oauth2ConsentPageUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
+            }
+        }
+        elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
+                ConfigElements.OAUTH2_DCR_EP_URL));
+        if (elem != null) {
+            if(StringUtils.isNotBlank(elem.getText())) {
+                oauth2DCREPUrl= IdentityUtil.fillURLPlaceholders(elem.getText());
+            }
+        }
+        elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
+                ConfigElements.OAUTH2_JWKS_PAGE_URL));
+        if (elem != null) {
+            if(StringUtils.isNotBlank(elem.getText())) {
+                oauth2JWKSPageUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
+            }
+        }
+        elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
+                ConfigElements.OIDC_DISCOVERY_EP_URL));
+        if (elem != null) {
+            if(StringUtils.isNotBlank(elem.getText())) {
+                oidcDiscoveryUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
+            }
+        }
+        elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
+                ConfigElements.OIDC_WEB_FINGER_EP_URL));
+        if (elem != null) {
+            if(StringUtils.isNotBlank(elem.getText())) {
+                oidcWebFingerEPUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
@@ -1522,6 +1573,10 @@ public class OAuthServerConfiguration {
         public static final String OAUTH2_TOKEN_EP_URL = "OAuth2TokenEPUrl";
         public static final String OAUTH2_USERINFO_EP_URL = "OAuth2UserInfoEPUrl";
         public static final String OAUTH2_CONSENT_PAGE_URL = "OAuth2ConsentPage";
+        public static final String OAUTH2_DCR_EP_URL = "OAuth2DCREPUrl";
+        public static final String OAUTH2_JWKS_PAGE_URL = "OAuth2JWKSPage";
+        public static final String OIDC_WEB_FINGER_EP_URL = "OIDCWebFingerEPUrl";
+        public static final String OIDC_DISCOVERY_EP_URL = "OIDCDiscoveryEPUrl";
         public static final String OAUTH2_ERROR_PAGE_URL = "OAuth2ErrorPage";
         public static final String OIDC_CONSENT_PAGE_URL = "OIDCConsentPage";
 

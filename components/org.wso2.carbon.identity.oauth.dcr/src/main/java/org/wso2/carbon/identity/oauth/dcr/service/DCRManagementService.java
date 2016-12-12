@@ -54,6 +54,8 @@ public class DCRManagementService {
     private static final String AUTH_TYPE_OAUTH_2 = "oauth2";
     private static final String OAUTH_CONSUMER_SECRET = "oauthConsumerSecret";
     private static final String OAUTH_VERSION = "OAuth-2.0";
+    // If client secret doesn't expire it should be 0
+    private static final String DEFAULT_CLIENT_SECRET_EXPIREY_TIME = "0";
 
     private static DCRManagementService dcrManagementService = new DCRManagementService();
 
@@ -91,7 +93,7 @@ public class DCRManagementService {
         registrationResponseProfile.setClientId(info.getClientId());
         registrationResponseProfile.getRedirectUrls().add(info.getRedirectUrls().get(0));
         registrationResponseProfile.setClientSecret(info.getClientSecret());
-        registrationResponseProfile.setClientSecretExpiresAt("0");
+        registrationResponseProfile.setClientSecretExpiresAt(DEFAULT_CLIENT_SECRET_EXPIREY_TIME);
         registrationResponseProfile.setGrantTypes(info.getGrantTypes());
         return registrationResponseProfile;
     }

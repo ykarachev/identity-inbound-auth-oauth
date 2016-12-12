@@ -433,6 +433,10 @@ public class TokenMgtDAO {
                 sql = SQLQueries.RETRIEVE_LATEST_ACCESS_TOKEN_BY_CLIENT_ID_USER_SCOPE_ORACLE;
             }
 
+            if (!includeExpiredTokens) {
+                sql = sql.replace("TOKEN_SCOPE_HASH=?", "TOKEN_SCOPE_HASH=? AND TOKEN_STATE='ACTIVE'");
+            }
+
             if (StringUtils.isNotEmpty(userStoreDomain) &&
                     !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
                 //logic to store access token into different tables when multiple user stores are configured.
@@ -1008,8 +1012,6 @@ public class TokenMgtDAO {
                         scopes.toArray(new String[scopes.size()])));
             }
 
-            connection.commit();
-
         } catch (SQLException e) {
             throw new IdentityOAuth2Exception("Error when retrieving Access Token" + e);
         } finally {
@@ -1072,22 +1074,44 @@ public class TokenMgtDAO {
         String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
-        try {
-            String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN, accessTokenStoreTable);
-            ps = connection.prepareStatement(sqlQuery);
-            for (String token : tokens) {
+        if (tokens.length > 1) {
+            try {
+                connection.setAutoCommit(false);
+                String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN,
+                        accessTokenStoreTable);
+                ps = connection.prepareStatement(sqlQuery);
+                for (String token : tokens) {
+                    ps.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
+                    ps.setString(2, UUID.randomUUID().toString());
+                    ps.setString(3, persistenceProcessor.getProcessedAccessTokenIdentifier(token));
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                connection.commit();
+            } catch (SQLException e) {
+                IdentityDatabaseUtil.rollBack(connection);
+                throw new IdentityOAuth2Exception("Error occurred while revoking Access Tokens : " +
+                        Arrays.toString(tokens), e);
+            } finally {
+                IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+            }
+        } else {
+            try {
+                connection.setAutoCommit(true);
+                String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN,
+                        accessTokenStoreTable);
+                ps = connection.prepareStatement(sqlQuery);
                 ps.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
                 ps.setString(2, UUID.randomUUID().toString());
-                ps.setString(3, persistenceProcessor.getProcessedAccessTokenIdentifier(token));
-                ps.addBatch();
+                ps.setString(3, persistenceProcessor.getProcessedAccessTokenIdentifier(tokens[0]));
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                //IdentityDatabaseUtil.rollBack(connection);
+                throw new IdentityOAuth2Exception("Error occurred while revoking Access Token : " +
+                        Arrays.toString(tokens), e);
+            } finally {
+                IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
             }
-            ps.executeBatch();
-            connection.commit();
-        } catch (SQLException e) {
-            IdentityDatabaseUtil.rollBack(connection);
-            throw new IdentityOAuth2Exception("Error occurred while revoking Access Tokens : " + tokens.toString(), e);
-        } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }
     }
 
@@ -1097,6 +1121,8 @@ public class TokenMgtDAO {
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         try {
+            connection.setAutoCommit(false);
+
             for (String token : tokens) {
                 if (OAuth2Util.checkAccessTokenPartitioningEnabled() &&
                         OAuth2Util.checkUserNameAssertionEnabled()) {
@@ -1117,7 +1143,8 @@ public class TokenMgtDAO {
             connection.commit();
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollBack(connection);
-            throw new IdentityOAuth2Exception("Error occurred while revoking Access Token : " + tokens.toString(), e);
+            throw new IdentityOAuth2Exception("Error occurred while revoking Access Token : " +
+                    Arrays.toString(tokens), e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }

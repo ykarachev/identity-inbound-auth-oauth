@@ -76,12 +76,12 @@ public class OAuth2TokenEndpoint {
 
             HttpServletRequestWrapper httpRequest = new OAuthRequestWrapper(request, paramMap);
 
-            String consumer_key;
+            String consumer_key = null;
             OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
             try {
                 if (StringUtils.isNotEmpty(httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID))) {
                     consumer_key = httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID);
-                } else {
+                } else if (request.getHeader("authorization") != null) {
                     consumer_key = EndpointUtil.extractCredentialsFromAuthzHeader(request.getHeader("authorization"))[0];
                 }
                 if (StringUtils.isNotEmpty(consumer_key)) {

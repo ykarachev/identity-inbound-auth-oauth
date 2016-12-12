@@ -405,6 +405,10 @@ public class OAuthAdminService extends AbstractAdmin {
                     String token = detailToken.getAccessToken();
                     accessTokens[countToken] = token;
                     countToken++;
+
+                    OAuthCacheKey cacheKeyToken = new OAuthCacheKey(token);
+                    oauthCache.clearCacheEntry(cacheKeyToken);
+
                     String scope = OAuth2Util.buildScopeString(detailToken.getScope());
                     String authorizedUser = detailToken.getAuthzUser().toString();
                     boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);

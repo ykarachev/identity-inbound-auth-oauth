@@ -85,9 +85,9 @@ public class DCRProcessor extends IdentityProcessor {
                     HandlerManager.getInstance().getRegistrationHandler(dcrMessageContext);
             identityResponseBuilder = registrationHandler.handle(dcrMessageContext);
         } catch (DCRException e) {
-            if(StringUtils.isBlank(e.getErrorCode())) {
+            if (StringUtils.isBlank(e.getErrorCode())) {
                 throw IdentityException.error(RegistrationException.class, ErrorCodes.BAD_REQUEST.toString(), e);
-            }else{
+            } else {
                 throw  IdentityException.error(RegistrationException.class, e.getErrorCode(), e);
             }
         }
@@ -102,9 +102,9 @@ public class DCRProcessor extends IdentityProcessor {
                     HandlerManager.getInstance().getUnRegistrationHandler(dcrMessageContext);
             identityResponseBuilder = unRegistrationHandler.handle(dcrMessageContext);
         } catch (DCRException e) {
-            if(StringUtils.isBlank(e.getErrorCode())) {
+            if (StringUtils.isBlank(e.getErrorCode())) {
                 throw IdentityException.error(UnRegistrationException.class, ErrorCodes.BAD_REQUEST.toString(), e);
-            }else{
+            } else {
                 throw  IdentityException.error(UnRegistrationException.class, e.getErrorCode(), e);
             }
         }

@@ -72,15 +72,10 @@ public class HttpRegistrationResponseFactory extends HttpIdentityResponseFactory
         HttpIdentityResponse.HttpIdentityResponseBuilder builder =
                 new HttpIdentityResponse.HttpIdentityResponseBuilder();
         String errorMessage = "";
-        List<IdentityException.ErrorInfo> errorInfoList = exception.getErrorInfoList();
-        if (errorInfoList.size() > 0) {
-            IdentityException.ErrorInfo errorInfo = errorInfoList.get(errorInfoList.size() - 1);
-            if (ErrorCodes.META_DATA_VALIDATION_FAILED.name().equals(errorInfo.getErrorCode())) {
-                errorMessage = generateErrorResponse(INVALID_CLIENT_METADATA, exception.getMessage()).toJSONString();
-            } else if (ErrorCodes.BAD_REQUEST.name().equals(errorInfo.getErrorCode())) {
-                errorMessage = generateErrorResponse(BACKEND_FAILED, exception.getMessage()).toJSONString();
-            }
-
+        if (ErrorCodes.META_DATA_VALIDATION_FAILED.name().equals(exception.getErrorCode())) {
+            errorMessage = generateErrorResponse(INVALID_CLIENT_METADATA, exception.getMessage()).toJSONString();
+        } else if (ErrorCodes.BAD_REQUEST.name().equals(exception.getErrorCode())) {
+            errorMessage = generateErrorResponse(BACKEND_FAILED, exception.getMessage()).toJSONString();
         }
         builder.setBody(errorMessage);
         builder.setStatusCode(HttpServletResponse.SC_BAD_REQUEST);

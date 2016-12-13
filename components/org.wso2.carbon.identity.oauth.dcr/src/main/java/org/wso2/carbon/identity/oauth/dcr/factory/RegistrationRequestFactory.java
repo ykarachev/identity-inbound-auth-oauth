@@ -31,6 +31,7 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Fra
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityRequestFactory;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
+import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequest;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
@@ -119,7 +120,8 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
             } else if (obj != null) {
                 registrationRequestProfile.getRedirectUris().add((String) obj);
             } else {
-                throw FrameworkClientException.error("RedirectUris property must have at least one URI value.");
+                throw IdentityException.error(FrameworkClientException.class,
+                                              "RedirectUris property must have at least one URI value.");
             }
 
             registrationRequestProfile.setTokenEndpointAuthMethod((String) jsonData
@@ -202,7 +204,7 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                 if (objOwner != null) {
                     username = (String) objOwner;
                 } else {
-                    throw FrameworkClientException.error("Invalid application owner.");
+                    throw IdentityException.error(FrameworkClientException.class, "Invalid application owner.");
                 }
             }
             registrationRequestProfile.setOwner(username);

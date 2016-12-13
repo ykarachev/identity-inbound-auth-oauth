@@ -77,7 +77,7 @@ public class ProviderConfigBuilder {
         }
         try {
             providerConfig.setIdTokenSigningAlgValuesSupported(new String[]{OAuth2Util.mapSignatureAlgorithm
-                    (OAuthServerConfiguration.getInstance().getSignatureAlgorithm())});
+                    (OAuthServerConfiguration.getInstance().getIdTokenSignatureAlgorithm())});
         } catch (IdentityOAuth2Exception e) {
             throw new ServerConfigurationException("Unsupported signature algorithm configured.", e);
         }

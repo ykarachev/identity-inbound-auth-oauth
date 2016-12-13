@@ -37,6 +37,8 @@ import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequest;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
 import org.wso2.carbon.registry.core.utils.UUIDGenerator;
+import org.wso2.carbon.user.api.UserRealm;
+import org.wso2.carbon.user.api.UserStoreException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -203,6 +205,15 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                 Object objOwner = jsonData.get(RegistrationRequest.RegisterRequestConstant.EXT_PARAM_OWNER);
                 if (objOwner != null) {
                     username = (String) objOwner;
+                    try {
+                        UserRealm userRealm = CarbonContext.getThreadLocalCarbonContext().getUserRealm();
+                        if (!userRealm.getUserStoreManager().isExistingUser(username)) {
+                            throw FrameworkClientException.error("Invalid application owner.");
+                        }
+                    } catch (UserStoreException e) {
+                        String errorMessage = "Invalid application owner, " + e.getMessage();
+                        throw FrameworkClientException.error(errorMessage, e);
+                    }
                 } else {
                     throw IdentityException.error(FrameworkClientException.class, "Invalid application owner.");
                 }

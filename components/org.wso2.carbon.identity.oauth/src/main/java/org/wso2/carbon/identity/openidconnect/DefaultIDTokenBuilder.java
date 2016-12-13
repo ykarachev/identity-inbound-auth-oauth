@@ -129,7 +129,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         config = OAuthServerConfiguration.getInstance();
         //map signature algorithm from identity.xml to nimbus format, this is a one time configuration
-        signatureAlgorithm = mapSignatureAlgorithm(config.getSignatureAlgorithm());
+        signatureAlgorithm = mapSignatureAlgorithm(config.getIdTokenSignatureAlgorithm());
     }
 
     @Override
@@ -642,7 +642,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
      */
     protected JWSAlgorithm mapSignatureAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
 
-        if (NONE.equals(signatureAlgorithm)) {
+        if (NONE.equalsIgnoreCase(signatureAlgorithm)) {
             return new JWSAlgorithm(JWSAlgorithm.NONE.getName());
         } else if (SHA256_WITH_RSA.equals(signatureAlgorithm)) {
             return JWSAlgorithm.RS256;

@@ -1095,7 +1095,7 @@ public class TokenMgtDAO {
             } finally {
                 IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
             }
-        } else {
+        } if (tokens.length == 1) {
             try {
                 connection.setAutoCommit(true);
                 String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN,

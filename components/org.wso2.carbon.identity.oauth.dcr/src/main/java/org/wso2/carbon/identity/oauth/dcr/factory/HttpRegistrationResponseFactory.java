@@ -24,7 +24,6 @@ import org.wso2.carbon.identity.application.authentication.framework.exception.F
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponseFactory;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
-import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.dcr.exception.RegistrationException;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationResponse;

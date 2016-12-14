@@ -122,8 +122,8 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
             } else if (obj != null) {
                 registrationRequestProfile.getRedirectUris().add((String) obj);
             } else {
-                throw IdentityException.error(FrameworkClientException.class,
-                                              "RedirectUris property must have at least one URI value.");
+                throw IdentityException.error(FrameworkClientException.class, "RedirectUris property must have at " +
+                        "least one URI value.");
             }
 
             registrationRequestProfile.setTokenEndpointAuthMethod((String) jsonData
@@ -208,11 +208,11 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                     try {
                         UserRealm userRealm = CarbonContext.getThreadLocalCarbonContext().getUserRealm();
                         if (!userRealm.getUserStoreManager().isExistingUser(username)) {
-                            throw FrameworkClientException.error("Invalid application owner.");
+                            throw IdentityException.error(FrameworkClientException.class, "Invalid application owner.");
                         }
                     } catch (UserStoreException e) {
                         String errorMessage = "Invalid application owner, " + e.getMessage();
-                        throw FrameworkClientException.error(errorMessage, e);
+                        throw IdentityException.error(FrameworkClientException.class, errorMessage, e);
                     }
                 } else {
                     throw IdentityException.error(FrameworkClientException.class, "Invalid application owner.");

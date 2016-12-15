@@ -338,8 +338,8 @@ public class TokenMgtDAO {
                         "Error when storing the access token for consumer key : " + consumerKey, e);
             }
         } finally {
-            IdentityDatabaseUtil.closeAllConnections(null, null, addScopePrepStmt);
-            IdentityDatabaseUtil.closeAllConnections(null, null, insertTokenPrepStmt);
+            IdentityDatabaseUtil.closeStatement(addScopePrepStmt);
+            IdentityDatabaseUtil.closeStatement(insertTokenPrepStmt);
         }
 
     }
@@ -392,7 +392,7 @@ public class TokenMgtDAO {
         } catch (SQLException e) {
             throw new IdentityOAuth2Exception("Error occurred while persisting access token", e);
         } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, null, null);
+            IdentityDatabaseUtil.closeConnection(connection);
         }
     }
 
@@ -2095,8 +2095,7 @@ public class TokenMgtDAO {
         PreparedStatement updateStateStatement = null;
         PreparedStatement revokeActiveTokensStatement = null;
         PreparedStatement deactiveActiveCodesStatement = null;
-        ResultSet rs = null;
-        String action = null;
+        String action;
         if (properties.containsKey(OAuthConstants.ACTION_PROPERTY_KEY)) {
             action = properties.getProperty(OAuthConstants.ACTION_PROPERTY_KEY);
         } else {
@@ -2104,6 +2103,7 @@ public class TokenMgtDAO {
         }
 
         try {
+            connection.setAutoCommit(false);
             if (OAuthConstants.ACTION_REVOKE.equals(action)) {
                 String newAppState;
                 if (properties.containsKey(OAuthConstants.OAUTH_APP_NEW_STATE)) {
@@ -2111,8 +2111,6 @@ public class TokenMgtDAO {
                 } else {
                     throw new IdentityOAuth2Exception("New App State is not specified.");
                 }
-
-                connection.setAutoCommit(false);
 
                 // update application state of the oauth app
                 updateStateStatement = connection.prepareStatement
@@ -2128,8 +2126,6 @@ public class TokenMgtDAO {
                 } else {
                     throw new IdentityOAuth2Exception("New Consumer Secret is not specified.");
                 }
-
-                connection.setAutoCommit(false);
 
                 // update consumer secret of the oauth app
                 updateStateStatement = connection.prepareStatement
@@ -2152,7 +2148,6 @@ public class TokenMgtDAO {
                         String sqlQuery = SQLQueries.REVOKE_APP_ACCESS_TOKEN.replace(
                                 IDN_OAUTH2_ACCESS_TOKEN, accessTokenStoreTable);
 
-                        connection.setAutoCommit(false);
                         revokeActiveTokensStatement = connection.prepareStatement(sqlQuery);
                         revokeActiveTokensStatement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
                         revokeActiveTokensStatement.setString(2, UUID.randomUUID().toString());
@@ -2166,7 +2161,6 @@ public class TokenMgtDAO {
                 } else {
 
                     String sqlQuery = SQLQueries.REVOKE_APP_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN, accessTokenStoreTable);
-                    connection.setAutoCommit(false);
                     revokeActiveTokensStatement = connection.prepareStatement(sqlQuery);
                     revokeActiveTokensStatement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
                     revokeActiveTokensStatement.setString(2, UUID.randomUUID().toString());
@@ -2188,7 +2182,6 @@ public class TokenMgtDAO {
 
                         String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE.replace(IDN_OAUTH2_AUTHORIZATION_CODE,
                                 authCodeStoreTable);
-                        connection.setAutoCommit(false);
                         deactiveActiveCodesStatement = connection.prepareStatement(sqlQuery);
                         deactiveActiveCodesStatement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);
                         deactiveActiveCodesStatement.setString(2, persistenceProcessor.getPreprocessedAuthzCode(authzCode));
@@ -2203,9 +2196,9 @@ public class TokenMgtDAO {
         } catch (SQLException e) {
             throw new IdentityApplicationManagementException("Error while executing the SQL statement.", e);
         } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, rs, updateStateStatement);
-            IdentityDatabaseUtil.closeAllConnections(connection, rs, revokeActiveTokensStatement);
-            IdentityDatabaseUtil.closeAllConnections(connection, rs, deactiveActiveCodesStatement);
+            IdentityDatabaseUtil.closeStatement(updateStateStatement);
+            IdentityDatabaseUtil.closeStatement(revokeActiveTokensStatement);
+            IdentityDatabaseUtil.closeAllConnections(connection, null, deactiveActiveCodesStatement);
         }
     }
 

@@ -60,11 +60,7 @@ import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * This implements SAML 2.0 Bearer Assertion Profile for OAuth 2.0 -
@@ -347,12 +343,17 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
          */
 
         DateTime notOnOrAfterFromConditions = null;
-        Set<DateTime> notOnOrAfterFromSubjectConfirmations = new HashSet<DateTime>();
+        Map<DateTime,DateTime> notOnOrAfterFromAndNotBeforeSubjectConfirmations = new HashMap<>();
         boolean bearerFound = false;
         List<String> recipientURLS = new ArrayList<>();
 
         if (assertion.getConditions() != null && assertion.getConditions().getNotOnOrAfter() != null) {
             notOnOrAfterFromConditions = assertion.getConditions().getNotOnOrAfter();
+        }
+
+        DateTime notBeforeConditions = null;
+        if (assertion.getConditions() != null && assertion.getConditions().getNotBefore() != null) {
+            notBeforeConditions = assertion.getConditions().getNotBefore();
         }
 
         List<SubjectConfirmation> subjectConfirmations = assertion.getSubject().getSubjectConfirmations();
@@ -373,21 +374,33 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
                     if (s.getSubjectConfirmationData().getRecipient() != null) {
                         recipientURLS.add(s.getSubjectConfirmationData().getRecipient());
                     }
-                    if (s.getSubjectConfirmationData().getNotOnOrAfter() != null) {
-                        notOnOrAfterFromSubjectConfirmations.add(s.getSubjectConfirmationData().getNotOnOrAfter());
+                    if (s.getSubjectConfirmationData().getNotOnOrAfter() != null || s.getSubjectConfirmationData()
+                            .getNotBefore() != null) {
+                        notOnOrAfterFromAndNotBeforeSubjectConfirmations.put(s.getSubjectConfirmationData().getNotOnOrAfter(),
+                                s.getSubjectConfirmationData().getNotBefore());
                     } else {
                         if (log.isDebugEnabled()){
-                            log.debug("Cannot find NotOnOrAfter attribute in SubjectConfirmationData " +
+                            log.debug("Cannot find NotOnOrAfter and NotBefore attributes in " +
+                                    "SubjectConfirmationData " +
                                     s.getSubjectConfirmationData().toString());
+                        }
+                    }
+                } else {
+                    if (s.getSubjectConfirmationData() == null && notOnOrAfterFromConditions == null) {
+                        if (log.isDebugEnabled()){
+                            log.debug("Neither can find NotOnOrAfter attribute in Conditions nor SubjectConfirmationData" +
+                                    "in SubjectConfirmation " + s.toString());
                         }
                         return false;
                     }
-                } else if (s.getSubjectConfirmationData() == null && notOnOrAfterFromConditions == null) {
-                    if (log.isDebugEnabled()){
-                        log.debug("Neither can find NotOnOrAfter attribute in Conditions nor SubjectConfirmationData" +
-                                "in SubjectConfirmation " + s.toString());
+
+                    if (s.getSubjectConfirmationData() == null && notBeforeConditions == null) {
+                        if (log.isDebugEnabled()){
+                            log.debug("Neither can find NotBefore attribute in Conditions nor SubjectConfirmationData" +
+                                    "in SubjectConfirmation " + s.toString());
+                        }
+                        return false;
                     }
-                    return false;
                 }
             }
         } else {
@@ -430,17 +443,41 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             }
             return false;
         }
+
+        if (notBeforeConditions != null && notBeforeConditions.compareTo(new DateTime()) >= 1) {
+            // notBefore is an early timestamp
+            if (log.isDebugEnabled()){
+                log.debug("NotBefore is having an early timestamp in Conditions element");
+            }
+            return false;
+        }
+
         boolean validSubjectConfirmationDataExists = false;
-        if (!notOnOrAfterFromSubjectConfirmations.isEmpty()) {
-            for (DateTime entry : notOnOrAfterFromSubjectConfirmations) {
-                if (entry.compareTo(new DateTime()) >= 1) {
-                    validSubjectConfirmationDataExists = true;
+        if (!notOnOrAfterFromAndNotBeforeSubjectConfirmations.isEmpty()) {
+            for (Map.Entry<DateTime, DateTime> entry : notOnOrAfterFromAndNotBeforeSubjectConfirmations.entrySet()) {
+                if (entry.getKey() != null) {
+                    if (entry.getKey().compareTo(new DateTime()) >= 1) {
+                        validSubjectConfirmationDataExists = true;
+                    }
+                }
+                if (entry.getValue() != null) {
+                    if (entry.getValue().compareTo(new DateTime()) < 1) {
+                        validSubjectConfirmationDataExists = true;
+                    }
                 }
             }
         }
+
         if (notOnOrAfterFromConditions == null && !validSubjectConfirmationDataExists) {
             if (log.isDebugEnabled()){
                 log.debug("No valid NotOnOrAfter element found in SubjectConfirmations");
+            }
+            return false;
+        }
+
+        if (notBeforeConditions == null && !validSubjectConfirmationDataExists) {
+            if (log.isDebugEnabled()){
+                log.debug("No valid NotBefore element found in SubjectConfirmations");
             }
             return false;
         }
@@ -488,6 +525,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
 
           [OASIS.saml-core-2.0-os] - http://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf
          */
+
 
         // TODO: Throw the SAML request through the general SAML2 validation routines
 

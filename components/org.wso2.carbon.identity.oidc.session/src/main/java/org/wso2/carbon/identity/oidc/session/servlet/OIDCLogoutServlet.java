@@ -16,9 +16,6 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.application.authentication.framework.model.CommonAuthRequestWrapper;
 import org.wso2.carbon.identity.application.authentication.framework.model.CommonAuthResponseWrapper;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
-import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
-import org.wso2.carbon.identity.application.common.model.ServiceProvider;
-import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
@@ -27,14 +24,13 @@ import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.oidc.session.OIDCSessionConstants;
 import org.wso2.carbon.identity.oidc.session.cache.OIDCSessionDataCache;
 import org.wso2.carbon.identity.oidc.session.cache.OIDCSessionDataCacheEntry;
 import org.wso2.carbon.identity.oidc.session.cache.OIDCSessionDataCacheKey;
-import org.wso2.carbon.identity.oidc.session.internal.OIDCSessionManagementComponentServiceHolder;
 import org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtil;
-import org.wso2.carbon.user.api.Tenant;
-import org.wso2.carbon.user.api.UserStoreException;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.Cookie;
@@ -53,6 +49,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class OIDCLogoutServlet extends HttpServlet {
 
     private static final Log log = LogFactory.getLog(OIDCLogoutServlet.class);
+    private static final long serialVersionUID = -9203934217770142011L;
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -187,35 +184,19 @@ public class OIDCLogoutServlet extends HttpServlet {
      */
     private String getTenantDomainForSignatureValidation(String idToken) {
         boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
-        String tenantDomain = null;
+        String tenantDomain;
 
         try {
+            String clientId = extractClientFromIdToken(idToken);
             if (isJWTSignedWithSPKey) {
-
-                String clientId = extractClientFromIdToken(idToken);
-                Tenant[] tenants = OIDCSessionManagementComponentServiceHolder.getRealmService()
-                        .getTenantManager()
-                        .getAllTenants();
-                ServiceProvider serviceProvider;
-                for (Tenant tenant : tenants) {
-                    ApplicationManagementService appInfo = ApplicationManagementService.getInstance();
-                    serviceProvider = appInfo
-                            .getServiceProviderByClientId(clientId, "oauth2", tenant.getDomain());
-                    if (serviceProvider != null) {
-                        tenantDomain = tenant.getDomain();
-                        break;
-                    }
-                }
-                if (tenantDomain == null) {
-                    throw new InvalidOAuthClientException("Invalid client id.");
-                }
+                OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(clientId);
+                tenantDomain = OAuth2Util.getTenantDomainOfOauthApp(oAuthAppDO);
             } else {
-                String clientId = extractClientFromIdToken(idToken);
-                OAuthAppDAO appDAO = new OAuthAppDAO();
-                OAuthAppDO oAuthAppDO = appDAO.getAppInformation(clientId);
-                tenantDomain = oAuthAppDO.getUser().getTenantDomain();
+                //It is not sending tenant domain with the subject in id_token by default, So to work this as
+                //expected, need to enable the option "Use tenant domain in local subject identifier" in SP config
+                tenantDomain = MultitenantUtils.getTenantDomain(extractSubjectFromIdToken(idToken));
             }
-        } catch (ParseException | UserStoreException | IdentityApplicationManagementException e) {
+        } catch (ParseException e) {
             log.error("Error occurred while extracting client id from id token", e);
             return null;
         } catch (IdentityOAuth2Exception | InvalidOAuthClientException e) {
@@ -309,6 +290,10 @@ public class OIDCLogoutServlet extends HttpServlet {
      */
     private boolean validatePostLogoutUri(String postLogoutUri, String registeredCallbackUri) {
 
+        if (StringUtils.isEmpty(postLogoutUri)) {
+            return true;
+        }
+
         String regexp = null;
         if (registeredCallbackUri.startsWith(OAuthConstants.CALLBACK_URL_REGEXP_PREFIX)) {
             regexp = registeredCallbackUri.substring(OAuthConstants.CALLBACK_URL_REGEXP_PREFIX.length());
@@ -320,7 +305,7 @@ public class OIDCLogoutServlet extends HttpServlet {
             return true;
         } else {    // Provided Post logout redirect URL does not match the registered callback url.
             log.warn("Provided Post logout redirect URL does not match with the provided one.");
-            return true;
+            return false;
         }
     }
 
@@ -333,6 +318,17 @@ public class OIDCLogoutServlet extends HttpServlet {
     private String extractClientFromIdToken(String idToken) throws ParseException {
 
         return SignedJWT.parse(idToken).getJWTClaimsSet().getAudience().get(0);
+    }
+
+    /**
+     * Extract Subject from id token
+     * @param idToken id token
+     * @return Authenticated Subject
+     * @throws ParseException
+     */
+    private String extractSubjectFromIdToken(String idToken) throws ParseException {
+
+        return SignedJWT.parse(idToken).getJWTClaimsSet().getSubject();
     }
 
     @Override
@@ -351,7 +347,7 @@ public class OIDCLogoutServlet extends HttpServlet {
         AuthenticationRequest authenticationRequest = new AuthenticationRequest();
         Map<String, String[]> map = new HashMap<>();
         map.put(OIDCSessionConstants.OIDC_SESSION_DATA_KEY_PARAM, new String[] { sessionDataKey });
-        authenticationRequest.setRequestQueryParams(request.getParameterMap());
+        authenticationRequest.setRequestQueryParams(map);
         authenticationRequest.addRequestQueryParam(FrameworkConstants.RequestParams.LOGOUT, new String[] { "true" });
         authenticationRequest.setCommonAuthCallerPath(request.getRequestURI());
         authenticationRequest.setPost(true);
@@ -395,12 +391,12 @@ public class OIDCLogoutServlet extends HttpServlet {
     }
 
     private void addAuthenticationRequestToRequest(HttpServletRequest request,
-                                                   AuthenticationRequestCacheEntry authRequest) {
+            AuthenticationRequestCacheEntry authRequest) {
         request.setAttribute(FrameworkConstants.RequestAttribute.AUTH_REQUEST, authRequest);
     }
 
     private void sendRequestToFramework(HttpServletRequest request, HttpServletResponse response, String sessionDataKey,
-                                        String type) throws ServletException, IOException {
+            String type) throws ServletException, IOException {
 
         CommonAuthenticationHandler commonAuthenticationHandler = new CommonAuthenticationHandler();
 
@@ -412,12 +408,6 @@ public class OIDCLogoutServlet extends HttpServlet {
         commonAuthenticationHandler.doGet(requestWrapper, responseWrapper);
 
         Object object = request.getAttribute(FrameworkConstants.RequestParams.FLOW_STATUS);
-        if (object != null) {
-            AuthenticatorFlowStatus status = (AuthenticatorFlowStatus) object;
-            if (status == AuthenticatorFlowStatus.INCOMPLETE) {
-                response.sendRedirect(responseWrapper.getRedirectURL());
-            }
-        }
 
         if (object != null) {
             AuthenticatorFlowStatus status = (AuthenticatorFlowStatus) object;

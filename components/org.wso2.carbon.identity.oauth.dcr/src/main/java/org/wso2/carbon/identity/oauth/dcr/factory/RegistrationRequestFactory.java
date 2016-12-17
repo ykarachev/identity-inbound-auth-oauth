@@ -31,11 +31,14 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Fra
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityRequestFactory;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
+import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequest;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
 import org.wso2.carbon.identity.oauth.dcr.util.DCRConstants;
 import org.wso2.carbon.registry.core.utils.UUIDGenerator;
+import org.wso2.carbon.user.api.UserRealm;
+import org.wso2.carbon.user.api.UserStoreException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -119,7 +122,8 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
             } else if (obj != null) {
                 registrationRequestProfile.getRedirectUris().add((String) obj);
             } else {
-                throw FrameworkClientException.error("RedirectUris property must have at least one URI value.");
+                throw IdentityException.error(FrameworkClientException.class, "RedirectUris property must have at " +
+                        "least one URI value.");
             }
 
             registrationRequestProfile.setTokenEndpointAuthMethod((String) jsonData
@@ -201,8 +205,17 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                 Object objOwner = jsonData.get(RegistrationRequest.RegisterRequestConstant.EXT_PARAM_OWNER);
                 if (objOwner != null) {
                     username = (String) objOwner;
+                    try {
+                        UserRealm userRealm = CarbonContext.getThreadLocalCarbonContext().getUserRealm();
+                        if (!userRealm.getUserStoreManager().isExistingUser(username)) {
+                            throw IdentityException.error(FrameworkClientException.class, "Invalid application owner.");
+                        }
+                    } catch (UserStoreException e) {
+                        String errorMessage = "Invalid application owner, " + e.getMessage();
+                        throw IdentityException.error(FrameworkClientException.class, errorMessage, e);
+                    }
                 } else {
-                    throw FrameworkClientException.error("Invalid application owner.");
+                    throw IdentityException.error(FrameworkClientException.class, "Invalid application owner.");
                 }
             }
             registrationRequestProfile.setOwner(username);

@@ -22,14 +22,12 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.as.response.OAuthASResponse;
+import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
-import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
-import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.endpoint.user.impl.UserInfoEndpointConfig;
 import org.wso2.carbon.identity.oauth.user.UserInfoAccessTokenValidator;
@@ -37,9 +35,7 @@ import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
 import org.wso2.carbon.identity.oauth.user.UserInfoRequestValidator;
 import org.wso2.carbon.identity.oauth.user.UserInfoResponseBuilder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
-import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
-import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
 import javax.servlet.http.HttpServletRequest;
@@ -68,35 +64,9 @@ public class OpenIDConnectUserEndpoint {
             UserInfoRequestValidator requestValidator = UserInfoEndpointConfig.getInstance().getUserInfoRequestValidator();
             String accessToken = requestValidator.validateRequest(request);
 
-            //validate the app state
-            OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
-            TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
-            try {
-                AccessTokenDO accessTokenDO = tokenMgtDAO.retrieveAccessToken(accessToken, false);
-                if(accessTokenDO != null) {
-                String appState = oAuthAppDAO.getConsumerAppState(accessTokenDO.getConsumerKey());
-                    if(!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("Oauth App is not in active state.");
-                        }
-                        OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
-                                .setError(OAuth2ErrorCodes.INVALID_CLIENT)
-                                .setErrorDescription("Oauth application is not in active state.").buildJSONMessage();
-                        return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
-                    }
-                }
-            } catch (IdentityOAuthAdminException | IdentityOAuth2Exception | OAuthSystemException e) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Error in getting oauth app state.", e);
-                }
-                OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
-                        .setError(OAuth2ErrorCodes.SERVER_ERROR)
-                        .setErrorDescription("Error in getting oauth app state.").buildJSONMessage();
-                return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
-            }
-
             // validate the access token
-            UserInfoAccessTokenValidator tokenValidator = UserInfoEndpointConfig.getInstance().getUserInfoAccessTokenValidator();
+            UserInfoAccessTokenValidator tokenValidator =
+                    UserInfoEndpointConfig.getInstance().getUserInfoAccessTokenValidator();
             OAuth2TokenValidationResponseDTO tokenResponse = tokenValidator.validateToken(accessToken);
 
             /*
@@ -109,7 +79,8 @@ public class OpenIDConnectUserEndpoint {
 
             // build the claims
             //ToDO - Validate the grant type to be implicit or authorization_code before retrieving claims
-            UserInfoResponseBuilder userInfoResponseBuilder = UserInfoEndpointConfig.getInstance().getUserInfoResponseBuilder();
+            UserInfoResponseBuilder userInfoResponseBuilder =
+                    UserInfoEndpointConfig.getInstance().getUserInfoResponseBuilder();
             response = userInfoResponseBuilder.getResponseString(tokenResponse);
 
         } catch (UserInfoEndpointException e) {
@@ -149,12 +120,44 @@ public class OpenIDConnectUserEndpoint {
      */
     private Response handleError(UserInfoEndpointException e) throws OAuthSystemException {
         log.debug(e);
-        OAuthResponse res = null;
+        OAuthResponse res;
         try {
-            res =
-                    OAuthASResponse.errorResponse(HttpServletResponse.SC_BAD_REQUEST)
-                            .setError(e.getErrorCode()).setErrorDescription(e.getErrorMessage())
-                            .buildJSONMessage();
+            if (OAuthError.ResourceResponse.INSUFFICIENT_SCOPE.equals(e.getErrorCode())) {
+                res = OAuthASResponse.errorResponse(HttpServletResponse.SC_FORBIDDEN)
+                        .setError(e.getErrorCode()).setErrorDescription(e.getErrorMessage())
+                        .buildJSONMessage();
+                return Response.status(res.getResponseStatus())
+                        .header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE,
+                                "Bearer error=\"" + e.getErrorCode() + "\"")
+                        .entity(res.getBody())
+                        .build();
+            } else if (OAuthError.ResourceResponse.INVALID_TOKEN.equals(e.getErrorCode())) {
+                res = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
+                        .setError(e.getErrorCode()).setErrorDescription(e.getErrorMessage())
+                        .buildJSONMessage();
+                return Response.status(res.getResponseStatus())
+                        .header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE,
+                                "Bearer error=\"" + e.getErrorCode() + "\"")
+                        .entity(res.getBody())
+                        .build();
+            } else if (OAuthError.ResourceResponse.INVALID_REQUEST.equals(e.getErrorCode())) {
+                res = OAuthASResponse.errorResponse(HttpServletResponse.SC_BAD_REQUEST)
+                        .setError(e.getErrorCode()).setErrorDescription(e.getErrorMessage())
+                        .buildJSONMessage();
+                return Response.status(res.getResponseStatus())
+                        .header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE,
+                                "Bearer error=\"" + e.getErrorCode() + "\"")
+                        .entity(res.getBody())
+                        .build();
+            } else {
+                res = OAuthASResponse.errorResponse(HttpServletResponse.SC_BAD_REQUEST)
+                        .setError(e.getErrorCode()).setErrorDescription(e.getErrorMessage())
+                        .buildJSONMessage();
+                return Response.status(res.getResponseStatus())
+                        .entity(res.getBody())
+                        .build();
+            }
+
         } catch (OAuthSystemException e1) {
             log.error("Error while building the JSON message", e1);
             OAuthResponse response =
@@ -163,7 +166,6 @@ public class OpenIDConnectUserEndpoint {
                             .setErrorDescription(e1.getMessage()).buildJSONMessage();
             return Response.status(response.getResponseStatus()).entity(response.getBody()).build();
         }
-        return Response.status(res.getResponseStatus()).entity(res.getBody()).build();
     }
 
     /**

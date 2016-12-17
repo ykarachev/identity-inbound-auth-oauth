@@ -28,8 +28,8 @@ import javax.servlet.http.HttpServletRequest;
  * specified in the spec.
  */
 public interface OIDCProcessor {
-    public OIDProviderConfigResponse getResponse(HttpServletRequest request, String tenantDomain) throws
+    OIDProviderConfigResponse getResponse(HttpServletRequest request, String tenantDomain) throws
             OIDCDiscoveryEndPointException, ServerConfigurationException;
 
-    public int handleError(OIDCDiscoveryEndPointException error);
+    int handleError(OIDCDiscoveryEndPointException error);
 }

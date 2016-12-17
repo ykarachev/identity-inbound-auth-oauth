@@ -248,7 +248,8 @@ public class TokenMgtDAO {
             throws IdentityOAuth2Exception {
 
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
-        PreparedStatement prepStmt = null;
+        PreparedStatement insertTokenPrepStmt = null;
+        PreparedStatement addScopePrepStmt = null;
 
         String accessTokenStoreTable = "IDN_OAUTH2_ACCESS_TOKEN";
         if (StringUtils.isNotBlank(userStoreDomain) &&
@@ -260,42 +261,42 @@ public class TokenMgtDAO {
                 accessTokenStoreTable);
         String sqlAddScopes = SQLQueries.INSERT_OAUTH2_TOKEN_SCOPE;
         try {
-            prepStmt = connection.prepareStatement(sql);
-            prepStmt.setString(1, persistenceProcessor.getProcessedAccessTokenIdentifier(accessToken));
+            insertTokenPrepStmt = connection.prepareStatement(sql);
+            insertTokenPrepStmt.setString(1, persistenceProcessor.getProcessedAccessTokenIdentifier(accessToken));
 
             if (accessTokenDO.getRefreshToken() != null) {
-                prepStmt.setString(2, persistenceProcessor.getProcessedRefreshToken(accessTokenDO.getRefreshToken()));
+                insertTokenPrepStmt.setString(2, persistenceProcessor.getProcessedRefreshToken(accessTokenDO.getRefreshToken()));
             } else {
-                prepStmt.setString(2, accessTokenDO.getRefreshToken());
+                insertTokenPrepStmt.setString(2, accessTokenDO.getRefreshToken());
             }
 
-            prepStmt.setString(3, accessTokenDO.getAuthzUser().getUserName());
+            insertTokenPrepStmt.setString(3, accessTokenDO.getAuthzUser().getUserName());
             int tenantId = OAuth2Util.getTenantId(accessTokenDO.getAuthzUser().getTenantDomain());
-            prepStmt.setInt(4, tenantId);
-            prepStmt.setString(5, getSanitizedUserStoreDomain(accessTokenDO.getAuthzUser().getUserStoreDomain()));
-            prepStmt.setTimestamp(6, accessTokenDO.getIssuedTime(), Calendar.getInstance(TimeZone.getTimeZone(UTC)));
-            prepStmt.setTimestamp(7, accessTokenDO.getRefreshTokenIssuedTime(), Calendar.getInstance(TimeZone
+            insertTokenPrepStmt.setInt(4, tenantId);
+            insertTokenPrepStmt.setString(5, getSanitizedUserStoreDomain(accessTokenDO.getAuthzUser().getUserStoreDomain()));
+            insertTokenPrepStmt.setTimestamp(6, accessTokenDO.getIssuedTime(), Calendar.getInstance(TimeZone.getTimeZone(UTC)));
+            insertTokenPrepStmt.setTimestamp(7, accessTokenDO.getRefreshTokenIssuedTime(), Calendar.getInstance(TimeZone
                     .getTimeZone(UTC)));
-            prepStmt.setLong(8, accessTokenDO.getValidityPeriodInMillis());
-            prepStmt.setLong(9, accessTokenDO.getRefreshTokenValidityPeriodInMillis());
-            prepStmt.setString(10, OAuth2Util.hashScopes(accessTokenDO.getScope()));
-            prepStmt.setString(11, accessTokenDO.getTokenState());
-            prepStmt.setString(12, accessTokenDO.getTokenType());
-            prepStmt.setString(13, accessTokenDO.getTokenId());
-            prepStmt.setString(14, accessTokenDO.getGrantType());
-            prepStmt.setString(15, accessTokenDO.getAuthzUser().getAuthenticatedSubjectIdentifier());
-            prepStmt.setString(16, persistenceProcessor.getProcessedClientId(consumerKey));
-            prepStmt.execute();
+            insertTokenPrepStmt.setLong(8, accessTokenDO.getValidityPeriodInMillis());
+            insertTokenPrepStmt.setLong(9, accessTokenDO.getRefreshTokenValidityPeriodInMillis());
+            insertTokenPrepStmt.setString(10, OAuth2Util.hashScopes(accessTokenDO.getScope()));
+            insertTokenPrepStmt.setString(11, accessTokenDO.getTokenState());
+            insertTokenPrepStmt.setString(12, accessTokenDO.getTokenType());
+            insertTokenPrepStmt.setString(13, accessTokenDO.getTokenId());
+            insertTokenPrepStmt.setString(14, accessTokenDO.getGrantType());
+            insertTokenPrepStmt.setString(15, accessTokenDO.getAuthzUser().getAuthenticatedSubjectIdentifier());
+            insertTokenPrepStmt.setString(16, persistenceProcessor.getProcessedClientId(consumerKey));
+            insertTokenPrepStmt.execute();
 
             String accessTokenId = accessTokenDO.getTokenId();
-            prepStmt = connection.prepareStatement(sqlAddScopes);
+            addScopePrepStmt = connection.prepareStatement(sqlAddScopes);
 
             if (accessTokenDO.getScope() != null && accessTokenDO.getScope().length > 0) {
                 for (String scope : accessTokenDO.getScope()) {
-                    prepStmt.setString(1, accessTokenId);
-                    prepStmt.setString(2, scope);
-                    prepStmt.setInt(3, tenantId);
-                    prepStmt.execute();
+                    addScopePrepStmt.setString(1, accessTokenId);
+                    addScopePrepStmt.setString(2, scope);
+                    addScopePrepStmt.setInt(3, tenantId);
+                    addScopePrepStmt.execute();
                 }
             }
             if (retryAttempt > 0) {
@@ -313,7 +314,6 @@ public class TokenMgtDAO {
                 throw new IdentityOAuth2Exception(errorMsg, e);
             }
 
-            IdentityDatabaseUtil.closeAllConnections(null, null, prepStmt);
             recoverFromConAppKeyConstraintViolation(accessToken, consumerKey, accessTokenDO, connection,
                     userStoreDomain, retryAttempt + 1);
         } catch (DataTruncation e) {
@@ -331,7 +331,6 @@ public class TokenMgtDAO {
                     throw new IdentityOAuth2Exception(errorMsg, e);
                 }
 
-                IdentityDatabaseUtil.closeAllConnections(null, null, prepStmt);
                 recoverFromConAppKeyConstraintViolation(accessToken, consumerKey, accessTokenDO,
                         connection, userStoreDomain, retryAttempt + 1);
             } else {
@@ -339,7 +338,8 @@ public class TokenMgtDAO {
                         "Error when storing the access token for consumer key : " + consumerKey, e);
             }
         } finally {
-            IdentityDatabaseUtil.closeAllConnections(null, null, prepStmt);
+            IdentityDatabaseUtil.closeStatement(addScopePrepStmt);
+            IdentityDatabaseUtil.closeStatement(insertTokenPrepStmt);
         }
 
     }
@@ -392,7 +392,7 @@ public class TokenMgtDAO {
         } catch (SQLException e) {
             throw new IdentityOAuth2Exception("Error occurred while persisting access token", e);
         } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, null, null);
+            IdentityDatabaseUtil.closeConnection(connection);
         }
     }
 
@@ -431,6 +431,10 @@ public class TokenMgtDAO {
 
             } else {
                 sql = SQLQueries.RETRIEVE_LATEST_ACCESS_TOKEN_BY_CLIENT_ID_USER_SCOPE_ORACLE;
+            }
+
+            if (!includeExpiredTokens) {
+                sql = sql.replace("TOKEN_SCOPE_HASH=?", "TOKEN_SCOPE_HASH=? AND TOKEN_STATE='ACTIVE'");
             }
 
             if (StringUtils.isNotEmpty(userStoreDomain) &&
@@ -1008,8 +1012,6 @@ public class TokenMgtDAO {
                         scopes.toArray(new String[scopes.size()])));
             }
 
-            connection.commit();
-
         } catch (SQLException e) {
             throw new IdentityOAuth2Exception("Error when retrieving Access Token" + e);
         } finally {
@@ -1072,22 +1074,44 @@ public class TokenMgtDAO {
         String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
-        try {
-            String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN, accessTokenStoreTable);
-            ps = connection.prepareStatement(sqlQuery);
-            for (String token : tokens) {
+        if (tokens.length > 1) {
+            try {
+                connection.setAutoCommit(false);
+                String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN,
+                        accessTokenStoreTable);
+                ps = connection.prepareStatement(sqlQuery);
+                for (String token : tokens) {
+                    ps.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
+                    ps.setString(2, UUID.randomUUID().toString());
+                    ps.setString(3, persistenceProcessor.getProcessedAccessTokenIdentifier(token));
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                connection.commit();
+            } catch (SQLException e) {
+                IdentityDatabaseUtil.rollBack(connection);
+                throw new IdentityOAuth2Exception("Error occurred while revoking Access Tokens : " +
+                        Arrays.toString(tokens), e);
+            } finally {
+                IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+            }
+        } if (tokens.length == 1) {
+            try {
+                connection.setAutoCommit(true);
+                String sqlQuery = SQLQueries.REVOKE_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN,
+                        accessTokenStoreTable);
+                ps = connection.prepareStatement(sqlQuery);
                 ps.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
                 ps.setString(2, UUID.randomUUID().toString());
-                ps.setString(3, persistenceProcessor.getProcessedAccessTokenIdentifier(token));
-                ps.addBatch();
+                ps.setString(3, persistenceProcessor.getProcessedAccessTokenIdentifier(tokens[0]));
+                ps.executeUpdate();
+            } catch (SQLException e) {
+                //IdentityDatabaseUtil.rollBack(connection);
+                throw new IdentityOAuth2Exception("Error occurred while revoking Access Token : " +
+                        Arrays.toString(tokens), e);
+            } finally {
+                IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
             }
-            ps.executeBatch();
-            connection.commit();
-        } catch (SQLException e) {
-            IdentityDatabaseUtil.rollBack(connection);
-            throw new IdentityOAuth2Exception("Error occurred while revoking Access Tokens : " + tokens.toString(), e);
-        } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }
     }
 
@@ -1097,6 +1121,8 @@ public class TokenMgtDAO {
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         try {
+            connection.setAutoCommit(false);
+
             for (String token : tokens) {
                 if (OAuth2Util.checkAccessTokenPartitioningEnabled() &&
                         OAuth2Util.checkUserNameAssertionEnabled()) {
@@ -1112,12 +1138,14 @@ public class TokenMgtDAO {
                 if (log.isDebugEnabled()) {
                     log.debug("Number of rows being updated : " + count);
                 }
+                IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
             }
 
             connection.commit();
         } catch (SQLException e) {
             IdentityDatabaseUtil.rollBack(connection);
-            throw new IdentityOAuth2Exception("Error occurred while revoking Access Token : " + tokens.toString(), e);
+            throw new IdentityOAuth2Exception("Error occurred while revoking Access Token : " +
+                    Arrays.toString(tokens), e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }
@@ -2064,9 +2092,10 @@ public class TokenMgtDAO {
             throws IdentityOAuth2Exception, IdentityApplicationManagementException {
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
-        PreparedStatement statement = null;
-        ResultSet rs = null;
-        String action = null;
+        PreparedStatement updateStateStatement = null;
+        PreparedStatement revokeActiveTokensStatement = null;
+        PreparedStatement deactiveActiveCodesStatement = null;
+        String action;
         if (properties.containsKey(OAuthConstants.ACTION_PROPERTY_KEY)) {
             action = properties.getProperty(OAuthConstants.ACTION_PROPERTY_KEY);
         } else {
@@ -2074,6 +2103,7 @@ public class TokenMgtDAO {
         }
 
         try {
+            connection.setAutoCommit(false);
             if (OAuthConstants.ACTION_REVOKE.equals(action)) {
                 String newAppState;
                 if (properties.containsKey(OAuthConstants.OAUTH_APP_NEW_STATE)) {
@@ -2082,14 +2112,12 @@ public class TokenMgtDAO {
                     throw new IdentityOAuth2Exception("New App State is not specified.");
                 }
 
-                connection.setAutoCommit(false);
-
                 // update application state of the oauth app
-                statement = connection.prepareStatement
+                updateStateStatement = connection.prepareStatement
                         (org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_APPLICATION_STATE);
-                statement.setString(1, newAppState);
-                statement.setString(2, consumerKey);
-                statement.execute();
+                updateStateStatement.setString(1, newAppState);
+                updateStateStatement.setString(2, consumerKey);
+                updateStateStatement.execute();
 
             } else if (OAuthConstants.ACTION_REGENERATE.equals(action)) {
                 String newSecretKey;
@@ -2099,14 +2127,12 @@ public class TokenMgtDAO {
                     throw new IdentityOAuth2Exception("New Consumer Secret is not specified.");
                 }
 
-                connection.setAutoCommit(false);
-
                 // update consumer secret of the oauth app
-                statement = connection.prepareStatement
+                updateStateStatement = connection.prepareStatement
                         (org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_OAUTH_SECRET_KEY);
-                statement.setString(1, newSecretKey);
-                statement.setString(2, consumerKey);
-                statement.execute();
+                updateStateStatement.setString(1, newSecretKey);
+                updateStateStatement.setString(2, consumerKey);
+                updateStateStatement.execute();
 
             }
 
@@ -2122,12 +2148,11 @@ public class TokenMgtDAO {
                         String sqlQuery = SQLQueries.REVOKE_APP_ACCESS_TOKEN.replace(
                                 IDN_OAUTH2_ACCESS_TOKEN, accessTokenStoreTable);
 
-                        connection.setAutoCommit(false);
-                        statement = connection.prepareStatement(sqlQuery);
-                        statement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
-                        statement.setString(2, UUID.randomUUID().toString());
-                        statement.setString(3, consumerKey);
-                        int count = statement.executeUpdate();
+                        revokeActiveTokensStatement = connection.prepareStatement(sqlQuery);
+                        revokeActiveTokensStatement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
+                        revokeActiveTokensStatement.setString(2, UUID.randomUUID().toString());
+                        revokeActiveTokensStatement.setString(3, consumerKey);
+                        int count = revokeActiveTokensStatement.executeUpdate();
                         if (log.isDebugEnabled()) {
                             log.debug("Number of rows being updated : " + count);
                         }
@@ -2136,13 +2161,12 @@ public class TokenMgtDAO {
                 } else {
 
                     String sqlQuery = SQLQueries.REVOKE_APP_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN, accessTokenStoreTable);
-                    connection.setAutoCommit(false);
-                    statement = connection.prepareStatement(sqlQuery);
-                    statement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
-                    statement.setString(2, UUID.randomUUID().toString());
-                    statement.setString(3, consumerKey);
-                    statement.setString(4, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
-                    statement.execute();
+                    revokeActiveTokensStatement = connection.prepareStatement(sqlQuery);
+                    revokeActiveTokensStatement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
+                    revokeActiveTokensStatement.setString(2, UUID.randomUUID().toString());
+                    revokeActiveTokensStatement.setString(3, consumerKey);
+                    revokeActiveTokensStatement.setString(4, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
+                    revokeActiveTokensStatement.execute();
 
                 }
             }
@@ -2158,11 +2182,10 @@ public class TokenMgtDAO {
 
                         String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE.replace(IDN_OAUTH2_AUTHORIZATION_CODE,
                                 authCodeStoreTable);
-                        connection.setAutoCommit(false);
-                        statement = connection.prepareStatement(sqlQuery);
-                        statement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);
-                        statement.setString(2, persistenceProcessor.getPreprocessedAuthzCode(authzCode));
-                        statement.execute();
+                        deactiveActiveCodesStatement = connection.prepareStatement(sqlQuery);
+                        deactiveActiveCodesStatement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);
+                        deactiveActiveCodesStatement.setString(2, persistenceProcessor.getPreprocessedAuthzCode(authzCode));
+                        deactiveActiveCodesStatement.execute();
 
                     }
                 }
@@ -2173,7 +2196,9 @@ public class TokenMgtDAO {
         } catch (SQLException e) {
             throw new IdentityApplicationManagementException("Error while executing the SQL statement.", e);
         } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, rs, statement);
+            IdentityDatabaseUtil.closeStatement(updateStateStatement);
+            IdentityDatabaseUtil.closeStatement(revokeActiveTokensStatement);
+            IdentityDatabaseUtil.closeAllConnections(connection, null, deactiveActiveCodesStatement);
         }
     }
 

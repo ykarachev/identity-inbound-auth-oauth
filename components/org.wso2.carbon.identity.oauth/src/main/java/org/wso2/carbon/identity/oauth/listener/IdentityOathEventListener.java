@@ -149,9 +149,9 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
 
     private boolean revokeTokensOfLockedUser(String userName, UserStoreManager userStoreManager) throws UserStoreException {
 
-        IdentityErrorMsgContext errorContext = IdentityUtil.getIdentityErrorMsg();
+        String errorCode = (String) IdentityUtil.threadLocalProperties.get().get(IdentityCoreConstants.USER_ACCOUNT_STATE);
 
-        if (errorContext != null && errorContext.getErrorCode() == UserCoreConstants.ErrorCode.USER_IS_LOCKED) {
+        if (errorCode != null && (errorCode.equalsIgnoreCase(UserCoreConstants.ErrorCode.USER_IS_LOCKED))) {
             return revokeTokens(userName, userStoreManager);
         }
         return true;
@@ -159,9 +159,9 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
 
     private boolean revokeTokensOfDisabledUser(String userName, UserStoreManager userStoreManager) throws UserStoreException {
 
-        IdentityErrorMsgContext errorContext = IdentityUtil.getIdentityErrorMsg();
+        String errorCode = (String) IdentityUtil.threadLocalProperties.get().get(IdentityCoreConstants.USER_ACCOUNT_STATE);
 
-        if (errorContext != null && errorContext.getErrorCode() == IdentityCoreConstants.USER_ACCOUNT_DISABLED_ERROR_CODE) {
+        if (errorCode != null && errorCode.equalsIgnoreCase(IdentityCoreConstants.USER_ACCOUNT_DISABLED_ERROR_CODE)) {
             return revokeTokens(userName, userStoreManager);
         }
         return true;

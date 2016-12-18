@@ -180,7 +180,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             }
         } else {
             // todo add proper error message/error code
-            return handleError(OAuthError.TokenResponse.INVALID_REQUEST, "Refresh token is expired.");
+            return handleError(OAuthError.TokenResponse.INVALID_REQUEST, "Refresh token is expired.", oauth2AccessTokenReqDTO);
         }
 
         Timestamp timestamp = new Timestamp(new Date().getTime());
@@ -335,7 +335,13 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         return tokenRespDTO;
     }
 
-    private OAuth2AccessTokenRespDTO handleError(String errorCode, String errorMsg) {
+    private OAuth2AccessTokenRespDTO handleError(String errorCode, String errorMsg,
+            OAuth2AccessTokenReqDTO tokenReqDTO) {
+        if (log.isDebugEnabled()) {
+            log.debug("OAuth-Error-Code=" + errorCode + " client-id=" + tokenReqDTO.getClientId()
+                + " grant-type=" + tokenReqDTO.getGrantType()
+                + " scope=" + OAuth2Util.buildScopeString(tokenReqDTO.getScope()));
+    	}
         OAuth2AccessTokenRespDTO tokenRespDTO;
         tokenRespDTO = new OAuth2AccessTokenRespDTO();
         tokenRespDTO.setError(true);

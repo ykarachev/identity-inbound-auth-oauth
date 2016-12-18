@@ -64,7 +64,7 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
         if (orderId != IdentityCoreConstants.EVENT_LISTENER_ORDER_ID) {
             return orderId;
         }
-        return 60;
+        return 100;
     }
 
     /**

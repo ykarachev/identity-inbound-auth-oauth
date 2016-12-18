@@ -113,7 +113,7 @@ public class AccessTokenIssuer {
             throws IdentityException, InvalidOAuthClientException {
 
         String grantType = tokenReqDTO.getGrantType();
-        OAuth2AccessTokenRespDTO tokenRespDTO;
+        OAuth2AccessTokenRespDTO tokenRespDTO = null;
 
         AuthorizationGrantHandler authzGrantHandler = authzGrantHandlers.get(grantType);
 

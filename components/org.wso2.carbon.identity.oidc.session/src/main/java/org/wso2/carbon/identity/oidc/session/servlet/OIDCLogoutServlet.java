@@ -291,7 +291,14 @@ public class OIDCLogoutServlet extends HttpServlet {
             if (StringUtils.isNotBlank(redirectURL)) {
                 response.sendRedirect(redirectURL);
                 return;
+            } else {
+                redirectURL = OIDCSessionManagementUtil.getOIDCLogoutConsentURL();
             }
+        } else {
+            // Add OIDC Cache entry without properties since OIDC Logout should work without id_token_hint
+            OIDCSessionDataCacheEntry cacheEntry = new OIDCSessionDataCacheEntry();
+            Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);
+            addSessionDataToCache(opBrowserStateCookie.getValue(), cacheEntry);
         }
         response.sendRedirect(redirectURL);
     }

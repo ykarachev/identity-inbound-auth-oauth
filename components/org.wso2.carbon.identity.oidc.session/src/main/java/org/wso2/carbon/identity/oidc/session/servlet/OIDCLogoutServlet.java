@@ -385,8 +385,11 @@ public class OIDCLogoutServlet extends HttpServlet {
 
         Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);
         OIDCSessionDataCacheEntry cacheEntry = getSessionDataFromCache(opBrowserStateCookie.getValue());
-        authenticationRequest.setRelyingParty(cacheEntry.getParamMap().get(OIDCSessionConstants.OIDC_CLIENT_ID_PARAM));
-        addSessionDataToCache(sessionDataKey, cacheEntry);
+        if (cacheEntry != null) {
+            authenticationRequest
+                    .setRelyingParty(cacheEntry.getParamMap().get(OIDCSessionConstants.OIDC_CLIENT_ID_PARAM));
+            addSessionDataToCache(sessionDataKey, cacheEntry);
+        }
 
         //Add headers to AuthenticationRequestContext
         for (Enumeration e = request.getHeaderNames(); e.hasMoreElements(); ) {

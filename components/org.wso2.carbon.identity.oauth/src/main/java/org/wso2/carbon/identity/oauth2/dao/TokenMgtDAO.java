@@ -2133,7 +2133,6 @@ public class TokenMgtDAO {
                 updateStateStatement.setString(1, newSecretKey);
                 updateStateStatement.setString(2, consumerKey);
                 updateStateStatement.execute();
-
             }
 
             //Revoke all active access tokens
@@ -2156,10 +2155,8 @@ public class TokenMgtDAO {
                         if (log.isDebugEnabled()) {
                             log.debug("Number of rows being updated : " + count);
                         }
-
                     }
                 } else {
-
                     String sqlQuery = SQLQueries.REVOKE_APP_ACCESS_TOKEN.replace(IDN_OAUTH2_ACCESS_TOKEN, accessTokenStoreTable);
                     revokeActiveTokensStatement = connection.prepareStatement(sqlQuery);
                     revokeActiveTokensStatement.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
@@ -2167,10 +2164,8 @@ public class TokenMgtDAO {
                     revokeActiveTokensStatement.setString(3, consumerKey);
                     revokeActiveTokensStatement.setString(4, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
                     revokeActiveTokensStatement.execute();
-
                 }
             }
-
 
             //Deactivate all active authorization codes
             if (ArrayUtils.isNotEmpty(authorizationCodes)) {

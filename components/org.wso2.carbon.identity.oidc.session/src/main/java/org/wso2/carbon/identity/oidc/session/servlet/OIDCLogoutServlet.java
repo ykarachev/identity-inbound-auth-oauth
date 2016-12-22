@@ -127,7 +127,7 @@ public class OIDCLogoutServlet extends HttpServlet {
             boolean skipConsent = getOpenIDConnectSkipeUserConsent();
             if (skipConsent) {
                 redirectURL = processLogoutRequest(request, response);
-                if (!StringUtils.isEmpty(redirectURL)) {
+                if (StringUtils.isNotBlank(redirectURL)) {
                     response.sendRedirect(redirectURL);
                     return;
                 }
@@ -283,18 +283,15 @@ public class OIDCLogoutServlet extends HttpServlet {
     private void sendToConsentUri(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
 
-        String redirectURL;
         String idTokenHint = request.getParameter(OIDCSessionConstants.OIDC_ID_TOKEN_HINT_PARAM);
+        String redirectURL = OIDCSessionManagementUtil.getOIDCLogoutConsentURL();
 
         if (idTokenHint != null) {
             redirectURL = processLogoutRequest(request, response);
-            if (!StringUtils.isEmpty(redirectURL)) {
+            if (StringUtils.isNotBlank(redirectURL)) {
                 response.sendRedirect(redirectURL);
                 return;
             }
-            redirectURL = OIDCSessionManagementUtil.getOIDCLogoutConsentURL();
-        } else {
-            redirectURL = OIDCSessionManagementUtil.getOIDCLogoutConsentURL();
         }
         response.sendRedirect(redirectURL);
     }

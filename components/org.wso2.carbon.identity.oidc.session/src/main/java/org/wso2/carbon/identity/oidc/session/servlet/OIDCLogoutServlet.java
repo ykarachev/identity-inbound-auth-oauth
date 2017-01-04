@@ -126,10 +126,17 @@ public class OIDCLogoutServlet extends HttpServlet {
             // Get user consent to logout
             boolean skipConsent = getOpenIDConnectSkipeUserConsent();
             if (skipConsent) {
-                redirectURL = processLogoutRequest(request, response);
-                if (StringUtils.isNotBlank(redirectURL)) {
-                    response.sendRedirect(redirectURL);
-                    return;
+                String idTokenHint = request.getParameter(OIDCSessionConstants.OIDC_ID_TOKEN_HINT_PARAM);
+                if (StringUtils.isNotBlank(idTokenHint)) {
+                    redirectURL = processLogoutRequest(request, response);
+                    if (StringUtils.isNotBlank(redirectURL)) {
+                        response.sendRedirect(redirectURL);
+                        return;
+                    }
+                } else {
+                    // Add OIDC Cache entry without properties since OIDC Logout should work without id_token_hint
+                    OIDCSessionDataCacheEntry cacheEntry = new OIDCSessionDataCacheEntry();
+                    addSessionDataToCache(opBrowserStateCookie.getValue(), cacheEntry);
                 }
                 sendToFrameworkForLogout(request, response);
                 return;

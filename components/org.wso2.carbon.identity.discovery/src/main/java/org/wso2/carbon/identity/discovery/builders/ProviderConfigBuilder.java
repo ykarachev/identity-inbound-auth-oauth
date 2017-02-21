@@ -24,14 +24,17 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.base.ServerConfigurationException;
 import org.wso2.carbon.identity.claim.metadata.mgt.exception.ClaimMetadataException;
 import org.wso2.carbon.identity.claim.metadata.mgt.model.ExternalClaim;
-import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.discovery.OIDCDiscoveryEndPointException;
 import org.wso2.carbon.identity.discovery.OIDProviderConfigResponse;
 import org.wso2.carbon.identity.discovery.OIDProviderRequest;
 import org.wso2.carbon.identity.discovery.internal.OIDCDiscoveryDataHolder;
+import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
+import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Set;
 
 /**
  * ProviderConfigBuilder builds the OIDProviderConfigResponse
@@ -46,48 +49,44 @@ public class ProviderConfigBuilder {
     public OIDProviderConfigResponse buildOIDProviderConfig(OIDProviderRequest request) throws
             OIDCDiscoveryEndPointException, ServerConfigurationException {
         OIDProviderConfigResponse providerConfig = new OIDProviderConfigResponse();
-        providerConfig.setIssuer(IdentityUtil.getServerURL("", false, false));
+        providerConfig.setIssuer(OAuth2Util.getIDTokenIssuer());
         providerConfig.setAuthorizationEndpoint(OAuth2Util.OAuthURL.getOAuth2AuthzEPUrl());
         providerConfig.setTokenEndpoint(OAuth2Util.OAuthURL.getOAuth2TokenEPUrl());
         providerConfig.setUserinfoEndpoint(OAuth2Util.OAuthURL.getOAuth2UserInfoEPUrl());
+        try {
+            providerConfig.setRegistrationEndpoint(OAuth2Util.OAuthURL.getOAuth2DCREPUrl(request.getTenantDomain()));
+            providerConfig.setJwksUri(OAuth2Util.OAuthURL.getOAuth2JWKSPageUrl(request.getTenantDomain()));
+        } catch (URISyntaxException e) {
+            throw new ServerConfigurationException("Error while building tenant specific url", e);
+        }
         List<String> scopes = OAuth2Util.getOIDCScopes(request.getTenantDomain());
         providerConfig.setScopesSupported(scopes.toArray(new String[scopes.size()]));
         try {
             List<ExternalClaim> claims = OIDCDiscoveryDataHolder.getInstance().getClaimManagementService()
                     .getExternalClaims(OIDC_CLAIM_DIALECT, request.getTenantDomain());
-            String[] claimArray = new String[claims.size()];
-            for (int i = 0; i < claims.size(); i++) {
+            String[] claimArray = new String[claims.size() + 2];
+            int i;
+            for (i = 0; i < claims.size(); i++) {
                 claimArray[i] = claims.get(i).getClaimURI();
             }
+            claimArray[i++] = "iss";
+            claimArray[i] = "acr";
             providerConfig.setClaimsSupported(claimArray);
         } catch (ClaimMetadataException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Error while retrieving OIDC claim dialect");
-            }
+            throw new ServerConfigurationException("Error while retrieving OIDC claim dialect", e);
         }
-        temp_Value_Settings(providerConfig, request);
-        return providerConfig;
-    }
+        try {
+            providerConfig.setIdTokenSigningAlgValuesSupported(new String[]{OAuth2Util.mapSignatureAlgorithm
+                    (OAuthServerConfiguration.getInstance().getIdTokenSignatureAlgorithm())});
+        } catch (IdentityOAuth2Exception e) {
+            throw new ServerConfigurationException("Unsupported signature algorithm configured.", e);
+        }
 
-    /**
-     * This is an temporary method.
-     * Provide additional services to get following parameters.
-     */
-    private void temp_Value_Settings(OIDProviderConfigResponse providerConfig, OIDProviderRequest request) {
-        String serverurl = IdentityUtil.getServerURL("", false, false);
-
-        //TODO add a method to retrieve the dcr endpoint
-        providerConfig.setRegistrationEndpoint(serverurl + "/identity/connect/register");
-
-        //TODO add a method to retrieve jwks endpoint
-        providerConfig.setJwksUri(serverurl + "/oauth2/jwks/" + request.getTenantDomain());
-
-        providerConfig.setIdTokenSigningAlgValuesSupported(new String[]{"RS256", "RS384", "RS512", "HS256", "HS384",
-                "HS512", "ES256", "ES384", "ES512"});
-
-        providerConfig.setResponseTypesSupported(new String[]{"code", "id_token", "token id_token", "token"});
+        Set<String> supportedResponseTypeNames = OAuthServerConfiguration.getInstance().getSupportedResponseTypeNames();
+        providerConfig.setResponseTypesSupported(supportedResponseTypeNames.toArray(new
+                String[supportedResponseTypeNames.size()]));
 
         providerConfig.setSubjectTypesSupported(new String[]{"pairwise"});
-
+        return providerConfig;
     }
 }

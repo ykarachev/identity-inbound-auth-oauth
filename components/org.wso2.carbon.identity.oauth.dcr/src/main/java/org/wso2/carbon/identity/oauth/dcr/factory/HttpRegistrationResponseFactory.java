@@ -24,7 +24,6 @@ import org.wso2.carbon.identity.application.authentication.framework.exception.F
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponseFactory;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityResponse;
-import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.dcr.exception.RegistrationException;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationResponse;
@@ -72,15 +71,10 @@ public class HttpRegistrationResponseFactory extends HttpIdentityResponseFactory
         HttpIdentityResponse.HttpIdentityResponseBuilder builder =
                 new HttpIdentityResponse.HttpIdentityResponseBuilder();
         String errorMessage = "";
-        List<IdentityException.ErrorInfo> errorInfoList = exception.getErrorInfoList();
-        if (errorInfoList.size() > 0) {
-            IdentityException.ErrorInfo errorInfo = errorInfoList.get(errorInfoList.size() - 1);
-            if (ErrorCodes.META_DATA_VALIDATION_FAILED.name().equals(errorInfo.getErrorCode())) {
-                errorMessage = generateErrorResponse(INVALID_CLIENT_METADATA, exception.getMessage()).toJSONString();
-            } else if (ErrorCodes.BAD_REQUEST.name().equals(errorInfo.getErrorCode())) {
-                errorMessage = generateErrorResponse(BACKEND_FAILED, exception.getMessage()).toJSONString();
-            }
-
+        if (ErrorCodes.META_DATA_VALIDATION_FAILED.name().equals(exception.getErrorCode())) {
+            errorMessage = generateErrorResponse(INVALID_CLIENT_METADATA, exception.getMessage()).toJSONString();
+        } else if (ErrorCodes.BAD_REQUEST.name().equals(exception.getErrorCode())) {
+            errorMessage = generateErrorResponse(BACKEND_FAILED, exception.getMessage()).toJSONString();
         }
         builder.setBody(errorMessage);
         builder.setStatusCode(HttpServletResponse.SC_BAD_REQUEST);
@@ -131,6 +125,9 @@ public class HttpRegistrationResponseFactory extends HttpIdentityResponseFactory
         obj.put(RegistrationResponse.DCRegisterResponseConstants.CLIENT_SECRET, registrationResponse
                 .getRegistrationResponseProfile()
                 .getClientSecret());
+        obj.put(RegistrationResponse.DCRegisterResponseConstants.CLIENT_SECRET_EXPIRES_AT, registrationResponse
+                .getRegistrationResponseProfile()
+                .getClientSecretExpiresAt());
         return obj;
     }
 

@@ -71,7 +71,6 @@ import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
 
-import javax.xml.namespace.QName;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.MessageDigest;
@@ -83,10 +82,11 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.LinkedHashSet;
+import javax.xml.namespace.QName;
 
 /**
  * This is the IDToken generator for the OpenID Connect Implementation. This
@@ -122,27 +122,24 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     private OAuthServerConfiguration config = null;
     private Algorithm signatureAlgorithm = null;
 
+    private static final String ERROR_GET_RESIDENT_IDP =
+            "Error while getting Resident Identity Provider of '%s' tenant.";
+
     public DefaultIDTokenBuilder() throws IdentityOAuth2Exception {
 
         config = OAuthServerConfiguration.getInstance();
         //map signature algorithm from identity.xml to nimbus format, this is a one time configuration
-        signatureAlgorithm = mapSignatureAlgorithm(config.getSignatureAlgorithm());
+        signatureAlgorithm = mapSignatureAlgorithm(config.getIdTokenSignatureAlgorithm());
     }
 
     @Override
     public String buildIDToken(OAuthTokenReqMessageContext request, OAuth2AccessTokenRespDTO tokenRespDTO)
             throws IdentityOAuth2Exception {
-        IdentityProvider identityProvider = null;
-        try {
-            String tenantDomain = request.getOauth2AccessTokenReqDTO().getTenantDomain();
-            identityProvider = IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);
-        } catch (IdentityProviderManagementException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Error while getting Federated Identity Provider ", e);
-            }
-        }
-        FederatedAuthenticatorConfig[] fedAuthnConfigs =
-                identityProvider.getFederatedAuthenticatorConfigs();
+
+        String tenantDomain = request.getOauth2AccessTokenReqDTO().getTenantDomain();
+        IdentityProvider identityProvider = getResidentIdp(tenantDomain);
+
+        FederatedAuthenticatorConfig[] fedAuthnConfigs = identityProvider.getFederatedAuthenticatorConfigs();
 
         // Get OIDC authenticator
         FederatedAuthenticatorConfig samlAuthenticatorConfig =
@@ -166,7 +163,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             ServiceProvider serviceProvider = null;
 
             try {
-                String tenantDomain = request.getOauth2AccessTokenReqDTO().getTenantDomain();
                 String spName = applicationMgtService.getServiceProviderNameByClientId(
                         request.getOauth2AccessTokenReqDTO().getClientId(), INBOUND_AUTH2_TYPE, tenantDomain);
                 serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(spName, tenantDomain);
@@ -180,7 +176,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                 if (claim != null) {
                     String username = request.getAuthorizedUser().getUserName();
                     String userStore = request.getAuthorizedUser().getUserStoreDomain();
-                    String tenantDomain = request.getAuthorizedUser().getTenantDomain();
+                    tenantDomain = request.getAuthorizedUser().getTenantDomain();
                     String fqdnUsername = request.getAuthorizedUser().toString();
                     try {
                         UserStoreManager usm = IdentityTenantUtil.getRealm(tenantDomain,
@@ -303,17 +299,11 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     @Override
     public String buildIDToken(OAuthAuthzReqMessageContext request, OAuth2AuthorizeRespDTO tokenRespDTO)
             throws IdentityOAuth2Exception {
-        IdentityProvider identityProvider = null;
-        try {
-            String tenantDomain = request.getAuthorizationReqDTO().getTenantDomain();
-            identityProvider = IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);
-        } catch (IdentityProviderManagementException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Error while getting Federated Identity Provider ", e);
-            }
-        }
-        FederatedAuthenticatorConfig[] fedAuthnConfigs =
-                identityProvider.getFederatedAuthenticatorConfigs();
+
+        String tenantDomain = request.getAuthorizationReqDTO().getTenantDomain();
+        IdentityProvider identityProvider = getResidentIdp(tenantDomain);
+
+        FederatedAuthenticatorConfig[] fedAuthnConfigs = identityProvider.getFederatedAuthenticatorConfigs();
 
         // Get OIDC authenticator
         FederatedAuthenticatorConfig samlAuthenticatorConfig =
@@ -435,33 +425,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
 
-            Key privateKey;
-
-            if (!(privateKeys.containsKey(tenantId))) {
-                // get tenant's key store manager
-                KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
-
-                if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
-                    // derive key store name
-                    String ksName = tenantDomain.trim().replace(".", "-");
-                    String jksName = ksName + ".jks";
-                    // obtain private key
-                    privateKey = tenantKSM.getPrivateKey(jksName, tenantDomain);
-
-                } else {
-                    try {
-                        privateKey = tenantKSM.getDefaultPrivateKey();
-                    } catch (Exception e) {
-                        throw new IdentityOAuth2Exception("Error while obtaining private key for super tenant", e);
-                    }
-                }
-                //privateKey will not be null always
-                privateKeys.put(tenantId, privateKey);
-            } else {
-                //privateKey will not be null because containsKey() true says given key is exist and ConcurrentHashMap
-                // does not allow to store null values
-                privateKey = privateKeys.get(tenantId);
-            }
+            Key privateKey = getPrivateKey(tenantDomain, tenantId);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
             header.setKeyID(kid);
@@ -488,40 +452,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
 
-            Key privateKey;
-
-            if (!(privateKeys.containsKey(tenantId))) {
-
-                try {
-                    IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
-                } catch (IdentityException e) {
-                    throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain, e);
-                }
-
-                // get tenant's key store manager
-                KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
-
-                if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
-                    // derive key store name
-                    String ksName = tenantDomain.trim().replace(".", "-");
-                    String jksName = ksName + ".jks";
-                    // obtain private key
-                    privateKey = tenantKSM.getPrivateKey(jksName, tenantDomain);
-
-                } else {
-                    try {
-                        privateKey = tenantKSM.getDefaultPrivateKey();
-                    } catch (Exception e) {
-                        throw new IdentityOAuth2Exception("Error while obtaining private key for super tenant", e);
-                    }
-                }
-                //privateKey will not be null always
-                privateKeys.put(tenantId, privateKey);
-            } else {
-                //privateKey will not be null because containsKey() true says given key is exist and ConcurrentHashMap
-                // does not allow to store null values
-                privateKey = privateKeys.get(tenantId);
-            }
+            Key privateKey = getPrivateKey(tenantDomain, tenantId);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
             header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
@@ -532,6 +463,44 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         } catch (JOSEException e) {
             throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
         }
+    }
+
+    private Key getPrivateKey(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
+        Key privateKey;
+        if (!(privateKeys.containsKey(tenantId))) {
+
+            try {
+                IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
+            } catch (IdentityException e) {
+                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain,
+                        e);
+            }
+
+            // get tenant's key store manager
+            KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
+
+            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
+                // derive key store name
+                String ksName = tenantDomain.trim().replace(".", "-");
+                String jksName = ksName + ".jks";
+                // obtain private key
+                privateKey = tenantKSM.getPrivateKey(jksName, tenantDomain);
+
+            } else {
+                try {
+                    privateKey = tenantKSM.getDefaultPrivateKey();
+                } catch (Exception e) {
+                    throw new IdentityOAuth2Exception("Error while obtaining private key for super tenant", e);
+                }
+            }
+            //privateKey will not be null always
+            privateKeys.put(tenantId, privateKey);
+        } else {
+            //privateKey will not be null because containsKey() true says given key is exist and ConcurrentHashMap
+            // does not allow to store null values
+            privateKey = privateKeys.get(tenantId);
+        }
+        return privateKey;
     }
 
     /**
@@ -673,7 +642,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
      */
     protected JWSAlgorithm mapSignatureAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
 
-        if (NONE.equals(signatureAlgorithm)) {
+        if (NONE.equalsIgnoreCase(signatureAlgorithm)) {
             return new JWSAlgorithm(JWSAlgorithm.NONE.getName());
         } else if (SHA256_WITH_RSA.equals(signatureAlgorithm)) {
             return JWSAlgorithm.RS256;
@@ -864,6 +833,15 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
     private QName getQNameWithIdentityNS(String localPart) {
         return new QName(IdentityCoreConstants.IDENTITY_DEFAULT_NAMESPACE, localPart);
+    }
+
+    private IdentityProvider getResidentIdp(String tenantDomain) throws IdentityOAuth2Exception {
+        try {
+            return IdentityProviderManager.getInstance().getResidentIdP(tenantDomain);
+        } catch (IdentityProviderManagementException e) {
+            String errorMsg = String.format(ERROR_GET_RESIDENT_IDP, tenantDomain);
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        }
     }
 
 }

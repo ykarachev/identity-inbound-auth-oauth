@@ -30,7 +30,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 public interface OIDCProviderRequestBuilder {
 
-    public OIDProviderRequest buildRequest(HttpServletRequest request, String tenant) throws
+    OIDProviderRequest buildRequest(HttpServletRequest request, String tenant) throws
             OIDCDiscoveryEndPointException;
 
 }

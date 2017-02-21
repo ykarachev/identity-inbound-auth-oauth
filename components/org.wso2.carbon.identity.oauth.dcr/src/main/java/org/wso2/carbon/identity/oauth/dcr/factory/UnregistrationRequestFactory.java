@@ -86,7 +86,7 @@ public class UnregistrationRequestFactory extends HttpIdentityRequestFactory {
         String consumerKey = null;
         Matcher matcher = DCRConstants.DCR_ENDPOINT_UNREGISTER_URL_PATTERN.matcher(request.getRequestURI());
         if (matcher.find()) {
-            consumerKey = matcher.group(1);
+            consumerKey = matcher.group(2);
         }
 
         unregisterRequestBuilder.setApplicationName(applicationName);

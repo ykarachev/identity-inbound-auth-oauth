@@ -28,6 +28,8 @@ import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
@@ -64,6 +66,7 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.oidc.session.OIDCSessionState;
 import org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtil;
 import org.wso2.carbon.registry.core.utils.UUIDGenerator;
+import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import java.io.IOException;
@@ -72,10 +75,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.servlet.ServletException;
@@ -100,7 +106,28 @@ public class OAuth2AuthzEndpoint {
     private static final Log log = LogFactory.getLog(OAuth2AuthzEndpoint.class);
     public static final String APPROVE = "approve";
     private boolean isCacheAvailable = false;
+
     private static final String REDIRECT_URI = "redirect_uri";
+    private static final String RESPONSE_MODE_FORM_POST = "form_post";
+    private static final String RESPONSE_MODE = "response_mode";
+    private static final String formPostRedirectPage = getFormPostRedirectPage();
+
+    private static String getFormPostRedirectPage() {
+
+        java.nio.file.Path path = Paths.get(CarbonUtils.getCarbonHome(), "repository", "resources",
+                "identity", "pages", "oauth_response.html");
+        if (Files.exists(path)) {
+            try {
+                return new Scanner(Files.newInputStream(path), "UTF-8").useDelimiter("\\A").next();
+            } catch (IOException e) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Failed to find OAuth From post response page in : " + path.toString());
+                }
+            }
+        }
+        return null;
+    }
+
     @GET
     @Path("/")
     @Consumes("application/x-www-form-urlencoded")
@@ -243,10 +270,14 @@ public class OAuth2AuthzEndpoint {
                 if (cookie != null) {
                     String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
                     SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
-                    if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
-                        authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
-                    } else {
-                        authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                    if (sessionContext != null) {
+                        if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                            authTime = Long.parseLong(
+                                    sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                        } else {
+                            authTime = Long.parseLong(
+                                    sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                        }
                     }
                 }
                 sessionDataCacheEntry = resultFromLogin;
@@ -273,6 +304,20 @@ public class OAuth2AuthzEndpoint {
                         OIDCSessionState sessionState = new OIDCSessionState();
                         redirectURL =
                                 doUserAuthz(request, sessionDataKeyFromLogin, sessionDataCacheEntry, sessionState);
+
+                        if (RESPONSE_MODE_FORM_POST.equals(oauth2Params.getResponseMode()) && isJSON(redirectURL)) {
+
+                            String sessionStateValue = null;
+                            if (isOIDCRequest) {
+                                sessionState.setAddSessionState(true);
+                                sessionStateValue = manageOIDCSessionState(request, response, sessionState, oauth2Params,
+                                        sessionDataCacheEntry.getLoggedInUser().getAuthenticatedSubjectIdentifier(),
+                                        redirectURL);
+                            }
+
+                            return Response.ok(createFormPage(redirectURL, oauth2Params.getRedirectURI(),
+                                    StringUtils.EMPTY, sessionStateValue)).build();
+                        }
 
                         if (isOIDCRequest) {
                             redirectURL = manageOIDCSessionState(request, response, sessionState, oauth2Params,
@@ -355,6 +400,20 @@ public class OAuth2AuthzEndpoint {
                             handleUserConsent(request, consent, oauth2Params, sessionDataCacheEntry, sessionState);
 
                     String authenticatedIdPs = sessionDataCacheEntry.getAuthenticatedIdPs();
+
+                    if (RESPONSE_MODE_FORM_POST.equals(oauth2Params.getResponseMode()) && isJSON(redirectURL)) {
+
+                        String sessionStateValue = null;
+                        if (isOIDCRequest) {
+                            sessionState.setAddSessionState(true);
+                            sessionStateValue = manageOIDCSessionState(request, response, sessionState, oauth2Params,
+                                    sessionDataCacheEntry.getLoggedInUser().getAuthenticatedSubjectIdentifier(),
+                                    redirectURL);
+                        }
+
+                        return Response.ok(createFormPage(redirectURL, oauth2Params.getRedirectURI(),
+                                authenticatedIdPs, sessionStateValue)).build();
+                    }
 
                     if (authenticatedIdPs != null && !authenticatedIdPs.isEmpty()) {
                         try {
@@ -449,6 +508,69 @@ public class OAuth2AuthzEndpoint {
         }
     }
 
+    private boolean isJSON(String redirectURL) {
+
+        try {
+            new JSONObject(redirectURL);
+        } catch (JSONException ex) {
+            return false;
+        }
+        return true;
+    }
+
+    private String createFormPage(String jsonPayLoad, String redirectURI, String authenticatedIdPs,
+                                  String sessionStateValue) {
+
+        if (StringUtils.isNotBlank(formPostRedirectPage)) {
+            String newPage = formPostRedirectPage;
+            String pageWithRedirectURI = newPage.replace("$redirectURI", redirectURI);
+            return pageWithRedirectURI.replace("<!--$params-->", buildParams(jsonPayLoad, authenticatedIdPs, sessionStateValue));
+        }
+
+        String formHead = "<html>\n" +
+                "   <head><title>Submit This Form</title></head>\n" +
+                "   <body onload=\"javascript:document.forms[0].submit()\">\n" +
+                "    <p>Click the submit button if automatic redirection failed.</p>" +
+                "    <form method=\"post\" action=\"" + redirectURI + "\">\n";
+
+        String formBottom = "<input type=\"submit\" value=\"Submit\">" +
+                "</form>\n" +
+                "</body>\n" +
+                "</html>";
+
+        StringBuilder form = new StringBuilder(formHead);
+        form.append(buildParams(jsonPayLoad, authenticatedIdPs, sessionStateValue));
+        form.append(formBottom);
+        return form.toString();
+    }
+
+    private String buildParams(String jsonPayLoad, String authenticatedIdPs, String sessionStateValue) {
+
+        JSONObject jsonObject = new JSONObject(jsonPayLoad);
+        StringBuilder paramStringBuilder = new StringBuilder();
+
+        for (Object key : jsonObject.keySet()) {
+            paramStringBuilder.append("<input type=\"hidden\" name=\"")
+                    .append(key)
+                    .append("\"" + "value=\"")
+                    .append(jsonObject.get(key.toString()))
+                    .append("\"/>\n");
+        }
+
+        if (authenticatedIdPs != null && !authenticatedIdPs.isEmpty()) {
+            paramStringBuilder.append("<input type=\"hidden\" name=\"AuthenticatedIdPs\" value=\"")
+                    .append(authenticatedIdPs)
+                    .append("\"/>\n");
+        }
+
+        if (sessionStateValue != null && !sessionStateValue.isEmpty()) {
+            paramStringBuilder.append("<input type=\"hidden\" name=\"session_state\" value=\"")
+                    .append(sessionStateValue)
+                    .append("\"/>\n");
+        }
+        return paramStringBuilder.toString();
+    }
+
     /**
      * Remove authentication result from request
      * @param req
@@ -540,7 +662,12 @@ public class OAuth2AuthzEndpoint {
                 builder.setParam(OAuth.OAUTH_STATE, oauth2Params.getState());
             }
             String redirectURL = authzRespDTO.getCallbackURI();
-            oauthResponse = builder.location(redirectURL).buildQueryMessage();
+
+            if (RESPONSE_MODE_FORM_POST.equals(oauth2Params.getResponseMode())) {
+                oauthResponse = builder.location(redirectURL).buildJSONMessage();
+            } else {
+                oauthResponse = builder.location(redirectURL).buildQueryMessage();
+            }
 
             sessionState.setAuthenticated(true);
 
@@ -567,7 +694,18 @@ public class OAuth2AuthzEndpoint {
             return EndpointUtil.getErrorRedirectURL(oauthProblemException, oauth2Params);
         }
 
-        return oauthResponse.getLocationUri();
+        //When responseType equal to "id_token" the resulting token is passed back as a query parameter
+        //According to the specification it should pass as URL Fragment
+        if (OAuthConstants.ID_TOKEN.equalsIgnoreCase(responseType)) {
+            if (authzRespDTO.getCallbackURI().contains("?")) {
+                return authzRespDTO.getCallbackURI() + "#" + oauthResponse.getLocationUri().substring(
+                        authzRespDTO.getCallbackURI().length() + 1, oauthResponse.getLocationUri().length());
+            } else {
+                return oauthResponse.getLocationUri().replace("?", "#");
+            }
+        } else {
+            return oauthResponse.getBody() == null ? oauthResponse.getLocationUri() : oauthResponse.getBody();
+        }
     }
 
     private void addUserAttributesToCache(SessionDataCacheEntry sessionDataCacheEntry, String code, String codeId) {
@@ -602,7 +740,8 @@ public class OAuth2AuthzEndpoint {
         authorizationGrantCacheEntry.setCodeId(codeId);
         authorizationGrantCacheEntry.setPkceCodeChallenge(pkceCodeChallenge);
         authorizationGrantCacheEntry.setPkceCodeChallengeMethod(pkceCodeChallengeMethod);
-        authorizationGrantCacheEntry.setEssentialClaims(sessionDataCacheEntry.getoAuth2Parameters().getEssentialClaims());
+        authorizationGrantCacheEntry.setEssentialClaims(
+                sessionDataCacheEntry.getoAuth2Parameters().getEssentialClaims());
         authorizationGrantCacheEntry.setAuthTime(sessionDataCacheEntry.getAuthTime());
         AuthorizationGrantCache.getInstance().addToCacheByCode(authorizationGrantCacheKey, authorizationGrantCacheEntry);
     }
@@ -665,6 +804,7 @@ public class OAuth2AuthzEndpoint {
         params.setClientId(clientId);
         params.setRedirectURI(clientDTO.getCallbackURL());
         params.setResponseType(oauthRequest.getResponseType());
+        params.setResponseMode(oauthRequest.getParam(RESPONSE_MODE));
         params.setScopes(oauthRequest.getScopes());
         if (params.getScopes() == null) { // to avoid null pointers
             Set<String> scopeSet = new HashSet<String>();
@@ -1149,6 +1289,10 @@ public class OAuth2AuthzEndpoint {
                                                                                       opBrowserStateCookie.getValue());
             redirectURL = OIDCSessionManagementUtil.addSessionStateToURL(redirectURL, sessionStateParam,
                                                                          oAuth2Parameters.getResponseType());
+
+            if (RESPONSE_MODE_FORM_POST.equals(oAuth2Parameters.getResponseMode()) && isJSON(redirectURL)) {
+                return sessionStateParam;
+            }
         }
 
         return redirectURL;

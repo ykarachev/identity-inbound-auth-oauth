@@ -26,8 +26,8 @@ public final class DCRConstants {
 
     public static final String DCR_OPERATION_CONTEXT = "OPERATION_CONTEXT";
     public static final Pattern DCR_ENDPOINT_URL_PATTERN = Pattern.compile(".+/register/?");
-    public static final Pattern DCR_ENDPOINT_REGISTER_URL_PATTERN = Pattern.compile("/identity/register/?");
-    public static final Pattern DCR_ENDPOINT_UNREGISTER_URL_PATTERN = Pattern.compile("/identity/register/(.+)");
+    public static final Pattern DCR_ENDPOINT_REGISTER_URL_PATTERN = Pattern.compile("(.*)/identity/register/?");
+    public static final Pattern DCR_ENDPOINT_UNREGISTER_URL_PATTERN = Pattern.compile("(.*)/identity/register/(.+)");
 
     public static class DCROperation {
         public static final String DCR_OPERATION_REGISTER = "REGISTER";

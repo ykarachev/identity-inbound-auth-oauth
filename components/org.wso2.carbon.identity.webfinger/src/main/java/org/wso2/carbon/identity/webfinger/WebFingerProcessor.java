@@ -29,8 +29,8 @@ import javax.servlet.http.HttpServletRequest;
  * WebFingerEndpointException as required.
  */
 public interface WebFingerProcessor {
-    public WebFingerResponse getResponse(HttpServletRequest request) throws WebFingerEndpointException,
+    WebFingerResponse getResponse(HttpServletRequest request) throws WebFingerEndpointException,
             ServerConfigurationException;
 
-    public int handleError(WebFingerEndpointException error);
+    int handleError(WebFingerEndpointException error);
 }

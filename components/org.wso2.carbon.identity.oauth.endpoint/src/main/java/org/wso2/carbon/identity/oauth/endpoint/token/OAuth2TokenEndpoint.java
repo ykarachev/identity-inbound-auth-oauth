@@ -76,9 +76,14 @@ public class OAuth2TokenEndpoint {
 
             HttpServletRequestWrapper httpRequest = new OAuthRequestWrapper(request, paramMap);
 
-            String consumer_key = httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID);
+            String consumer_key = null;
             OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
             try {
+                if (StringUtils.isNotEmpty(httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID))) {
+                    consumer_key = httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID);
+                } else if (request.getHeader("authorization") != null) {
+                    consumer_key = EndpointUtil.extractCredentialsFromAuthzHeader(request.getHeader("authorization"))[0];
+                }
                 if (StringUtils.isNotEmpty(consumer_key)) {
                     String appState = oAuthAppDAO.getConsumerAppState(consumer_key);
                     if (!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
@@ -98,6 +103,14 @@ public class OAuth2TokenEndpoint {
                 OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
                         .setError(OAuth2ErrorCodes.SERVER_ERROR)
                         .setErrorDescription("Error in getting oauth app state.").buildJSONMessage();
+                return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
+            } catch (OAuthClientException e) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Error decoding authorization header. Space delimited \"<authMethod> <base64Hash>\" format violated.", e);
+                }
+                OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
+                        .setError(OAuth2ErrorCodes.SERVER_ERROR)
+                        .setErrorDescription("Error decoding authorization header. Space delimited \"<authMethod> <base64Hash>\" format violated.").buildJSONMessage();
                 return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
             }
 

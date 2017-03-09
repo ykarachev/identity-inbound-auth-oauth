@@ -58,6 +58,7 @@ import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
+import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
@@ -1044,9 +1045,9 @@ public class OAuth2Util {
 
     private static Map<String, String> loadScopeConfigFile() {
         Map<String, String> scopes = new HashMap<>();
-        String carbonHome = System.getProperty(CarbonBaseConstants.CARBON_HOME);
+        String configDirPath = CarbonUtils.getCarbonConfigDirPath();
         String confXml =
-                Paths.get(carbonHome, "repository", "conf", "identity", OAuthConstants.OIDC_SCOPE_CONFIG_PATH)
+                Paths.get(configDirPath, "identity", OAuthConstants.OIDC_SCOPE_CONFIG_PATH)
                         .toString();
         File configfile = new File(confXml);
         if (!configfile.exists()) {

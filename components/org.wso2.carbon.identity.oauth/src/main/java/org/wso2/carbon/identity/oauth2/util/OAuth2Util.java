@@ -581,9 +581,9 @@ public class OAuth2Util {
         long issuedTime = accessTokenDO.getIssuedTime().getTime();
         currentTime = System.currentTimeMillis();
         long refreshTokenIssuedTime = accessTokenDO.getRefreshTokenIssuedTime().getTime();
-        long accessTokenValidity = issuedTime + validityPeriodMillis - (currentTime + timestampSkew);
+        long accessTokenValidity = issuedTime + validityPeriodMillis - (currentTime - timestampSkew);
         long refreshTokenValidity = (refreshTokenIssuedTime + refreshTokenValidityPeriodMillis)
-                                    - (currentTime + timestampSkew);
+                                    - (currentTime - timestampSkew);
         if(accessTokenValidity > 1000 && refreshTokenValidity > 1000){
             return accessTokenValidity;
         }
@@ -607,7 +607,7 @@ public class OAuth2Util {
         currentTime = System.currentTimeMillis();
         long refreshTokenIssuedTime = accessTokenDO.getRefreshTokenIssuedTime().getTime();
         long refreshTokenValidity = (refreshTokenIssuedTime + refreshTokenValidityPeriodMillis)
-                                    - (currentTime + timestampSkew);
+                                    - (currentTime - timestampSkew);
         if(refreshTokenValidity > 1000){
             return refreshTokenValidity;
         }

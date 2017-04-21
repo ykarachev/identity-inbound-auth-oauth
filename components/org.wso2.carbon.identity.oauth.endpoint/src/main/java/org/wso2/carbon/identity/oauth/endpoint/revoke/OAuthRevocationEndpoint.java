@@ -47,6 +47,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
+import java.util.Enumeration;
 
 @Path("/revoke")
 public class OAuthRevocationEndpoint {
@@ -91,19 +92,17 @@ public class OAuthRevocationEndpoint {
             // authentication.
             if (request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ) != null) {
                 try {
-                    String[] clientCredentials = EndpointUtil
-                            .extractCredentialsFromAuthzHeader(request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ));
+                    String[] clientCredentials = EndpointUtil.extractCredentialsFromAuthzHeader(
+                            request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ));
 
                     // The client MUST NOT use more than one authentication method in each request
-                    if (paramMap.containsKey(OAuth.OAUTH_CLIENT_ID) && paramMap
-                            .containsKey(OAuth.OAUTH_CLIENT_SECRET)) {
-                        log.error("More than one authentication method used in the request.");
+                    if (paramMap.containsKey(OAuth.OAUTH_CLIENT_ID) &&
+                            paramMap.containsKey(OAuth.OAUTH_CLIENT_SECRET)) {
                         return handleBasicAuthFailure(callback);
                     }
 
-                    if (clientCredentials.length != 2) {
-                        log.error("Client credentials are not properly set in the request.");
-                        return handleBasicAuthFailure(callback);
+                    if(clientCredentials.length != 2){
+                        handleBasicAuthFailure(callback);
                     }
 
                     // add the credentials available in Authorization to the parameter map

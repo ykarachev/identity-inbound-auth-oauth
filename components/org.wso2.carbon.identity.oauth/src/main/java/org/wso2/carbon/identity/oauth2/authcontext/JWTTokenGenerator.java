@@ -37,6 +37,7 @@ import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.core.KeyProviderService;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -53,6 +54,7 @@ import org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheKey;
 import org.wso2.carbon.identity.oauth.util.UserClaims;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
+import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.oauth2.validators.OAuth2TokenValidationMessageContext;
@@ -319,7 +321,9 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
             throws IdentityOAuth2Exception {
 
         try {
-            Key privateKey = getPrivateKey(tenantDomain, tenantId);
+            //Key privateKey = getPrivateKey(tenantDomain, tenantId);
+            KeyProviderService pkProvider = OAuth2ServiceComponentHolder.getKeyProvider();
+            Key privateKey = pkProvider.getPrivateKey(tenantDomain);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             signedJWT.sign(signer);
             return signedJWT;

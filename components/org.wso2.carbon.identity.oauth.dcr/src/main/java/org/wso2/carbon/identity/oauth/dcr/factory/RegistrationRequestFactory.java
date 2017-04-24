@@ -62,8 +62,8 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
     private static Log log = LogFactory.getLog(RegistrationRequestFactory.class);
 
     @Override
-    public boolean canHandle(HttpServletRequest request, HttpServletResponse response) throws
-                                                                                       FrameworkRuntimeException {
+    public boolean canHandle(HttpServletRequest request, HttpServletResponse response)
+            throws FrameworkRuntimeException {
         boolean canHandle = false;
         if (request != null) {
             Matcher matcher = DCRConstants.DCR_ENDPOINT_REGISTER_URL_PATTERN.matcher(request.getRequestURI());
@@ -77,17 +77,15 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
         return canHandle;
     }
 
-
     @Override
     public RegistrationRequest.RegistrationRequestBuilder create(HttpServletRequest request,
-                                                                 HttpServletResponse response)
-            throws FrameworkClientException {
+            HttpServletResponse response) throws FrameworkClientException {
 
         if (log.isDebugEnabled()) {
             log.debug("create RegistrationRequest.RegistrationRequestBuilder by RegistrationRequestFactory.");
         }
-        RegistrationRequest.RegistrationRequestBuilder registerRequestBuilder = new
-                RegistrationRequest.RegistrationRequestBuilder(request, response);
+        RegistrationRequest.RegistrationRequestBuilder registerRequestBuilder = new RegistrationRequest.
+                RegistrationRequestBuilder(request, response);
         create(registerRequestBuilder, request, response);
         return registerRequestBuilder;
 
@@ -95,10 +93,10 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
 
     @Override
     public void create(IdentityRequest.IdentityRequestBuilder builder, HttpServletRequest request,
-                       HttpServletResponse response) throws FrameworkClientException {
+            HttpServletResponse response) throws FrameworkClientException {
 
-        RegistrationRequest.RegistrationRequestBuilder registerRequestBuilder =
-                (RegistrationRequest.RegistrationRequestBuilder) builder;
+        RegistrationRequest.RegistrationRequestBuilder registerRequestBuilder = (RegistrationRequest.
+                RegistrationRequestBuilder) builder;
 
         super.create(registerRequestBuilder, request, response);
 
@@ -147,7 +145,6 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
             registrationRequestProfile.setTokenEndpointAuthMethod(
                     (String) jsonData.get(RegistrationRequest.RegisterRequestConstant.TOKEN_ENDPOINT_AUTH_METHOD));
 
-
             obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.GRANT_TYPES);
             if (obj != null && obj instanceof JSONArray) {
                 JSONArray redirectUris = (JSONArray) obj;
@@ -157,7 +154,6 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
             } else if (obj != null) {
                 registrationRequestProfile.getGrantTypes().add((String) obj);
             }
-
 
             obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.RESPONSE_TYPES);
             if (obj != null && obj instanceof JSONArray) {
@@ -177,11 +173,10 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                 registrationRequestProfile.setClientName(UUIDGenerator.generateUUID());
             }
 
-            registrationRequestProfile.setClientUri((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.CLIENT_URI));
-            registrationRequestProfile.setLogoUri((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.LOGO_URI));
-
+            registrationRequestProfile
+                    .setClientUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.CLIENT_URI));
+            registrationRequestProfile
+                    .setLogoUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.LOGO_URI));
 
             obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.SCOPE);
             if (obj != null && obj instanceof JSONArray) {
@@ -205,16 +200,15 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
 
             registrationRequestProfile
                     .setTosUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.TOS_URI));
-            registrationRequestProfile.setPolicyUri((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.POLICY_URI));
-            registrationRequestProfile.setJwksUri((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.JWKS_URI));
-            registrationRequestProfile.setJkws((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.JWKS));
-            registrationRequestProfile.setSoftwareId((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.SOFTWARE_ID));
-            registrationRequestProfile.setSoftwareVersion((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.SOFTWARE_VERSION));
+            registrationRequestProfile
+                    .setPolicyUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.POLICY_URI));
+            registrationRequestProfile
+                    .setJwksUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.JWKS_URI));
+            registrationRequestProfile.setJkws((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.JWKS));
+            registrationRequestProfile
+                    .setSoftwareId((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.SOFTWARE_ID));
+            registrationRequestProfile.setSoftwareVersion(
+                    (String) jsonData.get(RegistrationRequest.RegisterRequestConstant.SOFTWARE_VERSION));
 
             //TODO:This parameter is a custom one and we have to remove if we can collect the user name by having
             // some authentication mechanism.
@@ -239,7 +233,6 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
             registrationRequestProfile.setOwner(username);
             registerRequestBuilder.setRegistrationRequestProfile(registrationRequestProfile);
 
-
         } catch (IOException e) {
             String errorMessage = "Error occurred while reading servlet request body, " + e.getMessage();
             FrameworkClientException.error(errorMessage, e);
@@ -251,17 +244,14 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
 
     @Override
     public HttpIdentityResponse.HttpIdentityResponseBuilder handleException(FrameworkClientException exception,
-                                                                            HttpServletRequest request,
-                                                                            HttpServletResponse response) {
-        HttpIdentityResponse.HttpIdentityResponseBuilder builder =
-                new HttpIdentityResponse.HttpIdentityResponseBuilder();
+            HttpServletRequest request, HttpServletResponse response) {
+        HttpIdentityResponse.HttpIdentityResponseBuilder builder = new HttpIdentityResponse.HttpIdentityResponseBuilder();
         String errorMessage = generateErrorResponse(INVALID_CLIENT_METADATA, exception.getMessage()).toJSONString();
         builder.setBody(errorMessage);
         builder.setStatusCode(HttpServletResponse.SC_BAD_REQUEST);
         builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
-                          OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE);
-        builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
-                          OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
+                OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE);
+        builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_PRAGMA, OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
         builder.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
 
         return builder;

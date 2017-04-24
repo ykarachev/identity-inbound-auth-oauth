@@ -32,6 +32,7 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Htt
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequest;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
@@ -40,14 +41,16 @@ import org.wso2.carbon.registry.core.utils.UUIDGenerator;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.regex.Matcher;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
-import java.io.IOException;
-import java.io.Reader;
-import java.util.regex.Matcher;
 
 import static org.wso2.carbon.identity.oauth.dcr.factory.HttpRegistrationResponseFactory.INVALID_CLIENT_METADATA;
 
@@ -107,8 +110,8 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                 log.debug("DCR request json : " + jsonData.toJSONString());
             }
 
-            RegistrationRequestProfile registrationRequestProfile =
-                    registerRequestBuilder.getRegistrationRequestProfile();
+            RegistrationRequestProfile registrationRequestProfile = registerRequestBuilder
+                    .getRegistrationRequestProfile();
             if (registrationRequestProfile == null) {
                 registrationRequestProfile = new RegistrationRequestProfile();
             }
@@ -116,18 +119,33 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
             Object obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.REDIRECT_URIS);
             if (obj != null && obj instanceof JSONArray) {
                 JSONArray redirectUris = (JSONArray) obj;
-                for (int i = 0; i < redirectUris.size(); i++) {
-                    registrationRequestProfile.getRedirectUris().add(redirectUris.get(i).toString());
+                for (Object redirectUri : redirectUris) {
+                    //ToDO invalid_redirect_uri - error code should be sent to client in below error cases.
+
+                    if (redirectUri == null || IdentityUtil.isBlank(redirectUri.toString())) {
+                        throw IdentityException
+                                .error(FrameworkClientException.class, "The redirection URI is either null or blank.");
+                    }
+
+                    String redirectUriStr = redirectUri.toString();
+                    try {
+                        //Trying to parse the URI, just to verify the URI syntax is correct.
+                        URI redirectURL = new URI(redirectUriStr);
+                    } catch (URISyntaxException e) {
+                        String errorMessage = "The redirection URI " + redirectUriStr + " is not a valid URI.";
+                        throw IdentityException.error(FrameworkClientException.class, errorMessage, e);
+                    }
+                    registrationRequestProfile.getRedirectUris().add(redirectUriStr);
                 }
             } else if (obj != null) {
                 registrationRequestProfile.getRedirectUris().add((String) obj);
             } else {
-                throw IdentityException.error(FrameworkClientException.class, "RedirectUris property must have at " +
-                        "least one URI value.");
+                throw IdentityException.error(FrameworkClientException.class,
+                        "RedirectUris property must have at least one URI value.");
             }
 
-            registrationRequestProfile.setTokenEndpointAuthMethod((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.TOKEN_ENDPOINT_AUTH_METHOD));
+            registrationRequestProfile.setTokenEndpointAuthMethod(
+                    (String) jsonData.get(RegistrationRequest.RegisterRequestConstant.TOKEN_ENDPOINT_AUTH_METHOD));
 
 
             obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.GRANT_TYPES);

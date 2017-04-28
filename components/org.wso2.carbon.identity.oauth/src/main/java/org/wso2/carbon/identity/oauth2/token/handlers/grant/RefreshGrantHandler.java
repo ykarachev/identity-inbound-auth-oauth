@@ -41,6 +41,7 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -95,35 +96,42 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             }
         }
 
-        AccessTokenDO accessTokenDO = tokenMgtDAO.retrieveLatestAccessToken(tokenReqDTO.getClientId(),
-                validationDataDO.getAuthorizedUser(),
-                userStoreDomain, OAuth2Util.buildScopeString(validationDataDO.getScope()), true);
+        if (!OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(validationDataDO.getRefreshTokenState())) {
+            List<AccessTokenDO> accessTokenDOs = tokenMgtDAO.retrieveLatestAccessTokens(
+                    tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser(), userStoreDomain,
+                    OAuth2Util.buildScopeString(validationDataDO.getScope()), true, 10);
+            boolean isLatest = false;
+            if (accessTokenDOs == null || accessTokenDOs.size() < 1) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Error while retrieving the latest refresh token");
+                }
+                if (cacheEnabled) {
+                    clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(),
+                               validationDataDO.getScope(), validationDataDO.getAccessToken());
+                }
+                return false;
+            } else {
+                for (AccessTokenDO token : accessTokenDOs) {
+                    if (refreshToken.equals(token.getRefreshToken()) && token.getTokenState().equals(OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE) || token.getTokenState().equals(OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED)) {
+                        isLatest = true;
+                    }
+                }
+            }
+            if (!isLatest) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Refresh token is not the latest.");
+                }
+                if (cacheEnabled) {
+                    clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(), validationDataDO.getScope(), validationDataDO.getAccessToken());
+                }
+                return false;
+            }
 
-        if (accessTokenDO == null) {
             if (log.isDebugEnabled()) {
-                log.debug("Error while retrieving the latest refresh token");
+                log.debug("Refresh token validation successful for " + "Client id : " + tokenReqDTO.getClientId() +
+                          ", Authorized User : " + validationDataDO.getAuthorizedUser() +
+                          ", Token Scope : " + OAuth2Util.buildScopeString(validationDataDO.getScope()));
             }
-            if (cacheEnabled) {
-                clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(),
-                        validationDataDO.getScope(), validationDataDO.getAccessToken());
-            }
-            return false;
-        } else if (!refreshToken.equals(accessTokenDO.getRefreshToken())) {
-            if (log.isDebugEnabled()) {
-                log.debug("Refresh token is not the latest.");
-            }
-            if (cacheEnabled) {
-                clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(),
-                        validationDataDO.getScope(), validationDataDO.getAccessToken());
-            }
-            return false;
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("Refresh token validation successful for " +
-                    "Client id : " + tokenReqDTO.getClientId() +
-                    ", Authorized User : " + validationDataDO.getAuthorizedUser() +
-                    ", Token Scope : " + OAuth2Util.buildScopeString(validationDataDO.getScope()));
         }
 
         tokReqMsgCtx.setAuthorizedUser(validationDataDO.getAuthorizedUser());

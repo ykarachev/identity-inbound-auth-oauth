@@ -92,17 +92,23 @@ public class OAuthRevocationEndpoint {
             // authentication.
             if (request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ) != null) {
                 try {
-                    String[] clientCredentials = EndpointUtil.extractCredentialsFromAuthzHeader(
-                            request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ));
+                    String[] clientCredentials = EndpointUtil
+                            .extractCredentialsFromAuthzHeader(request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ));
 
-                    // The client MUST NOT use more than one authentication method in each request
-                    if (paramMap.containsKey(OAuth.OAUTH_CLIENT_ID) &&
-                            paramMap.containsKey(OAuth.OAUTH_CLIENT_SECRET)) {
+                    // The client MUST NOT use more than one authentication method in each request as per section
+                    // 2.3.  Client Authentication of 'The OAuth 2.0 Authorization Framework' spec and not accepting in
+                    // the request URI.
+                    if (paramMap.containsKey(OAuth.OAUTH_CLIENT_ID) && paramMap
+                            .containsKey(OAuth.OAUTH_CLIENT_SECRET)) {
+                        log.error("Authorization header is already present. Client MUST NOT use more than one "
+                                + "authentication method in each request ");
                         return handleBasicAuthFailure(callback);
                     }
 
-                    if(clientCredentials.length != 2){
-                        handleBasicAuthFailure(callback);
+                    if (clientCredentials.length != 2) {
+                        log.error("Client credentials are not properly set in the request. "
+                                + "The Authorization header is invalid.");
+                        return handleBasicAuthFailure(callback);
                     }
 
                     // add the credentials available in Authorization to the parameter map

@@ -99,17 +99,17 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
             authzCodeDO = tokenMgtDAO.validateAuthorizationCode(clientId, authorizationCode);
         }
 
-        if (authzCodeDO != null && OAuthConstants.AuthorizationCodeState.INACTIVE.equals(authzCodeDO.getState())){
-            String scope = OAuth2Util.buildScopeString(authzCodeDO.getScope());
-            String authorizedUser = authzCodeDO.getAuthorizedUser().toString();
-            boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
-            String cacheKeyString;
-            if (isUsernameCaseSensitive) {
-                cacheKeyString = clientId + ":" + authorizedUser + ":" + scope;
-            } else {
-                cacheKeyString = clientId + ":" + authorizedUser.toLowerCase() + ":" + scope;
-            }
+        if (authzCodeDO != null && OAuthConstants.AuthorizationCodeState.INACTIVE.equals(authzCodeDO.getState())) {
             if (cacheEnabled) {
+                String scope = OAuth2Util.buildScopeString(authzCodeDO.getScope());
+                String authorizedUser = authzCodeDO.getAuthorizedUser().toString();
+                boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
+                String cacheKeyString;
+                if (isUsernameCaseSensitive) {
+                    cacheKeyString = clientId + ":" + authorizedUser + ":" + scope;
+                } else {
+                    cacheKeyString = clientId + ":" + authorizedUser.toLowerCase() + ":" + scope;
+                }
                 OAuthCacheKey cacheKey = new OAuthCacheKey(cacheKeyString);
                 oauthCache.clearCacheEntry(cacheKey);
             }

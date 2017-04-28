@@ -59,7 +59,7 @@ public class WebFingerServiceComponent {
                 log.debug("OpenID WebFinger bundle is activated.");
             }
 
-            // Register SAML SSO servlet
+            // Register OpenID Connect WebFinger servlet
             HttpService httpService = WebFingerServiceComponentHolder.getHttpService();
             Servlet webFingerServlet = new ContextPathServletAdaptor(new WebFingerServlet(),
                     "/.well-known/webfinger");
@@ -91,14 +91,14 @@ public class WebFingerServiceComponent {
 
     protected void setHttpService(HttpService httpService) {
         if (log.isDebugEnabled()) {
-            log.debug("HTTP Service is set in the OpenID WebFinger bundle");
+            log.debug("HTTP Service is set in the OpenID Connect WebFinger bundle");
         }
         WebFingerServiceComponentHolder.setHttpService(httpService);
     }
 
     protected void unsetHttpService(HttpService httpService) {
         if (log.isDebugEnabled()) {
-            log.debug("HTTP Service is unset in the OpenID WebFinger bundle");
+            log.debug("HTTP Service is unset in the OpenID Connect WebFinger bundle");
         }
         WebFingerServiceComponentHolder.setHttpService(null);
     }

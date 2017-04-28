@@ -47,7 +47,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
-import java.util.Enumeration;
 
 @Path("/revoke")
 public class OAuthRevocationEndpoint {

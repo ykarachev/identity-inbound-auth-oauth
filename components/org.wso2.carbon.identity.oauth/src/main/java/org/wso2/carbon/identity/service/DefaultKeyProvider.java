@@ -81,7 +81,7 @@ public class DefaultKeyProvider implements KeyProviderService {
     }
 
     @Override
-    public Certificate getCertificate(String s) throws Exception {
+    public Certificate getCertificate(String tenantDomain, String alias) throws Exception {
         return null;
     }
 }

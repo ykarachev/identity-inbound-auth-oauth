@@ -2328,7 +2328,6 @@ public class TokenMgtDAO {
             } else if (connection.getMetaData().getDriverName().contains("Informix")) {
                 // Driver name = "IBM Informix JDBC Driver for IBM Informix Dynamic Server"
                 sql = SQLQueries.RETRIEVE_LATEST_ACCESS_TOKEN_BY_CLIENT_ID_USER_SCOPE_INFORMIX;
-
             } else {
                 sql = SQLQueries.RETRIEVE_LATEST_ACCESS_TOKEN_BY_CLIENT_ID_USER_SCOPE_ORACLE;
                 sql = sql.replace("ROWNUM < 2", "ROWNUM < " + Integer.toString(limit + 1));

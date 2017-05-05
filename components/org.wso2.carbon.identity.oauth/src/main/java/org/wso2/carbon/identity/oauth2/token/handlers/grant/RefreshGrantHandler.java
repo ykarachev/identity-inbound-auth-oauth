@@ -101,7 +101,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                     tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser(), userStoreDomain,
                     OAuth2Util.buildScopeString(validationDataDO.getScope()), true, 10);
             boolean isLatest = false;
-            if (accessTokenDOs == null || accessTokenDOs.size() < 1) {
+            if (accessTokenDOs == null || accessTokenDOs.isEmpty()) {
                 if (log.isDebugEnabled()) {
                     log.debug("Error while retrieving the latest refresh token");
                 }
@@ -112,7 +112,9 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                 return false;
             } else {
                 for (AccessTokenDO token : accessTokenDOs) {
-                    if (refreshToken.equals(token.getRefreshToken()) && token.getTokenState().equals(OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE) || token.getTokenState().equals(OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED)) {
+                    if (refreshToken.equals(token.getRefreshToken())
+                            && OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(token.getTokenState())
+                            || OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(token.getTokenState())) {
                         isLatest = true;
                     }
                 }
@@ -122,7 +124,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                     log.debug("Refresh token is not the latest.");
                 }
                 if (cacheEnabled) {
-                    clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(), validationDataDO.getScope(), validationDataDO.getAccessToken());
+                    clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(),
+                            validationDataDO.getScope(), validationDataDO.getAccessToken());
                 }
                 return false;
             }

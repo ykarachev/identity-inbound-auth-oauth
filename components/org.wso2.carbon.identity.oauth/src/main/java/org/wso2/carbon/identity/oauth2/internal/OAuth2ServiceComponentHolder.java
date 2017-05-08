@@ -18,9 +18,8 @@
 
 package org.wso2.carbon.identity.oauth2.internal;
 
-import org.wso2.carbon.identity.core.KeyProviderService;
-import org.wso2.carbon.identity.service.DefaultKeyProvider;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
+import org.wso2.carbon.identity.core.KeyProviderService;
 import org.wso2.carbon.registry.core.service.RegistryService;
 
 /**
@@ -76,9 +75,6 @@ public class OAuth2ServiceComponentHolder {
     }
 
     public static KeyProviderService getKeyProvider() throws Exception {
-        if (OAuth2ServiceComponentHolder.keyProvider == null) {
-            OAuth2ServiceComponentHolder.keyProvider = new DefaultKeyProvider();
-        }
         return keyProvider;
     }
 }

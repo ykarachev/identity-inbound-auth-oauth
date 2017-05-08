@@ -284,10 +284,11 @@ public class AccessTokenIssuer {
             log.debug("Access token issued to client Id: " + tokenReqDTO.getClientId() + " username: " +
                     tokReqMsgCtx.getAuthorizedUser() + " and scopes: " + tokenRespDTO.getAuthorizedScopes());
         }
-
-        if (tokReqMsgCtx.getScope() != null && OAuth2Util.isOIDCAuthzRequest(tokReqMsgCtx.getScope())) {
-            IDTokenBuilder builder = OAuthServerConfiguration.getInstance().getOpenIDConnectIDTokenBuilder();
-            tokenRespDTO.setIDToken(builder.buildIDToken(tokReqMsgCtx, tokenRespDTO));
+        if (!GrantType.CLIENT_CREDENTIALS.toString().equals(tokenReqDTO.getGrantType())) {
+            if (tokReqMsgCtx.getScope() != null && OAuth2Util.isOIDCAuthzRequest(tokReqMsgCtx.getScope())) {
+                IDTokenBuilder builder = OAuthServerConfiguration.getInstance().getOpenIDConnectIDTokenBuilder();
+                tokenRespDTO.setIDToken(builder.buildIDToken(tokReqMsgCtx, tokenRespDTO));
+            }
         }
 
         if (tokenReqDTO.getGrantType().equals(GrantType.AUTHORIZATION_CODE.toString())) {

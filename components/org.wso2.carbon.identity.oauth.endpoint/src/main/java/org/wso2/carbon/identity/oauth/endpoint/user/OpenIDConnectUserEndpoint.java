@@ -95,10 +95,6 @@ public class OpenIDConnectUserEndpoint {
         } catch (OAuthSystemException e) {
             log.error("UserInfoEndpoint Failed", e);
             throw new OAuthSystemException("UserInfoEndpoint Failed");
-        } catch (IdentityOAuthAdminException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Error in getting grant type.", e);
-            }
         }
 
         ResponseBuilder respBuilder =

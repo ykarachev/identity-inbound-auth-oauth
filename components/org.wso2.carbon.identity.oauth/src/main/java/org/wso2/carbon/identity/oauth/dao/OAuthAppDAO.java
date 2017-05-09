@@ -558,9 +558,9 @@ public class OAuthAppDAO {
      * Get the grant type.
      *
      * @param accessToken Access token
-     * @throws IdentityOAuthAdminException
+     * @return grant type
      */
-    public String getGrantType(String accessToken) throws IdentityOAuthAdminException {
+    public String getGrantType(String accessToken) {
 
         PreparedStatement prepStmt = null;
         Connection connection = null;
@@ -569,7 +569,7 @@ public class OAuthAppDAO {
 
         try {
             connection = IdentityDatabaseUtil.getDBConnection();
-            prepStmt = connection.prepareStatement(SQLQueries.OAuthConsumerDAOSQLQueries.RETRIEVE_GRANT_TYPE_BY_TOKEN);
+            prepStmt = connection.prepareStatement(SQLQueries.OAuthConsumerDAOSQLQueries.GET_GRANT_TYPE_BY_TOKEN);
             prepStmt.setString(1, accessToken);
             rSet = prepStmt.executeQuery();
             if (rSet != null && rSet.next()) {
@@ -577,7 +577,13 @@ public class OAuthAppDAO {
             }
             connection.commit();
         } catch (SQLException e) {
-            throw new IdentityOAuthAdminException("Error while executing the SQL prepStmt.", e);
+            try {
+                throw new IdentityOAuthAdminException("Error when executing the SQL : "
+                        + SQLQueries.OAuthConsumerDAOSQLQueries.GET_GRANT_TYPE_BY_TOKEN, e);
+            } catch (IdentityOAuthAdminException e1) {
+                log.error("Error when executing the SQL : "
+                        + SQLQueries.OAuthConsumerDAOSQLQueries.GET_GRANT_TYPE_BY_TOKEN, e);
+            }
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, prepStmt);
         }

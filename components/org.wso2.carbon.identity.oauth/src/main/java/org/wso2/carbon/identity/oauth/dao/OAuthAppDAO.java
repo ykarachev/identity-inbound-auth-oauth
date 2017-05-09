@@ -582,7 +582,7 @@ public class OAuthAppDAO {
                         + SQLQueries.OAuthConsumerDAOSQLQueries.GET_GRANT_TYPE_BY_TOKEN, e);
             } catch (IdentityOAuthAdminException e1) {
                 log.error("Error when executing the SQL : "
-                        + SQLQueries.OAuthConsumerDAOSQLQueries.GET_GRANT_TYPE_BY_TOKEN, e);
+                        + SQLQueries.OAuthConsumerDAOSQLQueries.GET_GRANT_TYPE_BY_TOKEN, e1);
             }
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, prepStmt);

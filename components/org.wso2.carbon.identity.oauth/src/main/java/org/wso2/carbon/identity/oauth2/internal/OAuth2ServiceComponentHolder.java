@@ -70,7 +70,7 @@ public class OAuth2ServiceComponentHolder {
         OAuth2ServiceComponentHolder.registryService = registryService;
     }
 
-    public static void setKeyProvider(KeyProviderService keyProvider) {
+    /*package private*/ static void setKeyProvider(KeyProviderService keyProvider) {
         OAuth2ServiceComponentHolder.keyProvider = keyProvider;
     }
 

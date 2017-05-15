@@ -66,6 +66,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.identity.oauth2.util.CertificatesStore;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.idp.mgt.IdentityProviderManagementException;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
@@ -120,7 +121,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
     private static final Log log = LogFactory.getLog(DefaultIDTokenBuilder.class);
     private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<>();
-    private static Map<Integer, Certificate> publicCerts = new ConcurrentHashMap<>();
+    private CertificatesStore certificatesStore = new CertificatesStore();
     private OAuthServerConfiguration config = null;
     private Algorithm signatureAlgorithm = null;
 
@@ -436,7 +437,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
             header.setKeyID(kid);
-            header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
+            header.setX509CertThumbprint(new Base64URL(certificatesStore.getThumbPrint(tenantDomain, tenantId)));
             SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
             signedJWT.sign(signer);
             return signedJWT.serialize();
@@ -466,7 +467,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             Key privateKey = pkProvider.getPrivateKey(tenantDomain);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
-            header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
+            header.setX509CertThumbprint(new Base64URL(certificatesStore.getThumbPrint(tenantDomain, tenantId)));
             header.setKeyID(kid);
             SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
             signedJWT.sign(signer);
@@ -476,44 +477,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         } catch (Exception e) {
             throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
         }
-    }
-
-    private Key getPrivateKey(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
-        Key privateKey;
-        if (!(privateKeys.containsKey(tenantId))) {
-
-            try {
-                IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
-            } catch (IdentityException e) {
-                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain,
-                        e);
-            }
-
-            // get tenant's key store manager
-            KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
-
-            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
-                // derive key store name
-                String ksName = tenantDomain.trim().replace(".", "-");
-                String jksName = ksName + ".jks";
-                // obtain private key
-                privateKey = tenantKSM.getPrivateKey(jksName, tenantDomain);
-
-            } else {
-                try {
-                    privateKey = tenantKSM.getDefaultPrivateKey();
-                } catch (Exception e) {
-                    throw new IdentityOAuth2Exception("Error while obtaining private key for super tenant", e);
-                }
-            }
-            //privateKey will not be null always
-            privateKeys.put(tenantId, privateKey);
-        } else {
-            //privateKey will not be null because containsKey() true says given key is exist and ConcurrentHashMap
-            // does not allow to store null values
-            privateKey = privateKeys.get(tenantId);
-        }
-        return privateKey;
     }
 
     /**
@@ -701,101 +664,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         throw new RuntimeException("Cannot map Signature Algorithm in identity.xml to hashing algorithm");
     }
 
-    /**
-     * Helper method to add public certificate to JWT_HEADER to signature verification.
-     *
-     * @param tenantDomain
-     * @param tenantId
-     * @throws IdentityOAuth2Exception
-     */
-    private String getThumbPrint(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
-
-        try {
-
-            Certificate certificate = getCertificate(tenantDomain, tenantId);
-
-            // TODO: maintain a hashmap with tenants' pubkey thumbprints after first initialization
-
-            //generate the SHA-1 thumbprint of the certificate
-            MessageDigest digestValue = MessageDigest.getInstance("SHA-1");
-            byte[] der = certificate.getEncoded();
-            digestValue.update(der);
-            byte[] digestInBytes = digestValue.digest();
-
-            String publicCertThumbprint = hexify(digestInBytes);
-            String base64EncodedThumbPrint = new String(new Base64(0, null, true).encode(
-                    publicCertThumbprint.getBytes(Charsets.UTF_8)), Charsets.UTF_8);
-            return base64EncodedThumbPrint;
-
-        } catch (Exception e) {
-            String error = "Error in obtaining certificate for tenant " + tenantDomain;
-            throw new IdentityOAuth2Exception(error, e);
-        }
-    }
-
-    private Certificate getCertificate(String tenantDomain, int tenantId) throws Exception {
-
-        if (tenantDomain == null) {
-            tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
-        }
-
-        if (tenantId == 0) {
-            tenantId = OAuth2Util.getTenantId(tenantDomain);
-        }
-
-        Certificate publicCert = null;
-
-        if (!(publicCerts.containsKey(tenantId))) {
-
-            try {
-                IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
-            } catch (IdentityException e) {
-                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain, e);
-            }
-
-            // get tenant's key store manager
-            KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
-
-            KeyStore keyStore = null;
-            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
-                // derive key store name
-                String ksName = tenantDomain.trim().replace(".", "-");
-                String jksName = ksName + ".jks";
-                keyStore = tenantKSM.getKeyStore(jksName);
-                publicCert = keyStore.getCertificate(tenantDomain);
-            } else {
-                publicCert = tenantKSM.getDefaultPrimaryCertificate();
-            }
-            if (publicCert != null) {
-                publicCerts.put(tenantId, publicCert);
-            }
-        } else {
-            publicCert = publicCerts.get(tenantId);
-        }
-        return publicCert;
-    }
-
-    /**
-     * Helper method to hexify a byte array.
-     * TODO:need to verify the logic
-     *
-     * @param bytes
-     * @return  hexadecimal representation
-     */
-    private String hexify(byte bytes[]) {
-
-        char[] hexDigits = {'0', '1', '2', '3', '4', '5', '6', '7',
-                    +                            '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-        StringBuilder buf = new StringBuilder(bytes.length * 2);
-
-        for (int i = 0; i < bytes.length; ++i) {
-            buf.append(hexDigits[(bytes[i] & 0xf0) >> 4]);
-            buf.append(hexDigits[bytes[i] & 0x0f]);
-        }
-
-        return buf.toString();
-    }
 
     private List<String> getOIDCEndpointUrl() {
         List<String> OIDCEntityId = getOIDCAudiences();

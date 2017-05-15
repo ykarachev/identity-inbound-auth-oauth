@@ -23,6 +23,8 @@ import org.apache.commons.logging.LogFactory;
 import org.eclipse.equinox.http.helper.ContextPathServletAdaptor;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.http.HttpService;
+import org.wso2.carbon.identity.core.KeyProviderService;
+import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oidc.session.OIDCSessionConstants;
 import org.wso2.carbon.identity.oidc.session.servlet.OIDCLogoutServlet;
 import org.wso2.carbon.identity.oidc.session.servlet.OIDCSessionIFrameServlet;
@@ -38,9 +40,12 @@ import javax.servlet.Servlet;
  * @scr.reference name="user.realmservice.default"
  * interface="org.wso2.carbon.user.core.service.RealmService" cardinality="1..1"
  * policy="dynamic" bind="setRealmService" unbind="unsetRealmService"
+ * @scr.reference name="private.key.provider" interface="org.wso2.carbon.identity.core.KeyProviderService"
+ * cardinality="0..1" policy="dynamic" bind="setKeyProvider"  unbind="unsetKeyProvider"
  */
 public class OIDCSessionManagementComponent {
     private static final Log log = LogFactory.getLog(OIDCSessionManagementComponent.class);
+    private KeyProviderService keyProviderService;
 
     protected void activate(ComponentContext context) {
 
@@ -58,8 +63,11 @@ public class OIDCSessionManagementComponent {
             throw new RuntimeException(msg, e);
         }
 
-        Servlet logoutServlet = new ContextPathServletAdaptor(new OIDCLogoutServlet(),
+        OIDCLogoutServlet oidcLogoutServlet = new OIDCLogoutServlet();
+        oidcLogoutServlet.setKeyProviderService(keyProviderService);
+        Servlet logoutServlet = new ContextPathServletAdaptor(oidcLogoutServlet,
                                                               OIDCSessionConstants.OIDCEndpoints.OIDC_LOGOUT_ENDPOINT);
+
         try {
             httpService.registerServlet(OIDCSessionConstants.OIDCEndpoints.OIDC_LOGOUT_ENDPOINT, logoutServlet, null,
                                         null);
@@ -109,5 +117,15 @@ public class OIDCSessionManagementComponent {
             log.debug("Unsetting the Realm Service");
         }
         OIDCSessionManagementComponentServiceHolder.setRealmService(null);
+    }
+
+    protected void setKeyProvider(KeyProviderService keyProvider) {
+        this.keyProviderService = keyProvider;
+        OIDCSessionManagementComponentServiceHolder.setKeyProvider(keyProvider);
+    }
+
+    protected void unsetKeyProvider(KeyProviderService pkProvider) {
+        this.keyProviderService = null;
+        OIDCSessionManagementComponentServiceHolder.setKeyProvider(null);
     }
 }

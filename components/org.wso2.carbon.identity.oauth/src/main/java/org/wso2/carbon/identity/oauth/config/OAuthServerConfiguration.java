@@ -166,6 +166,9 @@ public class OAuthServerConfiguration {
     // property added to fix IDENTITY-4534 in backward compatible manner
     private boolean isImplicitErrorFragment = true;
 
+    // property added to fix IDENTITY-4112 in backward compatible manner
+    private boolean isRevokeResponseHeadersEnabled = true;
+
     private OAuthServerConfiguration() {
         buildOAuthServerConfiguration();
     }
@@ -258,6 +261,8 @@ public class OAuthServerConfiguration {
 
         // parse identity OAuth 2.0 token generator
         parseOAuthTokenIssuerConfig(oauthElem);
+
+        parseRevokeResponseHeadersEnableConfig(oauthElem);
     }
 
     public Set<OAuthCallbackHandlerMetaData> getCallbackHandlerMetaData() {
@@ -320,14 +325,14 @@ public class OAuthServerConfiguration {
                             Class clazz = this.getClass().getClassLoader().loadClass(oauthTokenGeneratorClassName);
                             oauthTokenGenerator = (OAuthIssuer) clazz.newInstance();
                             log.info("An instance of " + oauthTokenGeneratorClassName
-                                + " is created for OAuth token generation.");
+                                    + " is created for OAuth token generation.");
                         } else {
                             oauthTokenGenerator = new OAuthIssuerImpl(new UUIDValueGenerator());
                             log.info("The default OAuth token issuer will be used. No custom token generator is set.");
                         }
                     } catch (Exception e) {
                         String errorMsg = "Error when instantiating the OAuthIssuer : "
-                            + tokenPersistenceProcessorClassName + ". Defaulting to OAuthIssuerImpl";
+                                + tokenPersistenceProcessorClassName + ". Defaulting to OAuthIssuerImpl";
                         log.error(errorMsg, e);
                         oauthTokenGenerator = new OAuthIssuerImpl(new UUIDValueGenerator());
                     }
@@ -454,7 +459,7 @@ public class OAuthServerConfiguration {
         if (supportedGrantTypeValidators == null) {
             synchronized (this) {
                 if (supportedGrantTypeValidators == null) {
-                    Map<String,Class<? extends OAuthValidator<HttpServletRequest>>> supportedGrantTypeValidatorsTemp =
+                    Map<String, Class<? extends OAuthValidator<HttpServletRequest>>> supportedGrantTypeValidatorsTemp =
                             new Hashtable<>();
                     // Load default grant type validators
                     supportedGrantTypeValidatorsTemp
@@ -542,7 +547,7 @@ public class OAuthServerConfiguration {
         if (supportedResponseTypes == null) {
             synchronized (this) {
                 if (supportedResponseTypes == null) {
-                    Map<String,ResponseTypeHandler> supportedResponseTypesTemp = new Hashtable<>();
+                    Map<String, ResponseTypeHandler> supportedResponseTypesTemp = new Hashtable<>();
                     for (Map.Entry<String, String> entry : supportedResponseTypeClassNames.entrySet()) {
                         ResponseTypeHandler responseTypeHandler = null;
                         try {
@@ -588,8 +593,8 @@ public class OAuthServerConfiguration {
                             clientAuthenticationHandler.init(entry.getValue());
                             supportedClientAuthHandlersTemp.add(clientAuthenticationHandler);
 
-                        //Exceptions necessarily don't have to break the flow since there are cases
-                        //runnable without client auth handlers
+                            //Exceptions necessarily don't have to break the flow since there are cases
+                            //runnable without client auth handlers
                         } catch (InstantiationException e) {
                             log.error("Error instantiating " + entry, e);
                         } catch (IllegalAccessException e) {
@@ -822,15 +827,22 @@ public class OAuthServerConfiguration {
         return isImplicitErrorFragment;
     }
 
+    public boolean isRevokeResponseHeadersEnabled() {
+        return isRevokeResponseHeadersEnabled;
+    }
+
     /**
      * Return the value of whether the refresh token is allowed for this grant type. Null will be returned if there is
      * no tag or empty tag.
      * @param grantType Name of the Grant type.
      * @return True or False if there is a value. Null otherwise.
      */
-    public Boolean getValueForIsRefreshTokenAllowed(String grantType) {
+    public boolean getValueForIsRefreshTokenAllowed(String grantType) {
 
-        return refreshTokenAllowedGrantTypes.get(grantType);
+        Boolean isRefreshTokenAllowed = refreshTokenAllowedGrantTypes.get(grantType);
+
+        // If this element is not present in the XML, we will send true to maintain the backward compatibility.
+        return isRefreshTokenAllowed == null ? true : isRefreshTokenAllowed;
     }
 
     private void parseOAuthCallbackHandlers(OMElement callbackHandlersElem) {
@@ -1009,7 +1021,7 @@ public class OAuthServerConfiguration {
                 log.debug("\"Default Timestamp Skew\" element was not available "
                         + "in from identity.xml. Continuing with the default value.");
             }
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Authorization Code Default Timeout is set to : " +
                         authorizationCodeValidityPeriodInSeconds + "ms.");
                 log.debug("User Access Token Default Timeout is set to " + userAccessTokenValidityPeriodInSeconds +
@@ -1027,91 +1039,91 @@ public class OAuthServerConfiguration {
         OMElement elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH1_REQUEST_TOKEN_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oauth1RequestTokenUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH1_AUTHORIZE_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oauth1AuthorizeUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH1_ACCESS_TOKEN_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oauth1AccessTokenUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH2_AUTHZ_EP_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oauth2AuthzEPUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH2_TOKEN_EP_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oauth2TokenEPUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH2_USERINFO_EP_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oauth2UserInfoEPUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH2_CONSENT_PAGE_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oauth2ConsentPageUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH2_DCR_EP_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
-                oauth2DCREPUrl= IdentityUtil.fillURLPlaceholders(elem.getText());
+            if (StringUtils.isNotBlank(elem.getText())) {
+                oauth2DCREPUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH2_JWKS_PAGE_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oauth2JWKSPageUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OIDC_DISCOVERY_EP_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oidcDiscoveryUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OIDC_WEB_FINGER_EP_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oidcWebFingerEPUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OIDC_CONSENT_PAGE_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oidcConsentPageUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
         elem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
                 ConfigElements.OAUTH2_ERROR_PAGE_URL));
         if (elem != null) {
-            if(StringUtils.isNotBlank(elem.getText())) {
+            if (StringUtils.isNotBlank(elem.getText())) {
                 oauth2ErrorPageUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
         }
@@ -1201,22 +1213,23 @@ public class OAuthServerConfiguration {
     /**
      * parse the configuration to load the class name of the OAuth 2.0 token generator.
      * this is a global configuration at the moment.
+     *
      * @param oauthConfigElem
      */
     private void parseOAuthTokenGeneratorConfig(OMElement oauthConfigElem) {
 
-	OMElement tokenGeneratorClassConfigElem = oauthConfigElem
-		.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OAUTH_TOKEN_GENERATOR));
-	if (tokenGeneratorClassConfigElem != null && !"".equals(tokenGeneratorClassConfigElem.getText().trim())) {
-	    oauthTokenGeneratorClassName = tokenGeneratorClassConfigElem.getText().trim();
-	    if (log.isDebugEnabled()) {
-		log.debug("OAuth token generator is set to : " + oauthTokenGeneratorClassName);
-	    }
-	} else {
-	    if (log.isDebugEnabled()) {
-		log.debug("The default OAuth token issuer will be used. No custom token generator is set.");
-	    }
-	}
+        OMElement tokenGeneratorClassConfigElem = oauthConfigElem
+                .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OAUTH_TOKEN_GENERATOR));
+        if (tokenGeneratorClassConfigElem != null && !"".equals(tokenGeneratorClassConfigElem.getText().trim())) {
+            oauthTokenGeneratorClassName = tokenGeneratorClassConfigElem.getText().trim();
+            if (log.isDebugEnabled()) {
+                log.debug("OAuth token generator is set to : " + oauthTokenGeneratorClassName);
+            }
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("The default OAuth token issuer will be used. No custom token generator is set.");
+            }
+        }
     }
 
     private void parseOAuthTokenIssuerConfig(OMElement oauthConfigElem) {
@@ -1273,7 +1286,7 @@ public class OAuthServerConfiguration {
                     if (!StringUtils.isEmpty(authzGrantValidatorImplClass)) {
                         supportedGrantTypeValidatorNames.put(grantTypeName, authzGrantValidatorImplClass);
                     }
-                    
+
                     OMElement refreshTokenAllowed = supportedGrantTypeElement
                             .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.REFRESH_TOKEN_ALLOWED));
                     if (refreshTokenAllowed != null && StringUtils.isNotBlank(refreshTokenAllowed.getText())) {
@@ -1502,6 +1515,18 @@ public class OAuthServerConfiguration {
         }
     }
 
+    private void parseRevokeResponseHeadersEnableConfig(OMElement oauthConfigElem) {
+        OMElement enableRevokeResponseHeadersElem =
+                oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.ENABLE_REVOKE_RESPONSE_HEADERS));
+        if (enableRevokeResponseHeadersElem != null) {
+            isRevokeResponseHeadersEnabled = Boolean.parseBoolean(enableRevokeResponseHeadersElem.getText());
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Enable revoke response headers : " + isRevokeResponseHeadersEnabled);
+        }
+    }
+
     private void parseOpenIDConnectConfig(OMElement oauthConfigElem) {
 
         OMElement openIDConnectConfigElem =
@@ -1704,7 +1729,9 @@ public class OAuthServerConfiguration {
         private static final String SAML2_GRANT = "SAML2Grant";
         private static final String SAML2_TOKEN_HANDLER = "SAML2TokenHandler";
 
-        public static final String REFRESH_TOKEN_ALLOWED = "IsRefreshTokenAllowed";
+        // To enable revoke response headers
+        private static final String ENABLE_REVOKE_RESPONSE_HEADERS = "EnableRevokeResponseHeaders";
+        private static final String REFRESH_TOKEN_ALLOWED = "IsRefreshTokenAllowed";
     }
 
 }

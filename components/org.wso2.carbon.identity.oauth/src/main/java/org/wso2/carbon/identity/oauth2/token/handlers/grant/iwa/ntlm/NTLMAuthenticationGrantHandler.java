@@ -143,14 +143,7 @@ public class NTLMAuthenticationGrantHandler extends AbstractAuthorizationGrantHa
     @Override
     public boolean issueRefreshToken() throws IdentityOAuth2Exception {
 
-        Boolean isRefreshTokenAllowed = OAuthServerConfiguration.getInstance()
+        return OAuthServerConfiguration.getInstance()
                 .getValueForIsRefreshTokenAllowed(OAuthConstants.GrantTypes.IWA_NTLM);
-
-        // If no tag present. We'll be sending no refresh token.
-        if (isRefreshTokenAllowed == null) {
-            return false;
-        }
-
-        return isRefreshTokenAllowed;
     }
 }

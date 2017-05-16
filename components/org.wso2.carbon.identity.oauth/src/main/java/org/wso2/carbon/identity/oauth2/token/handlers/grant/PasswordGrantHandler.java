@@ -129,16 +129,7 @@ public class PasswordGrantHandler extends AbstractAuthorizationGrantHandler {
     @Override
     public boolean issueRefreshToken() throws IdentityOAuth2Exception {
 
-        Boolean isRefreshTokenAllowed = OAuthServerConfiguration.getInstance()
+        return OAuthServerConfiguration.getInstance()
                 .getValueForIsRefreshTokenAllowed(OAuthConstants.GrantTypes.PASSWORD);
-
-        // If no tag present. We'll be sending no refresh token.
-        if (isRefreshTokenAllowed == null) {
-            // Default behaviour should be return false. For backward compatibility reasons,
-            // we are sending true instead.
-            return true;
-        }
-
-        return isRefreshTokenAllowed;
     }
 }

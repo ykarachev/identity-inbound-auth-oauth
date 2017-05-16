@@ -122,6 +122,7 @@ public class OAuthServerConfiguration {
     private TokenPersistenceProcessor persistenceProcessor = null;
     private Set<OAuthCallbackHandlerMetaData> callbackHandlerMetaData = new HashSet<>();
     private Map<String, String> supportedGrantTypeClassNames = new HashMap<>();
+    private Map<String, Boolean> refreshTokenAllowedGrantTypes = new HashMap<>();
     private Map<String, AuthorizationGrantHandler> supportedGrantTypes;
     private Map<String, String> supportedGrantTypeValidatorNames = new HashMap<>();
     private Map<String, Class<? extends OAuthValidator<HttpServletRequest>>> supportedGrantTypeValidators;
@@ -821,6 +822,17 @@ public class OAuthServerConfiguration {
         return isImplicitErrorFragment;
     }
 
+    /**
+     * Return the value of whether the refresh token is allowed for this grant type. Null will be returned if there is
+     * no tag or empty tag.
+     * @param grantType Name of the Grant type.
+     * @return True or False if there is a value. Null otherwise.
+     */
+    public Boolean getValueForIsRefreshTokenAllowed(String grantType) {
+
+        return refreshTokenAllowedGrantTypes.get(grantType);
+    }
+
     private void parseOAuthCallbackHandlers(OMElement callbackHandlersElem) {
         if (callbackHandlersElem == null) {
             warnOnFaultyConfiguration("OAuthCallbackHandlers element is not available.");
@@ -1261,6 +1273,13 @@ public class OAuthServerConfiguration {
                     if (!StringUtils.isEmpty(authzGrantValidatorImplClass)) {
                         supportedGrantTypeValidatorNames.put(grantTypeName, authzGrantValidatorImplClass);
                     }
+                    
+                    OMElement refreshTokenAllowed = supportedGrantTypeElement
+                            .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.REFRESH_TOKEN_ALLOWED));
+                    if (refreshTokenAllowed != null && StringUtils.isNotBlank(refreshTokenAllowed.getText())) {
+                        boolean isRefreshAllowed = Boolean.parseBoolean(refreshTokenAllowed.getText());
+                        refreshTokenAllowedGrantTypes.put(grantTypeName, isRefreshAllowed);
+                    }
                 }
             }
         } else {
@@ -1685,6 +1704,7 @@ public class OAuthServerConfiguration {
         private static final String SAML2_GRANT = "SAML2Grant";
         private static final String SAML2_TOKEN_HANDLER = "SAML2TokenHandler";
 
+        public static final String REFRESH_TOKEN_ALLOWED = "IsRefreshTokenAllowed";
     }
 
 }

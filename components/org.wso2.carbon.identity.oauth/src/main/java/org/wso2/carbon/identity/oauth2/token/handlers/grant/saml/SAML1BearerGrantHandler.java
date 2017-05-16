@@ -534,4 +534,18 @@ public class SAML1BearerGrantHandler extends AbstractAuthorizationGrantHandler {
     public boolean authorizeAccessDelegation(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
         return true;
     }
+
+    @Override
+    public boolean issueRefreshToken() throws IdentityOAuth2Exception {
+
+        Boolean isRefreshTokenAllowed = OAuthServerConfiguration.getInstance()
+                .getValueForIsRefreshTokenAllowed(OAuthConstants.OAUTH_SAML1_BEARER_METHOD);
+
+        // If no tag present. We'll be sending no refresh token.
+        if (isRefreshTokenAllowed == null) {
+            return false;
+        }
+
+        return isRefreshTokenAllowed;
+    }
 }

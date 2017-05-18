@@ -142,6 +142,15 @@ public class OAuth2AuthzEndpoint {
         carbonContext.setTenantId(MultitenantConstants.SUPER_TENANT_ID);
         carbonContext.setTenantDomain(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME);
 
+        // Validate repeated parameters
+        if (!(request instanceof OAuthRequestWrapper)) {
+            if (!EndpointUtil.validateParams(request, response, null)) {
+                return Response.status(HttpServletResponse.SC_BAD_REQUEST).location(new URI(
+                        EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST,
+                                "Invalid authorization request with repeated parameters", null))).build();
+            }
+        }
+
         String clientId = request.getParameter("client_id");
 
         String sessionDataKeyFromLogin = getSessionDataKey(request);
@@ -604,6 +613,13 @@ public class OAuth2AuthzEndpoint {
     @Produces("text/html")
     public Response authorizePost(@Context HttpServletRequest request,@Context HttpServletResponse response,  MultivaluedMap paramMap)
             throws URISyntaxException {
+
+        // Validate repeated parameters
+        if (!EndpointUtil.validateParams(request, response, paramMap)) {
+            return Response.status(HttpServletResponse.SC_BAD_REQUEST).location(new URI(
+                    EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST,
+                            "Invalid authorization request with repeated parameters", null))).build();
+        }
         HttpServletRequestWrapper httpRequest = new OAuthRequestWrapper(request, paramMap);
         return authorize(httpRequest, response);
     }

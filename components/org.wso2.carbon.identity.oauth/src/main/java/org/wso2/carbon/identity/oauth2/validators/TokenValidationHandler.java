@@ -337,7 +337,9 @@ public class TokenValidationHandler {
      */
     private String getAuthzUser(AccessTokenDO accessTokenDO) {
         User user = accessTokenDO.getAuthzUser();
-        String authzUser = UserCoreUtil.addDomainToName(user.getUserName(), user.getUserStoreDomain());
+        String userStore = user.getUserStoreDomain();
+        String authzUser = UserCoreUtil.addDomainToName(user.getUserName(),
+                userStore.startsWith(OAuth2Util.FEDERATED_USER_DOMAIN_PREFIX) ? null : userStore);
         return UserCoreUtil.addTenantDomainToEntry(authzUser, user.getTenantDomain());
     }
 

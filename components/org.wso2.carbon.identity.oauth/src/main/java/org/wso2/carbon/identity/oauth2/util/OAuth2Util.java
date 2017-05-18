@@ -99,6 +99,8 @@ public class OAuth2Util {
     public static final String JWT_ACCESS_TOKEN = "JWT_ACCESS_TOKEN";
     public static final String ACCESS_TOKEN_DO = "AccessTokenDo";
     public static final String OAUTH2_VALIDATION_MESSAGE_CONTEXT = "OAuth2TokenValidationMessageContext";
+    public static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
+    public static final String FEDERATED_USER_DOMAIN_SEPARATOR = ":";
 
     private static final String ALGORITHM_NONE = "NONE";
     /*
@@ -1175,6 +1177,19 @@ public class OAuth2Util {
         }
         log.error("Unsupported Signature Algorithm in identity.xml");
         throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
+    }
+
+    /**
+     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
+     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
+     * @return
+     */
+    public static String getFederatedUserDomain (String authenticatedIDP) {
+        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
+            return FEDERATED_USER_DOMAIN_PREFIX + FEDERATED_USER_DOMAIN_SEPARATOR + authenticatedIDP;
+        } else {
+            return FEDERATED_USER_DOMAIN_PREFIX;
+        }
     }
 
 }

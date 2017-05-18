@@ -169,18 +169,20 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
     @Override
     public void generateToken(OAuth2TokenValidationMessageContext messageContext) throws IdentityOAuth2Exception {
 
-        String clientId = ((AccessTokenDO)messageContext.getProperty("AccessTokenDO")).getConsumerKey();
-        long issuedTime = ((AccessTokenDO)messageContext.getProperty("AccessTokenDO")).getIssuedTime().getTime();
+        AccessTokenDO accessTokenDO = ((AccessTokenDO)messageContext.getProperty("AccessTokenDO"));
+        String clientId = accessTokenDO.getConsumerKey();
+        long issuedTime = accessTokenDO.getIssuedTime().getTime();
         String authzUser = messageContext.getResponseDTO().getAuthorizedUser();
-        int tenantID = ((AccessTokenDO)messageContext.getProperty("AccessTokenDO")).getTenantID();
+        int tenantID = accessTokenDO.getTenantID();
         String tenantDomain = OAuth2Util.getTenantDomain(tenantID);
         boolean isExistingUser = false;
         String tenantAwareUsername = null;
 
         RealmService realmService = OAuthComponentServiceHolder.getInstance().getRealmService();
-        // TODO : Need to handle situation where federated user name is similar to a one we have in our user store
-        if (realmService != null && tenantID != MultitenantConstants.INVALID_TENANT_ID ) {
-            tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(authzUser);
+        tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(authzUser);
+
+        if (realmService != null && tenantID != MultitenantConstants.INVALID_TENANT_ID && !accessTokenDO.getAuthzUser()
+                .isFederatedUser()) {
             try {
                 UserRealm userRealm = realmService.getTenantUserRealm(tenantID);
                 if (userRealm != null) {

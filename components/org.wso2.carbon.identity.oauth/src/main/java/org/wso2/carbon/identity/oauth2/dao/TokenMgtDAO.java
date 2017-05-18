@@ -168,6 +168,13 @@ public class TokenMgtDAO {
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
+        String userDomain = authzCodeDO.getAuthorizedUser().getUserStoreDomain();
+        String authenticatedIDP = authzCodeDO.getAuthorizedUser().getFederatedIdPName();
+
+        if (authzCodeDO.getAuthorizedUser().isFederatedUser()) {
+            userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
+        }
+
         try {
 
             if (OAuth2ServiceComponentHolder.isPkceEnabled()) {
@@ -177,7 +184,7 @@ public class TokenMgtDAO {
                 prepStmt.setString(3, callbackUrl);
                 prepStmt.setString(4, OAuth2Util.buildScopeString(authzCodeDO.getScope()));
                 prepStmt.setString(5, authzCodeDO.getAuthorizedUser().getUserName());
-                prepStmt.setString(6, getSanitizedUserStoreDomain(authzCodeDO.getAuthorizedUser().getUserStoreDomain()));
+                prepStmt.setString(6, getSanitizedUserStoreDomain(userDomain));
                 int tenantId = OAuth2Util.getTenantId(authzCodeDO.getAuthorizedUser().getTenantDomain());
                 prepStmt.setInt(7, tenantId);
                 prepStmt.setTimestamp(8, authzCodeDO.getIssuedTime(),
@@ -195,7 +202,7 @@ public class TokenMgtDAO {
                 prepStmt.setString(3, callbackUrl);
                 prepStmt.setString(4, OAuth2Util.buildScopeString(authzCodeDO.getScope()));
                 prepStmt.setString(5, authzCodeDO.getAuthorizedUser().getUserName());
-                prepStmt.setString(6, getSanitizedUserStoreDomain(authzCodeDO.getAuthorizedUser().getUserStoreDomain()));
+                prepStmt.setString(6, getSanitizedUserStoreDomain(userDomain));
                 int tenantId = OAuth2Util.getTenantId(authzCodeDO.getAuthorizedUser().getTenantDomain());
                 prepStmt.setInt(7, tenantId);
                 prepStmt.setTimestamp(8, authzCodeDO.getIssuedTime(),
@@ -249,6 +256,8 @@ public class TokenMgtDAO {
             throws IdentityOAuth2Exception {
 
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
+        String userDomain = accessTokenDO.getAuthzUser().getUserStoreDomain();
+        String authenticatedIDP = accessTokenDO.getAuthzUser().getFederatedIdPName();
         PreparedStatement insertTokenPrepStmt = null;
         PreparedStatement addScopePrepStmt = null;
 
@@ -256,6 +265,10 @@ public class TokenMgtDAO {
         if (StringUtils.isNotBlank(userStoreDomain) &&
                 !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
             accessTokenStoreTable = accessTokenStoreTable + "_" + userStoreDomain;
+        }
+
+        if (accessTokenDO.getAuthzUser().isFederatedUser()) {
+            userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
         }
 
         String sql = SQLQueries.INSERT_OAUTH2_ACCESS_TOKEN.replaceAll("\\$accessTokenStoreTable",
@@ -274,7 +287,7 @@ public class TokenMgtDAO {
             insertTokenPrepStmt.setString(3, accessTokenDO.getAuthzUser().getUserName());
             int tenantId = OAuth2Util.getTenantId(accessTokenDO.getAuthzUser().getTenantDomain());
             insertTokenPrepStmt.setInt(4, tenantId);
-            insertTokenPrepStmt.setString(5, getSanitizedUserStoreDomain(accessTokenDO.getAuthzUser().getUserStoreDomain()));
+            insertTokenPrepStmt.setString(5, getSanitizedUserStoreDomain(userDomain));
             insertTokenPrepStmt.setTimestamp(6, accessTokenDO.getIssuedTime(), Calendar.getInstance(TimeZone.getTimeZone(UTC)));
             insertTokenPrepStmt.setTimestamp(7, accessTokenDO.getRefreshTokenIssuedTime(), Calendar.getInstance(TimeZone
                     .getTimeZone(UTC)));
@@ -995,6 +1008,10 @@ public class TokenMgtDAO {
                     user.setUserStoreDomain(userDomain);
                     user.setTenantDomain(tenantDomain);
                     user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+
+                    if (userDomain.startsWith(OAuth2Util.FEDERATED_USER_DOMAIN_PREFIX)) {
+                        user.setFederatedUser(true);
+                    }
 
                     dataDO = new AccessTokenDO(consumerKey, user, scope, issuedTime, refreshTokenIssuedTime,
                             validityPeriodInMillis, refreshTokenValidityPeriodMillis, tokenType);

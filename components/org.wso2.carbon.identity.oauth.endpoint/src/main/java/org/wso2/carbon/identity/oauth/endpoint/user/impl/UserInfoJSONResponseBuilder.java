@@ -112,7 +112,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
             claims = new HashMap<String,Object>();
         }
         for (Map.Entry<String, Object> entry : claims.entrySet()) {
-            if(entry.getKey().equals("sub")){
+            if ("sub".equals(entry.getKey())) {
                 claims.put("sub", returnSubjectClaim(entry.getValue(), tenantDomain, tokenResponse));
             }
         }

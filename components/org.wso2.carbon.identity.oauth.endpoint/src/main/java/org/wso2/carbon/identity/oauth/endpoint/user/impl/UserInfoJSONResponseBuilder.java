@@ -23,8 +23,13 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.utils.JSONUtils;
 import org.json.JSONObject;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
+import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.application.common.model.ServiceProvider;
+import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
+import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
@@ -33,12 +38,14 @@ import org.wso2.carbon.identity.oauth.endpoint.util.ClaimUtil;
 import org.wso2.carbon.identity.oauth.user.UserInfoClaimRetriever;
 import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
 import org.wso2.carbon.identity.oauth.user.UserInfoResponseBuilder;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.registry.core.service.RegistryService;
+import org.wso2.carbon.user.core.UserCoreConstants;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,6 +70,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
     public String getResponseString(OAuth2TokenValidationResponseDTO tokenResponse)
             throws UserInfoEndpointException {
         Resource resource = null;
+        String tenantDomain = null;
         try {
             PrivilegedCarbonContext.startTenantFlow();
             PrivilegedCarbonContext carbonContext = PrivilegedCarbonContext.getThreadLocalCarbonContext();
@@ -72,7 +80,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
                 of the service provider
              */
             int tenantId = OAuth2Util.getClientTenatId();
-            String tenantDomain = IdentityTenantUtil.getTenantDomain(tenantId);
+            tenantDomain = IdentityTenantUtil.getTenantDomain(tenantId);
             carbonContext.setTenantId(tenantId);
             carbonContext.setTenantDomain(tenantDomain);
             RegistryService registry = OAuth2ServiceComponentHolder.getRegistryService();
@@ -101,6 +109,11 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         }
         if(claims == null){
             claims = new HashMap<String,Object>();
+        }
+        for (Map.Entry<String, Object> entry : claims.entrySet()) {
+            if(entry.getKey().equals("sub")){
+                claims.put("sub", returnSubjectClaim(entry.getValue(), tenantDomain, tokenResponse));
+            }
         }
         String[] arrRequestedScopeClaims = null;
         for (String requestedScope : tokenResponse.getScope()) {
@@ -213,5 +226,66 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
 
         return essentailClaimslist;
     }
+
+    private String returnSubjectClaim(Object subject, String tenantDomain, OAuth2TokenValidationResponseDTO tokenResponse)
+            throws UserInfoEndpointException {
+        String accessTokenClientId;
+        String sub = null;
+        try {
+            accessTokenClientId = OAuth2Util.getClientIdForAccessToken
+                    (tokenResponse.getAuthorizationContextToken().getTokenString());
+        } catch (IdentityOAuth2Exception e) {
+            throw new UserInfoEndpointException("Error while obtaining service provider access token clientID", e);
+        }
+
+        ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
+
+        //getting service provider name
+        String serviceProviderName;
+        try {
+            serviceProviderName = applicationMgtService.getServiceProviderNameByClientId(
+                    accessTokenClientId, IdentityApplicationConstants.OAuth2.NAME, tenantDomain);
+        } catch (IdentityApplicationManagementException e) {
+            throw new UserInfoEndpointException("Error while obtaining service provider name", e);
+        }
+        ServiceProvider serviceProvider;
+        try {
+            serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(serviceProviderName,
+                    tenantDomain);
+        } catch (IdentityApplicationManagementException e) {
+            throw new UserInfoEndpointException("Error while obtaining service provider", e);
+        }
+
+        // String subject = null;
+        String userName = tokenResponse.getAuthorizedUser();
+        String userStoreName = IdentityUtil.extractDomainFromName(userName);
+/*
+        if (userName.contains(UserCoreConstants.DOMAIN_SEPARATOR)) {
+            userName = MultitenantUtils.getTenantAwareUsername(userName).split(UserCoreConstants.DOMAIN_SEPARATOR)[1];
+        } else {
+            userName = MultitenantUtils.getTenantAwareUsername(userName);
+        }*/
+
+        // building subject in accordance with Local and Outbound Authentication Configuration preferences
+        if (serviceProvider != null) {
+            boolean isUseTenantDomainInLocalSubject = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                    .isUseTenantDomainInLocalSubjectIdentifier();
+            boolean isUseUserStoreDomainInLocalSubject = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                    .isUseUserstoreDomainInLocalSubjectIdentifier();
+
+            // subject = userName;
+            if (subject != null) {
+                sub = subject.toString();
+            }
+            if (isUseUserStoreDomainInLocalSubject) {
+                sub = userStoreName + UserCoreConstants.DOMAIN_SEPARATOR + subject;
+            }
+            if (isUseTenantDomainInLocalSubject) {
+                sub = subject + UserCoreConstants.TENANT_DOMAIN_COMBINER + tenantDomain;
+            }
+        }
+        return sub;
+    }
+
 
 }

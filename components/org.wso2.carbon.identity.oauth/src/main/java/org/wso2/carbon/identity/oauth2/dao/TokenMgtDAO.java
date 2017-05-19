@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
+import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
@@ -502,7 +503,20 @@ public class TokenMgtDAO {
                     user.setUserName(tenantAwareUsernameWithNoUserDomain);
                     user.setTenantDomain(tenantDomain);
                     user.setUserStoreDomain(userDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
+                                consumerKey, e);
+                    }
+                    boolean isUseTenantDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseTenantDomainInLocalSubjectIdentifier();
+                    boolean isUseUserstoreDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseUserstoreDomainInLocalSubjectIdentifier();
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, isUseTenantDomainInLocalSubjectIdentifier,
+                            isUseUserstoreDomainInLocalSubjectIdentifier);
                     AccessTokenDO accessTokenDO = new AccessTokenDO(consumerKey, user, OAuth2Util.buildScopeArray
                             (scope), new Timestamp(issuedTime), new Timestamp(refreshTokenIssuedTime)
                             , validityPeriodInMillis, refreshTokenValidityPeriodInMillis, userType);
@@ -586,7 +600,20 @@ public class TokenMgtDAO {
                     user.setUserName(tenantAwareUsernameWithNoUserDomain);
                     user.setTenantDomain(tenantDomain);
                     user.setUserStoreDomain(userDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
+                                consumerKey, e);
+                    }
+                    boolean isUseTenantDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseTenantDomainInLocalSubjectIdentifier();
+                    boolean isUseUserstoreDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseUserstoreDomainInLocalSubjectIdentifier();
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, isUseTenantDomainInLocalSubjectIdentifier,
+                            isUseUserstoreDomainInLocalSubjectIdentifier);
                     AccessTokenDO dataDO = new AccessTokenDO(consumerKey, user, scope, issuedTime,
                             refreshTokenIssuedTime, validityPeriodInMillis,
                             refreshTokenValidityPeriodMillis, tokenType);
@@ -663,7 +690,20 @@ public class TokenMgtDAO {
                     user.setUserName(authorizedUser);
                     user.setTenantDomain(tenantDomain);
                     user.setUserStoreDomain(userstoreDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
+                                consumerKey, e);
+                    }
+                    boolean isUseTenantDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseTenantDomainInLocalSubjectIdentifier();
+                    boolean isUseUserstoreDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseUserstoreDomainInLocalSubjectIdentifier();
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, isUseTenantDomainInLocalSubjectIdentifier,
+                            isUseUserstoreDomainInLocalSubjectIdentifier);
                     authorizedUser = UserCoreUtil.addDomainToName(authorizedUser, userstoreDomain);
                     authorizedUser = UserCoreUtil.addTenantDomainToEntry(authorizedUser, tenantDomain);
 
@@ -902,7 +942,20 @@ public class TokenMgtDAO {
                     user.setUserName(userName);
                     user.setUserStoreDomain(userDomain);
                     user.setTenantDomain(tenantDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
+                                consumerKey, e);
+                    }
+                    boolean isUseTenantDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseTenantDomainInLocalSubjectIdentifier();
+                    boolean isUseUserstoreDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseUserstoreDomainInLocalSubjectIdentifier();
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, isUseTenantDomainInLocalSubjectIdentifier,
+                            isUseUserstoreDomainInLocalSubjectIdentifier);
                     validationDataDO.setAuthorizedUser(user);
 
                 } else {
@@ -990,8 +1043,20 @@ public class TokenMgtDAO {
                     user.setUserName(authorizedUser);
                     user.setUserStoreDomain(userDomain);
                     user.setTenantDomain(tenantDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
-
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
+                                consumerKey, e);
+                    }
+                    boolean isUseTenantDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseTenantDomainInLocalSubjectIdentifier();
+                    boolean isUseUserstoreDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseUserstoreDomainInLocalSubjectIdentifier();
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, isUseTenantDomainInLocalSubjectIdentifier,
+                            isUseUserstoreDomainInLocalSubjectIdentifier);
                     dataDO = new AccessTokenDO(consumerKey, user, scope, issuedTime, refreshTokenIssuedTime,
                             validityPeriodInMillis, refreshTokenValidityPeriodMillis, tokenType);
                     dataDO.setAccessToken(accessTokenIdentifier);
@@ -2384,7 +2449,21 @@ public class TokenMgtDAO {
                     user.setUserName(tenantAwareUsernameWithNoUserDomain);
                     user.setTenantDomain(tenantDomain);
                     user.setUserStoreDomain(userDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
+                                consumerKey, e);
+                    }
+                    boolean isUseTenantDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseTenantDomainInLocalSubjectIdentifier();
+                    boolean isUseUserstoreDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                            .isUseUserstoreDomainInLocalSubjectIdentifier();
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, isUseTenantDomainInLocalSubjectIdentifier,
+                            isUseUserstoreDomainInLocalSubjectIdentifier);
                     AccessTokenDO accessTokenDO = new AccessTokenDO(consumerKey, user, OAuth2Util.buildScopeArray
                             (scope), new Timestamp(issuedTime), new Timestamp(refreshTokenIssuedTime)
                             , validityPeriodInMillis, refreshTokenValidityPeriodInMillis, userType);
@@ -2519,7 +2598,20 @@ public class TokenMgtDAO {
                 user.setUserName(tenantAwareUsernameWithNoUserDomain);
                 user.setTenantDomain(tenantDomain);
                 user.setUserStoreDomain(userDomain);
-                user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                ServiceProvider serviceProvider;
+                try {
+                    serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                            getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                } catch (IdentityApplicationManagementException e) {
+                    throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
+                            consumerKey, e);
+                }
+                boolean isUseTenantDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                        .isUseTenantDomainInLocalSubjectIdentifier();
+                boolean isUseUserstoreDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                        .isUseUserstoreDomainInLocalSubjectIdentifier();
+                user.setAuthenticatedSubjectIdentifier(subjectIdentifier, isUseTenantDomainInLocalSubjectIdentifier,
+                        isUseUserstoreDomainInLocalSubjectIdentifier);
                 AccessTokenDO accessTokenDO = new AccessTokenDO(consumerKey, user, OAuth2Util.buildScopeArray
                         (scope), new Timestamp(issuedTime), new Timestamp(refreshTokenIssuedTime)
                         , validityPeriodInMillis, refreshTokenValidityPeriodInMillis, userType);

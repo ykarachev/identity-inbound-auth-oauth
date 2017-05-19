@@ -46,6 +46,7 @@ import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.user.core.UserCoreConstants;
+import org.wso2.carbon.user.core.util.UserCoreUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -237,34 +238,19 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         } catch (IdentityOAuth2Exception e) {
             throw new UserInfoEndpointException("Error while obtaining service provider access token clientID", e);
         }
-
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
 
-        //getting service provider name
-        String serviceProviderName;
-        try {
-            serviceProviderName = applicationMgtService.getServiceProviderNameByClientId(
-                    accessTokenClientId, IdentityApplicationConstants.OAuth2.NAME, tenantDomain);
-        } catch (IdentityApplicationManagementException e) {
-            throw new UserInfoEndpointException("Error while obtaining service provider name", e);
-        }
+        //getting service provider
         ServiceProvider serviceProvider;
         try {
-            serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(serviceProviderName,
-                    tenantDomain);
+            serviceProvider = applicationMgtService.getServiceProviderByClientId(
+                    accessTokenClientId, IdentityApplicationConstants.OAuth2.NAME, tenantDomain);
         } catch (IdentityApplicationManagementException e) {
-            throw new UserInfoEndpointException("Error while obtaining service provider", e);
+            throw new UserInfoEndpointException("Error while obtaining service provider.", e);
         }
-
         // String subject = null;
         String userName = tokenResponse.getAuthorizedUser();
-        String userStoreName = IdentityUtil.extractDomainFromName(userName);
-/*
-        if (userName.contains(UserCoreConstants.DOMAIN_SEPARATOR)) {
-            userName = MultitenantUtils.getTenantAwareUsername(userName).split(UserCoreConstants.DOMAIN_SEPARATOR)[1];
-        } else {
-            userName = MultitenantUtils.getTenantAwareUsername(userName);
-        }*/
+        String userStoreDomain = IdentityUtil.extractDomainFromName(userName);
 
         // building subject in accordance with Local and Outbound Authentication Configuration preferences
         if (serviceProvider != null) {
@@ -278,10 +264,10 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
                 sub = subject.toString();
             }
             if (isUseUserStoreDomainInLocalSubject) {
-                sub = userStoreName + UserCoreConstants.DOMAIN_SEPARATOR + subject;
+                UserCoreUtil.addDomainToName(sub, userStoreDomain);
             }
             if (isUseTenantDomainInLocalSubject) {
-                sub = subject + UserCoreConstants.TENANT_DOMAIN_COMBINER + tenantDomain;
+                UserCoreUtil.addTenantDomainToEntry(sub, tenantDomain);
             }
         }
         return sub;

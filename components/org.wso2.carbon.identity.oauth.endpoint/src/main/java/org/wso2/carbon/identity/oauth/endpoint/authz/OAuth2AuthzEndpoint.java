@@ -34,7 +34,9 @@ import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationResultCacheEntry;
+import org.wso2.carbon.identity.application.authentication.framework.config.model.AuthenticatorConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.SessionContext;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedIdPData;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticationResult;
 import org.wso2.carbon.identity.application.authentication.framework.model.CommonAuthRequestWrapper;
@@ -77,10 +79,13 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -285,6 +290,7 @@ public class OAuth2AuthzEndpoint {
                 if (authTime > 0) {
                     sessionDataCacheEntry.setAuthTime(authTime);
                 }
+                associateAuthenticationHistory(sessionDataCacheEntry, cookie);
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
                 AuthenticationResult authnResult = getAuthenticationResult(request, sessionDataKeyFromLogin);
                 if (authnResult != null) {
@@ -381,6 +387,7 @@ public class OAuth2AuthzEndpoint {
                 if (authTime > 0) {
                     oauth2Params.setAuthTime(authTime);
                 }
+                associateAuthenticationHistory(sessionDataCacheEntry, cookie);
                 boolean isOIDCRequest = OAuth2Util.isOIDCAuthzRequest(oauth2Params.getScopes());
 
                 String consent = request.getParameter("consent");
@@ -746,6 +753,13 @@ public class OAuth2AuthzEndpoint {
         authorizationGrantCacheEntry.setEssentialClaims(
                 sessionDataCacheEntry.getoAuth2Parameters().getEssentialClaims());
         authorizationGrantCacheEntry.setAuthTime(sessionDataCacheEntry.getAuthTime());
+
+        String[] amrEntries = sessionDataCacheEntry.getParamMap().get("amr");
+        if(amrEntries != null) {
+            for (String amrEntry :amrEntries) {
+                authorizationGrantCacheEntry.addAmr(amrEntry);
+            }
+        }
         AuthorizationGrantCache.getInstance().addToCacheByCode(authorizationGrantCacheKey, authorizationGrantCacheEntry);
     }
 
@@ -1331,5 +1345,38 @@ public class OAuth2AuthzEndpoint {
             }
         }
         return redirectURL;
+    }
+
+    /**
+     * Associates the authentication method references done while logged into the session (if any) to the OAuth cache.
+     * The SessionDataCacheEntry then will be used when getting "AuthenticationMethodReferences". Please see
+     * <a href="https://tools.ietf.org/html/draft-ietf-oauth-amr-values-02" >draft-ietf-oauth-amr-values-02</a>.
+     *
+     * @param resultFromLogin
+     * @param cookie
+     */
+    private void associateAuthenticationHistory(SessionDataCacheEntry resultFromLogin, Cookie cookie) {
+        SessionContext sessionContext = getSessionContext(cookie);
+        if (sessionContext.getAuthenticatedIdPs() != null) {
+            List<String> authMethods = new ArrayList<>();
+            for(Map.Entry<String, AuthenticatedIdPData> entry: sessionContext.getAuthenticatedIdPs().entrySet()) {
+                AuthenticatorConfig authenticatorConfig = entry.getValue().getAuthenticator();
+                authMethods.add(authenticatorConfig.getName());
+            }
+            resultFromLogin.getParamMap().put("amr", authMethods.toArray(new String[authMethods.size()]));
+        }
+    }
+
+    /**
+     * Returns the SessionContext associated with the cookie, if there is a one.
+     * @param cookie
+     * @return  the associate SessionContext or null.
+     */
+    private SessionContext getSessionContext(Cookie cookie) {
+        if (cookie != null) {
+            String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
+            return FrameworkUtils.getSessionContextFromCache(sessionContextKey);
+        }
+        return null;
     }
 }

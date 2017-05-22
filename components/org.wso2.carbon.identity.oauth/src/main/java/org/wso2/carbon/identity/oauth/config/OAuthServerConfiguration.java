@@ -58,6 +58,7 @@ import org.wso2.carbon.utils.CarbonUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -89,6 +90,7 @@ public class OAuthServerConfiguration {
             "org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML2BearerGrantHandler";
     private static final String IWA_NTLM_BEARER_GRANT_HANDLER_CLASS =
             "org.wso2.carbon.identity.oauth2.token.handlers.grant.iwa.ntlm.NTLMAuthenticationGrantHandler";
+    private static final QName NIL_QNAME = new QName("http://www.w3.org/2001/XMLSchema-instance", "nil");
     private static Log log = LogFactory.getLog(OAuthServerConfiguration.class);
     private static OAuthServerConfiguration instance;
     private static String oauth1RequestTokenUrl = null;
@@ -129,6 +131,7 @@ public class OAuthServerConfiguration {
     private Map<String, ResponseTypeHandler> supportedResponseTypes;
     private Map<String, String> supportedResponseTypeValidatorNames = new HashMap<>();
     private Map<String, Class<? extends OAuthValidator<HttpServletRequest>>> supportedResponseTypeValidators;
+    private Map<String, List<String>> amrInternalToExternalMap = new HashMap<>();
     private String[] supportedClaims = null;
     private Map<String, Properties> supportedClientAuthHandlerData = new HashMap<>();
     private List<ClientAuthenticationHandler> supportedClientAuthHandlers;
@@ -1567,6 +1570,46 @@ public class OAuthServerConfiguration {
                     supportedClaims = supportedClaimStr.split(",");
                 }
             }
+            if (openIDConnectConfigElem.getFirstChildWithName
+                    (getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_AMR_MAPPINGS)) != null) {
+                populateMap(amrInternalToExternalMap, openIDConnectConfigElem
+                        .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_AMR_MAPPINGS)));
+            }
+        }
+    }
+
+    private void populateMap(Map<String, List<String>> amrInternalToExternalMap, OMElement omElement) {
+        Iterator<OMElement> children = omElement.getChildElements();
+        for (int i = 0; children.hasNext(); i++) {
+            OMElement child = children.next();
+            if (child.getLocalName() != "Entry") {
+                log.error("Configuration Error: Unknown child entry found in " + ConfigElements.OPENID_CONNECT + "/"
+                        + ConfigElements.OPENID_CONNECT_AMR_MAPPINGS + " :" + child.getLocalName() + ". Expected: "
+                        + "Entry");
+                continue;
+            }
+            OMElement key = child.getFirstChildWithName(getQNameWithIdentityNS("Key"));
+            if (key == null) {
+                log.error("Configuration Error: No Key found for map entry in " + ConfigElements.OPENID_CONNECT + "/"
+                        + ConfigElements.OPENID_CONNECT_AMR_MAPPINGS + " in map entry: " + i);
+                continue;
+            }
+            OMElement value = child.getFirstChildWithName(getQNameWithIdentityNS("Value"));
+            if (value == null) {
+                log.error("Configuration Error: No Value found for map entry in " + ConfigElements.OPENID_CONNECT + "/"
+                        + ConfigElements.OPENID_CONNECT_AMR_MAPPINGS + " in map entry: " + i);
+                continue;
+            }
+            if(value.getAttribute(NIL_QNAME) != null) {
+                amrInternalToExternalMap.put(key.getText().trim(), Collections.<String>emptyList());
+            } else {
+                String[] valuesArray = value.getText().split(",");
+                List<String> values = new ArrayList<>();
+                for (String s : valuesArray) {
+                    values.add(s.trim());
+                }
+                amrInternalToExternalMap.put(key.getText().trim(), values);
+            }
         }
     }
 
@@ -1576,6 +1619,10 @@ public class OAuthServerConfiguration {
 
     public void setoAuth2ScopeValidator(OAuth2ScopeValidator oAuth2ScopeValidator) {
         this.oAuth2ScopeValidator = oAuth2ScopeValidator;
+    }
+
+    public Map<String, List<String>> getAmrInternalToExternalMap() {
+        return amrInternalToExternalMap;
     }
 
     /**
@@ -1625,6 +1672,7 @@ public class OAuthServerConfiguration {
         public static final String OPENID_CONNECT_USERINFO_ENDPOINT_ACCESS_TOKEN_VALIDATOR = "UserInfoEndpointAccessTokenValidator";
         public static final String OPENID_CONNECT_USERINFO_ENDPOINT_RESPONSE_BUILDER = "UserInfoEndpointResponseBuilder";
         public static final String OPENID_CONNECT_SIGN_JWT_WITH_SP_KEY = "SignJWTWithSPKey";
+        public static final String OPENID_CONNECT_AMR_MAPPINGS = "AmrMappings";
         public static final String OPENID_CONNECT_IDTOKEN_CUSTOM_CLAIM_CALLBACK_HANDLER = "IDTokenCustomClaimsCallBackHandler";
         public static final String SUPPORTED_CLAIMS = "OpenIDConnectClaims";
         // Callback handler related configuration elements

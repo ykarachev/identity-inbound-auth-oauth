@@ -36,7 +36,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
-import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
@@ -75,15 +74,15 @@ import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
 
 import java.security.Key;
-import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -124,6 +123,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     private CertificatesStore certificatesStore = new CertificatesStore();
     private OAuthServerConfiguration config = null;
     private Algorithm signatureAlgorithm = null;
+    private IDTokenValueTranslator amrValueTranslator;
 
     private static final String ERROR_GET_RESIDENT_IDP =
             "Error while getting Resident Identity Provider of '%s' tenant.";
@@ -133,6 +133,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         config = OAuthServerConfiguration.getInstance();
         //map signature algorithm from identity.xml to nimbus format, this is a one time configuration
         signatureAlgorithm = mapSignatureAlgorithm(config.getIdTokenSignatureAlgorithm());
+        amrValueTranslator = new AmrValueTranslator(config);
     }
 
     @Override
@@ -217,6 +218,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         long authTime = 0;
 
         LinkedHashSet acrValue = new LinkedHashSet();
+        List<String> amrValues = Collections.emptyList();
         // AuthorizationCode only available for authorization code grant type
         if (request.getProperty(AUTHORIZATION_CODE) != null) {
             AuthorizationGrantCacheEntry authorizationGrantCacheEntry = getAuthorizationGrantCacheEntry(request);
@@ -224,33 +226,17 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                 nonceValue = authorizationGrantCacheEntry.getNonceValue();
                 acrValue = authorizationGrantCacheEntry.getAcrValue();
                 authTime = authorizationGrantCacheEntry.getAuthTime();
+                amrValues = authorizationGrantCacheEntry.getAmrList();
             }
+        } else {
+            amrValues = request.getOauth2AccessTokenReqDTO().getAuthenticationMethodReferences();
         }
         // Get access token issued time
         long accessTokenIssuedTime = getAccessTokenIssuedTime(tokenRespDTO.getAccessToken(), request) / 1000;
 
         String atHash = null;
         if (!JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
-            String digAlg = mapDigestAlgorithm(signatureAlgorithm);
-            MessageDigest md;
-            try {
-                md = MessageDigest.getInstance(digAlg);
-            } catch (NoSuchAlgorithmException e) {
-                throw new IdentityOAuth2Exception("Invalid Algorithm : " + digAlg);
-            }
-            md.update(tokenRespDTO.getAccessToken().getBytes(Charsets.UTF_8));
-            byte[] digest = md.digest();
-            int leftHalfBytes = 16;
-            if (SHA384.equals(digAlg)) {
-                leftHalfBytes = 24;
-            } else if (SHA512.equals(digAlg)) {
-                leftHalfBytes = 32;
-            }
-            byte[] leftmost = new byte[leftHalfBytes];
-            for (int i = 0; i < leftHalfBytes; i++) {
-                leftmost[i] = digest[i];
-            }
-            atHash = new String(Base64.encodeBase64URLSafe(leftmost), Charsets.UTF_8);
+            atHash = generateAtHash(tokenRespDTO.getAccessToken());
         }
 
 
@@ -290,6 +276,9 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         if (acrValue != null) {
             jwtClaimsSet.setClaim("acr", "urn:mace:incommon:iap:silver");
         }
+        if (amrValues != null) {
+            jwtClaimsSet.setClaim("amr", translateAmrToResponse(amrValues));
+        }
 
         request.addProperty(OAuthConstants.ACCESS_TOKEN, tokenRespDTO.getAccessToken());
         request.addProperty(MultitenantConstants.TENANT_DOMAIN, request.getOauth2AccessTokenReqDTO().getTenantDomain());
@@ -301,6 +290,8 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
         return signJWT(jwtClaimsSet, request);
     }
+
+
 
     @Override
     public String buildIDToken(OAuthAuthzReqMessageContext request, OAuth2AuthorizeRespDTO tokenRespDTO)
@@ -326,6 +317,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         String nonceValue = request.getAuthorizationReqDTO().getNonce();
         LinkedHashSet acrValue = request.getAuthorizationReqDTO().getACRValues();
+        List<String> amrValues = Arrays.asList(new String[]{"pwd"}); //TODO:
 
         // Get access token issued time
         long accessTokenIssuedTime = getAccessTokenIssuedTime(tokenRespDTO.getAccessToken(), request) / 1000;
@@ -336,26 +328,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         if (!JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName()) &&
                 !OAuthConstants.ID_TOKEN.equalsIgnoreCase(responseType) &&
                 !OAuthConstants.NONE.equalsIgnoreCase(responseType)) {
-            String digAlg = mapDigestAlgorithm(signatureAlgorithm);
-            MessageDigest md;
-            try {
-                md = MessageDigest.getInstance(digAlg);
-            } catch (NoSuchAlgorithmException e) {
-                throw new IdentityOAuth2Exception("Invalid Algorithm : " + digAlg);
-            }
-            md.update(tokenRespDTO.getAccessToken().getBytes(Charsets.UTF_8));
-            byte[] digest = md.digest();
-            int leftHalfBytes = 16;
-            if (SHA384.equals(digAlg)) {
-                leftHalfBytes = 24;
-            } else if (SHA512.equals(digAlg)) {
-                leftHalfBytes = 32;
-            }
-            byte[] leftmost = new byte[leftHalfBytes];
-            for (int i = 0; i < leftHalfBytes; i++) {
-                leftmost[i] = digest[i];
-            }
-            atHash = new String(Base64.encodeBase64URLSafe(leftmost), Charsets.UTF_8);
+            atHash = generateAtHash(tokenRespDTO.getAccessToken());
         }
 
 
@@ -396,6 +369,9 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
         if (acrValue != null) {
             jwtClaimsSet.setClaim("acr", "urn:mace:incommon:iap:silver");
+        }
+        if (amrValues != null) {
+            jwtClaimsSet.setClaim("amr", translateAmrToResponse(amrValues));
         }
 
         request.addProperty(OAuthConstants.ACCESS_TOKEN, tokenRespDTO.getAccessToken());
@@ -725,5 +701,80 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
     }
 
+    private String generateAtHash(String accessToken) throws IdentityOAuth2Exception {
+        String atHash;
+        String digAlg = mapDigestAlgorithm(signatureAlgorithm);
+        MessageDigest md;
+        try {
+            md = MessageDigest.getInstance(digAlg);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IdentityOAuth2Exception("Invalid Algorithm : " + digAlg);
+        }
+        md.update(accessToken.getBytes(Charsets.UTF_8));
+        byte[] digest = md.digest();
+        int leftHalfBytes = 16;
+        if (SHA384.equals(digAlg)) {
+            leftHalfBytes = 24;
+        } else if (SHA512.equals(digAlg)) {
+            leftHalfBytes = 32;
+        }
+        byte[] leftmost = new byte[leftHalfBytes];
+        for (int i = 0; i < leftHalfBytes; i++) {
+            leftmost[i] = digest[i];
+        }
+        atHash = new String(Base64.encodeBase64URLSafe(leftmost), Charsets.UTF_8);
+        return atHash;
+    }
+
+    /**
+     * Converts the internal representation to external (response) form
+     * @param internalList
+     * @return
+     */
+    private List<String> translateAmrToResponse(List<String> internalList) {
+        List<String> result = new ArrayList<>();
+
+        for (String internalValue : internalList) {
+            result.addAll(amrValueTranslator.translateToResponse(internalValue));
+        }
+        return result;
+    }
+
+    private class AmrValueTranslator implements IDTokenValueTranslator {
+
+        private Map<String, List<String>> amrResponseMap;
+
+        public AmrValueTranslator(OAuthServerConfiguration configuration) {
+            if (configuration != null) {
+                amrResponseMap = configuration.getAmrInternalToExternalMap();
+            } else {
+                Map<String, List<String>> inbuiltMap = new HashMap<>();
+                inbuiltMap.put(GrantType.PASSWORD.toString(), toList("pwd", GrantType.PASSWORD.toString()));
+                inbuiltMap.put("BasicAuthenticator", toList("pwd", "basic"));
+                amrResponseMap = inbuiltMap;
+            }
+        }
+
+        @Override
+        public List<String> translateToResponse(String internalValue) {
+            List<String> result = null;
+            if (amrResponseMap != null) {
+                result = amrResponseMap.get(internalValue);
+            }
+            if (result == null) {
+                result = new ArrayList<>();
+                result.add(internalValue);
+            }
+            return result;
+        }
+
+        private List<String> toList(String... strings) {
+            List<String> result = new ArrayList<>();
+            if (strings != null) {
+                Collections.addAll(result, strings);
+            }
+            return result;
+        }
+    }
 }
 

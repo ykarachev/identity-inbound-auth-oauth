@@ -24,6 +24,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -52,12 +53,12 @@ public class DefaultOAuth2TokenValidator implements OAuth2TokenValidator {
         if (scopeValidator != null && scopeValidator.getClass() != null && messageContext.getRequestDTO() != null) {
             //if OIDC scope validator is engaged through the configuration
             if (scopeValidator.getClass().getName().equals(OIDC_SCOPE_VALIDATOR_CLASS)) {
-                ArrayList<String> idTokenAllowedGrantTypesList = new ArrayList();
+                List<String> idTokenAllowedGrantTypesList = new ArrayList();
                 Map<String, String> idTokenAllowedGrantTypesMap = OAuthServerConfiguration.getInstance().
                         getIdTokenAllowedForGrantTypesMap();
                 if (!idTokenAllowedGrantTypesMap.isEmpty()) {
                     for (Map.Entry<String, String> entry : idTokenAllowedGrantTypesMap.entrySet()) {
-                        if (entry.getValue().equals(Boolean.parseBoolean("true"))) {
+                        if (Boolean.parseBoolean(entry.getValue())) {
                             idTokenAllowedGrantTypesList.add(entry.getKey());
                         }
                     }

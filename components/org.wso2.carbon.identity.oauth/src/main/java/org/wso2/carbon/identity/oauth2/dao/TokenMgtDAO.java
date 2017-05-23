@@ -2363,13 +2363,25 @@ public class TokenMgtDAO {
     }
 
     /**
-     * This method is introduced to fix IDENTITY-5827
+     * Get latest AccessToken list
+     *
+     * @param consumerKey
+     * @param authzUser
+     * @param userStoreDomain
+     * @param scope
+     * @param includeExpiredTokens
+     * @param limit
+     * @return
+     * @throws IdentityOAuth2Exception
      */
     public List<AccessTokenDO> retrieveLatestAccessTokens(String consumerKey, AuthenticatedUser authzUser,
                                                           String userStoreDomain, String scope,
                                                           boolean includeExpiredTokens, int limit)
             throws IdentityOAuth2Exception {
 
+        if (authzUser == null) {
+            throw new IdentityOAuth2Exception("Invalid user information for given consumerKey: " + consumerKey);
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
@@ -2409,7 +2421,7 @@ public class TokenMgtDAO {
             }
 
             if(!sqlAltered){
-                sql = sql.replace("1", Integer.toString(limit));
+                sql = sql.replace("LIMIT 1", "LIMIT " + Integer.toString(limit));
             }
 
             if (StringUtils.isNotEmpty(userStoreDomain) &&
@@ -2489,7 +2501,7 @@ public class TokenMgtDAO {
             }
             return accessTokenDOs;
         } catch (SQLException e) {
-            String errorMsg = "Error occurred while trying to retrieve latest 'ACTIVE' " + "access token for Client " +
+            String errorMsg = "Error occurred while trying to retrieve latest 'ACTIVE' access token for Client " +
                               "ID : " + consumerKey + ", User ID : " + authzUser + " and  Scope : " + scope;
             if (includeExpiredTokens) {
                 errorMsg = errorMsg.replace("ACTIVE", "ACTIVE or EXPIRED");

@@ -112,8 +112,8 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
             claims = new HashMap<String,Object>();
         }
         for (Map.Entry<String, Object> entry : claims.entrySet()) {
-            if ("sub".equals(entry.getKey())) {
-                claims.put("sub", returnSubjectClaim(entry.getValue(), tenantDomain, tokenResponse));
+            if (OAuth2Util.SUB.equals(entry.getKey())) {
+                claims.put(OAuth2Util.SUB, returnSubjectClaim(entry.getValue(), tenantDomain, tokenResponse));
             }
         }
         String[] arrRequestedScopeClaims = null;

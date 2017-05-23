@@ -65,7 +65,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 
-
 /**
  * Data Access Layer functionality for Token management in OAuth 2.0 implementation. This includes
  * storing and retrieving access tokens, authorization codes and refresh tokens.
@@ -75,6 +74,8 @@ public class TokenMgtDAO {
     public static final String AUTHZ_USER = "AUTHZ_USER";
     public static final String LOWER_AUTHZ_USER = "LOWER(AUTHZ_USER)";
     private static final String UTC = "UTC";
+    private static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
+    private static final String FEDERATED_USER_DOMAIN_SEPARATOR = ":";
     private static TokenPersistenceProcessor persistenceProcessor;
 
     private static int maxPoolSize = 100;
@@ -172,7 +173,7 @@ public class TokenMgtDAO {
         String authenticatedIDP = authzCodeDO.getAuthorizedUser().getFederatedIdPName();
 
         if (authzCodeDO.getAuthorizedUser().isFederatedUser()) {
-            userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
+            userDomain = getFederatedUserDomain(authenticatedIDP);
         }
 
         try {
@@ -268,7 +269,7 @@ public class TokenMgtDAO {
         }
 
         if (accessTokenDO.getAuthzUser().isFederatedUser()) {
-            userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
+            userDomain = getFederatedUserDomain(authenticatedIDP);
         }
 
         String sql = SQLQueries.INSERT_OAUTH2_ACCESS_TOKEN.replaceAll("\\$accessTokenStoreTable",
@@ -1009,7 +1010,7 @@ public class TokenMgtDAO {
                     user.setTenantDomain(tenantDomain);
                     user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
 
-                    if (userDomain.startsWith(OAuth2Util.FEDERATED_USER_DOMAIN_PREFIX)) {
+                    if (userDomain.startsWith(FEDERATED_USER_DOMAIN_PREFIX)) {
                         user.setFederatedUser(true);
                     }
 
@@ -2646,6 +2647,19 @@ public class TokenMgtDAO {
             throw new IdentityOAuth2Exception(errorMsg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(null, resultSet, prepStmt);
+        }
+    }
+
+    /**
+     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
+     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
+     * @return
+     */
+    private static String getFederatedUserDomain (String authenticatedIDP) {
+        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
+            return FEDERATED_USER_DOMAIN_PREFIX + FEDERATED_USER_DOMAIN_SEPARATOR + authenticatedIDP;
+        } else {
+            return FEDERATED_USER_DOMAIN_PREFIX;
         }
     }
 

@@ -271,7 +271,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         jwtClaimsSet.setIssuer(issuer);
-        jwtClaimsSet.setSubject(subject);
         jwtClaimsSet.setAudience(audience);
         jwtClaimsSet.setClaim("azp", request.getOauth2AccessTokenReqDTO().getClientId());
         jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
@@ -294,6 +293,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         CustomClaimsCallbackHandler claimsCallBackHandler =
                 OAuthServerConfiguration.getInstance().getOpenIDConnectCustomClaimsCallbackHandler();
         claimsCallBackHandler.handleCustomClaims(jwtClaimsSet, request);
+        jwtClaimsSet.setSubject(subject);
         if (JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
             return new PlainJWT(jwtClaimsSet).serialize();
         }
@@ -378,7 +378,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         jwtClaimsSet.setIssuer(issuer);
-        jwtClaimsSet.setSubject(subject);
         jwtClaimsSet.setAudience(audience);
         jwtClaimsSet.setClaim("azp", request.getAuthorizationReqDTO().getConsumerKey());
         jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
@@ -401,6 +400,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         CustomClaimsCallbackHandler claimsCallBackHandler =
                 OAuthServerConfiguration.getInstance().getOpenIDConnectCustomClaimsCallbackHandler();
         claimsCallBackHandler.handleCustomClaims(jwtClaimsSet, request);
+        jwtClaimsSet.setSubject(subject);
         if (JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
             return new PlainJWT(jwtClaimsSet).serialize();
         }

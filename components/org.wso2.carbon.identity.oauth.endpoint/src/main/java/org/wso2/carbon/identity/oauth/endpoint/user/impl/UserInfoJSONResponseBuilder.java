@@ -228,31 +228,40 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         return essentailClaimslist;
     }
 
+    /**
+     * Returns subject claim.
+     *
+     * @param subject subject
+     * @param tenantDomain tenant domain
+     * @param tokenResponse token response
+     * @return
+     * @throws UserInfoEndpointException
+     */
+
     private String returnSubjectClaim(Object subject, String tenantDomain, OAuth2TokenValidationResponseDTO tokenResponse)
             throws UserInfoEndpointException {
-        String accessTokenClientId;
+        String clientId;
         String sub = null;
         try {
-            accessTokenClientId = OAuth2Util.getClientIdForAccessToken
+            clientId = OAuth2Util.getClientIdForAccessToken
                     (tokenResponse.getAuthorizationContextToken().getTokenString());
         } catch (IdentityOAuth2Exception e) {
             throw new UserInfoEndpointException("Error while obtaining service provider access token clientID", e);
         }
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
 
-        //getting service provider
         ServiceProvider serviceProvider;
         try {
+            //getting service provider
             serviceProvider = applicationMgtService.getServiceProviderByClientId(
-                    accessTokenClientId, IdentityApplicationConstants.OAuth2.NAME, tenantDomain);
+                    clientId, IdentityApplicationConstants.OAuth2.NAME, tenantDomain);
         } catch (IdentityApplicationManagementException e) {
             throw new UserInfoEndpointException("Error while obtaining service provider.", e);
         }
-        // String subject = null;
         String userName = tokenResponse.getAuthorizedUser();
         String userStoreDomain = IdentityUtil.extractDomainFromName(userName);
 
-        // building subject in accordance with Local and Outbound Authentication Configuration preferences
+
         if (serviceProvider != null) {
             boolean isUseTenantDomainInLocalSubject = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
                     .isUseTenantDomainInLocalSubjectIdentifier();
@@ -263,6 +272,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
             if (subject != null) {
                 sub = subject.toString();
             }
+            // building subject in accordance with Local and Outbound Authentication Configuration preferences
             if (isUseUserStoreDomainInLocalSubject) {
                 UserCoreUtil.addDomainToName(sub, userStoreDomain);
             }
@@ -272,6 +282,4 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         }
         return sub;
     }
-
-
 }

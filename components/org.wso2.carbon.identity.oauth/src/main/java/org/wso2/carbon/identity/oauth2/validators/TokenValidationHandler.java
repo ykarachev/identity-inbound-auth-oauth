@@ -46,6 +46,7 @@ public class TokenValidationHandler {
     AuthorizationContextTokenGenerator tokenGenerator = null;
     private Log log = LogFactory.getLog(TokenValidationHandler.class);
     private Map<String, OAuth2TokenValidator> tokenValidators = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    private static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
 
     private TokenValidationHandler() {
         tokenValidators.put(DefaultOAuth2TokenValidator.TOKEN_TYPE, new DefaultOAuth2TokenValidator());
@@ -337,7 +338,9 @@ public class TokenValidationHandler {
      */
     private String getAuthzUser(AccessTokenDO accessTokenDO) {
         User user = accessTokenDO.getAuthzUser();
-        String authzUser = UserCoreUtil.addDomainToName(user.getUserName(), user.getUserStoreDomain());
+        String userStore = user.getUserStoreDomain();
+        String authzUser = UserCoreUtil.addDomainToName(user.getUserName(),
+                userStore.startsWith(FEDERATED_USER_DOMAIN_PREFIX) ? null : userStore);
         return UserCoreUtil.addTenantDomainToEntry(authzUser, user.getTenantDomain());
     }
 

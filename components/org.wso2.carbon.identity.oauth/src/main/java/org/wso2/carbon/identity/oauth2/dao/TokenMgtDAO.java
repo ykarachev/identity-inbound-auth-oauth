@@ -2677,17 +2677,4 @@ public class TokenMgtDAO {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }
     }
-    /**
-     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
-     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
-     * @return
-     */
-    private static String getFederatedUserDomain (String authenticatedIDP) {
-        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
-            return FEDERATED_USER_DOMAIN_PREFIX + FEDERATED_USER_DOMAIN_SEPARATOR + authenticatedIDP;
-        } else {
-            return FEDERATED_USER_DOMAIN_PREFIX;
-        }
-    }
-
 }

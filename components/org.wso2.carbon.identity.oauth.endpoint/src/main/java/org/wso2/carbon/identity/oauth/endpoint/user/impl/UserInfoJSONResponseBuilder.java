@@ -30,6 +30,7 @@ import org.wso2.carbon.identity.application.common.util.IdentityApplicationConst
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
@@ -111,10 +112,8 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         if(claims == null){
             claims = new HashMap<String,Object>();
         }
-        for (Map.Entry<String, Object> entry : claims.entrySet()) {
-            if (OAuth2Util.SUB.equals(entry.getKey())) {
-                claims.put(OAuth2Util.SUB, returnSubjectClaim(entry.getValue(), tenantDomain, tokenResponse));
-            }
+        if (claims.get(OAuth2Util.SUB) != null) {
+            claims.put(OAuth2Util.SUB, returnSubjectClaim(claims.get(OAuth2Util.SUB).toString(), tenantDomain, tokenResponse));
         }
         String[] arrRequestedScopeClaims = null;
         for (String requestedScope : tokenResponse.getScope()) {
@@ -231,22 +230,21 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
     /**
      * Returns subject claim.
      *
-     * @param subject subject
+     * @param sub subject
      * @param tenantDomain tenant domain
      * @param tokenResponse token response
      * @return
      * @throws UserInfoEndpointException
      */
 
-    private String returnSubjectClaim(Object subject, String tenantDomain, OAuth2TokenValidationResponseDTO tokenResponse)
+    protected String returnSubjectClaim(String sub, String tenantDomain, OAuth2TokenValidationResponseDTO tokenResponse)
             throws UserInfoEndpointException {
         String clientId;
-        String sub = null;
         try {
             clientId = OAuth2Util.getClientIdForAccessToken
                     (tokenResponse.getAuthorizationContextToken().getTokenString());
         } catch (IdentityOAuth2Exception e) {
-            throw new UserInfoEndpointException("Error while obtaining service provider access token clientID", e);
+            throw new UserInfoEndpointException("Error while obtaining the client ID :" + clientId, e);
         }
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
 
@@ -256,7 +254,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
             serviceProvider = applicationMgtService.getServiceProviderByClientId(
                     clientId, IdentityApplicationConstants.OAuth2.NAME, tenantDomain);
         } catch (IdentityApplicationManagementException e) {
-            throw new UserInfoEndpointException("Error while obtaining service provider.", e);
+            throw new UserInfoEndpointException("Error while obtaining the service provider.", e);
         }
         String userName = tokenResponse.getAuthorizedUser();
         String userStoreDomain = IdentityUtil.extractDomainFromName(userName);
@@ -268,16 +266,14 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
             boolean isUseUserStoreDomainInLocalSubject = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
                     .isUseUserstoreDomainInLocalSubjectIdentifier();
 
-            // subject = userName;
-            if (subject != null) {
-                sub = subject.toString();
-            }
-            // building subject in accordance with Local and Outbound Authentication Configuration preferences
-            if (isUseUserStoreDomainInLocalSubject) {
-                UserCoreUtil.addDomainToName(sub, userStoreDomain);
-            }
-            if (isUseTenantDomainInLocalSubject) {
-                UserCoreUtil.addTenantDomainToEntry(sub, tenantDomain);
+            if (StringUtils.isNotEmpty(sub)) {
+                // building subject in accordance with Local and Outbound Authentication Configuration preferences
+                if (isUseUserStoreDomainInLocalSubject) {
+                    UserCoreUtil.addDomainToName(sub, userStoreDomain);
+                }
+                if (isUseTenantDomainInLocalSubject) {
+                    UserCoreUtil.addTenantDomainToEntry(sub, tenantDomain);
+                }
             }
         }
         return sub;

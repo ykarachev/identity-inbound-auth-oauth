@@ -139,7 +139,7 @@ public class OAuth2TokenEndpoint {
                 OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
                         .setError(OAuth2ErrorCodes.INVALID_CLIENT)
                         .setErrorDescription("Cannot find an application associated with the given consumer key : " +
-                                consumer_key).buildJSONMessage();
+                                consumerKey).buildJSONMessage();
                 return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
 
             } catch (IdentityOAuth2Exception e) {

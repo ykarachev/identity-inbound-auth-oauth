@@ -249,6 +249,16 @@ public class TokenMgtDAO {
             return;
         }
 
+        if (accessTokenDO == null) {
+            throw new IdentityOAuth2Exception(
+                    "Access token data object should be available for further execution.");
+        }
+
+        if (accessTokenDO.getAuthzUser() == null) {
+            throw new IdentityOAuth2Exception(
+                    "Authorized user should be available for further execution.");
+        }
+
         storeAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain, 0);
     }
 

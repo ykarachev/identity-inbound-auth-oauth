@@ -221,10 +221,6 @@ public class AccessTokenIssuer {
             tokReqMsgCtx.getAuthorizedUser().setTenantDomain(OAuth2Util.getTenantDomainOfOauthApp(oAuthAppDO));
         }
 
-        if (tokReqMsgCtx.getAuthorizedUser().isFederatedUser()) {
-            tokReqMsgCtx.getAuthorizedUser().setTenantDomain(oAuthAppDO.getUser().getTenantDomain());
-        }
-
         if (!isValidGrant) {
             if (log.isDebugEnabled()) {
                 log.debug("Invalid Grant provided by the client Id: " + tokenReqDTO.getClientId());

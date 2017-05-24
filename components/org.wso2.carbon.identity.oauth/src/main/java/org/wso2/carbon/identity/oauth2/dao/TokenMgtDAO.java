@@ -2644,4 +2644,50 @@ public class TokenMgtDAO {
         }
     }
 
+    /**
+     * Revoke access tokens of other tenants when SaaS is disabled.
+     *
+     * @param consumerKey client ID
+     * @param tenantId    application tenant ID
+     * @throws IdentityOAuth2Exception
+     */
+    public void revokeSaaSTokensOfOtherTenants(String consumerKey, int tenantId) throws IdentityOAuth2Exception {
+
+        if (consumerKey == null) {
+            log.error("invalid parameters provided. Client ID: " + consumerKey + "and tenant ID: " + tenantId);
+            return;
+        }
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        PreparedStatement ps = null;
+        try {
+            String sql = SQLQueries.REVOKE_SAAS_TOKENS_OF_OTHER_TENANTS;
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
+            ps.setString(2, UUID.randomUUID().toString());
+            ps.setString(3, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
+            ps.setString(4, consumerKey);
+            ps.setInt(5, tenantId);
+            ps.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            String errorMsg = "Error revoking access tokens for client ID: " + consumerKey + "and tenant ID:" + tenantId;
+            IdentityDatabaseUtil.rollBack(connection);
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+        }
+    }
+    /**
+     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
+     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
+     * @return
+     */
+    private static String getFederatedUserDomain (String authenticatedIDP) {
+        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
+            return FEDERATED_USER_DOMAIN_PREFIX + FEDERATED_USER_DOMAIN_SEPARATOR + authenticatedIDP;
+        } else {
+            return FEDERATED_USER_DOMAIN_PREFIX;
+        }
+    }
+
 }

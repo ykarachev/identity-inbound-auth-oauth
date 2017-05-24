@@ -217,7 +217,7 @@ public class AccessTokenIssuer {
             error = e.getMessage();
         }
 
-        if (tokReqMsgCtx.getAuthorizedUser().isFederatedUser()) {
+        if (tokReqMsgCtx.getAuthorizedUser() != null && tokReqMsgCtx.getAuthorizedUser().isFederatedUser()) {
             tokReqMsgCtx.getAuthorizedUser().setTenantDomain(OAuth2Util.getTenantDomainOfOauthApp(oAuthAppDO));
         }
 

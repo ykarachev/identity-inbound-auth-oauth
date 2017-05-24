@@ -240,7 +240,9 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
 
     protected String returnSubjectClaim(String sub, String tenantDomain, OAuth2TokenValidationResponseDTO tokenResponse)
             throws UserInfoEndpointException {
+
         String clientId;
+
         try {
             clientId = OAuth2Util.getClientIdForAccessToken
                     (tokenResponse.getAuthorizationContextToken().getTokenString());
@@ -260,7 +262,6 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         String userName = tokenResponse.getAuthorizedUser();
         String userStoreDomain = IdentityUtil.extractDomainFromName(userName);
 
-
         if (serviceProvider != null) {
             boolean isUseTenantDomainInLocalSubject = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
                     .isUseTenantDomainInLocalSubjectIdentifier();
@@ -270,10 +271,10 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
             if (StringUtils.isNotEmpty(sub)) {
                 // building subject in accordance with Local and Outbound Authentication Configuration preferences
                 if (isUseUserStoreDomainInLocalSubject) {
-                    UserCoreUtil.addDomainToName(sub, userStoreDomain);
+                    sub = UserCoreUtil.addDomainToName(sub, userStoreDomain);
                 }
                 if (isUseTenantDomainInLocalSubject) {
-                    UserCoreUtil.addTenantDomainToEntry(sub, tenantDomain);
+                    sub = UserCoreUtil.addTenantDomainToEntry(sub, tenantDomain);
                 }
             }
         }

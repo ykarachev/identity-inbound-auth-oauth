@@ -80,7 +80,6 @@ public class OAuth2TokenEndpoint {
             HttpServletRequestWrapper httpRequest = new OAuthRequestWrapper(request, paramMap);
 
             String consumerKey = null;
-            String consumerSecret = null;
             OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
             try {
                 if (StringUtils.isNotEmpty(httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID))) {
@@ -89,26 +88,20 @@ public class OAuth2TokenEndpoint {
                     consumerKey = EndpointUtil.extractCredentialsFromAuthzHeader(request.getHeader(OAuthConstants.
                             HTTP_REQ_HEADER_AUTHZ))[0];
                 }
-                if (StringUtils.isNotEmpty(httpRequest.getParameter(OAuth.OAUTH_CLIENT_SECRET))) {
-                    consumerSecret = httpRequest.getParameter(OAuth.OAUTH_CLIENT_SECRET);
-                } else if (request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ) != null) {
-                    consumerSecret = EndpointUtil.extractCredentialsFromAuthzHeader(request.getHeader(OAuthConstants.
-                            HTTP_REQ_HEADER_AUTHZ))[1];
-                }
+
                 if (StringUtils.isNotEmpty(consumerKey)) {
-                    boolean isAuthenticated = OAuth2Util.authenticateClient(consumerKey, consumerSecret);
-                    if (!isAuthenticated) {
+                    String appState = oAuthAppDAO.getConsumerAppState(consumerKey);
+                    if (StringUtils.isEmpty(appState)) {
                         if (log.isDebugEnabled()) {
-                            log.debug("Client Authentication failed for client Id: " + consumerKey);
+                            log.debug("A valid OAuth client could not be found for client_id: " + consumerKey);
                         }
                         OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
                                 .setError(OAuth2ErrorCodes.INVALID_CLIENT)
-                                .setErrorDescription("Client credentials are invalid.").buildJSONMessage();
+                                .setErrorDescription("A valid OAuth client could not be found for client_id" +
+                                        consumerKey).buildJSONMessage();
                         return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                     }
-                }
-                if (StringUtils.isNotEmpty(consumerKey)) {
-                    String appState = oAuthAppDAO.getConsumerAppState(consumerSecret);
+
                     if (!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
                         if (log.isDebugEnabled()) {
                             log.debug("Oauth App is not in active state.");
@@ -134,18 +127,6 @@ public class OAuth2TokenEndpoint {
                 OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
                         .setError(OAuth2ErrorCodes.SERVER_ERROR)
                         .setErrorDescription("Error decoding authorization header. Space delimited \"<authMethod> <base64Hash>\" format violated.").buildJSONMessage();
-                return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
-            } catch (InvalidOAuthClientException e) {
-                OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
-                        .setError(OAuth2ErrorCodes.INVALID_CLIENT)
-                        .setErrorDescription("Cannot find an application associated with the given consumer key : " +
-                                consumerKey).buildJSONMessage();
-                return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
-
-            } catch (IdentityOAuth2Exception e) {
-                OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_NOT_FOUND)
-                        .setError(OAuth2ErrorCodes.SERVER_ERROR)
-                        .setErrorDescription("Error while processing the token invocation request.").buildJSONMessage();
                 return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
             }
 

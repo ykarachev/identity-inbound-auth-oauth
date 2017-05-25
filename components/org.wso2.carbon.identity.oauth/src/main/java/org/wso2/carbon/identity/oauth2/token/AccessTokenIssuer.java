@@ -179,6 +179,16 @@ public class AccessTokenIssuer {
             triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
             return tokenRespDTO;
         }
+        if (authzGrantHandler == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("Unsupported grant type for client Id = " + tokenReqDTO.getClientId());
+            }
+            tokenRespDTO = handleError(OAuthError.TokenResponse.UNSUPPORTED_GRANT_TYPE,
+                    "Unsupported grant type!", tokenReqDTO);
+            setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
+            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
+            return tokenRespDTO;
+        }
         if (!authzGrantHandler.isOfTypeApplicationUser()) {
             tokReqMsgCtx.setAuthorizedUser(oAuthAppDO.getUser());
         }

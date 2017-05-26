@@ -274,8 +274,16 @@ public class SQLQueries {
 
     public static final String DELETE_ACCESS_TOKEN = "DELETE FROM $accessTokenStoreTable WHERE ACCESS_TOKEN = ? ";
 
+    public static final String REVOKE_SAAS_TOKENS_OF_OTHER_TENANTS = "UPDATE IDN_OAUTH2_ACCESS_TOKEN SET TOKEN_STATE=?, " +
+            "TOKEN_STATE_ID=? WHERE TOKEN_STATE=? AND CONSUMER_KEY_ID = (SELECT ID FROM IDN_OAUTH_CONSUMER_APPS WHERE " +
+            "CONSUMER_KEY = ? ) AND TENANT_ID != ? ";
+
     public static final String RETRIEVE_IOS_SCOPE_KEY = "SELECT IOS.SCOPE_KEY FROM IDN_OAUTH2_SCOPE IOS, " +
             "IDN_OAUTH2_RESOURCE_SCOPE IORS WHERE RESOURCE_PATH = ? AND IORS.SCOPE_ID = IOS.SCOPE_ID";
+
+    public static final String RETRIEVE_IOS_SCOPE_KEY_WITH_TENANT = "SELECT IOS.SCOPE_KEY, IOS.TENANT_ID FROM " +
+            "IDN_OAUTH2_SCOPE IOS, IDN_OAUTH2_RESOURCE_SCOPE IORS WHERE RESOURCE_PATH = ? AND " +
+            "IORS.SCOPE_ID = IOS.SCOPE_ID";
 
     public static final String DELETE_USER_RPS = "DELETE FROM IDN_OPENID_USER_RPS WHERE USER_NAME = ? AND " +
             "RP_URL = ?";
@@ -336,7 +344,10 @@ public class SQLQueries {
 
 
     public static final String RETRIEVE_ROLES_OF_SCOPE = "SELECT IOS.ROLES FROM IDN_OAUTH2_SCOPE IOS WHERE SCOPE_KEY" +
-                                                        " = ?";
+            " = ?";
+
+    public static final String RETRIEVE_ROLES_OF_SCOPE_FOR_TENANT = "SELECT IOS.ROLES FROM IDN_OAUTH2_SCOPE IOS WHERE" +
+            " SCOPE_KEY = ? AND TENANT_ID = ?";
 
     public static final String RETRIEVE_PKCE_TABLE_MYSQL = "SELECT PKCE_MANDATORY, PKCE_SUPPORT_PLAIN FROM " +
             "IDN_OAUTH_CONSUMER_APPS LIMIT 1";

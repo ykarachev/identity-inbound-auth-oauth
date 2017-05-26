@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.oauth2.dao;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
@@ -441,7 +442,8 @@ public class TokenMgtDAO {
             if (StringUtils.isNotEmpty(userStoreDomain) &&
                     !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
                 //logic to store access token into different tables when multiple user stores are configured.
-                sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
+                sql = sql.replaceAll("\\b" + IDN_OAUTH2_ACCESS_TOKEN + "\\b", IDN_OAUTH2_ACCESS_TOKEN + "_" +
+                        userStoreDomain);
             }
             if (!isUsernameCaseSensitive) {
                 sql = sql.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
@@ -558,7 +560,8 @@ public class TokenMgtDAO {
             }
             if (StringUtils.isNotEmpty(userStoreDomain) &&
                     !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
-                sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
+                sql = sql.replaceAll("\\b" + IDN_OAUTH2_ACCESS_TOKEN + "\\b", IDN_OAUTH2_ACCESS_TOKEN + "_" +
+                        userStoreDomain);
             }
             if (!isUsernameCaseSensitive) {
                 sql = sql.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
@@ -996,7 +999,8 @@ public class TokenMgtDAO {
 
             if (StringUtils.isNotBlank(userStoreDomain) &&
                     !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
-                sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
+                sql = sql.replaceAll("\\b" + IDN_OAUTH2_ACCESS_TOKEN + "\\b", IDN_OAUTH2_ACCESS_TOKEN + "_"
+                        + userStoreDomain);
             }
 
             prepStmt = connection.prepareStatement(sql);
@@ -1086,7 +1090,8 @@ public class TokenMgtDAO {
             String sql = SQLQueries.UPDATE_TOKE_STATE;
             if (StringUtils.isNotBlank(userStoreDomain) &&
                     !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
-                sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
+                sql = sql.replaceAll("\\b" + IDN_OAUTH2_ACCESS_TOKEN + "\\b", IDN_OAUTH2_ACCESS_TOKEN + "_" +
+                        userStoreDomain);
             }
             prepStmt = connection.prepareStatement(sql);
             prepStmt.setString(1, tokenState);
@@ -1186,7 +1191,6 @@ public class TokenMgtDAO {
                 if (log.isDebugEnabled()) {
                     log.debug("Number of rows being updated : " + count);
                 }
-                IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
             }
 
             connection.commit();
@@ -1515,6 +1519,14 @@ public class TokenMgtDAO {
         return distinctConsumerKeys;
     }
 
+    /**
+     * This method is to get resource scope key of the resource uri
+     *
+     * @param resourceUri Resource Path
+     * @return Scope key of the resource
+     * @throws IdentityOAuth2Exception if failed to find the resource scope
+     */
+    @Deprecated
     public String findScopeOfResource(String resourceUri) throws IdentityOAuth2Exception {
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
@@ -1535,6 +1547,41 @@ public class TokenMgtDAO {
             return null;
         } catch (SQLException e) {
             String errorMsg = "Error getting scopes for resource - " + resourceUri + " : " + e.getMessage();
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
+        }
+    }
+    
+    /**
+     * This method is to get resource scope key and tenant id of the resource uri
+     *
+     * @param resourceUri Resource Path
+     * @return Pair which contains resource scope key and the tenant id
+     * @throws IdentityOAuth2Exception if failed to find the tenant and resource scope
+     */
+    public Pair<String, Integer> findTenantAndScopeOfResource(String resourceUri) throws IdentityOAuth2Exception {
+
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+
+        try {
+            String sql = SQLQueries.RETRIEVE_IOS_SCOPE_KEY_WITH_TENANT;
+
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, resourceUri);
+            rs = ps.executeQuery();
+
+            if (rs.next()) {
+                String scopeKey = rs.getString("SCOPE_KEY");
+                int tenantId = rs.getInt("TENANT_ID");
+                return Pair.of(scopeKey, tenantId);
+            }
+            connection.commit();
+            return null;
+        } catch (SQLException e) {
+            String errorMsg = "Error getting scopes for resource - " + resourceUri;
             throw new IdentityOAuth2Exception(errorMsg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
@@ -2108,14 +2155,15 @@ public class TokenMgtDAO {
     /**
      * Get the list of roles associated for a given scope.
      *
-     * @param scopeKey - The Scope Key.
-     * @return - The Set of roles associated with the given scope.
-     * @throws IdentityOAuth2Exception - If an SQL error occurs while retrieving the roles.
+     * @param scopeKey The Scope Key.
+     * @return The Set of roles associated with the given scope.
+     * @throws IdentityOAuth2Exception If an SQL error occurs while retrieving the roles.
      */
+    @Deprecated
     public Set<String> getRolesOfScopeByScopeKey(String scopeKey) throws IdentityOAuth2Exception {
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
-        ;
+
         PreparedStatement ps = null;
         ResultSet rs = null;
         Set<String> roles = null;
@@ -2136,7 +2184,47 @@ public class TokenMgtDAO {
             connection.commit();
             return roles;
         } catch (SQLException e) {
-            String errorMsg = "Error getting roles of scope - " + scopeKey + " : " + e.getMessage();
+            String errorMsg = "Error getting roles of scope - " + scopeKey;
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
+        }
+    }
+
+    /**
+     * Get the list of roles associated for a given scope.
+     *
+     * @param scopeKey The Scope Key.
+     * @param tenantId Tenant Id
+     * @return The Set of roles associated with the given scope.
+     * @throws IdentityOAuth2Exception If an SQL error occurs while retrieving the roles.
+     */
+    public Set<String> getRolesOfScopeByScopeKey(String scopeKey, int tenantId) throws IdentityOAuth2Exception {
+
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        Set<String> roles = null;
+
+        try {
+            String sql = SQLQueries.RETRIEVE_ROLES_OF_SCOPE_FOR_TENANT;
+
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, scopeKey);
+            ps.setInt(2, tenantId);
+            rs = ps.executeQuery();
+
+            if (rs.next()) {
+                String rolesString = rs.getString("ROLES");
+                if (!rolesString.isEmpty()) {
+                    roles = new HashSet<>(new ArrayList<>(Arrays.asList(rolesString.replaceAll(" ", "").split(","))));
+                }
+            }
+            connection.commit();
+            return roles;
+        } catch (SQLException e) {
+            String errorMsg = "Error getting roles of scope - " + scopeKey;
             throw new IdentityOAuth2Exception(errorMsg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
@@ -2323,13 +2411,25 @@ public class TokenMgtDAO {
     }
 
     /**
-     * This method is introduced to fix IDENTITY-5827
+     * Get latest AccessToken list
+     *
+     * @param consumerKey
+     * @param authzUser
+     * @param userStoreDomain
+     * @param scope
+     * @param includeExpiredTokens
+     * @param limit
+     * @return
+     * @throws IdentityOAuth2Exception
      */
     public List<AccessTokenDO> retrieveLatestAccessTokens(String consumerKey, AuthenticatedUser authzUser,
                                                           String userStoreDomain, String scope,
                                                           boolean includeExpiredTokens, int limit)
             throws IdentityOAuth2Exception {
 
+        if (authzUser == null) {
+            throw new IdentityOAuth2Exception("Invalid user information for given consumerKey: " + consumerKey);
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
@@ -2369,13 +2469,14 @@ public class TokenMgtDAO {
             }
 
             if(!sqlAltered){
-                sql = sql.replace("1", Integer.toString(limit));
+                sql = sql.replace("LIMIT 1", "LIMIT " + Integer.toString(limit));
             }
 
             if (StringUtils.isNotEmpty(userStoreDomain) &&
                 !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
                 //logic to store access token into different tables when multiple user stores are configured.
-                sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
+                sql = sql.replaceAll("\\b" + IDN_OAUTH2_ACCESS_TOKEN + "\\b", IDN_OAUTH2_ACCESS_TOKEN + "_" +
+                        userStoreDomain);
             }
             if (!isUsernameCaseSensitive) {
                 sql = sql.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
@@ -2457,7 +2558,7 @@ public class TokenMgtDAO {
             }
             return accessTokenDOs;
         } catch (SQLException e) {
-            String errorMsg = "Error occurred while trying to retrieve latest 'ACTIVE' " + "access token for Client " +
+            String errorMsg = "Error occurred while trying to retrieve latest 'ACTIVE' access token for Client " +
                               "ID : " + consumerKey + ", User ID : " + authzUser + " and  Scope : " + scope;
             if (includeExpiredTokens) {
                 errorMsg = errorMsg.replace("ACTIVE", "ACTIVE or EXPIRED");
@@ -2527,7 +2628,8 @@ public class TokenMgtDAO {
             if (StringUtils.isNotEmpty(userStoreDomain) &&
                     !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
                 //logic to store access token into different tables when multiple user stores are configured.
-                sql = sql.replace(IDN_OAUTH2_ACCESS_TOKEN, IDN_OAUTH2_ACCESS_TOKEN + "_" + userStoreDomain);
+                sql = sql.replaceAll("\\b" + IDN_OAUTH2_ACCESS_TOKEN + "\\b", IDN_OAUTH2_ACCESS_TOKEN + "_" +
+                        userStoreDomain);
             }
             if (!isUsernameCaseSensitive) {
                 sql = sql.replace(AUTHZ_USER, LOWER_AUTHZ_USER);
@@ -2607,4 +2709,37 @@ public class TokenMgtDAO {
         }
     }
 
+    /**
+     * Revoke access tokens of other tenants when SaaS is disabled.
+     *
+     * @param consumerKey client ID
+     * @param tenantId    application tenant ID
+     * @throws IdentityOAuth2Exception
+     */
+    public void revokeSaaSTokensOfOtherTenants(String consumerKey, int tenantId) throws IdentityOAuth2Exception {
+
+        if (consumerKey == null) {
+            log.error("invalid parameters provided. Client ID: " + consumerKey + "and tenant ID: " + tenantId);
+            return;
+        }
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        PreparedStatement ps = null;
+        try {
+            String sql = SQLQueries.REVOKE_SAAS_TOKENS_OF_OTHER_TENANTS;
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
+            ps.setString(2, UUID.randomUUID().toString());
+            ps.setString(3, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
+            ps.setString(4, consumerKey);
+            ps.setInt(5, tenantId);
+            ps.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            String errorMsg = "Error revoking access tokens for client ID: " + consumerKey + "and tenant ID:" + tenantId;
+            IdentityDatabaseUtil.rollBack(connection);
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+        }
+    }
 }

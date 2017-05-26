@@ -241,7 +241,7 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
     protected String returnSubjectClaim(String sub, String tenantDomain, OAuth2TokenValidationResponseDTO tokenResponse)
             throws UserInfoEndpointException {
 
-        String clientId;
+        String clientId = null;
 
         try {
             clientId = OAuth2Util.getClientIdForAccessToken

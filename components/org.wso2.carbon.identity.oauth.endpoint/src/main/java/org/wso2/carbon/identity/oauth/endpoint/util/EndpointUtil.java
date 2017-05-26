@@ -57,6 +57,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -412,7 +413,7 @@ public class EndpointUtil {
     public static String getScope(OAuth2Parameters params) {
         StringBuilder scopes = new StringBuilder();
         for (String scope : params.getScopes()) {
-            scopes.append(scope + " ");
+            scopes.append(scope).append(" ");
         }
         return scopes.toString().trim();
     }
@@ -428,8 +429,8 @@ public class EndpointUtil {
     public static boolean validateParams(@Context HttpServletRequest request, @Context HttpServletResponse response,
                                          MultivaluedMap<String, String> paramMap) {
         if (paramMap != null) {
-            for (String key : paramMap.keySet()) {
-                if (paramMap.get(key).size() > 1) {
+            for (Map.Entry<String, List<String>> paramEntry : paramMap.entrySet()) {
+                if (paramEntry.getValue().size() > 1) {
                     return false;
                 }
             }

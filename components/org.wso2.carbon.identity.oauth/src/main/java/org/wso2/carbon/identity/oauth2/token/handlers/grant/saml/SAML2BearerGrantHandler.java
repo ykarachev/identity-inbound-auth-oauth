@@ -277,8 +277,11 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         Conditions conditions = assertion.getConditions();
         if (conditions != null) {
             //Set validity period extracted from SAML Assertion
-            long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
-            tokReqMsgCtx.setValidityPeriod(conditions.getNotOnOrAfter().getMillis() - curTimeInMillis);
+            if (conditions.getNotOnOrAfter() != null) {
+                long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
+                tokReqMsgCtx.setValidityPeriod(conditions.getNotOnOrAfter().getMillis() - curTimeInMillis);
+            }
+
             List<AudienceRestriction> audienceRestrictions = conditions.getAudienceRestrictions();
             if (audienceRestrictions != null && !audienceRestrictions.isEmpty()) {
                 boolean audienceFound = false;

@@ -66,10 +66,10 @@ public class PasswordGrantHandler extends AbstractAuthorizationGrantHandler {
         String userTenantDomain = MultitenantUtils.getTenantDomain(username);
         String clientId = oAuth2AccessTokenReqDTO.getClientId();
         String spTenantDomain = oAuth2AccessTokenReqDTO.getTenantDomain();
-        ServiceProvider serviceProvider = null;
+        ServiceProvider serviceProvider;
         try {
             serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().getServiceProviderByClientId(
-                    clientId, "oauth2", spTenantDomain);
+                    clientId, OAuthConstants.Scope.OAUTH2, spTenantDomain);
         } catch (IdentityApplicationManagementException e) {
             throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
                     clientId, e);
@@ -117,7 +117,9 @@ public class PasswordGrantHandler extends AbstractAuthorizationGrantHandler {
                 username = UserCoreUtil.getDomainFromThreadLocal() + CarbonConstants.DOMAIN_SEPARATOR + username;
             }
             AuthenticatedUser user = OAuth2Util.getUserFromUserName(username);
-            user.setAuthenticatedSubjectIdentifier(user.toString());
+            if (user != null) {
+                user.setAuthenticatedSubjectIdentifier(user.toString(), serviceProvider);
+            }
             tokReqMsgCtx.setAuthorizedUser(user);
             tokReqMsgCtx.setScope(oAuth2AccessTokenReqDTO.getScope());
         } else {

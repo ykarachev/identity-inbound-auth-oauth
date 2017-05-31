@@ -201,10 +201,7 @@ public class DCRManagementService {
             }
 
             try {
-                if ((existingServiceProvider == null) || (existingServiceProvider.getInboundAuthenticationConfig().
-                        getInboundAuthenticationRequestConfigs().length == 0)) {
-                    oAuthAdminService.registerOAuthApplicationData(oAuthConsumerApp);
-                }
+                oAuthAdminService.registerOAuthApplicationData(oAuthConsumerApp);
             } catch (IdentityOAuthAdminException e) {
                 throw IdentityException.error(DCRException.class, ErrorCodes.META_DATA_VALIDATION_FAILED.toString(), e.getMessage());
             }

@@ -30,6 +30,7 @@ import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.ResponseHeader;
+import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -151,6 +152,9 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         OAuth2AccessTokenRespDTO tokenRespDTO = new OAuth2AccessTokenRespDTO();
         OAuth2AccessTokenReqDTO oauth2AccessTokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
         String scope = OAuth2Util.buildScopeString(tokReqMsgCtx.getScope());
+        SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util
+                .getSpTokenExpiryTimeConfig(oauth2AccessTokenReqDTO.getClientId(), OAuth2Util
+                        .getTenantId(oauth2AccessTokenReqDTO.getTenantDomain()));
 
         String tokenId;
         String accessToken;
@@ -200,8 +204,13 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         }
 
         // Default Validity Period (in seconds)
-        long validityPeriodInMillis = OAuthServerConfiguration.getInstance()
-                .getUserAccessTokenValidityPeriodInSeconds() * 1000;
+        long validityPeriodInMillis = 0;
+        if (spTimeConfigObj.getUserAccessTokenExpiryTime() != null) {
+            validityPeriodInMillis = spTimeConfigObj.getUserAccessTokenExpiryTime();
+        } else {
+            validityPeriodInMillis = OAuthServerConfiguration.getInstance()
+                    .getUserAccessTokenValidityPeriodInSeconds() * 1000;
+        }
 
         // if a VALID validity period is set through the callback, then use it
         long callbackValidityPeriod = tokReqMsgCtx.getValidityPeriod();
@@ -212,8 +221,12 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         // If issuing new refresh token, use default refresh token validity Period
         // otherwise use existing refresh token's validity period
         if (refreshTokenValidityPeriodInMillis == 0) {
-            refreshTokenValidityPeriodInMillis = OAuthServerConfiguration.getInstance()
-                                                         .getRefreshTokenValidityPeriodInSeconds() * 1000;
+            if (spTimeConfigObj.getRefreshTokenExpiryTime() != null) {
+                refreshTokenValidityPeriodInMillis = spTimeConfigObj.getRefreshTokenExpiryTime();
+            } else {
+                refreshTokenValidityPeriodInMillis = OAuthServerConfiguration.getInstance()
+                        .getRefreshTokenValidityPeriodInSeconds() * 1000;
+            }
         }
 
         String tokenType;

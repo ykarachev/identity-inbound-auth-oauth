@@ -83,10 +83,12 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.xml.namespace.QName;
 
@@ -274,7 +276,8 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             jwtClaimsSet.setClaim("nonce", nonceValue);
         }
         if (acrValue != null) {
-            jwtClaimsSet.setClaim("acr", "urn:mace:incommon:iap:silver");
+//            jwtClaimsSet.setClaim("acr", "urn:mace:incommon:iap:silver");
+            jwtClaimsSet.setClaim("acr", translateAcrToResponse(new ArrayList<String>(acrValue)));
         }
         if (amrValues != null) {
             jwtClaimsSet.setClaim("amr", translateAmrToResponse(amrValues));
@@ -368,7 +371,8 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             jwtClaimsSet.setClaim("nonce", nonceValue);
         }
         if (acrValue != null) {
-            jwtClaimsSet.setClaim("acr", "urn:mace:incommon:iap:silver");
+//            jwtClaimsSet.setClaim("acr", "urn:mace:incommon:iap:silver");
+            jwtClaimsSet.setClaim("acr", translateAcrToResponse(new ArrayList<String>(acrValue)));
         }
         if (amrValues != null) {
             jwtClaimsSet.setClaim("amr", translateAmrToResponse(amrValues));
@@ -727,17 +731,28 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     }
 
     /**
-     * Converts the internal representation to external (response) form
+     * Converts the internal representation to external (response) form.
+     * The resultant list will not have any duplicate values.
      * @param internalList
-     * @return
+     * @return a list of amr values to be sent via ID token. May be empty, but not null.
      */
     private List<String> translateAmrToResponse(List<String> internalList) {
-        List<String> result = new ArrayList<>();
-
+        Set<String> result = new HashSet<>();
         for (String internalValue : internalList) {
             result.addAll(amrValueTranslator.translateToResponse(internalValue));
         }
-        return result;
+        return new ArrayList<>(result);
+    }
+
+    /**
+     * Converts the internal representation to external (response) form.
+     * The resultant list will not have any duplicate values.
+     * @param internalList
+     * @return a list of amr values to be sent via ID token. May be empty, but not null.
+     */
+    private List<String> translateAcrToResponse(List<String> internalList) {
+        //TODO: Implement this. No-Op for now.
+        return internalList;
     }
 
     private class AmrValueTranslator implements IDTokenValueTranslator {
@@ -745,12 +760,12 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         private Map<String, List<String>> amrResponseMap;
 
         public AmrValueTranslator(OAuthServerConfiguration configuration) {
-            if (configuration != null) {
+            if (configuration != null && configuration.getAmrInternalToExternalMap() != null) {
                 amrResponseMap = configuration.getAmrInternalToExternalMap();
             } else {
                 Map<String, List<String>> inbuiltMap = new HashMap<>();
-                inbuiltMap.put(GrantType.PASSWORD.toString(), toList("pwd", GrantType.PASSWORD.toString()));
-                inbuiltMap.put("BasicAuthenticator", toList("pwd", "basic"));
+                inbuiltMap.put(GrantType.PASSWORD.toString(), toList("pwd"));
+                inbuiltMap.put("BasicAuthenticator", toList("pwd"));
                 amrResponseMap = inbuiltMap;
             }
         }

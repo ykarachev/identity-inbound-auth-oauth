@@ -35,6 +35,7 @@ import org.wso2.carbon.identity.application.authentication.framework.Authenticat
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationResultCacheEntry;
 import org.wso2.carbon.identity.application.authentication.framework.config.model.AuthenticatorConfig;
+import org.wso2.carbon.identity.application.authentication.framework.context.AuthHistory;
 import org.wso2.carbon.identity.application.authentication.framework.context.SessionContext;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedIdPData;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
@@ -306,6 +307,7 @@ public class OAuth2AuthzEndpoint {
                         }
                         sessionDataCacheEntry.setLoggedInUser(authenticatedUser);
                         sessionDataCacheEntry.setAuthenticatedIdPs(authnResult.getAuthenticatedIdPs());
+                        
                         SessionDataCache.getInstance().addToCache(cacheKey, sessionDataCacheEntry);
 
                         OIDCSessionState sessionState = new OIDCSessionState();
@@ -1357,11 +1359,10 @@ public class OAuth2AuthzEndpoint {
      */
     private void associateAuthenticationHistory(SessionDataCacheEntry resultFromLogin, Cookie cookie) {
         SessionContext sessionContext = getSessionContext(cookie);
-        if (sessionContext.getAuthenticatedIdPs() != null) {
+        if (sessionContext != null && sessionContext.getAuthenticationStepHistory() != null) {
             List<String> authMethods = new ArrayList<>();
-            for(Map.Entry<String, AuthenticatedIdPData> entry: sessionContext.getAuthenticatedIdPs().entrySet()) {
-                AuthenticatorConfig authenticatorConfig = entry.getValue().getAuthenticator();
-                authMethods.add(authenticatorConfig.getName());
+            for(AuthHistory authHistory: sessionContext.getAuthenticationStepHistory()) {
+                authMethods.add(authHistory.toTranslatableString());
             }
             resultFromLogin.getParamMap().put("amr", authMethods.toArray(new String[authMethods.size()]));
         }

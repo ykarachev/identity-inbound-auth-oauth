@@ -131,7 +131,7 @@ public class OAuthServerConfiguration {
     private Map<String, ResponseTypeHandler> supportedResponseTypes;
     private Map<String, String> supportedResponseTypeValidatorNames = new HashMap<>();
     private Map<String, Class<? extends OAuthValidator<HttpServletRequest>>> supportedResponseTypeValidators;
-    private Map<String, List<String>> amrInternalToExternalMap = new HashMap<>();
+    private Map<String, List<String>> amrInternalToExternalMap;
     private String[] supportedClaims = null;
     private Map<String, Properties> supportedClientAuthHandlerData = new HashMap<>();
     private List<ClientAuthenticationHandler> supportedClientAuthHandlers;
@@ -260,6 +260,8 @@ public class OAuthServerConfiguration {
 
         // parse identity OAuth 2.0 token generator
         parseOAuthTokenIssuerConfig(oauthElem);
+
+        parseOAuthAmrMappingConfig(oauthElem);
     }
 
     public Set<OAuthCallbackHandlerMetaData> getCallbackHandlerMetaData() {
@@ -1226,6 +1228,47 @@ public class OAuthServerConfiguration {
         }
     }
 
+    private void parseOAuthAmrMappingConfig(OMElement oauthConfigElem) {
+        OMElement amrMapElement = oauthConfigElem
+                .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OAUTH2_AMR_MAPPINGS));
+        if (amrMapElement != null) {
+            amrInternalToExternalMap = new HashMap<>();
+            Iterator<OMElement> children = amrMapElement.getChildElements();
+            for (int i = 0; children.hasNext(); i++) {
+                OMElement child = children.next();
+                if (child.getLocalName() != "Entry") {
+                    log.error("Configuration Error: Unknown child entry found in " + ConfigElements.OPENID_CONNECT + "/"
+                            + ConfigElements.OAUTH2_AMR_MAPPINGS + " :" + child.getLocalName() + ". Expected: "
+                            + "Entry");
+                    continue;
+                }
+                OMElement key = child.getFirstChildWithName(getQNameWithIdentityNS("Key"));
+                if (key == null) {
+                    log.error(
+                            "Configuration Error: No Key found for map entry in " + ConfigElements.OPENID_CONNECT + "/"
+                                    + ConfigElements.OAUTH2_AMR_MAPPINGS + " in map entry: " + i);
+                    continue;
+                }
+                OMElement value = child.getFirstChildWithName(getQNameWithIdentityNS("Value"));
+                if (value == null) {
+                    log.error("Configuration Error: No Value found for map entry in " + ConfigElements.OPENID_CONNECT
+                            + "/" + ConfigElements.OAUTH2_AMR_MAPPINGS + " in map entry: " + i);
+                    continue;
+                }
+                if (value.getAttribute(NIL_QNAME) != null) {
+                    amrInternalToExternalMap.put(key.getText().trim(), Collections.<String>emptyList());
+                } else {
+                    String[] valuesArray = value.getText().split(",");
+                    List<String> values = new ArrayList<>();
+                    for (String s : valuesArray) {
+                        values.add(s.trim());
+                    }
+                    amrInternalToExternalMap.put(key.getText().trim(), values);
+                }
+            }
+        }
+    }
+
     private void parseSupportedGrantTypesConfig(OMElement oauthConfigElem) {
 
         OMElement supportedGrantTypesElem =
@@ -1570,46 +1613,6 @@ public class OAuthServerConfiguration {
                     supportedClaims = supportedClaimStr.split(",");
                 }
             }
-            if (openIDConnectConfigElem.getFirstChildWithName
-                    (getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_AMR_MAPPINGS)) != null) {
-                populateMap(amrInternalToExternalMap, openIDConnectConfigElem
-                        .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_AMR_MAPPINGS)));
-            }
-        }
-    }
-
-    private void populateMap(Map<String, List<String>> amrInternalToExternalMap, OMElement omElement) {
-        Iterator<OMElement> children = omElement.getChildElements();
-        for (int i = 0; children.hasNext(); i++) {
-            OMElement child = children.next();
-            if (child.getLocalName() != "Entry") {
-                log.error("Configuration Error: Unknown child entry found in " + ConfigElements.OPENID_CONNECT + "/"
-                        + ConfigElements.OPENID_CONNECT_AMR_MAPPINGS + " :" + child.getLocalName() + ". Expected: "
-                        + "Entry");
-                continue;
-            }
-            OMElement key = child.getFirstChildWithName(getQNameWithIdentityNS("Key"));
-            if (key == null) {
-                log.error("Configuration Error: No Key found for map entry in " + ConfigElements.OPENID_CONNECT + "/"
-                        + ConfigElements.OPENID_CONNECT_AMR_MAPPINGS + " in map entry: " + i);
-                continue;
-            }
-            OMElement value = child.getFirstChildWithName(getQNameWithIdentityNS("Value"));
-            if (value == null) {
-                log.error("Configuration Error: No Value found for map entry in " + ConfigElements.OPENID_CONNECT + "/"
-                        + ConfigElements.OPENID_CONNECT_AMR_MAPPINGS + " in map entry: " + i);
-                continue;
-            }
-            if(value.getAttribute(NIL_QNAME) != null) {
-                amrInternalToExternalMap.put(key.getText().trim(), Collections.<String>emptyList());
-            } else {
-                String[] valuesArray = value.getText().split(",");
-                List<String> values = new ArrayList<>();
-                for (String s : valuesArray) {
-                    values.add(s.trim());
-                }
-                amrInternalToExternalMap.put(key.getText().trim(), values);
-            }
         }
     }
 
@@ -1644,6 +1647,7 @@ public class OAuthServerConfiguration {
         public static final String OIDC_DISCOVERY_EP_URL = "OIDCDiscoveryEPUrl";
         public static final String OAUTH2_ERROR_PAGE_URL = "OAuth2ErrorPage";
         public static final String OIDC_CONSENT_PAGE_URL = "OIDCConsentPage";
+        public static final String OAUTH2_AMR_MAPPINGS = "AmrMappings";
 
         // JWT Generator
         public static final String AUTHORIZATION_CONTEXT_TOKEN_GENERATION = "AuthorizationContextTokenGeneration";
@@ -1672,7 +1676,6 @@ public class OAuthServerConfiguration {
         public static final String OPENID_CONNECT_USERINFO_ENDPOINT_ACCESS_TOKEN_VALIDATOR = "UserInfoEndpointAccessTokenValidator";
         public static final String OPENID_CONNECT_USERINFO_ENDPOINT_RESPONSE_BUILDER = "UserInfoEndpointResponseBuilder";
         public static final String OPENID_CONNECT_SIGN_JWT_WITH_SP_KEY = "SignJWTWithSPKey";
-        public static final String OPENID_CONNECT_AMR_MAPPINGS = "AmrMappings";
         public static final String OPENID_CONNECT_IDTOKEN_CUSTOM_CLAIM_CALLBACK_HANDLER = "IDTokenCustomClaimsCallBackHandler";
         public static final String SUPPORTED_CLAIMS = "OpenIDConnectClaims";
         // Callback handler related configuration elements

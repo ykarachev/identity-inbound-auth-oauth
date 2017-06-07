@@ -40,7 +40,6 @@ public class OAuthServerConfigurationTest extends TestCase {
         parserField.setAccessible(true);
         parserField.set(null, null);
 
-
         Field instanceField = OAuthServerConfiguration.class.getDeclaredField("instance");
         instanceField.setAccessible(true);
         instanceField.set(null, null);
@@ -58,8 +57,7 @@ public class OAuthServerConfigurationTest extends TestCase {
         IdentityConfigParser
                 .getInstance(OAuthServerConfigurationTest.class.getResource("identity-default.xml").getPath().toString());
         Map<String, List<String>> amrMap = OAuthServerConfiguration.getInstance().getAmrInternalToExternalMap();
-        assertNotNull(amrMap);
-        assertNull(amrMap.get("test_auth_step"));
+        assertNull(amrMap);
     }
 
     public void testAmrInternalToExternalMap_WithNullAmr() {

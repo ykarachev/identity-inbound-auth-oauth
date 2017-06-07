@@ -139,8 +139,8 @@ public class AccessTokenIssuer {
                     log.debug("Multiple Client Authentication Methods used for client id : " +
                             tokenReqDTO.getClientId());
                     tokenRespDTO = handleError(
-                            OAuthConstants.OAuthError.TokenResponse.UNSUPPORTED_CLIENT_AUTHENTICATION_METHOD,
-                            "Unsupported Client Authentication Method!", tokenReqDTO);
+                            OAuthError.TokenResponse.INVALID_REQUEST,
+                            "Multiple Client Authentication Methods used for authenticating a client", tokenReqDTO);
                     setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
                     triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
                     return tokenRespDTO;

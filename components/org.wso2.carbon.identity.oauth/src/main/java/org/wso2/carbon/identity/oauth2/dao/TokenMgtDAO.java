@@ -25,6 +25,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
+import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
@@ -322,7 +323,7 @@ public class TokenMgtDAO {
         } catch (SQLException e) {
             // Handle constrain violation issue in JDBC drivers which does not throw
             // SQLIntegrityConstraintViolationException
-            if (e.getMessage().contains("CON_APP_KEY")) {
+            if (StringUtils.containsIgnoreCase(e.getMessage(), "CON_APP_KEY")) {
                 if (retryAttempt >= tokenPersistRetryCount) {
                     log.error("'CON_APP_KEY' constrain violation retry count exceeds above the maximum count - " +
                             tokenPersistRetryCount);
@@ -504,7 +505,15 @@ public class TokenMgtDAO {
                     user.setUserName(tenantAwareUsernameWithNoUserDomain);
                     user.setTenantDomain(tenantDomain);
                     user.setUserStoreDomain(userDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for " +
+                                "client id " + consumerKey, e);
+                    }
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
                     AccessTokenDO accessTokenDO = new AccessTokenDO(consumerKey, user, OAuth2Util.buildScopeArray
                             (scope), new Timestamp(issuedTime), new Timestamp(refreshTokenIssuedTime)
                             , validityPeriodInMillis, refreshTokenValidityPeriodInMillis, userType);
@@ -589,7 +598,15 @@ public class TokenMgtDAO {
                     user.setUserName(tenantAwareUsernameWithNoUserDomain);
                     user.setTenantDomain(tenantDomain);
                     user.setUserStoreDomain(userDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for " +
+                                "client id " + consumerKey, e);
+                    }
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
                     AccessTokenDO dataDO = new AccessTokenDO(consumerKey, user, scope, issuedTime,
                             refreshTokenIssuedTime, validityPeriodInMillis,
                             refreshTokenValidityPeriodMillis, tokenType);
@@ -666,7 +683,15 @@ public class TokenMgtDAO {
                     user.setUserName(authorizedUser);
                     user.setTenantDomain(tenantDomain);
                     user.setUserStoreDomain(userstoreDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for " +
+                                "client id " + consumerKey, e);
+                    }
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
                     authorizedUser = UserCoreUtil.addDomainToName(authorizedUser, userstoreDomain);
                     authorizedUser = UserCoreUtil.addTenantDomainToEntry(authorizedUser, tenantDomain);
 
@@ -703,7 +728,15 @@ public class TokenMgtDAO {
                     user.setUserName(authorizedUser);
                     user.setTenantDomain(tenantDomain);
                     user.setUserStoreDomain(userstoreDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for " +
+                                "client id " + consumerKey, e);
+                    }
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
                     authorizedUser = UserCoreUtil.addDomainToName(authorizedUser, userstoreDomain);
                     authorizedUser = UserCoreUtil.addTenantDomainToEntry(authorizedUser, tenantDomain);
 
@@ -905,7 +938,15 @@ public class TokenMgtDAO {
                     user.setUserName(userName);
                     user.setUserStoreDomain(userDomain);
                     user.setTenantDomain(tenantDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for " +
+                                "client id " + consumerKey, e);
+                    }
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
                     validationDataDO.setAuthorizedUser(user);
 
                 } else {
@@ -994,8 +1035,15 @@ public class TokenMgtDAO {
                     user.setUserName(authorizedUser);
                     user.setUserStoreDomain(userDomain);
                     user.setTenantDomain(tenantDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
-
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id " +
+                                consumerKey, e);
+                    }
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
                     dataDO = new AccessTokenDO(consumerKey, user, scope, issuedTime, refreshTokenIssuedTime,
                             validityPeriodInMillis, refreshTokenValidityPeriodMillis, tokenType);
                     dataDO.setAccessToken(accessTokenIdentifier);
@@ -2363,13 +2411,25 @@ public class TokenMgtDAO {
     }
 
     /**
-     * This method is introduced to fix IDENTITY-5827
+     * Get latest AccessToken list
+     *
+     * @param consumerKey
+     * @param authzUser
+     * @param userStoreDomain
+     * @param scope
+     * @param includeExpiredTokens
+     * @param limit
+     * @return
+     * @throws IdentityOAuth2Exception
      */
     public List<AccessTokenDO> retrieveLatestAccessTokens(String consumerKey, AuthenticatedUser authzUser,
                                                           String userStoreDomain, String scope,
                                                           boolean includeExpiredTokens, int limit)
             throws IdentityOAuth2Exception {
 
+        if (authzUser == null) {
+            throw new IdentityOAuth2Exception("Invalid user information for given consumerKey: " + consumerKey);
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
@@ -2409,7 +2469,7 @@ public class TokenMgtDAO {
             }
 
             if(!sqlAltered){
-                sql = sql.replace("1", Integer.toString(limit));
+                sql = sql.replace("LIMIT 1", "LIMIT " + Integer.toString(limit));
             }
 
             if (StringUtils.isNotEmpty(userStoreDomain) &&
@@ -2473,7 +2533,16 @@ public class TokenMgtDAO {
                     user.setUserName(tenantAwareUsernameWithNoUserDomain);
                     user.setTenantDomain(tenantDomain);
                     user.setUserStoreDomain(userDomain);
-                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+
+                    ServiceProvider serviceProvider;
+                    try {
+                        serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                                getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                    } catch (IdentityApplicationManagementException e) {
+                        throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for " +
+                                "client id " + consumerKey, e);
+                    }
+                    user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
                     AccessTokenDO accessTokenDO = new AccessTokenDO(consumerKey, user, OAuth2Util.buildScopeArray
                             (scope), new Timestamp(issuedTime), new Timestamp(refreshTokenIssuedTime)
                             , validityPeriodInMillis, refreshTokenValidityPeriodInMillis, userType);
@@ -2489,7 +2558,7 @@ public class TokenMgtDAO {
             }
             return accessTokenDOs;
         } catch (SQLException e) {
-            String errorMsg = "Error occurred while trying to retrieve latest 'ACTIVE' " + "access token for Client " +
+            String errorMsg = "Error occurred while trying to retrieve latest 'ACTIVE' access token for Client " +
                               "ID : " + consumerKey + ", User ID : " + authzUser + " and  Scope : " + scope;
             if (includeExpiredTokens) {
                 errorMsg = errorMsg.replace("ACTIVE", "ACTIVE or EXPIRED");
@@ -2609,7 +2678,15 @@ public class TokenMgtDAO {
                 user.setUserName(tenantAwareUsernameWithNoUserDomain);
                 user.setTenantDomain(tenantDomain);
                 user.setUserStoreDomain(userDomain);
-                user.setAuthenticatedSubjectIdentifier(subjectIdentifier);
+                ServiceProvider serviceProvider;
+                try {
+                    serviceProvider = OAuth2ServiceComponentHolder.getApplicationMgtService().
+                            getServiceProviderByClientId(consumerKey, OAuthConstants.Scope.OAUTH2, tenantDomain);
+                } catch (IdentityApplicationManagementException e) {
+                    throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for " +
+                            "client id " + consumerKey, e);
+                }
+                user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
                 AccessTokenDO accessTokenDO = new AccessTokenDO(consumerKey, user, OAuth2Util.buildScopeArray
                         (scope), new Timestamp(issuedTime), new Timestamp(refreshTokenIssuedTime)
                         , validityPeriodInMillis, refreshTokenValidityPeriodInMillis, userType);
@@ -2632,4 +2709,37 @@ public class TokenMgtDAO {
         }
     }
 
+    /**
+     * Revoke access tokens of other tenants when SaaS is disabled.
+     *
+     * @param consumerKey client ID
+     * @param tenantId    application tenant ID
+     * @throws IdentityOAuth2Exception
+     */
+    public void revokeSaaSTokensOfOtherTenants(String consumerKey, int tenantId) throws IdentityOAuth2Exception {
+
+        if (consumerKey == null) {
+            log.error("invalid parameters provided. Client ID: " + consumerKey + "and tenant ID: " + tenantId);
+            return;
+        }
+        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        PreparedStatement ps = null;
+        try {
+            String sql = SQLQueries.REVOKE_SAAS_TOKENS_OF_OTHER_TENANTS;
+            ps = connection.prepareStatement(sql);
+            ps.setString(1, OAuthConstants.TokenStates.TOKEN_STATE_REVOKED);
+            ps.setString(2, UUID.randomUUID().toString());
+            ps.setString(3, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
+            ps.setString(4, consumerKey);
+            ps.setInt(5, tenantId);
+            ps.executeUpdate();
+            connection.commit();
+        } catch (SQLException e) {
+            String errorMsg = "Error revoking access tokens for client ID: " + consumerKey + "and tenant ID:" + tenantId;
+            IdentityDatabaseUtil.rollBack(connection);
+            throw new IdentityOAuth2Exception(errorMsg, e);
+        } finally {
+            IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
+        }
+    }
 }

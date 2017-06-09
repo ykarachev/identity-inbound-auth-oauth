@@ -185,13 +185,19 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private Map<String, Object> getResponse(OAuthTokenReqMessageContext requestMsgCtx)
             throws OAuthSystemException {
 
-        Map<ClaimMapping, String> userAttributes =
-                getUserAttributesFromCache(requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN).toString());
+        Map<ClaimMapping, String> userAttributes = Collections.emptyMap();
         Map<String, Object> claims = Collections.emptyMap();
 
+        if (requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN) != null) {
+            // get the user claims cached against the access token if any
+            userAttributes = getUserAttributesFromCacheUsingToken(requestMsgCtx.getProperty(OAuthConstants
+                    .ACCESS_TOKEN).toString());
+        }
+
         if (MapUtils.isEmpty(userAttributes) && requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE) != null) {
-            userAttributes = getUserAttributesFromCache(
-                    requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE).toString());
+            // get the cached user claims against the authorization code if any
+            userAttributes =
+                    getUserAttributesFromCacheUsingCode(requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE).toString());
         }
 
         if (MapUtils.isEmpty(userAttributes) && !requestMsgCtx.getAuthorizedUser().isFederatedUser()) {
@@ -214,9 +220,14 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private Map<String, Object> getResponse(OAuthAuthzReqMessageContext requestMsgCtx)
             throws OAuthSystemException {
 
-        Map<ClaimMapping, String> userAttributes =
-                getUserAttributesFromCache(requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN).toString());
+        Map<ClaimMapping, String> userAttributes = Collections.emptyMap();
         Map<String, Object> claims = Collections.emptyMap();
+
+        if (requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN) != null) {
+            // get the user claims cached against the access token if any
+            userAttributes = getUserAttributesFromCacheUsingToken(requestMsgCtx.getProperty(OAuthConstants
+                    .ACCESS_TOKEN).toString());
+        }
 
         if (MapUtils.isEmpty(userAttributes) && !(requestMsgCtx.getAuthorizationReqDTO().getUser().isFederatedUser())) {
             if (log.isDebugEnabled()) {
@@ -305,6 +316,9 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 .getUserStoreManager()).getSecondaryUserStoreManager(domain).getRealmConfiguration();
         String claimSeparator = realmConfiguration.getUserStoreProperty(
                 IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);
+        if (StringUtils.isBlank(claimSeparator)) {
+            claimSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
+        }
 
         Map<String, String> spToLocalClaimMappings = ClaimMetadataHandler.getInstance()
                 .getMappingsMapFromOtherDialectToCarbon(SP_DIALECT, null, spTenantDomain, false);
@@ -496,20 +510,34 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     }
 
     /**
-     * Get user attribute from cache
+     * Get user attribute cached against the access token
      *
      * @param accessToken Access token
-     * @return User attributes
+     * @return User attributes cached against the access token
      */
-    private Map<ClaimMapping, String> getUserAttributesFromCache(String accessToken) {
+    private Map<ClaimMapping, String> getUserAttributesFromCacheUsingToken(String accessToken) {
 
         AuthorizationGrantCacheKey cacheKey = new AuthorizationGrantCacheKey(accessToken);
-        AuthorizationGrantCacheEntry cacheEntry = (AuthorizationGrantCacheEntry) AuthorizationGrantCache.
-                getInstance().getValueFromCacheByToken(cacheKey);
-        if (cacheEntry == null) {
-            return new HashMap<ClaimMapping, String>();
-        }
-        return cacheEntry.getUserAttributes();
+        AuthorizationGrantCacheEntry cacheEntry = AuthorizationGrantCache.getInstance()
+                .getValueFromCacheByToken(cacheKey);
+
+        return cacheEntry == null ? new HashMap<ClaimMapping, String>() : cacheEntry.getUserAttributes();
+
+    }
+
+    /**
+     * Get user attributes cached against the authorization code
+     *
+     * @param authorizationCode Authorization Code
+     * @return User attributes cached against the authorization code
+     */
+    private Map<ClaimMapping, String> getUserAttributesFromCacheUsingCode(String authorizationCode) {
+
+        AuthorizationGrantCacheKey cacheKey = new AuthorizationGrantCacheKey(authorizationCode);
+        AuthorizationGrantCacheEntry cacheEntry = AuthorizationGrantCache.getInstance()
+                .getValueFromCacheByCode(cacheKey);
+
+        return cacheEntry == null ? new HashMap<ClaimMapping, String>() : cacheEntry.getUserAttributes();
     }
 
     /**

@@ -122,6 +122,7 @@ public class OAuthServerConfiguration {
     private TokenPersistenceProcessor persistenceProcessor = null;
     private Set<OAuthCallbackHandlerMetaData> callbackHandlerMetaData = new HashSet<>();
     private Map<String, String> supportedGrantTypeClassNames = new HashMap<>();
+    private Map<String, Boolean> refreshTokenAllowedGrantTypes = new HashMap<>();
     private Map<String, String> idTokenAllowedForGrantTypesMap = new HashMap<>();
     private Map<String, AuthorizationGrantHandler> supportedGrantTypes;
     private Map<String, String> supportedGrantTypeValidatorNames = new HashMap<>();
@@ -842,6 +843,20 @@ public class OAuthServerConfiguration {
         return isRevokeResponseHeadersEnabled;
     }
 
+    /**
+     * Return the value of whether the refresh token is allowed for this grant type. Null will be returned if there is
+     * no tag or empty tag.
+     * @param grantType Name of the Grant type.
+     * @return True or False if there is a value. Null otherwise.
+     */
+    public boolean getValueForIsRefreshTokenAllowed(String grantType) {
+
+        Boolean isRefreshTokenAllowed = refreshTokenAllowedGrantTypes.get(grantType);
+
+        // If this element is not present in the XML, we will send true to maintain the backward compatibility.
+        return isRefreshTokenAllowed == null ? true : isRefreshTokenAllowed;
+    }
+
     private void parseOAuthCallbackHandlers(OMElement callbackHandlersElem) {
         if (callbackHandlersElem == null) {
             warnOnFaultyConfiguration("OAuthCallbackHandlers element is not available.");
@@ -1304,6 +1319,13 @@ public class OAuthServerConfiguration {
                     if (StringUtils.isNotEmpty(authzGrantValidatorImplClass)) {
                         supportedGrantTypeValidatorNames.put(grantTypeName, authzGrantValidatorImplClass);
                     }
+
+                    OMElement refreshTokenAllowed = supportedGrantTypeElement
+                            .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.REFRESH_TOKEN_ALLOWED));
+                    if (refreshTokenAllowed != null && StringUtils.isNotBlank(refreshTokenAllowed.getText())) {
+                        boolean isRefreshAllowed = Boolean.parseBoolean(refreshTokenAllowed.getText());
+                        refreshTokenAllowedGrantTypes.put(grantTypeName, isRefreshAllowed);
+                    }
                 }
             }
         } else {
@@ -1745,6 +1767,7 @@ public class OAuthServerConfiguration {
 
         // To enable revoke response headers
         private static final String ENABLE_REVOKE_RESPONSE_HEADERS = "EnableRevokeResponseHeaders";
+        private static final String REFRESH_TOKEN_ALLOWED = "IsRefreshTokenAllowed";
     }
 
 }

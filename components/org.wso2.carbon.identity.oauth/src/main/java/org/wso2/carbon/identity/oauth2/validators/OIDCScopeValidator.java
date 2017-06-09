@@ -76,7 +76,7 @@ public class OIDCScopeValidator extends OAuth2ScopeValidator {
                     idTokenAllowedGrantTypes.length() - 1).split(", "));
         }
         //If no scopes are associated with the token
-        if (scopes != null || scopes.length > 0) {
+        if (scopes != null && scopes.length > 0) {
             String grantTypeValue = accessTokenDO.getGrantType();
 
             for (String scope : scopes) {

@@ -44,6 +44,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.checkAudienceEnabled;
+
 /**
  * @scr.component name="identity.oauth2.component" immediate="true"
  * @scr.reference name="identity.application.management.component"
@@ -124,6 +126,17 @@ public class OAuth2ServiceComponent {
         } else {
             OAuth2ServiceComponentHolder.setPkceEnabled(false);
             log.info("PKCE Support is disabled.");
+        }
+        if(checkAudienceEnabled()) {
+            if (log.isDebugEnabled()) {
+                log.debug("OAuth - OIDC audiences enabled.");
+            }
+            OAuth2ServiceComponentHolder.setAudienceEnabled(true);
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("OAuth - OIDC audiences disabled.");
+            }
+            OAuth2ServiceComponentHolder.setAudienceEnabled(false);
         }
     }
 

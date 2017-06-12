@@ -25,6 +25,7 @@
 <%@ page import="org.wso2.carbon.ui.CarbonUIMessage"%>
 <%@ page import="org.wso2.carbon.ui.CarbonUIUtil"%>
 <%@ page import="org.wso2.carbon.utils.ServerConstants"%>
+<%@ page import="org.wso2.carbon.identity.core.util.IdentityUtil" %>
 
 <%@ page import="java.util.ResourceBundle" %>
 
@@ -94,6 +95,26 @@
         grants = buff.toString();
         if(OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)){
             app.setGrantTypes(grants);
+        }
+
+        String audiences;
+        StringBuffer audienceBuff = new StringBuffer();
+
+        if (Boolean.parseBoolean(request.getParameter("enableAudienceRestriction"))) {
+            String audiencesCountParameter = request.getParameter("audiencePropertyCounter");
+            if (IdentityUtil.isNotBlank(audiencesCountParameter)) {
+                int audiencesCount = Integer.parseInt(audiencesCountParameter);
+                for (int i = 0; i < audiencesCount; i++) {
+                    String audience = request.getParameter("audiencePropertyName" + i);
+                    if (IdentityUtil.isNotBlank(audience)) {
+                        audienceBuff.append(audience + " ");
+                    }
+                }
+                audiences = audienceBuff.toString();
+                if(OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)){
+                    app.setAudiences(audiences);
+                }
+            }
         }
         client.updateOAuthApplicationData(app);
         String message = resourceBundle.getString("app.updated.successfully");

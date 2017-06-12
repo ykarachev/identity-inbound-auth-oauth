@@ -25,6 +25,7 @@
 <%@ page import="org.wso2.carbon.ui.CarbonUIMessage"%>
 <%@ page import="org.wso2.carbon.ui.CarbonUIUtil"%>
 <%@ page import="org.wso2.carbon.utils.ServerConstants"%>
+<%@ page import="org.wso2.carbon.identity.core.util.IdentityUtil" %>
 
 <%@ page import="java.util.ResourceBundle" %>
 
@@ -65,7 +66,7 @@
 	String BUNDLE = "org.wso2.carbon.identity.oauth.ui.i18n.Resources";
 	ResourceBundle resourceBundle = ResourceBundle.getBundle(BUNDLE, request.getLocale());
 	OAuthConsumerAppDTO app = new OAuthConsumerAppDTO();
-	
+
 	String spName = (String) session.getAttribute("application-sp-name");
 	session.removeAttribute("application-sp-name");
 	boolean isError = false;
@@ -98,13 +99,33 @@
         if(OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)){
             app.setGrantTypes(grants);
         }
-		app.setPkceMandatory(pkceMandatory);
+
+	    String audiences;
+	    StringBuffer audienceBuff = new StringBuffer();
+
+	    if (Boolean.parseBoolean(request.getParameter("enableAudienceRestriction"))) {
+		    String audiencesCountParameter = request.getParameter("audiencePropertyCounter");
+		    if (IdentityUtil.isNotBlank(audiencesCountParameter)) {
+			    int audiencesCount = Integer.parseInt(audiencesCountParameter);
+			    for (int i = 0; i < audiencesCount; i++) {
+				    String audience = request.getParameter("audiencePropertyName" + i);
+				    if (IdentityUtil.isNotBlank(audience)) {
+					    audienceBuff.append(audience + " ");
+                    }
+			    }
+			    audiences = audienceBuff.toString();
+			    if(OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)){
+                    app.setAudiences(audiences);
+			    }
+		    }
+	    }
+        app.setPkceMandatory(pkceMandatory);
 		app.setPkceSupportPlain(pkceSupportPlain);
 
 		client.registerOAuthApplicationData(app);
-		
+
 		consumerApp = client.getOAuthApplicationDataByAppName(applicationName);
-		
+
 		String message = resourceBundle.getString("app.added.successfully");
 		CarbonUIMessage.sendCarbonUIMessage(message, CarbonUIMessage.INFO, request);
 

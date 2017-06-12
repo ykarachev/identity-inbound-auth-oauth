@@ -31,6 +31,8 @@ import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityConstants;
+import org.wso2.carbon.identity.core.util.IdentityConfigParser;
+import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
@@ -75,6 +77,7 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -99,7 +102,10 @@ public class OAuth2Util {
     public static final String JWT_ACCESS_TOKEN = "JWT_ACCESS_TOKEN";
     public static final String ACCESS_TOKEN_DO = "AccessTokenDo";
     public static final String OAUTH2_VALIDATION_MESSAGE_CONTEXT = "OAuth2TokenValidationMessageContext";
-
+    public static final String CONFIG_ELEM_OAUTH = "OAuth";
+    public static final String OPENID_CONNECT = "OpenIDConnect";
+    public static final String ENABLE_OPENID_CONNECT_AUDIENCES = "EnableAudiences";
+    public static final String OPENID_CONNECT_AUDIENCE = "audience";
     private static final String ALGORITHM_NONE = "NONE";
     /*
      * OPTIONAL. A JSON string containing a space-separated list of scopes associated with this token, in the format
@@ -1177,4 +1183,31 @@ public class OAuth2Util {
         throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
     }
 
+    public static boolean checkAudienceEnabled() {
+
+        boolean isAudienceEnabled = false;
+        IdentityConfigParser configParser = IdentityConfigParser.getInstance();
+        OMElement oauthElem = configParser.getConfigElement(CONFIG_ELEM_OAUTH);
+
+        if (oauthElem == null) {
+            log.warn("Error in OAuth Configuration. OAuth element is not available.");
+            return isAudienceEnabled;
+        }
+        OMElement configOpenIDConnect = oauthElem.getFirstChildWithName(new QName(IdentityCoreConstants.IDENTITY_DEFAULT_NAMESPACE, OPENID_CONNECT));
+
+        if (configOpenIDConnect == null) {
+            log.warn("Error in OAuth Configuration. OpenID element is not available.");
+            return isAudienceEnabled;
+        }
+        OMElement configAudience = configOpenIDConnect.
+                getFirstChildWithName(new QName(IdentityCoreConstants.IDENTITY_DEFAULT_NAMESPACE, ENABLE_OPENID_CONNECT_AUDIENCES));
+
+        if (configAudience != null) {
+            String configAudienceValue = configAudience.getText();
+            if (StringUtils.isNotBlank(configAudienceValue)) {
+                isAudienceEnabled = Boolean.parseBoolean(configAudienceValue);
+            }
+        }
+        return isAudienceEnabled;
+    }
 }

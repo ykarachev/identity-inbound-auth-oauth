@@ -58,14 +58,13 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
 
 @Path("/token")
 public class OAuth2TokenEndpoint {
 
     private static final Log log = LogFactory.getLog(OAuth2TokenEndpoint.class);
     public static final String BEARER = "Bearer";
+    private static final String SQL_ERROR = "sql_error";
 
     @POST
     @Path("/")
@@ -198,7 +197,7 @@ public class OAuth2TokenEndpoint {
                 // if there is an auth failure, HTTP 401 Status Code should be sent back to the client.
                 if (OAuth2ErrorCodes.INVALID_CLIENT.equals(oauth2AccessTokenResp.getErrorCode())) {
                     return handleBasicAuthFailure();
-                } else if ("sql_error".equals(oauth2AccessTokenResp.getErrorCode())) {
+                } else if (SQL_ERROR.equals(oauth2AccessTokenResp.getErrorCode())) {
                     return handleSQLError();
                 } else if (OAuth2ErrorCodes.SERVER_ERROR.equals(oauth2AccessTokenResp.getErrorCode())) {
                     return handleServerError();
@@ -214,7 +213,7 @@ public class OAuth2TokenEndpoint {
                     ResponseBuilder respBuilder = Response
                             .status(response.getResponseStatus());
 
-                    if (headers != null && headers.length > 0) {
+                    if (headers != null) {
                         for (int i = 0; i < headers.length; i++) {
                             if (headers[i] != null) {
                                 respBuilder.header(headers[i].getKey(), headers[i].getValue());

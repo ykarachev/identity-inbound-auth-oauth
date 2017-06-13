@@ -66,7 +66,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 
-
 /**
  * Data Access Layer functionality for Token management in OAuth 2.0 implementation. This includes
  * storing and retrieving access tokens, authorization codes and refresh tokens.
@@ -76,6 +75,8 @@ public class TokenMgtDAO {
     public static final String AUTHZ_USER = "AUTHZ_USER";
     public static final String LOWER_AUTHZ_USER = "LOWER(AUTHZ_USER)";
     private static final String UTC = "UTC";
+    private static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
+    private static final String FEDERATED_USER_DOMAIN_SEPARATOR = ":";
     private static TokenPersistenceProcessor persistenceProcessor;
 
     private static int maxPoolSize = 100;
@@ -169,6 +170,13 @@ public class TokenMgtDAO {
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
+        String userDomain = authzCodeDO.getAuthorizedUser().getUserStoreDomain();
+        String authenticatedIDP = authzCodeDO.getAuthorizedUser().getFederatedIdPName();
+
+        if (authzCodeDO.getAuthorizedUser().isFederatedUser()) {
+            userDomain = getFederatedUserDomain(authenticatedIDP);
+        }
+
         try {
 
             if (OAuth2ServiceComponentHolder.isPkceEnabled()) {
@@ -178,7 +186,7 @@ public class TokenMgtDAO {
                 prepStmt.setString(3, callbackUrl);
                 prepStmt.setString(4, OAuth2Util.buildScopeString(authzCodeDO.getScope()));
                 prepStmt.setString(5, authzCodeDO.getAuthorizedUser().getUserName());
-                prepStmt.setString(6, getSanitizedUserStoreDomain(authzCodeDO.getAuthorizedUser().getUserStoreDomain()));
+                prepStmt.setString(6, getSanitizedUserStoreDomain(userDomain));
                 int tenantId = OAuth2Util.getTenantId(authzCodeDO.getAuthorizedUser().getTenantDomain());
                 prepStmt.setInt(7, tenantId);
                 prepStmt.setTimestamp(8, authzCodeDO.getIssuedTime(),
@@ -196,7 +204,7 @@ public class TokenMgtDAO {
                 prepStmt.setString(3, callbackUrl);
                 prepStmt.setString(4, OAuth2Util.buildScopeString(authzCodeDO.getScope()));
                 prepStmt.setString(5, authzCodeDO.getAuthorizedUser().getUserName());
-                prepStmt.setString(6, getSanitizedUserStoreDomain(authzCodeDO.getAuthorizedUser().getUserStoreDomain()));
+                prepStmt.setString(6, getSanitizedUserStoreDomain(userDomain));
                 int tenantId = OAuth2Util.getTenantId(authzCodeDO.getAuthorizedUser().getTenantDomain());
                 prepStmt.setInt(7, tenantId);
                 prepStmt.setTimestamp(8, authzCodeDO.getIssuedTime(),
@@ -242,6 +250,16 @@ public class TokenMgtDAO {
             return;
         }
 
+        if (accessTokenDO == null) {
+            throw new IdentityOAuth2Exception(
+                    "Access token data object should be available for further execution.");
+        }
+
+        if (accessTokenDO.getAuthzUser() == null) {
+            throw new IdentityOAuth2Exception(
+                    "Authorized user should be available for further execution.");
+        }
+
         storeAccessToken(accessToken, consumerKey, accessTokenDO, connection, userStoreDomain, 0);
     }
 
@@ -250,6 +268,8 @@ public class TokenMgtDAO {
             throws IdentityOAuth2Exception {
 
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
+        String userDomain = accessTokenDO.getAuthzUser().getUserStoreDomain();
+        String authenticatedIDP = accessTokenDO.getAuthzUser().getFederatedIdPName();
         PreparedStatement insertTokenPrepStmt = null;
         PreparedStatement addScopePrepStmt = null;
 
@@ -257,6 +277,10 @@ public class TokenMgtDAO {
         if (StringUtils.isNotBlank(userStoreDomain) &&
                 !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
             accessTokenStoreTable = accessTokenStoreTable + "_" + userStoreDomain;
+        }
+
+        if (accessTokenDO.getAuthzUser().isFederatedUser()) {
+            userDomain = getFederatedUserDomain(authenticatedIDP);
         }
 
         String sql = SQLQueries.INSERT_OAUTH2_ACCESS_TOKEN.replaceAll("\\$accessTokenStoreTable",
@@ -275,7 +299,7 @@ public class TokenMgtDAO {
             insertTokenPrepStmt.setString(3, accessTokenDO.getAuthzUser().getUserName());
             int tenantId = OAuth2Util.getTenantId(accessTokenDO.getAuthzUser().getTenantDomain());
             insertTokenPrepStmt.setInt(4, tenantId);
-            insertTokenPrepStmt.setString(5, getSanitizedUserStoreDomain(accessTokenDO.getAuthzUser().getUserStoreDomain()));
+            insertTokenPrepStmt.setString(5, getSanitizedUserStoreDomain(userDomain));
             insertTokenPrepStmt.setTimestamp(6, accessTokenDO.getIssuedTime(), Calendar.getInstance(TimeZone.getTimeZone(UTC)));
             insertTokenPrepStmt.setTimestamp(7, accessTokenDO.getRefreshTokenIssuedTime(), Calendar.getInstance(TimeZone
                     .getTimeZone(UTC)));
@@ -1044,6 +1068,11 @@ public class TokenMgtDAO {
                                 consumerKey, e);
                     }
                     user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
+
+                    if (userDomain.startsWith(FEDERATED_USER_DOMAIN_PREFIX)) {
+                        user.setFederatedUser(true);
+                    }
+
                     dataDO = new AccessTokenDO(consumerKey, user, scope, issuedTime, refreshTokenIssuedTime,
                             validityPeriodInMillis, refreshTokenValidityPeriodMillis, tokenType);
                     dataDO.setAccessToken(accessTokenIdentifier);
@@ -2706,6 +2735,19 @@ public class TokenMgtDAO {
             throw new IdentityOAuth2Exception(errorMsg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(null, resultSet, prepStmt);
+        }
+    }
+
+    /**
+     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
+     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
+     * @return
+     */
+    private static String getFederatedUserDomain (String authenticatedIDP) {
+        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
+            return FEDERATED_USER_DOMAIN_PREFIX + FEDERATED_USER_DOMAIN_SEPARATOR + authenticatedIDP;
+        } else {
+            return FEDERATED_USER_DOMAIN_PREFIX;
         }
     }
 

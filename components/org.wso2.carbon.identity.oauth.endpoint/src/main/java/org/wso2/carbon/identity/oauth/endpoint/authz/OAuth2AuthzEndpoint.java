@@ -229,6 +229,17 @@ public class OAuth2AuthzEndpoint {
                 OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
                 try {
                     String appState = oAuthAppDAO.getConsumerAppState(clientId);
+                    if (StringUtils.isEmpty(appState)) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("A valid OAuth client could not be found for client_id: " + clientId);
+                        }
+                        OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
+                                .setError(OAuth2ErrorCodes.INVALID_CLIENT)
+                                .setErrorDescription("A valid OAuth client could not be found for client_id: " +
+                                        clientId).buildJSONMessage();
+                        return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
+                    }
+
                     if(!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
                         if (log.isDebugEnabled()) {
                             log.debug("Oauth App is not in active state.");

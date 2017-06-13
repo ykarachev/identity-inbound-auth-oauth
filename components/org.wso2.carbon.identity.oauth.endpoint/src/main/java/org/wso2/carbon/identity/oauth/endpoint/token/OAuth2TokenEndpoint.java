@@ -105,7 +105,7 @@ public class OAuth2TokenEndpoint {
                         }
                         OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
                                 .setError(OAuth2ErrorCodes.INVALID_CLIENT)
-                                .setErrorDescription("A valid OAuth client could not be found for client_id" +
+                                .setErrorDescription("A valid OAuth client could not be found for client_id: " +
                                         consumerKey).buildJSONMessage();
                         return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
                     }

@@ -157,6 +157,13 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util
                 .getSpTokenExpiryTimeConfig(oauth2AccessTokenReqDTO.getClientId(), OAuth2Util
                         .getTenantId(oauth2AccessTokenReqDTO.getTenantDomain()));
+        if (log.isDebugEnabled()) {
+            log.debug("Service Provider specific expiry time enabled for application : " +
+                    oauth2AccessTokenReqDTO.getClientId() + ". Application access token expiry time : " +
+                    spTimeConfigObj.getApplicationAccessTokenExpiryTime() + ", User access token expiry time : " +
+                    spTimeConfigObj.getUserAccessTokenExpiryTime() + ", Refresh token expiry time : "
+                    + spTimeConfigObj.getRefreshTokenExpiryTime());
+        }
 
         String tokenId;
         String accessToken;

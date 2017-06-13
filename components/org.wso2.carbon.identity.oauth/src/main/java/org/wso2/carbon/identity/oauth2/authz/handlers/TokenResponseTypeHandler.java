@@ -108,6 +108,12 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util
                 .getSpTokenExpiryTimeConfig(consumerKey, OAuth2Util
                         .getTenantId(authorizationReqDTO.getUser().getTenantDomain()));
+        if (log.isDebugEnabled()) {
+            log.debug("Service Provider specific expiry time enabled for application : " + consumerKey +
+                    ". Application access token expiry time : " + spTimeConfigObj.getApplicationAccessTokenExpiryTime()
+                    + ", User access token expiry time : " + spTimeConfigObj.getUserAccessTokenExpiryTime() +
+                    ", Refresh token expiry time : " + spTimeConfigObj.getRefreshTokenExpiryTime());
+        }
 
         String refreshToken = null;
         Timestamp refreshTokenIssuedTime = null;

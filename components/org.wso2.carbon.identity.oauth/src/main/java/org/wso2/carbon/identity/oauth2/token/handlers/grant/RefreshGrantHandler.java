@@ -56,7 +56,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
             throws IdentityOAuth2Exception {
 
-        if(!super.validateGrant(tokReqMsgCtx)){
+        if (!super.validateGrant(tokReqMsgCtx)) {
             return false;
         }
 
@@ -78,7 +78,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                         validationDataDO.getRefreshTokenState()) &&
                 !OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(
                         validationDataDO.getRefreshTokenState())) {
-            if(log.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 log.debug("Access Token is not in 'ACTIVE' or 'EXPIRED' state for Client with " +
                         "Client Id : " + tokenReqDTO.getClientId());
             }
@@ -107,7 +107,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                 }
                 if (cacheEnabled) {
                     clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(),
-                               validationDataDO.getScope(), validationDataDO.getAccessToken());
+                            validationDataDO.getScope(), validationDataDO.getAccessToken());
                 }
                 return false;
             } else {
@@ -132,8 +132,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
 
             if (log.isDebugEnabled()) {
                 log.debug("Refresh token validation successful for Client id : " + tokenReqDTO.getClientId() +
-                          ", Authorized User : " + validationDataDO.getAuthorizedUser() +
-                          ", Token Scope : " + OAuth2Util.buildScopeString(validationDataDO.getScope()));
+                        ", Authorized User : " + validationDataDO.getAuthorizedUser() +
+                        ", Token Scope : " + OAuth2Util.buildScopeString(validationDataDO.getScope()));
             }
         }
 
@@ -155,6 +155,12 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util
                 .getSpTokenExpiryTimeConfig(oauth2AccessTokenReqDTO.getClientId(), OAuth2Util
                         .getTenantId(oauth2AccessTokenReqDTO.getTenantDomain()));
+        if (log.isDebugEnabled()) {
+            log.debug("Service Provider specific expiry time enabled for application : " +
+                    oauth2AccessTokenReqDTO.getClientId() + ". Application access token expiry time : " + spTimeConfigObj.getApplicationAccessTokenExpiryTime() +
+                    ", User access token expiry time : " + spTimeConfigObj.getUserAccessTokenExpiryTime() + ", Refresh token expiry time : " +
+                    spTimeConfigObj.getRefreshTokenExpiryTime());
+        }
 
         String tokenId;
         String accessToken;
@@ -281,10 +287,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                 (RefreshTokenValidationDataDO) tokReqMsgCtx.getProperty(PREV_ACCESS_TOKEN);
 
         String authorizedUser = tokReqMsgCtx.getAuthorizedUser().toString();
-	    // set the previous access token state to "INACTIVE" and store new access token in single db connection
-	    tokenMgtDAO.invalidateAndCreateNewToken(oldAccessToken.getTokenId(), OAuthConstants.TokenStates.TOKEN_STATE_INACTIVE, clientId,
-	                                            UUID.randomUUID().toString(), accessTokenDO,
-	                                            userStoreDomain);
+        // set the previous access token state to "INACTIVE" and store new access token in single db connection
+        tokenMgtDAO.invalidateAndCreateNewToken(oldAccessToken.getTokenId(), OAuthConstants.TokenStates.TOKEN_STATE_INACTIVE, clientId,
+                UUID.randomUUID().toString(), accessTokenDO,
+                userStoreDomain);
         if (!accessToken.equals(accessTokenDO.getAccessToken())) {
             // Using latest active token.
             accessToken = accessTokenDO.getAccessToken();
@@ -358,12 +364,12 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     }
 
     private OAuth2AccessTokenRespDTO handleError(String errorCode, String errorMsg,
-            OAuth2AccessTokenReqDTO tokenReqDTO) {
+                                                 OAuth2AccessTokenReqDTO tokenReqDTO) {
         if (log.isDebugEnabled()) {
             log.debug("OAuth-Error-Code=" + errorCode + " client-id=" + tokenReqDTO.getClientId()
-                + " grant-type=" + tokenReqDTO.getGrantType()
-                + " scope=" + OAuth2Util.buildScopeString(tokenReqDTO.getScope()));
-    	}
+                    + " grant-type=" + tokenReqDTO.getGrantType()
+                    + " scope=" + OAuth2Util.buildScopeString(tokenReqDTO.getScope()));
+        }
         OAuth2AccessTokenRespDTO tokenRespDTO;
         tokenRespDTO = new OAuth2AccessTokenRespDTO();
         tokenRespDTO.setError(true);

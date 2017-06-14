@@ -38,6 +38,9 @@ import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
+import org.wso2.carbon.identity.application.common.model.Claim;
+import org.wso2.carbon.identity.application.common.model.ClaimConfig;
+import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
@@ -173,9 +176,24 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             }
 
             if (serviceProvider != null) {
-                String claim = serviceProvider.getLocalAndOutBoundAuthenticationConfig().getSubjectClaimUri();
+                String subjectClaim = serviceProvider.getLocalAndOutBoundAuthenticationConfig().getSubjectClaimUri();
+                ClaimConfig claimConfig = serviceProvider.getClaimConfig();
 
-                if (claim != null) {
+                if (claimConfig != null) {
+                    boolean isLocalClaimDialect = claimConfig.isLocalClaimDialect();
+                    ClaimMapping[] claimMappings = claimConfig.getClaimMappings();
+
+                    if (!isLocalClaimDialect && claimMappings.length > 0) {
+                        for (ClaimMapping claimMapping : claimMappings) {
+                            if (StringUtils.isNotBlank(subjectClaim) && StringUtils
+                                    .equals(claimMapping.getRemoteClaim().getClaimUri(), subjectClaim)) {
+                                subjectClaim = claimMapping.getLocalClaim().getClaimUri();
+                            }
+                        }
+                    }
+                }
+
+                if (subjectClaim != null) {
                     String username = request.getAuthorizedUser().getUserName();
                     String userStore = request.getAuthorizedUser().getUserStoreDomain();
                     tenantDomain = request.getAuthorizedUser().getTenantDomain();
@@ -183,7 +201,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                     try {
                         UserStoreManager usm = IdentityTenantUtil.getRealm(tenantDomain,
                                                                            fqdnUsername).getUserStoreManager();
-                        subject = usm.getSecondaryUserStoreManager(userStore).getUserClaimValue(username, claim, null);
+                        subject = usm.getSecondaryUserStoreManager(userStore).getUserClaimValue(username, subjectClaim, null);
                         if (StringUtils.isBlank(subject)) {
                             subject = request.getAuthorizedUser().getAuthenticatedSubjectIdentifier();
                         }
@@ -192,7 +210,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                         }
                     } catch (IdentityException e) {
                         String error = "Error occurred while getting user claim for user " + request
-                                .getAuthorizedUser().toString() + ", claim " + claim;
+                                .getAuthorizedUser().toString() + ", claim " + subjectClaim;
                         throw new IdentityOAuth2Exception(error, e);
                     } catch (UserStoreException e) {
                         if (e.getMessage().contains("UserNotFound")) {
@@ -203,7 +221,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                             subject = request.getAuthorizedUser().toString();
                         } else {
                             String error = "Error occurred while getting user claim for user " + request
-                                    .getAuthorizedUser().toString() + ", claim " + claim;
+                                    .getAuthorizedUser().toString() + ", claim " + subjectClaim;
                             throw new IdentityOAuth2Exception(error, e);
                         }
 
@@ -272,7 +290,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         jwtClaimsSet.setIssuer(issuer);
-        jwtClaimsSet.setSubject(subject);
         jwtClaimsSet.setAudience(audience);
         jwtClaimsSet.setClaim("azp", request.getOauth2AccessTokenReqDTO().getClientId());
         jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
@@ -295,6 +312,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         CustomClaimsCallbackHandler claimsCallBackHandler =
                 OAuthServerConfiguration.getInstance().getOpenIDConnectCustomClaimsCallbackHandler();
         claimsCallBackHandler.handleCustomClaims(jwtClaimsSet, request);
+        jwtClaimsSet.setSubject(subject);
         if (JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
             return new PlainJWT(jwtClaimsSet).serialize();
         }
@@ -379,7 +397,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         jwtClaimsSet.setIssuer(issuer);
-        jwtClaimsSet.setSubject(subject);
         jwtClaimsSet.setAudience(audience);
         jwtClaimsSet.setClaim("azp", request.getAuthorizationReqDTO().getConsumerKey());
         jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
@@ -402,6 +419,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         CustomClaimsCallbackHandler claimsCallBackHandler =
                 OAuthServerConfiguration.getInstance().getOpenIDConnectCustomClaimsCallbackHandler();
         claimsCallBackHandler.handleCustomClaims(jwtClaimsSet, request);
+        jwtClaimsSet.setSubject(subject);
         if (JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
             return new PlainJWT(jwtClaimsSet).serialize();
         }

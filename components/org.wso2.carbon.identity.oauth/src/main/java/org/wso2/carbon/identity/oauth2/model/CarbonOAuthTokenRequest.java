@@ -99,7 +99,8 @@ public class CarbonOAuthTokenRequest extends OAuthTokenRequest {
                 log.debug("Unsupported Grant Type : " + requestTypeValue +
                         " for client id : " + getClientId());
             }
-            throw OAuthProblemException.error(OAuthError.TokenResponse.UNSUPPORTED_GRANT_TYPE).description("Unsupported grant_type value");
+            throw OAuthProblemException.error(OAuthError.TokenResponse.UNSUPPORTED_GRANT_TYPE)
+                    .description("Unsupported grant_type value");
         }
 
         return OAuthUtils.instantiateClass(clazz);

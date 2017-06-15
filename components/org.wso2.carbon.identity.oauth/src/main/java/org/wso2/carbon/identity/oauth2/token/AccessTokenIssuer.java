@@ -140,7 +140,8 @@ public class AccessTokenIssuer {
                             tokenReqDTO.getClientId());
                     tokenRespDTO = handleError(
                             OAuthError.TokenResponse.INVALID_REQUEST,
-                            "Multiple Client Authentication Methods used for authenticating the client.", tokenReqDTO);
+                            "Multiple Client Authentication Methods used for authenticating the client.",
+                            tokenReqDTO);
                     setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
                     triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
                     return tokenRespDTO;

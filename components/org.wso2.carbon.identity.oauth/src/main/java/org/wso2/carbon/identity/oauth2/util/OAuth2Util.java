@@ -81,7 +81,6 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -1316,6 +1315,11 @@ public class OAuth2Util {
         throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
     }
 
+    /**
+     * Check if audiences are enabled by reading configuration file at server startup.
+     *
+     * @return
+     */
     public static boolean checkAudienceEnabled() {
 
         boolean isAudienceEnabled = false;

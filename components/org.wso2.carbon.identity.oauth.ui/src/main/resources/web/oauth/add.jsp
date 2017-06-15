@@ -157,21 +157,21 @@
 
                 }
 
-                 function disableAudienceRestriction(chkbx) {
+                function disableAudienceRestriction(chkbx) {
                     document.addAppform.audience.disabled = (chkbx.checked) ? false
-                    : true;
+                        : true;
                     document.addAppform.addAudience.disabled = (chkbx.checked) ? false
-                    : true;
+                        : true;
                 }
 
                 function addAudienceFunc() {
                     var audience = $.trim(document.getElementById('audience').value);
-                    if(audience == ""){
+                    if (audience == "") {
                         document.getElementById("audience").value = "";
                         return false;
-                     }
+                    }
 
-                    if($.inArray(audience, audienceArr) != -1){
+                    if ($.inArray(audience, audienceArr) != -1) {
                         CARBON.showWarningDialog('<fmt:message key="duplicate.audience.value"/>');
                         document.getElementById("audience").value = "";
                         return false;
@@ -192,8 +192,8 @@
                     audienceRow.setAttribute('id', 'audienceRow' + i);
 
                     var audiencePropertyTD = document.createElement('td');
-                    audiencePropertyTD.setAttribute('style', 'padding-left: 40px ! important; color: rgb(119, 119, 119); font-style: italic;');
-                    audiencePropertyTD.innerHTML = "" + audience + "<input type='hidden' name='audiencePropertyName" + i + "' id='audiencePropertyName" + i + "'  value='" + audience + "'/> ";
+                    audiencePropertyTD.setAttribute('style', 'color: rgb(119, 119, 119); font-style: italic;');
+                    audiencePropertyTD.innerHTML = "" + audience + "<input type='hidden' name='audiencePropertyName' id='audiencePropertyName" + i + "'  value='" + audience + "'/> ";
 
                     var audienceRemoveTD = document.createElement('td');
                     audienceRemoveTD.innerHTML = "<a href='#' class='icon-link' style='background-image: url(../admin/images/delete.gif)' onclick='removeAudience(" + i + ");return false;'>" + "Delete" + "</a>";
@@ -343,7 +343,7 @@
 
                                     %>
 
-		                        </table>   
+		                        </table>
 		                        </td>
 		                    </tr>
                             <%if(client.isPKCESupportedEnabled()) {%>
@@ -371,45 +371,48 @@
                             </tr>
                             <% } %>
 
-                    <tr id="audience_enable">
-                        <td colspan="2" title="Enable Audience Restriction to restrict the audience. You may add audience members using the Audience text box and clicking the Add button">
-                            <input type="checkbox"
-                                   name="enableAudienceRestriction" id="enableAudienceRestriction"
-                                   value="true"
-                                   onclick="disableAudienceRestriction(this);"/>
-                            <fmt:message key="enable.audience.restriction"/>
-                        </td>
-                    </tr>
-                    <tr id="add_audience">
-                        <td
-                                style="padding-left: 40px ! important; color: rgb(119, 119, 119); font-style: italic;">
-                            <fmt:message key="sp.audience"/>
-                        </td>
-                        <td>
-                            <input type="text" id="audience" name="audience"
-                                   class="text-box-big" disabled="disabled"/>
-                            <input id="addAudience" name="addAudience" type="button"
-                                   disabled="disabled" value="<fmt:message key="oauth.add.audience"/>"
-                                   onclick="return addAudienceFunc()"/>
-                        </td>
-                    </tr>
+                                <tr id="audience_enable">
+                                    <td colspan="2"
+                                        title="Enable Audience Restriction to restrict the audience. You may add audience members using the Audience text box and clicking the Add button">
+                                        <input type="checkbox"
+                                               name="enableAudienceRestriction"
+                                               id="enableAudienceRestriction"
+                                               value="true"
+                                               onclick="disableAudienceRestriction(this);"/>
+                                        <fmt:message key="enable.audience.restriction"/>
+                                    </td>
+                                </tr>
+                                <tr id="add_audience">
+                                    <td
+                                            style="padding-left: 40px ! important; color: rgb(119, 119, 119); font-style: italic;">
+                                        <fmt:message key="sp.audience"/>
+                                    </td>
+                                    <td>
+                                        <input type="text" id="audience" name="audience"
+                                               class="text-box-big" disabled="disabled"/>
+                                        <input id="addAudience" name="addAudience" type="button"
+                                               disabled="disabled" value="<fmt:message key="oauth.add.audience"/>"
+                                               onclick="return addAudienceFunc()"/>
+                                    </td>
+                                </tr>
 
-                    <tr id="audience_table">
-                        <td></td>
-                        <td>
-                            <table id="audienceTableId" style="width: 40%; <%=audienceTableStyle%>"
-                                   class="styledInner">
-                                <tbody id="audienceTableTbody">
-                                <%
-                                int j = 0;
-                                %>
-                                <input type="hidden" name="audiencePropertyCounter"
-                                       id="audiencePropertyCounter"
-                                       value="<%=j%>"/>
-                                </tbody>
-                            </table>
-                        </td>
-                    </tr>
+                                <tr id="audience_table" >
+                                    <td></td>
+                                    <td>
+                                        <table id="audienceTableId"
+                                               style="<%=audienceTableStyle%>"
+                                               class="styledInner">
+                                            <tbody id="audienceTableTbody">
+                                            <%
+                                                int j = 0;
+                                            %>
+                                            <input type="hidden" name="audiencePropertyCounter"
+                                                   id="audiencePropertyCounter"
+                                                   value="<%=j%>"/>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
 
 				</table>
 			</td>
@@ -417,17 +420,17 @@
                     <tr>
                         <td class="buttonRow" >
                             <input name="addprofile" type="button" class="button" value="<fmt:message key='add'/>" onclick="onClickAdd();"/>
-                            
+
                             <%
 
                             boolean applicationComponentFound = CarbonUIUtil.isContextRegistered(config, "/application/");
-                            if (applicationComponentFound) {                            
+                            if (applicationComponentFound) {
                             %>
                             <input type="button" class="button"
                                        onclick="javascript:location.href='../application/configure-service-provider.jsp?spName=<%=Encode.forUriComponent(applicationSPName)%>'"
                                    value="<fmt:message key='cancel'/>"/>
                             <% } else { %>
-                                   
+
                             <input type="button" class="button"
                                        onclick="javascript:location.href='index.jsp?region=region1&item=oauth_menu&ordinal=0'"
                                    value="<fmt:message key='cancel'/>"/>

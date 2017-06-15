@@ -36,7 +36,7 @@ public class OAuthAppDO implements Serializable {
     private boolean pkceSupportPlain;
     private boolean pkceMandatory;
     private String state;
-    private String audiences;
+    private String[] audiences;
 
     public AuthenticatedUser getUser() {
         return user;
@@ -126,11 +126,11 @@ public class OAuthAppDO implements Serializable {
         return state;
     }
 
-    public String getAudiences() {
+    public String[] getAudiences() {
         return audiences;
     }
 
-    public void setAudiences(String audiences) {
+    public void setAudiences(String[] audiences) {
         this.audiences = audiences;
     }
 }

@@ -66,11 +66,11 @@
     String BUNDLE = "org.wso2.carbon.identity.oauth.ui.i18n.Resources";
 	ResourceBundle resourceBundle = ResourceBundle.getBundle(BUNDLE, request.getLocale());
 	OAuthConsumerAppDTO app = new OAuthConsumerAppDTO();
-	
+
 	String spName = (String) session.getAttribute("application-sp-name");
 	session.removeAttribute("application-sp-name");
 	boolean isError = false;
-	
+
     try {
 
         String cookie = (String) session.getAttribute(ServerConstants.ADMIN_SERVICE_COOKIE);
@@ -97,21 +97,12 @@
             app.setGrantTypes(grants);
         }
 
-        String audiences;
-        StringBuffer audienceBuff = new StringBuffer();
-
         if (Boolean.parseBoolean(request.getParameter("enableAudienceRestriction"))) {
             String audiencesCountParameter = request.getParameter("audiencePropertyCounter");
             if (IdentityUtil.isNotBlank(audiencesCountParameter)) {
                 int audiencesCount = Integer.parseInt(audiencesCountParameter);
-                for (int i = 0; i < audiencesCount; i++) {
-                    String audience = request.getParameter("audiencePropertyName" + i);
-                    if (IdentityUtil.isNotBlank(audience)) {
-                        audienceBuff.append(audience + " ");
-                    }
-                }
-                audiences = audienceBuff.toString();
-                if(OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)){
+                   String[] audiences = request.getParameterValues("audiencePropertyName");
+                if (OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)) {
                     app.setAudiences(audiences);
                 }
             }

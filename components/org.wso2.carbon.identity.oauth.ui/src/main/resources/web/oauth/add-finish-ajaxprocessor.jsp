@@ -100,25 +100,16 @@
             app.setGrantTypes(grants);
         }
 
-	    String audiences;
-	    StringBuffer audienceBuff = new StringBuffer();
-
-	    if (Boolean.parseBoolean(request.getParameter("enableAudienceRestriction"))) {
-		    String audiencesCountParameter = request.getParameter("audiencePropertyCounter");
-		    if (IdentityUtil.isNotBlank(audiencesCountParameter)) {
-			    int audiencesCount = Integer.parseInt(audiencesCountParameter);
-			    for (int i = 0; i < audiencesCount; i++) {
-				    String audience = request.getParameter("audiencePropertyName" + i);
-				    if (IdentityUtil.isNotBlank(audience)) {
-					    audienceBuff.append(audience + " ");
-                    }
-			    }
-			    audiences = audienceBuff.toString();
-			    if(OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)){
+        if (Boolean.parseBoolean(request.getParameter("enableAudienceRestriction"))) {
+            String audiencesCountParameter = request.getParameter("audiencePropertyCounter");
+            if (IdentityUtil.isNotBlank(audiencesCountParameter)) {
+                int audiencesCount = Integer.parseInt(audiencesCountParameter);
+                String[] audiences = request.getParameterValues("audiencePropertyName");
+                if (OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)) {
                     app.setAudiences(audiences);
-			    }
-		    }
-	    }
+                }
+            }
+        }
         app.setPkceMandatory(pkceMandatory);
 		app.setPkceSupportPlain(pkceSupportPlain);
 
@@ -148,7 +139,7 @@ if (qpplicationComponentFound) {
     location.href = '../application/configure-service-provider.jsp?action=update&display=oauthapp&spName=<%=Encode.forUriComponent(spName)%>&oauthapp=<%=Encode.forUriComponent(consumerApp.getOauthConsumerKey())%>';
 <% } else { %>
     location.href = '../application/configure-service-provider.jsp?display=oauthapp&spName=<%=Encode.forUriComponent(spName)%>&action=cancel';
-<% } 
+<% }
 } else {%>
     location.href = 'index.jsp';
 <% } %>

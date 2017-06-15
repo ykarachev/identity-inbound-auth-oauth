@@ -30,7 +30,7 @@ public class OAuthConsumerAppDTO {
     private boolean pkceSupportPlain;
     private boolean pkceMandatory;
     private String state;
-    private String audiences = "";
+    private String[] audiences;
 
     public String getApplicationName() {
         return applicationName;
@@ -114,11 +114,11 @@ public class OAuthConsumerAppDTO {
         return state;
     }
 
-    public String getAudiences() {
+    public String[] getAudiences() {
         return audiences;
     }
 
-    public void setAudiences(String audiences) {
+    public void setAudiences(String[] audiences) {
         if(audiences != null) {
             this.audiences = audiences;
         }

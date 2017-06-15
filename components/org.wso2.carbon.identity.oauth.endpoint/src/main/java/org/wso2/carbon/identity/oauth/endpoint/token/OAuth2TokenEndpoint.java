@@ -175,12 +175,13 @@ public class OAuth2TokenEndpoint {
             try {
                 oauthRequest = new CarbonOAuthTokenRequest(httpRequest);
             } catch (OAuthProblemException e) {
-                boolean isInputError = false;
+                /*Since oltu library sends OAthProblemException upon real exception and input errors we need to show input errors when debugging
+                  and need to show the error logs when real exception thrown
+                  */
                 if (OAuthError.TokenResponse.INVALID_REQUEST.equalsIgnoreCase(e.getError()) || OAuthError.TokenResponse.UNSUPPORTED_GRANT_TYPE.equalsIgnoreCase(e.getError())) {
-                    isInputError = true;
-                }
-                if (isInputError) {
-                    log.error("Error while creating the Carbon OAuth token request:" + e.getDescription());
+                    if (log.isDebugEnabled()) {
+                        log.debug("Invalid request or unsupported grant type:" + e.getError() + ", description: " + e.getDescription());
+                    }
                 } else {
                     log.error("Error while creating the Carbon OAuth token request", e);
                 }

@@ -140,7 +140,7 @@ public class AccessTokenIssuer {
                             tokenReqDTO.getClientId());
                     tokenRespDTO = handleError(
                             OAuthError.TokenResponse.INVALID_REQUEST,
-                            "Multiple Client Authentication Methods used for authenticating a client", tokenReqDTO);
+                            "Multiple Client Authentication Methods used for authenticating the client.", tokenReqDTO);
                     setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
                     triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
                     return tokenRespDTO;
@@ -151,10 +151,10 @@ public class AccessTokenIssuer {
 
         if (authzGrantHandler == null) {
             if (log.isDebugEnabled()) {
-                log.debug("Unsupported grant type for client Id = " + tokenReqDTO.getClientId());
+                log.debug("Unsupported grant type for client Id : " + tokenReqDTO.getClientId());
             }
             tokenRespDTO = handleError(OAuthError.TokenResponse.UNSUPPORTED_GRANT_TYPE,
-                    "Unsupported grant type", tokenReqDTO);
+                    "Unsupported grant type " + grantType + "is used.", tokenReqDTO);
             setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
             triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
             return tokenRespDTO;

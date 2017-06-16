@@ -68,6 +68,8 @@ import java.util.*;
 public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
 
     private static Log log = LogFactory.getLog(SAML2BearerGrantHandler.class);
+    private static final String SAMLSSO_AUTHENTICATOR = "samlsso";
+
     SAMLSignatureProfileValidator profileValidator = null;
 
     @Override
@@ -195,7 +197,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             try {
                 identityProvider = IdentityProviderManager.getInstance().
                         getIdPByAuthenticatorPropertyValue("IdPEntityId",
-                                assertion.getIssuer().getValue(), tenantDomain, false);
+                                assertion.getIssuer().getValue(), tenantDomain, SAMLSSO_AUTHENTICATOR, false);
                 // IF Federated IDP not found get the resident IDP and check,
                 // resident IDP entityID == issuer
                 if (identityProvider != null) {

@@ -441,8 +441,8 @@ public class EndpointUtil {
         }
         if (request.getParameterMap() != null) {
             Map<String, String[]> map = request.getParameterMap();
-            for (String key : map.keySet()) {
-                if (map.get(key).length > 1) {
+            for (Map.Entry<String, String[]> entry : map.entrySet()) {
+                if (entry.getValue().length > 1) {
                     return false;
                 }
             }

@@ -410,8 +410,8 @@ public class AccessTokenIssuer {
     private void setResponseHeaders(OAuthTokenReqMessageContext tokReqMsgCtx,
                                     OAuth2AccessTokenRespDTO tokenRespDTO) {
 
-        if (tokReqMsgCtx.getProperty("RESPONSE_HEADERS") != null) {
-            tokenRespDTO.setResponseHeaders((ResponseHeader[]) tokReqMsgCtx.getProperty("RESPONSE_HEADERS"));
+        if (tokReqMsgCtx.getProperty(OAuthConstants.RESPONSE_HEADERS_PROPERTY) != null) {
+            tokenRespDTO.setResponseHeaders((ResponseHeader[]) tokReqMsgCtx.getProperty(OAuthConstants.RESPONSE_HEADERS_PROPERTY));
         }
     }
 }

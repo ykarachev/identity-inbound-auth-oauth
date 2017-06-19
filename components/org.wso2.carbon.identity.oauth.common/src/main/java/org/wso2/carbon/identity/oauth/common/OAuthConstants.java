@@ -106,6 +106,9 @@ public final class OAuthConstants {
     //Oauth Event Interceptor Proxy Name
     public static final String OAUTH_INTERCEPTOR_PROXY = "OauthDataInterceptorHandlerProxy";
 
+    public static final String RESPONSE_HEADERS_PROPERTY = "RESPONSE_HEADERS";
+
+
     //Constants used for multiple scopes
     public static final String OIDC_SCOPE_CONFIG_PATH = "oidc-scope-config.xml";
     public static final String SCOPE_RESOURCE_PATH = "/oidc";

@@ -360,7 +360,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         header.setValue(oldAccessToken.getAccessToken());
         respHeaders.add(header);
 
-        tokReqMsgCtx.addProperty("RESPONSE_HEADERS", respHeaders.toArray(
+        tokReqMsgCtx.addProperty(OAuthConstants.RESPONSE_HEADERS_PROPERTY, respHeaders.toArray(
                 new ResponseHeader[respHeaders.size()]));
 
         return tokenRespDTO;

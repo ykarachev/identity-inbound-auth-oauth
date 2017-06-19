@@ -15,7 +15,7 @@
  *   KIND, either express or implied.  See the License for the
  *   specific language governing permissions and limitations
  *   under the License.
- * 
+ *
  */
 
 package org.wso2.carbon.identity.oauth2.token.handlers.grant;
@@ -39,7 +39,6 @@ public abstract class AbstractValidator
 	}
 
 	/*
-
 	Custom grant type Validator implementations should  implement this method to add or remove
 	required, optional and not-allowed  parameters.
 	 */

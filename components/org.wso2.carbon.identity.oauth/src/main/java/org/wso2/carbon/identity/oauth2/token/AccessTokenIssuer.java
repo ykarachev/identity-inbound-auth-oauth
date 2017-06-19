@@ -139,8 +139,9 @@ public class AccessTokenIssuer {
                     log.debug("Multiple Client Authentication Methods used for client id : " +
                             tokenReqDTO.getClientId());
                     tokenRespDTO = handleError(
-                            OAuthConstants.OAuthError.TokenResponse.UNSUPPORTED_CLIENT_AUTHENTICATION_METHOD,
-                            "Unsupported Client Authentication Method!", tokenReqDTO);
+                            OAuthError.TokenResponse.INVALID_REQUEST,
+                            "Multiple Client Authentication Methods used for authenticating the client.",
+                            tokenReqDTO);
                     setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
                     triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
                     return tokenRespDTO;
@@ -148,6 +149,18 @@ public class AccessTokenIssuer {
                 authenticatorHandlerIndex = i;
             }
         }
+
+        if (authzGrantHandler == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("Unsupported grant type for client Id : " + tokenReqDTO.getClientId());
+            }
+            tokenRespDTO = handleError(OAuthError.TokenResponse.UNSUPPORTED_GRANT_TYPE,
+                    "Unsupported grant type " + grantType + "is used.", tokenReqDTO);
+            setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
+            triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
+            return tokenRespDTO;
+        }
+
         if (authenticatorHandlerIndex < 0 && authzGrantHandler.isConfidentialClient()) {
             log.debug("Confidential client cannot be authenticated for client id : " +
                     tokenReqDTO.getClientId());
@@ -179,6 +192,7 @@ public class AccessTokenIssuer {
             triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
             return tokenRespDTO;
         }
+
         if (!authzGrantHandler.isOfTypeApplicationUser()) {
             tokReqMsgCtx.setAuthorizedUser(oAuthAppDO.getUser());
         }

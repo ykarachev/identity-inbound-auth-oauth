@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.as.response.OAuthASResponse;
 import org.apache.oltu.oauth2.as.response.OAuthASResponse.OAuthTokenResponseBuilder;
 import org.apache.oltu.oauth2.common.OAuth;
+import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
@@ -63,6 +64,7 @@ public class OAuth2TokenEndpoint {
 
     private static final Log log = LogFactory.getLog(OAuth2TokenEndpoint.class);
     public static final String BEARER = "Bearer";
+    private static final String SQL_ERROR = "sql_error";
 
     @POST
     @Path("/")
@@ -168,66 +170,53 @@ public class OAuth2TokenEndpoint {
                     return handleBasicAuthFailure();
                 }
             }
+            CarbonOAuthTokenRequest oauthRequest = null;
 
             try {
-                CarbonOAuthTokenRequest oauthRequest = new CarbonOAuthTokenRequest(httpRequest);
-                // exchange the access token for the authorization grant.
-                OAuth2AccessTokenRespDTO oauth2AccessTokenResp = getAccessToken(oauthRequest);
-                // if there BE has returned an error
-                if (oauth2AccessTokenResp.getErrorMsg() != null) {
-                    // if there is an auth failure, HTTP 401 Status Code should be sent back to the client.
-                    if (OAuth2ErrorCodes.INVALID_CLIENT.equals(oauth2AccessTokenResp.getErrorCode())) {
-                        return handleBasicAuthFailure();
-                    } else if ("sql_error".equals(oauth2AccessTokenResp.getErrorCode())) {
-                        return handleSQLError();
-                    } else if (OAuth2ErrorCodes.SERVER_ERROR.equals(oauth2AccessTokenResp.getErrorCode())) {
-                        return handleServerError();
-                    } else {
-                        // Otherwise send back HTTP 400 Status Code
-                        OAuthResponse.OAuthErrorResponseBuilder oAuthErrorResponseBuilder = OAuthASResponse
-                                .errorResponse(HttpServletResponse.SC_BAD_REQUEST)
-                                .setError(oauth2AccessTokenResp.getErrorCode())
-                                .setErrorDescription(oauth2AccessTokenResp.getErrorMsg());
-                        OAuthResponse response = oAuthErrorResponseBuilder.buildJSONMessage();
-
-                        ResponseHeader[] headers = oauth2AccessTokenResp.getResponseHeaders();
-                        ResponseBuilder respBuilder = Response
-                                .status(response.getResponseStatus());
-
-                        if (headers != null && headers.length > 0) {
-                            for (int i = 0; i < headers.length; i++) {
-                                if (headers[i] != null) {
-                                    respBuilder.header(headers[i].getKey(), headers[i].getValue());
-                                }
-                            }
-                        }
-
-                        return respBuilder.entity(response.getBody()).build();
+                oauthRequest = new CarbonOAuthTokenRequest(httpRequest);
+            } catch (OAuthProblemException e) {
+                /*Since oltu library sends OAthProblemException upon real exception and input errors we need to show
+                  input errors when debugging and need to show the error logs when real exception thrown
+                  */
+                if (OAuthError.TokenResponse.INVALID_REQUEST.equalsIgnoreCase(e.getError()) ||
+                        OAuthError.TokenResponse.UNSUPPORTED_GRANT_TYPE.equalsIgnoreCase(e.getError())) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Invalid request or unsupported grant type: " + e.getError() + ", description: " +
+                                e.getDescription());
                     }
                 } else {
-                    OAuthTokenResponseBuilder oAuthRespBuilder = OAuthASResponse
-                            .tokenResponse(HttpServletResponse.SC_OK)
-                            .setAccessToken(oauth2AccessTokenResp.getAccessToken())
-                            .setRefreshToken(oauth2AccessTokenResp.getRefreshToken())
-                            .setExpiresIn(Long.toString(oauth2AccessTokenResp.getExpiresIn()))
-                            .setTokenType(BEARER);
-                    oAuthRespBuilder.setScope(oauth2AccessTokenResp.getAuthorizedScopes());
+                    log.error("Error while creating the Carbon OAuth token request", e);
+                }
+                OAuthResponse res = OAuthASResponse
+                        .errorResponse(HttpServletResponse.SC_BAD_REQUEST).error(e)
+                        .buildJSONMessage();
+                return Response.status(res.getResponseStatus()).entity(res.getBody()).build();
+            }
 
-                    // OpenID Connect ID token
-                    if (oauth2AccessTokenResp.getIDToken() != null) {
-                        oAuthRespBuilder.setParam(OAuthConstants.ID_TOKEN,
-                                oauth2AccessTokenResp.getIDToken());
-                    }
-                    OAuthResponse response = oAuthRespBuilder.buildJSONMessage();
+            // exchange the access token for the authorization grant.
+            OAuth2AccessTokenRespDTO oauth2AccessTokenResp = getAccessToken(oauthRequest);
+            // if there BE has returned an error
+            if (oauth2AccessTokenResp.getErrorMsg() != null) {
+                // if there is an auth failure, HTTP 401 Status Code should be sent back to the client.
+                if (OAuth2ErrorCodes.INVALID_CLIENT.equals(oauth2AccessTokenResp.getErrorCode())) {
+                    return handleBasicAuthFailure();
+                } else if (SQL_ERROR.equals(oauth2AccessTokenResp.getErrorCode())) {
+                    return handleSQLError();
+                } else if (OAuth2ErrorCodes.SERVER_ERROR.equals(oauth2AccessTokenResp.getErrorCode())) {
+                    return handleServerError();
+                } else {
+                    // Otherwise send back HTTP 400 Status Code
+                    OAuthResponse.OAuthErrorResponseBuilder oAuthErrorResponseBuilder = OAuthASResponse
+                            .errorResponse(HttpServletResponse.SC_BAD_REQUEST)
+                            .setError(oauth2AccessTokenResp.getErrorCode())
+                            .setErrorDescription(oauth2AccessTokenResp.getErrorMsg());
+                    OAuthResponse response = oAuthErrorResponseBuilder.buildJSONMessage();
+
                     ResponseHeader[] headers = oauth2AccessTokenResp.getResponseHeaders();
                     ResponseBuilder respBuilder = Response
-                            .status(response.getResponseStatus())
-                            .header(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
-                                    OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE)
-                            .header(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
-                                    OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
+                            .status(response.getResponseStatus());
 
-                    if (headers != null && headers.length > 0) {
+                    if (headers != null) {
                         for (int i = 0; i < headers.length; i++) {
                             if (headers[i] != null) {
                                 respBuilder.header(headers[i].getKey(), headers[i].getValue());
@@ -237,15 +226,39 @@ public class OAuth2TokenEndpoint {
 
                     return respBuilder.entity(response.getBody()).build();
                 }
+            } else {
+                OAuthTokenResponseBuilder oAuthRespBuilder = OAuthASResponse
+                        .tokenResponse(HttpServletResponse.SC_OK)
+                        .setAccessToken(oauth2AccessTokenResp.getAccessToken())
+                        .setRefreshToken(oauth2AccessTokenResp.getRefreshToken())
+                        .setExpiresIn(Long.toString(oauth2AccessTokenResp.getExpiresIn()))
+                        .setTokenType(BEARER);
+                oAuthRespBuilder.setScope(oauth2AccessTokenResp.getAuthorizedScopes());
 
-            } catch (OAuthProblemException e) {
-                log.error("Error while creating the Carbon OAuth token request", e);
-                OAuthResponse res = OAuthASResponse
-                        .errorResponse(HttpServletResponse.SC_BAD_REQUEST).error(e)
-                        .buildJSONMessage();
-                return Response.status(res.getResponseStatus()).entity(res.getBody()).build();
+                // OpenID Connect ID token
+                if (oauth2AccessTokenResp.getIDToken() != null) {
+                    oAuthRespBuilder.setParam(OAuthConstants.ID_TOKEN,
+                            oauth2AccessTokenResp.getIDToken());
+                }
+                OAuthResponse response = oAuthRespBuilder.buildJSONMessage();
+                ResponseHeader[] headers = oauth2AccessTokenResp.getResponseHeaders();
+                ResponseBuilder respBuilder = Response
+                        .status(response.getResponseStatus())
+                        .header(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
+                                OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE)
+                        .header(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
+                                OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
+
+                if (headers != null && headers.length > 0) {
+                    for (int i = 0; i < headers.length; i++) {
+                        if (headers[i] != null) {
+                            respBuilder.header(headers[i].getKey(), headers[i].getValue());
+                        }
+                    }
+                }
+
+                return respBuilder.entity(response.getBody()).build();
             }
-
         } finally {
             PrivilegedCarbonContext.endTenantFlow();
         }

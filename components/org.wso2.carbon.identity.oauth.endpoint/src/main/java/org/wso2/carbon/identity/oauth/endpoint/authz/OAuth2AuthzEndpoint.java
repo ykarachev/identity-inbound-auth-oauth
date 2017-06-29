@@ -34,10 +34,8 @@ import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationResultCacheEntry;
-import org.wso2.carbon.identity.application.authentication.framework.config.model.AuthenticatorConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthHistory;
 import org.wso2.carbon.identity.application.authentication.framework.context.SessionContext;
-import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedIdPData;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticationResult;
 import org.wso2.carbon.identity.application.authentication.framework.model.CommonAuthRequestWrapper;
@@ -82,11 +80,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -373,6 +369,7 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromConsent != null) { // Consent submission
+                sessionDataCacheEntry = resultFromConsent;
                 long authTime = 0;
                 Cookie cookie = FrameworkUtils.getAuthCookie(request);
                 if (cookie != null) {
@@ -383,8 +380,9 @@ public class OAuth2AuthzEndpoint {
                     } else {
                         authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
                     }
+                    sessionDataCacheEntry.getParamMap()
+                            .put(FrameworkConstants.SESSION_DATA_KEY, new String[] { sessionContextKey });
                 }
-                sessionDataCacheEntry = resultFromConsent;
                 OAuth2Parameters oauth2Params = sessionDataCacheEntry.getoAuth2Parameters();
                 if (authTime > 0) {
                     oauth2Params.setAuthTime(authTime);
@@ -755,6 +753,13 @@ public class OAuth2AuthzEndpoint {
         authorizationGrantCacheEntry.setEssentialClaims(
                 sessionDataCacheEntry.getoAuth2Parameters().getEssentialClaims());
         authorizationGrantCacheEntry.setAuthTime(sessionDataCacheEntry.getAuthTime());
+        String[] sessionIds = sessionDataCacheEntry.getParamMap().get(FrameworkConstants.SESSION_DATA_KEY);
+        if (sessionIds != null && sessionIds.length > 0) {
+            String commonAuthSessionId = sessionIds[0];
+            SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(commonAuthSessionId);
+            String selectedAcr = sessionContext.getSessionAuthHistory().getSelectedAcrValue();
+            authorizationGrantCacheEntry.setSelectedAcrValue(selectedAcr);
+        }
 
         String[] amrEntries = sessionDataCacheEntry.getParamMap().get("amr");
         if(amrEntries != null) {
@@ -1359,9 +1364,10 @@ public class OAuth2AuthzEndpoint {
      */
     private void associateAuthenticationHistory(SessionDataCacheEntry resultFromLogin, Cookie cookie) {
         SessionContext sessionContext = getSessionContext(cookie);
-        if (sessionContext != null && sessionContext.getAuthenticationStepHistory() != null) {
+        if (sessionContext != null && sessionContext.getSessionAuthHistory() != null
+                && sessionContext.getSessionAuthHistory().getHistory() != null) {
             List<String> authMethods = new ArrayList<>();
-            for(AuthHistory authHistory: sessionContext.getAuthenticationStepHistory()) {
+            for (AuthHistory authHistory : sessionContext.getSessionAuthHistory().getHistory()) {
                 authMethods.add(authHistory.toTranslatableString());
             }
             resultFromLogin.getParamMap().put("amr", authMethods.toArray(new String[authMethods.size()]));

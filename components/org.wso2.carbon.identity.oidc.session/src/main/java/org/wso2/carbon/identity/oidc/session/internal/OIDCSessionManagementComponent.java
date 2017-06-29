@@ -22,6 +22,12 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.eclipse.equinox.http.helper.ContextPathServletAdaptor;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.http.HttpService;
 import org.wso2.carbon.identity.core.KeyProviderService;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
@@ -33,20 +39,16 @@ import org.wso2.carbon.user.core.service.RealmService;
 import javax.servlet.Servlet;
 
 /**
- * @scr.component name="identity.oidc.session.component" immediate="true"
- * @scr.reference name="osgi.httpservice" interface="org.osgi.service.http.HttpService"
- * cardinality="1..1" policy="dynamic" bind="setHttpService"
- * unbind="unsetHttpService"
- * @scr.reference name="user.realmservice.default"
- * interface="org.wso2.carbon.user.core.service.RealmService" cardinality="1..1"
- * policy="dynamic" bind="setRealmService" unbind="unsetRealmService"
- * @scr.reference name="private.key.provider" interface="org.wso2.carbon.identity.core.KeyProviderService"
- * cardinality="0..1" policy="dynamic" bind="setKeyProvider"  unbind="unsetKeyProvider"
  */
+@Component(
+        name = "identity.oidc.session.component",
+        immediate = true
+)
 public class OIDCSessionManagementComponent {
     private static final Log log = LogFactory.getLog(OIDCSessionManagementComponent.class);
     private KeyProviderService keyProviderService;
 
+    @Activate
     protected void activate(ComponentContext context) {
 
         HttpService httpService = OIDCSessionManagementComponentServiceHolder.getHttpService();
@@ -81,6 +83,7 @@ public class OIDCSessionManagementComponent {
         }
     }
 
+    @Deactivate
     protected void deactivate(ComponentContext context) {
 
         if (log.isDebugEnabled()) {
@@ -88,6 +91,13 @@ public class OIDCSessionManagementComponent {
         }
     }
 
+    @Reference(
+            name = "osgi.httpservice",
+            service = HttpService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetHttpService"
+    )
     protected void setHttpService(HttpService httpService) {
 
         if (log.isDebugEnabled()) {
@@ -103,6 +113,14 @@ public class OIDCSessionManagementComponent {
         }
         OIDCSessionManagementComponentServiceHolder.setHttpService(null);
     }
+
+    @Reference(
+            name = "user.realmservice.default",
+            service = RealmService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetRealmService"
+    )
     protected void setRealmService(RealmService realmService) {
 
         if (log.isDebugEnabled()) {
@@ -119,6 +137,13 @@ public class OIDCSessionManagementComponent {
         OIDCSessionManagementComponentServiceHolder.setRealmService(null);
     }
 
+    @Reference(
+            name = "private.key.provider",
+            service = KeyProviderService.class,
+            cardinality = ReferenceCardinality.OPTIONAL,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetKeyProvider"
+    )
     protected void setKeyProvider(KeyProviderService keyProvider) {
         this.keyProviderService = keyProvider;
         OIDCSessionManagementComponentServiceHolder.setKeyProvider(keyProvider);

@@ -47,6 +47,8 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     private LinkedHashSet acrValue;
 
+    private String selectedAcrValue;
+
     private List<String> amrList = new ArrayList<>();
 
     private String essentialClaims;
@@ -67,6 +69,14 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     public void setAcrValue(LinkedHashSet acrValue) {
         this.acrValue = acrValue;
+    }
+
+    public String getSelectedAcrValue() {
+        return selectedAcrValue;
+    }
+
+    public void setSelectedAcrValue(String selectedAcrValue) {
+        this.selectedAcrValue = selectedAcrValue;
     }
 
     public long getAuthTime() {

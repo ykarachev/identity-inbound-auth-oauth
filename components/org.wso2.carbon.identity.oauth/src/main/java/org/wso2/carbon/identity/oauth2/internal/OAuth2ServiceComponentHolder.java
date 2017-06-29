@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.oauth2.internal;
 
+import org.wso2.carbon.identity.application.authentication.framework.AuthenticationMethodNameTranslator;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.core.KeyProviderService;
 import org.wso2.carbon.registry.core.service.RegistryService;
@@ -31,6 +32,7 @@ public class OAuth2ServiceComponentHolder {
     private static boolean pkceEnabled = false;
     private static RegistryService registryService;
     private static KeyProviderService keyProvider;
+    private static AuthenticationMethodNameTranslator authenticationMethodNameTranslator;
 
     private OAuth2ServiceComponentHolder(){
 
@@ -70,11 +72,20 @@ public class OAuth2ServiceComponentHolder {
         OAuth2ServiceComponentHolder.registryService = registryService;
     }
 
-    /*package private*/ static void setKeyProvider(KeyProviderService keyProvider) {
+    public static void setKeyProvider(KeyProviderService keyProvider) {
         OAuth2ServiceComponentHolder.keyProvider = keyProvider;
     }
 
     public static KeyProviderService getKeyProvider() throws Exception {
         return keyProvider;
+    }
+
+    public static AuthenticationMethodNameTranslator getAuthenticationMethodNameTranslator() {
+        return authenticationMethodNameTranslator;
+    }
+
+    public static void setAuthenticationMethodNameTranslator(
+            AuthenticationMethodNameTranslator authenticationMethodNameTranslator) {
+        OAuth2ServiceComponentHolder.authenticationMethodNameTranslator = authenticationMethodNameTranslator;
     }
 }

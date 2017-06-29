@@ -131,7 +131,6 @@ public class OAuthServerConfiguration {
     private Map<String, ResponseTypeHandler> supportedResponseTypes;
     private Map<String, String> supportedResponseTypeValidatorNames = new HashMap<>();
     private Map<String, Class<? extends OAuthValidator<HttpServletRequest>>> supportedResponseTypeValidators;
-    private Map<String, List<String>> amrInternalToExternalMap;
     private String[] supportedClaims = null;
     private Map<String, Properties> supportedClientAuthHandlerData = new HashMap<>();
     private List<ClientAuthenticationHandler> supportedClientAuthHandlers;
@@ -260,8 +259,6 @@ public class OAuthServerConfiguration {
 
         // parse identity OAuth 2.0 token generator
         parseOAuthTokenIssuerConfig(oauthElem);
-
-        parseOAuthAmrMappingConfig(oauthElem);
     }
 
     public Set<OAuthCallbackHandlerMetaData> getCallbackHandlerMetaData() {
@@ -1228,47 +1225,6 @@ public class OAuthServerConfiguration {
         }
     }
 
-    private void parseOAuthAmrMappingConfig(OMElement oauthConfigElem) {
-        OMElement amrMapElement = oauthConfigElem
-                .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OAUTH2_AMR_MAPPINGS));
-        if (amrMapElement != null) {
-            amrInternalToExternalMap = new HashMap<>();
-            Iterator<OMElement> children = amrMapElement.getChildElements();
-            for (int i = 0; children.hasNext(); i++) {
-                OMElement child = children.next();
-                if (child.getLocalName() != "Entry") {
-                    log.error("Configuration Error: Unknown child entry found in " + ConfigElements.OPENID_CONNECT + "/"
-                            + ConfigElements.OAUTH2_AMR_MAPPINGS + " :" + child.getLocalName() + ". Expected: "
-                            + "Entry");
-                    continue;
-                }
-                OMElement key = child.getFirstChildWithName(getQNameWithIdentityNS("Key"));
-                if (key == null) {
-                    log.error(
-                            "Configuration Error: No Key found for map entry in " + ConfigElements.OPENID_CONNECT + "/"
-                                    + ConfigElements.OAUTH2_AMR_MAPPINGS + " in map entry: " + i);
-                    continue;
-                }
-                OMElement value = child.getFirstChildWithName(getQNameWithIdentityNS("Value"));
-                if (value == null) {
-                    log.error("Configuration Error: No Value found for map entry in " + ConfigElements.OPENID_CONNECT
-                            + "/" + ConfigElements.OAUTH2_AMR_MAPPINGS + " in map entry: " + i);
-                    continue;
-                }
-                if (value.getAttribute(NIL_QNAME) != null) {
-                    amrInternalToExternalMap.put(key.getText().trim(), Collections.<String>emptyList());
-                } else {
-                    String[] valuesArray = value.getText().split(",");
-                    List<String> values = new ArrayList<>();
-                    for (String s : valuesArray) {
-                        values.add(s.trim());
-                    }
-                    amrInternalToExternalMap.put(key.getText().trim(), values);
-                }
-            }
-        }
-    }
-
     private void parseSupportedGrantTypesConfig(OMElement oauthConfigElem) {
 
         OMElement supportedGrantTypesElem =
@@ -1624,10 +1580,6 @@ public class OAuthServerConfiguration {
         this.oAuth2ScopeValidator = oAuth2ScopeValidator;
     }
 
-    public Map<String, List<String>> getAmrInternalToExternalMap() {
-        return amrInternalToExternalMap;
-    }
-
     /**
      * Localpart names for the OAuth configuration in identity.xml.
      */
@@ -1647,7 +1599,6 @@ public class OAuthServerConfiguration {
         public static final String OIDC_DISCOVERY_EP_URL = "OIDCDiscoveryEPUrl";
         public static final String OAUTH2_ERROR_PAGE_URL = "OAuth2ErrorPage";
         public static final String OIDC_CONSENT_PAGE_URL = "OIDCConsentPage";
-        public static final String OAUTH2_AMR_MAPPINGS = "AmrMappings";
 
         // JWT Generator
         public static final String AUTHORIZATION_CONTEXT_TOKEN_GENERATION = "AuthorizationContextTokenGeneration";

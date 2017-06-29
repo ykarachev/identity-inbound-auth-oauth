@@ -118,9 +118,7 @@ public class OAuth2ScopeService {
                 throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
                         ERROR_CODE_FAILED_TO_GET_ALL_SCOPES, null, e);
             }
-        }
-
-        else if (sortOrder != null && sortBy != null) {
+        } else if (sortOrder != null && sortBy != null) {
             throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
                     ERROR_CODE_SORTING_NOT_SUPPORTED, "");
         }
@@ -141,7 +139,6 @@ public class OAuth2ScopeService {
     }
 
     /**
-     *
      * @param scopeID Scope ID of the scope which need to get retrieved
      * @return Retrieved Scope
      * @throws IdentityOAuth2ScopeException
@@ -158,12 +155,14 @@ public class OAuth2ScopeService {
         if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
             scopeFromCache = scopeCache.getValueFromCache(scopeID);
         }
-        if(scopeFromCache == null) {
+        if (scopeFromCache == null) {
             try {
                 scope = scopeMgtDAO.getScopeByID(scopeID, Oauth2ScopeUtils.getTenantID());
-                scopeCache.addToCache(scopeID, scope);
-                if (log.isDebugEnabled()) {
-                    log.debug("Scope is added to the cache.");
+                if (scope != null) {
+                    scopeCache.addToCache(scopeID, scope);
+                    if (log.isDebugEnabled()) {
+                        log.debug("Scope is added to the cache.");
+                    }
                 }
 
             } catch (IdentityOAuth2Exception e) {
@@ -244,7 +243,7 @@ public class OAuth2ScopeService {
      * Update the scope of the given scope ID
      *
      * @param updatedScope details of updated scope
-     * @param scopeID Scope ID of the scope which need to get updated
+     * @param scopeID      Scope ID of the scope which need to get updated
      * @throws IdentityOAuth2ScopeException
      */
     public void updateScopeByID(Scope updatedScope, String scopeID) throws IdentityOAuth2ScopeException {
@@ -271,9 +270,9 @@ public class OAuth2ScopeService {
     /**
      * List scopes with pagination and filtering
      *
-     * @param filterString     Filter the scope list
-     * @param startIndex Start Index of the result set to enforce pagination
-     * @param count      Number of elements in the result set to enforce pagination
+     * @param filterString Filter the scope list
+     * @param startIndex   Start Index of the result set to enforce pagination
+     * @param count        Number of elements in the result set to enforce pagination
      * @return List of available scopes
      * @throws IdentityOAuth2ScopeException
      */
@@ -322,7 +321,7 @@ public class OAuth2ScopeService {
                     ERROR_CODE_FAILED_TO_FILTER_UNRECOGNIZE_ATTRIBUTE, null);
         }
 
-        if(filterAttribute.equals("name")) {
+        if (filterAttribute.equals("name")) {
             filterAttribute = "NAME";
         } else {
             throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
@@ -331,7 +330,7 @@ public class OAuth2ScopeService {
 
 
         try {
-            scopes = scopeMgtDAO.getScopesWithPaginationAndFilter(filterAttribute, filterValue,startIndex, count, Oauth2ScopeUtils.getTenantID());
+            scopes = scopeMgtDAO.getScopesWithPaginationAndFilter(filterAttribute, filterValue, startIndex, count, Oauth2ScopeUtils.getTenantID());
         } catch (IdentityOAuth2Exception e) {
             throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
                     ERROR_CODE_FAILED_TO_GET_ALL_SCOPES_PAGINATION, e);

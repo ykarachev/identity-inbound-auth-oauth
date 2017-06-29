@@ -45,7 +45,8 @@ public class ScopeMgtDAO {
 
     private static final ScopeMgtDAO scopeMgtDAO = new ScopeMgtDAO();
 
-    private ScopeMgtDAO(){}
+    private ScopeMgtDAO() {
+    }
 
     public static ScopeMgtDAO getInstance() {
         return scopeMgtDAO;
@@ -54,7 +55,7 @@ public class ScopeMgtDAO {
     /**
      * Add a scope
      *
-     * @param scope Scope
+     * @param scope    Scope
      * @param tenantID tenant ID
      * @throws IdentityOAuth2Exception
      */
@@ -171,8 +172,8 @@ public class ScopeMgtDAO {
     /**
      * Get Scopes with pagination
      *
-     * @param offset start index of the result set
-     * @param limit number of elements of the result set
+     * @param offset   start index of the result set
+     * @param limit    number of elements of the result set
      * @param tenantID tenant ID
      * @return available scope list
      * @throws IdentityOAuth2Exception
@@ -220,7 +221,7 @@ public class ScopeMgtDAO {
                 scopes.add(scope);
             }
 
-            for(Scope scope : scopes) {
+            for (Scope scope : scopes) {
                 List<String> bindings = new ArrayList<>();
                 preparedStatement = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BINDINGS);
                 preparedStatement.setString(1, scope.getId());
@@ -252,11 +253,11 @@ public class ScopeMgtDAO {
     /**
      * Get Scopes with pagination and filter
      *
-     * @param attributeName filter attribute
+     * @param attributeName  filter attribute
      * @param attributeValue filter attribute value
-     * @param offset start index of the result set
-     * @param limit number of elements of the result set
-     * @param tenantID tenant ID
+     * @param offset         start index of the result set
+     * @param limit          number of elements of the result set
+     * @param tenantID       tenant ID
      * @return available scope list
      * @throws IdentityOAuth2Exception
      */
@@ -307,7 +308,7 @@ public class ScopeMgtDAO {
                 scopes.add(scope);
             }
 
-            for(Scope scope : scopes) {
+            for (Scope scope : scopes) {
                 List<String> bindings = new ArrayList<>();
                 preparedStatement = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BINDINGS);
                 preparedStatement.setString(1, scope.getId());
@@ -339,7 +340,7 @@ public class ScopeMgtDAO {
     /**
      * Get a scope by ID
      *
-     * @param scopeID scope ID of the scope
+     * @param scopeID  scope ID of the scope
      * @param tenantID tenant ID
      * @return Scope for the provided ID
      * @throws IdentityOAuth2Exception
@@ -364,10 +365,16 @@ public class ScopeMgtDAO {
             String description = null;
             List<String> bindings = new ArrayList<>();
 
-            if (rs.next()) {
-                scopeName = rs.getString(2);
-                description = rs.getString(3);
+            while (rs.next()) {
+                if (StringUtils.isBlank(scopeName)) {
+                    scopeName = rs.getString(2);
+                }
+                if (StringUtils.isBlank(description)) {
+                    description = rs.getString(3);
+                }
                 bindings.add(rs.getString(4));
+            }
+            if (StringUtils.isNotBlank(scopeName) && StringUtils.isNotBlank(description)) {
                 scope = new Scope(scopeID, scopeName, description, bindings);
             }
             return scope;
@@ -393,7 +400,7 @@ public class ScopeMgtDAO {
      * Get scope ID for the provided scope name
      *
      * @param scopeName name of the scope
-     * @param tenantID tenant ID
+     * @param tenantID  tenant ID
      * @return scope ID for the provided scope name
      * @throws IdentityOAuth2Exception
      */
@@ -438,7 +445,7 @@ public class ScopeMgtDAO {
     /**
      * Delete a scope of the provided scope ID
      *
-     * @param scopeID scope ID
+     * @param scopeID  scope ID
      * @param tenantID tenant ID
      * @throws IdentityOAuth2Exception
      */
@@ -477,7 +484,7 @@ public class ScopeMgtDAO {
      * Update a scope of the provided scope ID
      *
      * @param updatedScope details of the updated scope
-     * @param tenantID tenant ID
+     * @param tenantID     tenant ID
      * @throws IdentityOAuth2Exception
      */
     public void updateScopeByID(Scope updatedScope, int tenantID) throws IdentityOAuth2Exception {

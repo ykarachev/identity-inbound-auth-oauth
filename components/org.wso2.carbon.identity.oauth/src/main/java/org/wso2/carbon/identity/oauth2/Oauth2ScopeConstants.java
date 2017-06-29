@@ -42,8 +42,8 @@ public class Oauth2ScopeConstants {
         ERROR_CODE_FAILED_TO_FILTER_UNRECOGNIZE_OPERATION("18016", "Filter operation is not recognized"),
         ERROR_CODE_FAILED_TO_FILTER_UNRECOGNIZE_ATTRIBUTE("18017", "Filter attribute is not recognized"),
         ERROR_CODE_FAILED_TO_FILTER_INVALID_ATTRIBUTE("18018", "Given filter attribute is not supported."),
-        ERROR_CODE_SORTING_NOT_SUPPORTED("18019","Sorting is not supported."),
-        ERROR_CODE_BAD_REQUEST_NOT_SUPPORTED_LIST_PARAM("18020","Specified list querying param/s are not supported."),
+        ERROR_CODE_SORTING_NOT_SUPPORTED("18019", "Sorting is not supported."),
+        ERROR_CODE_BAD_REQUEST_NOT_SUPPORTED_LIST_PARAM("18020", "Specified list querying param/s are not supported."),
         ERROR_CODE_UNEXPECTED("18021", "Unexpected error");
 
         private final String code;

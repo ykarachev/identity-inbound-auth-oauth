@@ -21,7 +21,7 @@ import org.apache.cxf.jaxrs.impl.WebApplicationExceptionMapper;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
-public class ScopeEndpointExceptionMapper extends WebApplicationExceptionMapper{
+public class ScopeEndpointExceptionMapper extends WebApplicationExceptionMapper {
 
     public Response toResponse(WebApplicationException ex) {
 

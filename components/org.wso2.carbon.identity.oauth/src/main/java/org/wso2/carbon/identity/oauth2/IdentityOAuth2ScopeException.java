@@ -45,7 +45,7 @@ public class IdentityOAuth2ScopeException extends IdentityException {
         super(errorCode, message, throwable);
         this.setErrorCode(errorCode);
     }
-    
+
     public String getErrorDescription() {
 
         String errorDescription = this.getMessage();

@@ -19,32 +19,32 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.*;
 
 @Path("/scopes")
-@Consumes({ "application/json" })
-@Produces({ "application/json" })
+@Consumes({ "application/json", "application/xml" })
+@Produces({ "application/json", "application/xml" })
 @io.swagger.annotations.Api(value = "/scopes", description = "the scopes API")
 public class ScopesApi  {
 
    private final ScopesApiService delegate = ScopesApiServiceFactory.getScopesApi();
 
     @DELETE
-    @Path("/{id}")
-    @Consumes({ "application/json" })
-    @Produces({ "application/json" })
-    @io.swagger.annotations.ApiOperation(value = "Delete Scope\n", notes = "This API is used to delete scope by scope ID.\n", response = String.class)
+    @Path("/name/{scope_name}")
+    @Consumes({ "application/json", "application/xml" })
+    @Produces({ "application/json", "application/xml" })
+    @io.swagger.annotations.ApiOperation(value = "Deletes a Scope\n", notes = "This API is used to delete scope by scope name.\n", response = String.class)
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 204, message = "Successful deleted"),
         
         @io.swagger.annotations.ApiResponse(code = 500, message = "Server Error") })
 
-    public Response deleteScopeByID(@ApiParam(value = "scope ID of the scope which need to get deleted",required=true ) @PathParam("id") String id)
+    public Response deleteScope(@ApiParam(value = "scope name of the scope which need to get deleted",required=true ) @PathParam("scope_name") String scopeName)
     {
-    return delegate.deleteScopeByID(id);
+    return delegate.deleteScope(scopeName);
     }
     @GET
-    @Path("/{id}")
-    @Consumes({ "application/json" })
-    @Produces({ "application/json" })
-    @io.swagger.annotations.ApiOperation(value = "Get a Scope by Scope ID\n", notes = "This API is used to get a scope by given scope ID.\n", response = ScopeDTO.class)
+    @Path("/name/{scope_name}")
+    @Consumes({ "application/json", "application/xml" })
+    @Produces({ "application/json", "application/xml" })
+    @io.swagger.annotations.ApiOperation(value = "Returns a Scope by Scope Name\n", notes = "This API is used to get a scope by given scope name.\n", response = ScopeDTO.class)
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 200, message = "Successful Retrieved"),
         
@@ -52,15 +52,15 @@ public class ScopesApi  {
         
         @io.swagger.annotations.ApiResponse(code = 500, message = "Server Error") })
 
-    public Response getScopeByID(@ApiParam(value = "scope id of the scope which the details to be retrieved",required=true ) @PathParam("id") String id)
+    public Response getScope(@ApiParam(value = "scope name of the scope which the details to be retrieved",required=true ) @PathParam("scope_name") String scopeName)
     {
-    return delegate.getScopeByID(id);
+    return delegate.getScope(scopeName);
     }
     @GET
     
-    @Consumes({ "application/json" })
-    @Produces({ "application/json" })
-    @io.swagger.annotations.ApiOperation(value = "Get all available Scopes\n", notes = "This API is used to get all the available scopes.\n", response = ScopeDTO.class, responseContainer = "List")
+    @Consumes({ "application/json", "application/xml" })
+    @Produces({ "application/json", "application/xml" })
+    @io.swagger.annotations.ApiOperation(value = "Returns all available Scopes\n", notes = "This API is used to get all the available scopes.\n", response = ScopeDTO.class, responseContainer = "List")
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 200, message = "Successful Retrieved"),
         
@@ -68,18 +68,15 @@ public class ScopesApi  {
         
         @io.swagger.annotations.ApiResponse(code = 500, message = "Server Error") })
 
-    public Response getScopes(@ApiParam(value = "filter when retrieving all available scopes") @QueryParam("filter") String filter,
-    @ApiParam(value = "start index of the list of scopes to be retrieved") @QueryParam("startIndex") Integer startIndex,
-    @ApiParam(value = "a limited number of scopes to be retrieved") @QueryParam("count") Integer count,
-    @ApiParam(value = "parameter which based on sorting and retrieving available scopes") @QueryParam("sortBy") String sortBy,
-    @ApiParam(value = "sorting order used when sorting and retrieving available scopes") @QueryParam("sortOrder") String sortOrder)
+    public Response getScopes(@ApiParam(value = "start index of the list of scopes to be retrieved") @QueryParam("startIndex") Integer startIndex,
+    @ApiParam(value = "a limited number of scopes to be retrieved") @QueryParam("count") Integer count)
     {
-    return delegate.getScopes(filter,startIndex,count,sortBy,sortOrder);
+    return delegate.getScopes(startIndex,count);
     }
     @HEAD
-    @Path("/names/{name}")
-    @Consumes({ "application/json" })
-    @Produces({ "application/json" })
+    @Path("/name/{scope_name}")
+    @Consumes({ "application/json", "application/xml" })
+    @Produces({ "application/json", "application/xml" })
     @io.swagger.annotations.ApiOperation(value = "Check Scope Existance using Scope Name\n", notes = "This API is used to check scope existance using scope name.\n", response = String.class)
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 200, message = "Scope Exists"),
@@ -94,11 +91,11 @@ public class ScopesApi  {
     }
     @POST
     
-    @Consumes({ "application/json" })
-    @Produces({ "application/json" })
-    @io.swagger.annotations.ApiOperation(value = "Register a Scope\n", notes = "This API is used to create a scope.\n", response = ScopeDTO.class)
+    @Consumes({ "application/json", "application/xml" })
+    @Produces({ "application/json", "application/xml" })
+    @io.swagger.annotations.ApiOperation(value = "Registers a Scope\n", notes = "This API is used to create a scope.\n", response = ScopeDTO.class)
     @io.swagger.annotations.ApiResponses(value = { 
-        @io.swagger.annotations.ApiResponse(code = 201, message = "Successful created"),
+        @io.swagger.annotations.ApiResponse(code = 201, message = "Successfully Created"),
         
         @io.swagger.annotations.ApiResponse(code = 400, message = "Bad Request"),
         
@@ -111,10 +108,10 @@ public class ScopesApi  {
     return delegate.registerScope(scope);
     }
     @PUT
-    @Path("/{id}")
-    @Consumes({ "application/json" })
-    @Produces({ "application/json" })
-    @io.swagger.annotations.ApiOperation(value = "Update a Scope\n", notes = "This API is used to update a scope by scope ID.\n", response = String.class)
+    @Path("/name/{scope_name}")
+    @Consumes({ "application/json", "application/xml" })
+    @Produces({ "application/json", "application/xml" })
+    @io.swagger.annotations.ApiOperation(value = "Updates a Scope\n", notes = "This API is used to update a scope by scope name.\n", response = ScopeDTO.class)
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 200, message = "Successful updated"),
         
@@ -122,10 +119,10 @@ public class ScopesApi  {
         
         @io.swagger.annotations.ApiResponse(code = 500, message = "Server Error") })
 
-    public Response updateScopeByID(@ApiParam(value = "updated scope" ,required=true ) ScopeDTO scope,
-    @ApiParam(value = "scope ID of the scope which need to get updated",required=true ) @PathParam("id") String id)
+    public Response updateScope(@ApiParam(value = "updated scope" ,required=true ) ScopeDTO scope,
+    @ApiParam(value = "scope name of the scope which need to get updated",required=true ) @PathParam("scope_name") String scopeName)
     {
-    return delegate.updateScopeByID(scope,id);
+    return delegate.updateScope(scope,scopeName);
     }
 }
 

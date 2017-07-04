@@ -19,166 +19,133 @@ package org.wso2.carbon.identity.oauth2;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.oauth.cache.OauthScopeCache;
-import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.cache.OAuthScopeCache;
+import org.wso2.carbon.identity.oauth.cache.OAuthScopeCacheKey;
 import org.wso2.carbon.identity.oauth2.bean.Scope;
 import org.wso2.carbon.identity.oauth2.dao.ScopeMgtDAO;
 import org.wso2.carbon.identity.oauth2.util.Oauth2ScopeUtils;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * OAuth2ScopeService use for scope handling
  */
 public class OAuth2ScopeService {
     //TODO get the instance inside the constructor
-    private static ScopeMgtDAO scopeMgtDAO;
-    private OauthScopeCache scopeCache = OauthScopeCache.getInstance();
+    private static ScopeMgtDAO scopeMgtDAO = new ScopeMgtDAO();
+    private OAuthScopeCache scopeCache = OAuthScopeCache.getInstance();
     private static final Log log = LogFactory.getLog(OAuth2ScopeService.class);
-
-    public OAuth2ScopeService() {
-        scopeMgtDAO = ScopeMgtDAO.getInstance();
-    }
 
     /**
      * Register a scope with the bindings
      *
      * @param scope details of the scope to be registered
-     * @throws IdentityOAuth2ScopeException
+     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeClientException
      */
-    public Scope registerScope(Scope scope) throws IdentityOAuth2ScopeException {
+    public Scope registerScope(Scope scope)
+            throws IdentityOAuth2ScopeServerException, IdentityOAuth2ScopeClientException {
         int tenantID = Oauth2ScopeUtils.getTenantID();
 
         // check whether the scope name is provided
         if (StringUtils.isBlank(scope.getName())) {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
                     ERROR_CODE_BAD_REQUEST_SCOPE_NAME, null);
         }
 
         // check whether the scope description is provided
         if (StringUtils.isBlank(scope.getDescription())) {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
                     ERROR_CODE_BAD_REQUEST_SCOPE_DESCRIPTION, null);
         }
-        try {
-            // check whether a scope exists with the provided scope name
-            String existingScopeID = scopeMgtDAO.getScopeIDByName(scope.getName(), tenantID);
-            if (existingScopeID != null) {
-                throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                        ERROR_CODE_CONFLICT_REQUEST_EXISTING_SCOPE, scope.getName());
-            }
-        } catch (IdentityOAuth2Exception e) {
-            throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_GET_SCOPE_BY_KEY, null, e);
-        }
 
-        String scopeID = UUID.randomUUID().toString();
-        scope.setId(scopeID);
+        // check whether a scope exists with the provided scope name
+        boolean isScopeExists = isScopeExists(scope.getName());
+        if (isScopeExists) {
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_CONFLICT_REQUEST_EXISTING_SCOPE, scope.getName());
+        }
 
         try {
             scopeMgtDAO.addScope(scope, tenantID);
             if (log.isDebugEnabled()) {
-                log.debug("Scope is added to the database.");
+                log.debug("Scope is added to the database. \n" + scope.toString());
             }
-        } catch (IdentityOAuth2Exception e) {
-            throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_REGISTER_SCOPE, null, e);
+        } catch (IdentityOAuth2ScopeServerException e) {
+            throw Oauth2ScopeUtils.generateServerException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_FAILED_TO_REGISTER_SCOPE, scope.toString(), e);
         }
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            scopeCache.addToCache(scopeID, scope);
-            if (log.isDebugEnabled()) {
-                log.debug("Scope is added to the cache.");
-            }
-        }
+
+        scopeCache.addToCache(new OAuthScopeCacheKey(scope.getName(), Integer.toString(tenantID)), scope);
         return scope;
     }
 
     /**
      * Retrieve the available scope list
      *
-     * @param filter     Filter the scope list
      * @param startIndex Start Index of the result set to enforce pagination
      * @param count      Number of elements in the result set to enforce pagination
-     * @param sortBy     Sort the result set based on this attribute
-     * @param sortOrder  Sort order
      * @return Scope list
-     * @throws IdentityOAuth2ScopeException
+     * @throws IdentityOAuth2ScopeServerException
      */
-    public Set<Scope> getScopes(String filter, Integer startIndex, Integer count, String sortBy, String sortOrder)
-            throws IdentityOAuth2ScopeException {
+    public Set<Scope> getScopes(Integer startIndex, Integer count)
+            throws IdentityOAuth2ScopeServerException {
         Set<Scope> scopes = new HashSet<>();
 
         // check for no query params.
-        if (sortOrder == null && sortBy == null && filter == null && startIndex == null && count == null) {
+        if (startIndex == null && count == null) {
             try {
                 scopes = scopeMgtDAO.getAllScopes(Oauth2ScopeUtils.getTenantID());
-            } catch (IdentityOAuth2Exception e) {
-                throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
-                        ERROR_CODE_FAILED_TO_GET_ALL_SCOPES, null, e);
+            } catch (IdentityOAuth2ScopeServerException e) {
+                throw Oauth2ScopeUtils.generateServerException(Oauth2ScopeConstants.ErrorMessages.
+                        ERROR_CODE_FAILED_TO_GET_ALL_SCOPES, e);
             }
-        } else if (sortOrder != null && sortBy != null) {
-            throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_SORTING_NOT_SUPPORTED, "");
         }
-        // check if it is a pagination and filter combination.
-        else if (filter != null) {
-            scopes = listUsersWithPaginationAndFilter(filter, startIndex, count);
-        }
-        //check if it is a pagination only request.
-        else if (filter == null) {
-            scopes = listUsersWithPagination(startIndex, count);
-
-        } else {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_BAD_REQUEST_NOT_SUPPORTED_LIST_PARAM, null);
-
+        //check if it is a pagination request.
+        else {
+            scopes = listScopesWithPagination(startIndex, count);
         }
         return scopes;
     }
 
     /**
-     * @param scopeID Scope ID of the scope which need to get retrieved
+     * @param name Name of the scope which need to get retrieved
      * @return Retrieved Scope
-     * @throws IdentityOAuth2ScopeException
+     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeClientException
      */
-    public Scope getScopeByID(String scopeID) throws IdentityOAuth2ScopeException {
-        Scope scope;
-        Scope scopeFromCache = null;
+    public Scope getScope(String name) throws IdentityOAuth2ScopeServerException, IdentityOAuth2ScopeClientException {
+        Scope scope = null;
+        int tenantID = Oauth2ScopeUtils.getTenantID();
 
-        if (scopeID == null) {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_BAD_REQUEST_SCOPE_ID, null);
+        if (StringUtils.isBlank(name)) {
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_BAD_REQUEST_SCOPE_NAME, null);
         }
 
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            scopeFromCache = scopeCache.getValueFromCache(scopeID);
-        }
-        if (scopeFromCache == null) {
+
+        scope = scopeCache.getValueFromCache(new OAuthScopeCacheKey(name, Integer.toString(tenantID)));
+
+        if (scope == null) {
             try {
-                scope = scopeMgtDAO.getScopeByID(scopeID, Oauth2ScopeUtils.getTenantID());
+                scope = scopeMgtDAO.getScopeByName(name, tenantID);
                 if (scope != null) {
-                    scopeCache.addToCache(scopeID, scope);
                     if (log.isDebugEnabled()) {
-                        log.debug("Scope is added to the cache.");
+                        log.debug("Scope is getting from the database. \n" + scope.toString());
                     }
+                    scopeCache.addToCache(new OAuthScopeCacheKey(name, Integer.toString(tenantID)), scope);
                 }
 
-            } catch (IdentityOAuth2Exception e) {
-                throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
-                        ERROR_CODE_FAILED_TO_GET_SCOPE_BY_KEY, null, e);
-            }
-        } else {
-            scope = scopeFromCache;
-            if (log.isDebugEnabled()) {
-                log.debug("Scope is getting from the cache.");
+            } catch (IdentityOAuth2ScopeServerException e) {
+                throw Oauth2ScopeUtils.generateServerException(Oauth2ScopeConstants.ErrorMessages.
+                        ERROR_CODE_FAILED_TO_GET_SCOPE_BY_NAME, name, e);
             }
         }
 
         if (scope == null) {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_BAD_REQUEST_SCOPE_ID, null);
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_BAD_REQUEST_SCOPE_NAME, name);
         }
 
         return scope;
@@ -187,27 +154,36 @@ public class OAuth2ScopeService {
     /**
      * Check the existence of a scope
      *
-     * @param scopeName Name of the scope
+     * @param name Name of the scope
      * @return true if scope with the given scope name exists
-     * @throws IdentityOAuth2ScopeException
+     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeClientException
      */
-    public boolean isScopeExists(String scopeName) throws IdentityOAuth2ScopeException {
-        String scopeID;
+    public boolean isScopeExists(String name)
+            throws IdentityOAuth2ScopeServerException, IdentityOAuth2ScopeClientException {
+        int scopeID;
         boolean isScopeExists = false;
+        int tenantID = Oauth2ScopeUtils.getTenantID();
 
-        if (scopeName == null) {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
+        if (name == null) {
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
                     ERROR_CODE_BAD_REQUEST_SCOPE_NAME, null);
         }
-        try {
-            scopeID = scopeMgtDAO.getScopeIDByName(scopeName, Oauth2ScopeUtils.getTenantID());
-        } catch (IdentityOAuth2Exception e) {
-            throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_GET_SCOPE_BY_KEY, null, e);
-        }
 
-        if (scopeID != null) {
+        Scope scopeFromCache = scopeCache.getValueFromCache(new OAuthScopeCacheKey(name, Integer.toString(tenantID)));
+
+        if (scopeFromCache != null) {
             isScopeExists = true;
+        } else {
+            try {
+                scopeID = scopeMgtDAO.getScopeIDByName(name, tenantID);
+            } catch (IdentityOAuth2ScopeServerException e) {
+                throw Oauth2ScopeUtils.generateServerException(Oauth2ScopeConstants.ErrorMessages.
+                        ERROR_CODE_FAILED_TO_GET_SCOPE_BY_NAME, name, e);
+            }
+            if (scopeID != -1) {
+                isScopeExists = true;
+            }
         }
 
         return isScopeExists;
@@ -216,26 +192,27 @@ public class OAuth2ScopeService {
     /**
      * Delete the scope for the given scope ID
      *
-     * @param scopeID Scope ID of the scope which need to get deleted
-     * @throws IdentityOAuth2ScopeException
+     * @param name Scope ID of the scope which need to get deleted
+     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeClientException
      */
-    public void deleteScopeByID(String scopeID) throws IdentityOAuth2ScopeException {
-        if (scopeID == null) {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_BAD_REQUEST_SCOPE_ID, null);
+    public void deleteScope(String name) throws IdentityOAuth2ScopeServerException, IdentityOAuth2ScopeClientException {
+        int tenantID = Oauth2ScopeUtils.getTenantID();
+        if (name == null) {
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_BAD_REQUEST_SCOPE_NAME, null);
         }
 
+        scopeCache.clearCacheEntry(new OAuthScopeCacheKey(name, Integer.toString(tenantID)));
+
         try {
-            scopeMgtDAO.deleteScopeByID(scopeID, Oauth2ScopeUtils.getTenantID());
-        } catch (IdentityOAuth2Exception e) {
-            throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_DELETE_SCOPE_BY_ID, scopeID, e);
-        }
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            scopeCache.clearCacheEntry(scopeID);
+            scopeMgtDAO.deleteScopeByName(name, tenantID);
             if (log.isDebugEnabled()) {
-                log.debug("Scope is deleted from the cache.");
+                log.debug("Scope: " + name + " is deleted from the database.");
             }
+        } catch (IdentityOAuth2ScopeServerException e) {
+            throw Oauth2ScopeUtils.generateServerException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_FAILED_TO_DELETE_SCOPE_BY_NAME, name, e);
         }
     }
 
@@ -243,99 +220,38 @@ public class OAuth2ScopeService {
      * Update the scope of the given scope ID
      *
      * @param updatedScope details of updated scope
-     * @param scopeID      Scope ID of the scope which need to get updated
-     * @throws IdentityOAuth2ScopeException
+     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeClientException
      */
-    public void updateScopeByID(Scope updatedScope, String scopeID) throws IdentityOAuth2ScopeException {
-        if (scopeID == null) {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_BAD_REQUEST_SCOPE_ID, null);
+    public void updateScope(Scope updatedScope, String name)
+            throws IdentityOAuth2ScopeServerException, IdentityOAuth2ScopeClientException {
+        int tenantID = Oauth2ScopeUtils.getTenantID();
+        if (name == null) {
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_BAD_REQUEST_SCOPE_NAME, null);
+        }
+
+        // check whether a scope exists with the provided old scope name which to be updated
+        boolean isOldScopeExists = isScopeExists(name);
+        if (!isOldScopeExists) {
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_BAD_REQUEST_SCOPE_NAME, updatedScope.getName());
+        }
+
+        // check whether a scope exists with the provided updated scope name since scope name is unique
+        boolean isNewScopeExists = isScopeExists(updatedScope.getName());
+        if (isNewScopeExists) {
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_CONFLICT_REQUEST_EXISTING_SCOPE, updatedScope.getName());
         }
 
         try {
-            updatedScope.setId(scopeID);
-            scopeMgtDAO.updateScopeByID(updatedScope, Oauth2ScopeUtils.getTenantID());
-        } catch (IdentityOAuth2Exception e) {
-            throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_UPDATE_SCOPE_BY_ID, scopeID, e);
+            scopeMgtDAO.updateScopeByName(name, updatedScope, tenantID);
+        } catch (IdentityOAuth2ScopeServerException e) {
+            throw Oauth2ScopeUtils.generateServerException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_FAILED_TO_UPDATE_SCOPE_BY_NAME, name, e);
         }
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            scopeCache.addToCache(scopeID, updatedScope);
-            if (log.isDebugEnabled()) {
-                log.debug("Scope is updated in the cache.");
-            }
-        }
-    }
-
-    /**
-     * List scopes with pagination and filtering
-     *
-     * @param filterString Filter the scope list
-     * @param startIndex   Start Index of the result set to enforce pagination
-     * @param count        Number of elements in the result set to enforce pagination
-     * @return List of available scopes
-     * @throws IdentityOAuth2ScopeException
-     */
-    private Set<Scope> listUsersWithPaginationAndFilter(String filterString, Integer startIndex, Integer count)
-            throws IdentityOAuth2ScopeException {
-        Set<Scope> scopes;
-
-        if (count == null || count < 0) {
-            count = Oauth2ScopeConstants.MAX_FILTER_COUNT;
-        }
-        if (startIndex == null || startIndex < 1) {
-            startIndex = 1;
-        }
-        // Database handles start index as 0
-        if (startIndex > 0) {
-            startIndex--;
-        }
-
-        String trimmedFilter = filterString.trim();
-        //verify filter string. We currently support only equal operation
-        if (!(trimmedFilter.contains("eq") || trimmedFilter.contains("Eq"))) {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_FILTER_INVALID_OPERATION, null);
-        }
-        String[] filterParts = null;
-        if (trimmedFilter.contains("eq")) {
-            filterParts = trimmedFilter.split("eq");
-        } else if (trimmedFilter.contains("Eq")) {
-            filterParts = trimmedFilter.split("Eq");
-        }
-        if (filterParts == null || filterParts.length != 2) {
-            //filter query param is not properly splitted. Hence Throwing unsupported operation exception:400
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_FILTER_UNRECOGNIZE_OPERATION, null);
-        }
-
-        String filterAttribute = filterParts[0].trim();
-        String filterOperation = "eq";
-        String filterValue = filterParts[1].trim();
-        if (filterValue.charAt(0) == '\"') {
-            filterValue = filterValue.substring(1, filterValue.length() - 1);
-        }
-
-        if (filterAttribute == null) {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_FILTER_UNRECOGNIZE_ATTRIBUTE, null);
-        }
-
-        if (filterAttribute.equals("name")) {
-            filterAttribute = "NAME";
-        } else {
-            throw Oauth2ScopeUtils.handleClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_FILTER_UNRECOGNIZE_ATTRIBUTE, null);
-        }
-
-
-        try {
-            scopes = scopeMgtDAO.getScopesWithPaginationAndFilter(filterAttribute, filterValue, startIndex, count, Oauth2ScopeUtils.getTenantID());
-        } catch (IdentityOAuth2Exception e) {
-            throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_FAILED_TO_GET_ALL_SCOPES_PAGINATION, e);
-        }
-        return scopes;
+        scopeCache.addToCache(new OAuthScopeCacheKey(updatedScope.getName(), Integer.toString(tenantID)), updatedScope);
     }
 
     /**
@@ -344,16 +260,16 @@ public class OAuth2ScopeService {
      * @param startIndex Start Index of the result set to enforce pagination
      * @param count      Number of elements in the result set to enforce pagination
      * @return List of available scopes
-     * @throws IdentityOAuth2ScopeException
+     * @throws IdentityOAuth2ScopeServerException
      */
-    private Set<Scope> listUsersWithPagination(Integer startIndex, Integer count)
+    private Set<Scope> listScopesWithPagination(int startIndex, int count)
             throws IdentityOAuth2ScopeServerException {
         Set<Scope> scopes;
 
-        if (count == null || count < 0) {
+        if (count < 0) {
             count = Oauth2ScopeConstants.MAX_FILTER_COUNT;
         }
-        if (startIndex == null || startIndex < 1) {
+        if (startIndex < 1) {
             startIndex = 1;
         }
 
@@ -364,8 +280,8 @@ public class OAuth2ScopeService {
 
         try {
             scopes = scopeMgtDAO.getScopesWithPagination(startIndex, count, Oauth2ScopeUtils.getTenantID());
-        } catch (IdentityOAuth2Exception e) {
-            throw Oauth2ScopeUtils.handleServerException(Oauth2ScopeConstants.ErrorMessages.
+        } catch (IdentityOAuth2ScopeServerException e) {
+            throw Oauth2ScopeUtils.generateServerException(Oauth2ScopeConstants.ErrorMessages.
                     ERROR_CODE_FAILED_TO_GET_ALL_SCOPES_PAGINATION, e);
         }
         return scopes;

@@ -17,91 +17,53 @@
 package org.wso2.carbon.identity.oauth.scope.endpoint.util;
 
 import org.apache.commons.logging.Log;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
+import org.wso2.carbon.identity.oauth.scope.endpoint.Exceptions.ScopeEndpointException;
+import org.wso2.carbon.identity.oauth2.OAuth2ScopeService;
 import org.wso2.carbon.identity.oauth2.bean.Scope;
-import org.wso2.carbon.identity.oauth.scope.endpoint.Constants;
-import org.wso2.carbon.identity.oauth.scope.endpoint.Exceptions.BadRequestException;
-import org.wso2.carbon.identity.oauth.scope.endpoint.Exceptions.ConflictException;
-import org.wso2.carbon.identity.oauth.scope.endpoint.Exceptions.InternalServerErrorException;
 import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ErrorDTO;
 import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ScopeDTO;
 
+import javax.ws.rs.core.Response;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * This class holds the util methods used by ScopesApiServiceImpl.
+ */
 public class ScopeUtils {
 
+    public static OAuth2ScopeService getOAuth2ScopeService() {
+        return (OAuth2ScopeService) PrivilegedCarbonContext.getThreadLocalCarbonContext()
+                .getOSGiService(OAuth2ScopeService.class, null);
+    }
+
     /**
-     * Logs the error, builds a internalServerErrorException with specified details and throws it
+     * Logs the error, builds a ScopeEndpointException with specified details and throws it
      *
-     * @param msg error message
+     * @param status response status
+     * @param message error message
+     * @param code status code
+     * @param description error description
      * @param log Log instance
-     * @throws InternalServerErrorException
+     * @param throwable throwable
+     * @throws ScopeEndpointException
      */
-    public static void handleInternalServerError(String msg, String code, Log log, Throwable throwable)
-            throws InternalServerErrorException {
-        InternalServerErrorException internalServerErrorException = buildInternalServerErrorException(code);
+    public static void handleScopeEndpointException(Response.Status status, String message,
+                                                    String code, String description, Log log, Throwable throwable)
+            throws ScopeEndpointException {
         if (throwable == null) {
-            log.error(msg);
+            log.error(message);
         } else {
-            log.error(msg, throwable);
+            log.error(message, throwable);
         }
-        throw internalServerErrorException;
+        throw buildScopeEndpointException(status, message, code, description);
     }
 
-
-    /**
-     * Returns a new InternalServerErrorException
-     *
-     * @return a new InternalServerErrorException with default details as a response DTO
-     */
-    public static InternalServerErrorException buildInternalServerErrorException(String code) {
-        ErrorDTO errorDTO = getErrorDTO(Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, code,
-                Constants.STATUS_INTERNAL_SERVER_ERROR_DESCRIPTION_DEFAULT);
-        return new InternalServerErrorException(errorDTO);
-    }
-
-
-    /**
-     * Logs the error, builds a BadRequestException with specified details and throws it
-     *
-     * @param msg  error message
-     * @param code error code
-     * @throws BadRequestException
-     */
-    public static void handleBadRequest(String msg, String code) throws BadRequestException {
-        BadRequestException badRequestException = buildBadRequestException(msg, code);
-        throw badRequestException;
-    }
-
-    /**
-     * Returns a new BadRequestException
-     *
-     * @param description description of the exception
-     * @return a new BadRequestException with the specified details as a response DTO
-     */
-    public static BadRequestException buildBadRequestException(String description, String code) {
-        ErrorDTO errorDTO = getErrorDTO(Constants.STATUS_BAD_REQUEST_MESSAGE_DEFAULT, code, description);
-        return new BadRequestException(errorDTO);
-    }
-
-    /**
-     * Logs the error, builds a ConflictException with specified details and throws it
-     *
-     * @param msg  error message
-     * @param code error code
-     * @throws ConflictException
-     */
-    public static void handleConflict(String msg, String code) throws ConflictException {
-        ConflictException conflictException = buildConflictException(msg, code);
-        throw conflictException;
-    }
-
-    /**
-     * Returns a new ConflictException
-     *
-     * @param description description of the exception
-     * @return a new ConflictException with the specified details as a response DTO
-     */
-    public static ConflictException buildConflictException(String description, String code) {
-        ErrorDTO errorDTO = getErrorDTO(Constants.STATUS_CONFLICT_MESSAGE_DEFAULT, code, description);
-        return new ConflictException(errorDTO);
+    private static ScopeEndpointException buildScopeEndpointException(Response.Status status, String message,
+                                                                     String code, String description) {
+        ErrorDTO errorDTO = getErrorDTO(message, code, description);
+        return new ScopeEndpointException(status, errorDTO);
     }
 
     /**
@@ -119,11 +81,29 @@ public class ScopeUtils {
     }
 
     public static Scope getScope(ScopeDTO scopeDTO) {
-
         return new Scope(
-                scopeDTO.getId(),
                 scopeDTO.getName(),
                 scopeDTO.getDescription(),
                 scopeDTO.getBindings());
+    }
+
+    public static ScopeDTO getScopeDTO(Scope scope) {
+        ScopeDTO scopeDTO = new ScopeDTO();
+        scopeDTO.setName(scope.getName());
+        scopeDTO.setDescription(scope.getDescription());
+        scopeDTO.setBindings(scope.getBindings());
+        return scopeDTO;
+    }
+
+    public static Set<ScopeDTO> getScopeDTOs(Set<Scope> scopes) {
+        Set<ScopeDTO> scopeDTOs = new HashSet<>();
+        for(Scope scope : scopes) {
+            ScopeDTO scopeDTO = new ScopeDTO();
+            scopeDTO.setName(scope.getName());
+            scopeDTO.setDescription(scope.getDescription());
+            scopeDTO.setBindings(scope.getBindings());
+            scopeDTOs.add(scopeDTO);
+        }
+        return scopeDTOs;
     }
 }

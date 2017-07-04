@@ -18,6 +18,7 @@ package org.wso2.carbon.identity.oauth2.util;
 
 import org.apache.commons.lang.StringUtils;
 import org.wso2.carbon.base.MultitenantConstants;
+import org.wso2.carbon.context.CarbonContext;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -27,7 +28,7 @@ import org.wso2.carbon.identity.oauth2.Oauth2ScopeConstants;
 
 public class Oauth2ScopeUtils {
 
-    public static IdentityOAuth2ScopeServerException handleServerException(Oauth2ScopeConstants.ErrorMessages
+    public static IdentityOAuth2ScopeServerException generateServerException(Oauth2ScopeConstants.ErrorMessages
                                                                                 error, String data)
             throws IdentityOAuth2ScopeServerException {
 
@@ -42,16 +43,8 @@ public class Oauth2ScopeUtils {
                 IdentityOAuth2ScopeServerException.class, error.getCode(), errorDescription);
     }
 
-    public static IdentityOAuth2ScopeServerException handleServerException(Oauth2ScopeConstants.ErrorMessages
-                                                                                   error, Throwable e)
-            throws IdentityOAuth2ScopeServerException {
-
-        return IdentityException.error(
-                IdentityOAuth2ScopeServerException.class, error.getCode(), error.getMessage(), e);
-    }
-
-    public static IdentityOAuth2ScopeServerException handleServerException(Oauth2ScopeConstants.ErrorMessages
-                                                                                error, String data, Throwable e)
+    public static IdentityOAuth2ScopeServerException generateServerException(Oauth2ScopeConstants.ErrorMessages
+                                                                                     error, String data, Throwable e)
             throws IdentityOAuth2ScopeServerException {
 
         String errorDescription;
@@ -65,7 +58,15 @@ public class Oauth2ScopeUtils {
                 IdentityOAuth2ScopeServerException.class, error.getCode(), errorDescription, e);
     }
 
-    public static IdentityOAuth2ScopeClientException handleClientException(Oauth2ScopeConstants.ErrorMessages
+    public static IdentityOAuth2ScopeServerException generateServerException(Oauth2ScopeConstants.ErrorMessages
+                                                                                   error, Throwable e)
+            throws IdentityOAuth2ScopeServerException {
+
+        return IdentityException.error(
+                IdentityOAuth2ScopeServerException.class, error.getCode(), error.getMessage(), e);
+    }
+
+    public static IdentityOAuth2ScopeClientException generateClientException(Oauth2ScopeConstants.ErrorMessages
                                                                                 error, String data)
             throws IdentityOAuth2ScopeClientException {
 
@@ -79,9 +80,9 @@ public class Oauth2ScopeUtils {
         return IdentityException.error(IdentityOAuth2ScopeClientException.class, error.getCode(), errorDescription);
     }
 
-    public static IdentityOAuth2ScopeClientException handleClientException(Oauth2ScopeConstants.ErrorMessages error,
-                                                                        String data,
-                                                                        Throwable e)
+    public static IdentityOAuth2ScopeClientException generateClientException(Oauth2ScopeConstants.ErrorMessages error,
+                                                                             String data,
+                                                                             Throwable e)
             throws IdentityOAuth2ScopeClientException {
 
         String errorDescription;
@@ -95,10 +96,6 @@ public class Oauth2ScopeUtils {
     }
 
     public static int getTenantID() {
-        String tenantDomain = (String) IdentityUtil.threadLocalProperties.get().get(Oauth2ScopeConstants.TENANT_NAME_FROM_CONTEXT);
-        if(StringUtils.isBlank(tenantDomain)) {
-            tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
-        }
-        return IdentityTenantUtil.getTenantId(tenantDomain);
+        return CarbonContext.getThreadLocalCarbonContext().getTenantId();
     }
 }

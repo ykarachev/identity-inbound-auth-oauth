@@ -14,11 +14,11 @@ import org.apache.cxf.jaxrs.ext.multipart.Attachment;
 import javax.ws.rs.core.Response;
 
 public abstract class ScopesApiService {
-    public abstract Response deleteScopeByID(String id);
-    public abstract Response getScopeByID(String id);
-    public abstract Response getScopes(String filter,Integer startIndex,Integer count,String sortBy,String sortOrder);
+    public abstract Response deleteScope(String scopeName);
+    public abstract Response getScope(String scopeName);
+    public abstract Response getScopes(Integer startIndex,Integer count);
     public abstract Response isScopeExists(String name);
     public abstract Response registerScope(ScopeDTO scope);
-    public abstract Response updateScopeByID(ScopeDTO scope,String id);
+    public abstract Response updateScope(ScopeDTO scope,String scopeName);
 }
 

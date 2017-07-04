@@ -21,6 +21,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeServerException;
 import org.wso2.carbon.identity.oauth2.Oauth2ScopeConstants;
 import org.wso2.carbon.identity.oauth2.bean.Scope;
 import org.wso2.carbon.identity.oauth2.util.NamedPreparedStatement;
@@ -43,30 +44,21 @@ public class ScopeMgtDAO {
 
     private static final Log log = LogFactory.getLog(ScopeMgtDAO.class);
 
-    private static final ScopeMgtDAO scopeMgtDAO = new ScopeMgtDAO();
-
-    private ScopeMgtDAO() {
-    }
-
-    public static ScopeMgtDAO getInstance() {
-        return scopeMgtDAO;
-    }
-
     /**
      * Add a scope
      *
      * @param scope    Scope
      * @param tenantID tenant ID
-     * @throws IdentityOAuth2Exception
+     * @throws IdentityOAuth2ScopeServerException
      */
-    public void addScope(Scope scope, int tenantID) throws IdentityOAuth2Exception {
+    public void addScope(Scope scope, int tenantID) throws IdentityOAuth2ScopeServerException {
 
         Connection conn = null;
         PreparedStatement ps = null;
+        ResultSet rs;
 
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
-            conn.setAutoCommit(false);
 
             String scopeIdField = "SCOPE_ID";
             if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
@@ -75,16 +67,36 @@ public class ScopeMgtDAO {
 
             if (scope != null) {
                 ps = conn.prepareStatement(SQLQueries.ADD_SCOPE, new String[]{scopeIdField});
-                ps.setString(1, scope.getId());
-                ps.setString(2, scope.getName());
-                ps.setString(3, scope.getDescription());
-                ps.setInt(4, tenantID);
+                ps.setString(1, scope.getName());
+                ps.setString(2, scope.getDescription());
+                ps.setInt(3, tenantID);
                 ps.execute();
+
+                rs = ps.getGeneratedKeys();
+
+                int scopeID = 0;
+                if (rs.next()) {
+                    scopeID = rs.getInt(1);
+                }
+                // some JDBC Drivers returns this in the result, some don't
+                if (scopeID == 0) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("JDBC Driver did not return the scope id, executing Select operation");
+                    }
+                    ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME, new String[]{scopeIdField});
+                    ps.setString(1, scope.getName());
+                    ps.setInt(2, tenantID);
+                    rs = ps.executeQuery();
+
+                    if (rs.next()) {
+                        scopeID = rs.getInt(1);
+                    }
+                }
 
                 for (String binding : scope.getBindings()) {
                     if (StringUtils.isNotBlank(binding)) {
                         ps = conn.prepareStatement(SQLQueries.ADD_SCOPE_BINDING, new String[]{scopeIdField});
-                        ps.setString(1, scope.getId());
+                        ps.setInt(1, scopeID);
                         ps.setString(2, binding);
                         ps.addBatch();
                     }
@@ -100,11 +112,11 @@ public class ScopeMgtDAO {
             } catch (SQLException e1) {
                 String msg1 = "Error occurred while Rolling back changes done on Scopes Creation";
                 log.error(msg1, e1);
-                throw new IdentityOAuth2Exception(msg1, e1);
+                throw new IdentityOAuth2ScopeServerException(msg1, e1);
             }
             String msg = "Error occurred while creating scopes ";
             log.error(msg, e);
-            throw new IdentityOAuth2Exception(msg, e);
+            throw new IdentityOAuth2ScopeServerException(msg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(conn, null, ps);
         }
@@ -115,40 +127,50 @@ public class ScopeMgtDAO {
      *
      * @param tenantID tenant ID
      * @return available scope list
-     * @throws IdentityOAuth2Exception
+     * @throws IdentityOAuth2ScopeServerException
      */
-    public Set<Scope> getAllScopes(int tenantID) throws IdentityOAuth2Exception {
+    public Set<Scope> getAllScopes(int tenantID) throws IdentityOAuth2ScopeServerException {
 
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet rs = null;
         Set<Scope> scopes = new HashSet<>();
-        Map<String, List<String>> scopeBindings = new HashMap<>();
+        Map<Integer, Scope> scopeMap = new HashMap<>();
 
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
-            conn.setAutoCommit(false);
-
-            ps = conn.prepareStatement(SQLQueries.RETRIEVE_ALL_SCOPE_BINDINGS);
-            ps.setInt(1, tenantID);
-            rs = ps.executeQuery();
-            while (rs.next()) {
-                if (scopeBindings.containsKey(rs.getString(1)) && scopeBindings.get(rs.getString(1)) != null) {
-                    scopeBindings.get(rs.getString(1)).add(rs.getString(2));
-                } else {
-                    scopeBindings.put(rs.getString(1), new ArrayList<String>());
-                    scopeBindings.get(rs.getString(1)).add(rs.getString(2));
-                }
-            }
 
             ps = conn.prepareStatement(SQLQueries.RETRIEVE_ALL_SCOPES);
             ps.setInt(1, tenantID);
             rs = ps.executeQuery();
-
             while (rs.next()) {
-                Scope scope = new Scope(rs.getString(1), rs.getString(2), rs.getString(3),
-                        scopeBindings.get(rs.getString(1)));
-                scopes.add(scope);
+                int scopeID = rs.getInt(1);
+                String name = rs.getString(2);
+                String description = rs.getString(3);
+                final String binding = rs.getString(4);
+                if (scopeMap.containsKey(scopeID) && scopeMap.get(scopeID) != null) {
+                    scopeMap.get(scopeID).setName(name);
+                    scopeMap.get(scopeID).setDescription(description);
+                    if (binding != null) {
+                        if (scopeMap.get(scopeID).getBindings() != null) {
+                            scopeMap.get(scopeID).addBinding(binding);
+                        } else {
+                            scopeMap.get(scopeID).setBindings(new ArrayList<String>() {{
+                                add(binding);
+                            }});
+                        }
+                    }
+                } else {
+                    scopeMap.put(scopeID, new Scope(name, description, new ArrayList<String>()));
+                    if (binding != null) {
+                        scopeMap.get(scopeID).addBinding(binding);
+
+                    }
+                }
+            }
+
+            for (Map.Entry<Integer, Scope> entry : scopeMap.entrySet()) {
+                scopes.add(entry.getValue());
             }
             return scopes;
         } catch (SQLException e) {
@@ -159,11 +181,11 @@ public class ScopeMgtDAO {
             } catch (SQLException e1) {
                 String msg1 = "Error occurred while Rolling back changes done on Get all Scopes";
                 log.error(msg1, e1);
-                throw new IdentityOAuth2Exception(msg1, e1);
+                throw new IdentityOAuth2ScopeServerException(msg1, e1);
             }
             String msg = "Error occurred while getting all scopes ";
             log.error(msg, e);
-            throw new IdentityOAuth2Exception(msg, e);
+            throw new IdentityOAuth2ScopeServerException(msg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(conn, null, ps);
         }
@@ -176,19 +198,19 @@ public class ScopeMgtDAO {
      * @param limit    number of elements of the result set
      * @param tenantID tenant ID
      * @return available scope list
-     * @throws IdentityOAuth2Exception
+     * @throws IdentityOAuth2ScopeServerException
      */
-    public Set<Scope> getScopesWithPagination(Integer offset, Integer limit, int tenantID) throws IdentityOAuth2Exception {
+    public Set<Scope> getScopesWithPagination(Integer offset, Integer limit, int tenantID) throws IdentityOAuth2ScopeServerException {
 
         Connection conn = null;
         NamedPreparedStatement namedPreparedStatement = null;
         PreparedStatement preparedStatement = null;
         ResultSet rs = null;
         Set<Scope> scopes = new HashSet<>();
+        Map<Integer, Scope> scopeMap = new HashMap<>();
 
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
-            conn.setAutoCommit(false);
 
             String query;
             if (conn.getMetaData().getDriverName().contains("MySQL")
@@ -217,19 +239,33 @@ public class ScopeMgtDAO {
             rs = preparedStatement.executeQuery();
 
             while (rs.next()) {
-                Scope scope = new Scope(rs.getString(1), rs.getString(2), rs.getString(3), null);
-                scopes.add(scope);
+                int scopeID = rs.getInt(1);
+                String name = rs.getString(2);
+                String description = rs.getString(3);
+                final String binding = rs.getString(4);
+                if (scopeMap.containsKey(scopeID) && scopeMap.get(scopeID) != null) {
+                    scopeMap.get(scopeID).setName(name);
+                    scopeMap.get(scopeID).setDescription(description);
+                    if (binding != null) {
+                        if (scopeMap.get(scopeID).getBindings() != null) {
+                            scopeMap.get(scopeID).addBinding(binding);
+                        } else {
+                            scopeMap.get(scopeID).setBindings(new ArrayList<String>() {{
+                                add(binding);
+                            }});
+                        }
+                    }
+                } else {
+                    scopeMap.put(scopeID, new Scope(name, description, new ArrayList<String>()));
+                    if (binding != null) {
+                        scopeMap.get(scopeID).addBinding(binding);
+
+                    }
+                }
             }
 
-            for (Scope scope : scopes) {
-                List<String> bindings = new ArrayList<>();
-                preparedStatement = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BINDINGS);
-                preparedStatement.setString(1, scope.getId());
-                rs = preparedStatement.executeQuery();
-                while (rs.next()) {
-                    bindings.add(rs.getString(1));
-                }
-                scope.setBindings(bindings);
+            for (Map.Entry<Integer, Scope> entry : scopeMap.entrySet()) {
+                scopes.add(entry.getValue());
             }
             return scopes;
         } catch (SQLException e) {
@@ -240,112 +276,25 @@ public class ScopeMgtDAO {
             } catch (SQLException e1) {
                 String msg1 = "Error occurred while Rolling back changes done on Get all Scopes with pagination";
                 log.error(msg1, e1);
-                throw new IdentityOAuth2Exception(msg1, e1);
+                throw new IdentityOAuth2ScopeServerException(msg1, e1);
             }
             String msg = "Error occurred while getting all scopes with pagination ";
             log.error(msg, e);
-            throw new IdentityOAuth2Exception(msg, e);
+            throw new IdentityOAuth2ScopeServerException(msg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(conn, null, preparedStatement);
         }
     }
 
     /**
-     * Get Scopes with pagination and filter
+     * Get a scope by name
      *
-     * @param attributeName  filter attribute
-     * @param attributeValue filter attribute value
-     * @param offset         start index of the result set
-     * @param limit          number of elements of the result set
-     * @param tenantID       tenant ID
-     * @return available scope list
-     * @throws IdentityOAuth2Exception
-     */
-    public Set<Scope> getScopesWithPaginationAndFilter(String attributeName, String attributeValue, Integer offset, Integer limit, int tenantID)
-            throws IdentityOAuth2Exception {
-
-        Connection conn = null;
-        NamedPreparedStatement namedPreparedStatement = null;
-        PreparedStatement preparedStatement = null;
-        ResultSet rs = null;
-        Set<Scope> scopes = new HashSet<>();
-
-        try {
-            conn = IdentityDatabaseUtil.getDBConnection();
-            conn.setAutoCommit(false);
-
-            String query;
-            if (conn.getMetaData().getDriverName().contains("MySQL")
-                    || conn.getMetaData().getDriverName().contains("H2")) {
-                query = SQLQueries.RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_MYSQL;
-            } else if (conn.getMetaData().getDatabaseProductName().contains("DB2")) {
-                query = SQLQueries.RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_DB2SQL;
-            } else if (conn.getMetaData().getDriverName().contains("MS SQL")) {
-                query = SQLQueries.RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_MSSQL;
-            } else if (conn.getMetaData().getDriverName().contains("Microsoft") || conn.getMetaData()
-                    .getDriverName().contains("microsoft")) {
-                query = SQLQueries.RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_MSSQL;
-            } else if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
-                query = SQLQueries.RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_POSTGRESQL;
-            } else if (conn.getMetaData().getDriverName().contains("Informix")) {
-                // Driver name = "IBM Informix JDBC Driver for IBM Informix Dynamic Server"
-                query = SQLQueries.RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_INFORMIX;
-            } else {
-                query = SQLQueries.RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_ORACLE;
-            }
-
-            query = query.replace(Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_NAME, attributeName);
-            namedPreparedStatement = new NamedPreparedStatement(conn, query);
-            namedPreparedStatement.setInt(Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID, tenantID);
-            namedPreparedStatement.setString(Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_VALUE, attributeValue);
-            namedPreparedStatement.setInt(Oauth2ScopeConstants.SQLPlaceholders.OFFSET, offset);
-            namedPreparedStatement.setInt(Oauth2ScopeConstants.SQLPlaceholders.LIMIT, limit);
-            preparedStatement = namedPreparedStatement.getPreparedStatement();
-            rs = preparedStatement.executeQuery();
-
-            while (rs.next()) {
-                Scope scope = new Scope(rs.getString(1), rs.getString(2), rs.getString(3), null);
-                scopes.add(scope);
-            }
-
-            for (Scope scope : scopes) {
-                List<String> bindings = new ArrayList<>();
-                preparedStatement = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BINDINGS);
-                preparedStatement.setString(1, scope.getId());
-                rs = preparedStatement.executeQuery();
-                while (rs.next()) {
-                    bindings.add(rs.getString(1));
-                }
-                scope.setBindings(bindings);
-            }
-            return scopes;
-        } catch (SQLException e) {
-            try {
-                if (conn != null) {
-                    conn.rollback();
-                }
-            } catch (SQLException e1) {
-                String msg1 = "Error occurred while Rolling back changes done on Get all Scopes with Pagination and Filter";
-                log.error(msg1, e1);
-                throw new IdentityOAuth2Exception(msg1, e1);
-            }
-            String msg = "Error occurred while getting all scopes with pagination and filter";
-            log.error(msg, e);
-            throw new IdentityOAuth2Exception(msg, e);
-        } finally {
-            IdentityDatabaseUtil.closeAllConnections(conn, null, preparedStatement);
-        }
-    }
-
-    /**
-     * Get a scope by ID
-     *
-     * @param scopeID  scope ID of the scope
+     * @param name     name of the scope
      * @param tenantID tenant ID
      * @return Scope for the provided ID
-     * @throws IdentityOAuth2Exception
+     * @throws IdentityOAuth2ScopeServerException
      */
-    public Scope getScopeByID(String scopeID, int tenantID) throws IdentityOAuth2Exception {
+    public Scope getScopeByName(String name, int tenantID) throws IdentityOAuth2ScopeServerException {
 
         Connection conn = null;
         PreparedStatement ps = null;
@@ -354,28 +303,23 @@ public class ScopeMgtDAO {
 
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
-            conn.setAutoCommit(false);
 
-            ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BY_ID);
-            ps.setString(1, scopeID);
+            ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BY_NAME);
+            ps.setString(1, name);
             ps.setInt(2, tenantID);
             rs = ps.executeQuery();
 
-            String scopeName = null;
             String description = null;
             List<String> bindings = new ArrayList<>();
 
             while (rs.next()) {
-                if (StringUtils.isBlank(scopeName)) {
-                    scopeName = rs.getString(2);
-                }
                 if (StringUtils.isBlank(description)) {
-                    description = rs.getString(3);
+                    description = rs.getString(2);
                 }
-                bindings.add(rs.getString(4));
+                bindings.add(rs.getString(3));
             }
-            if (StringUtils.isNotBlank(scopeName) && StringUtils.isNotBlank(description)) {
-                scope = new Scope(scopeID, scopeName, description, bindings);
+            if (StringUtils.isNotBlank(name) && StringUtils.isNotBlank(description)) {
+                scope = new Scope(name, description, bindings);
             }
             return scope;
         } catch (SQLException e) {
@@ -386,11 +330,11 @@ public class ScopeMgtDAO {
             } catch (SQLException e1) {
                 String msg1 = "Error occurred while Rolling back changes done on Get Scope by ID";
                 log.error(msg1, e1);
-                throw new IdentityOAuth2Exception(msg1, e1);
+                throw new IdentityOAuth2ScopeServerException(msg1, e1);
             }
             String msg = "Error occurred while getting scope by ID ";
             log.error(msg, e);
-            throw new IdentityOAuth2Exception(msg, e);
+            throw new IdentityOAuth2ScopeServerException(msg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(conn, null, ps);
         }
@@ -402,18 +346,17 @@ public class ScopeMgtDAO {
      * @param scopeName name of the scope
      * @param tenantID  tenant ID
      * @return scope ID for the provided scope name
-     * @throws IdentityOAuth2Exception
+     * @throws IdentityOAuth2ScopeServerException
      */
-    public String getScopeIDByName(String scopeName, int tenantID) throws IdentityOAuth2Exception {
+    public int getScopeIDByName(String scopeName, int tenantID) throws IdentityOAuth2ScopeServerException {
 
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet rs = null;
-        String scopeID = null;
+        int scopeID = -1;
 
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
-            conn.setAutoCommit(false);
 
             ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME);
             ps.setString(1, scopeName);
@@ -421,7 +364,7 @@ public class ScopeMgtDAO {
             rs = ps.executeQuery();
 
             if (rs.next()) {
-                scopeID = rs.getString(1);
+                scopeID = rs.getInt(1);
             }
             return scopeID;
         } catch (SQLException e) {
@@ -432,11 +375,11 @@ public class ScopeMgtDAO {
             } catch (SQLException e1) {
                 String msg1 = "Error occurred while Rolling back changes done on Get Scope ID by name";
                 log.error(msg1, e1);
-                throw new IdentityOAuth2Exception(msg1, e1);
+                throw new IdentityOAuth2ScopeServerException(msg1, e1);
             }
             String msg = "Error occurred while getting scope ID by name ";
             log.error(msg, e);
-            throw new IdentityOAuth2Exception(msg, e);
+            throw new IdentityOAuth2ScopeServerException(msg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(conn, null, ps);
         }
@@ -445,20 +388,20 @@ public class ScopeMgtDAO {
     /**
      * Delete a scope of the provided scope ID
      *
-     * @param scopeID  scope ID
+     * @param name     name of the scope
      * @param tenantID tenant ID
-     * @throws IdentityOAuth2Exception
+     * @throws IdentityOAuth2ScopeServerException
      */
-    public void deleteScopeByID(String scopeID, int tenantID) throws IdentityOAuth2Exception {
+    public void deleteScopeByName(String name, int tenantID) throws IdentityOAuth2ScopeServerException {
 
         Connection conn = null;
         PreparedStatement ps = null;
 
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
-            conn.setAutoCommit(false);
-            ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_ID);
-            ps.setString(1, scopeID);
+
+            ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_NAME);
+            ps.setString(1, name);
             ps.setInt(2, tenantID);
             ps.execute();
             conn.commit();
@@ -470,53 +413,53 @@ public class ScopeMgtDAO {
             } catch (SQLException e1) {
                 String msg1 = "Error occurred while Rolling back changes done on Scopes Deletion";
                 log.error(msg1, e1);
-                throw new IdentityOAuth2Exception(msg1, e1);
+                throw new IdentityOAuth2ScopeServerException(msg1, e1);
             }
             String msg = "Error occurred while deleting scopes ";
             log.error(msg, e);
-            throw new IdentityOAuth2Exception(msg, e);
+            throw new IdentityOAuth2ScopeServerException(msg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(conn, null, ps);
         }
     }
 
     /**
-     * Update a scope of the provided scope ID
+     * Update a scope of the provided scope name
      *
      * @param updatedScope details of the updated scope
      * @param tenantID     tenant ID
-     * @throws IdentityOAuth2Exception
+     * @throws IdentityOAuth2ScopeServerException
      */
-    public void updateScopeByID(Scope updatedScope, int tenantID) throws IdentityOAuth2Exception {
+    public void updateScopeByName(String name, Scope updatedScope, int tenantID) throws IdentityOAuth2ScopeServerException {
 
         Connection conn = null;
         PreparedStatement ps = null;
+        ResultSet rs = null;
 
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
-            conn.setAutoCommit(false);
 
             String scopeIdField = "SCOPE_ID";
             if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
                 scopeIdField = "scope_id";
             }
 
-            ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_ID, new String[]{scopeIdField});
-            ps.setString(1, updatedScope.getId());
-            ps.setInt(2, tenantID);
+            ps = conn.prepareStatement(SQLQueries.UPDATE_SCOPE_BY_NAME, new String[]{scopeIdField});
+            ps.setString(1, updatedScope.getName());
+            ps.setString(2, updatedScope.getDescription());
+            ps.setString(3, name);
+            ps.setInt(4, tenantID);
             ps.execute();
 
-            ps = conn.prepareStatement(SQLQueries.ADD_SCOPE, new String[]{scopeIdField});
-            ps.setString(1, updatedScope.getId());
-            ps.setString(2, updatedScope.getName());
-            ps.setString(3, updatedScope.getDescription());
-            ps.setInt(4, tenantID);
+            int scopeID = getScopeIDByName(updatedScope.getName(), tenantID);
+            ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BINDINGS, new String[]{scopeIdField});
+            ps.setInt(1, scopeID);
             ps.execute();
 
             for (String binding : updatedScope.getBindings()) {
                 if (StringUtils.isNotBlank(binding)) {
                     ps = conn.prepareStatement(SQLQueries.ADD_SCOPE_BINDING, new String[]{scopeIdField});
-                    ps.setString(1, updatedScope.getId());
+                    ps.setInt(1, scopeID);
                     ps.setString(2, binding);
                     ps.addBatch();
                 }
@@ -532,11 +475,11 @@ public class ScopeMgtDAO {
             } catch (SQLException e1) {
                 String msg1 = "Error occurred while Rolling back changes done on Scope Updating by Scope ID";
                 log.error(msg1, e1);
-                throw new IdentityOAuth2Exception(msg1, e1);
+                throw new IdentityOAuth2ScopeServerException(msg1, e1);
             }
             String msg = "Error occurred while updating scope by ID ";
             log.error(msg, e);
-            throw new IdentityOAuth2Exception(msg, e);
+            throw new IdentityOAuth2ScopeServerException(msg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(conn, null, ps);
         }

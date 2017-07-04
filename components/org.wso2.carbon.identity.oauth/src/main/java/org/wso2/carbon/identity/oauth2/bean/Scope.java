@@ -21,49 +21,19 @@ import java.util.List;
 
 public class Scope implements Serializable {
 
-    /**
-     * Required
-     **/
-    String id;
-
-    /**
-     * Required
-     **/
     String name;
-
-    /**
-     * Required
-     **/
     String description;
-
-    /**
-     * Optional
-     **/
     List<String> bindings;
 
-    public Scope() {
-
+    public Scope(String name, String description) {
+        this.name = name;
+        this.description = description;
     }
 
     public Scope(String name, String description, List<String> bindings) {
         this.name = name;
         this.description = description;
         this.bindings = bindings;
-    }
-
-    public Scope(String id, String name, String description, List<String> bindings) {
-        this.id = id;
-        this.name = name;
-        this.description = description;
-        this.bindings = bindings;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
     }
 
     public String getName() {
@@ -82,12 +52,31 @@ public class Scope implements Serializable {
         this.bindings = bindings;
     }
 
+    public void addBindings(List<String> bindings) {
+        this.bindings.addAll(bindings);
+    }
+
+    public void addBinding(String binding) {
+        this.bindings.add(binding);
+    }
+
     public String getDescription() {
         return description;
     }
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Scope {\n");
+        sb.append("  name: ").append(this.name).append("\n");
+        sb.append("  description: ").append(this.description).append("\n");
+        sb.append("  bindings: ").append(this.bindings).append("\n");
+        sb.append("}\n");
+        return sb.toString();
     }
 }
 

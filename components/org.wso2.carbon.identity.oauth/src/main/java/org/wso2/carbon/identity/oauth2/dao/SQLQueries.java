@@ -443,103 +443,92 @@ public class SQLQueries {
 
     /** Scope related queries **/
     public static final String ADD_SCOPE =
-            " INSERT INTO IDN_OAUTH2_SCOPE (SCOPE_ID, NAME , DESCRIPTION, TENANT_ID) VALUES(?,?,?,?)";
+            " INSERT INTO IDN_OAUTH2_SCOPE (NAME , DESCRIPTION, TENANT_ID) VALUES(?,?,?)";
+
     public static final String ADD_SCOPE_BINDING =
             " INSERT INTO IDN_OAUTH2_SCOPE_BINDING (SCOPE_ID, SCOPE_BINDING) VALUES(?,?)";
 
-    public static final String RETRIEVE_IOS_SCOPE_KEY = "SELECT IOS.SCOPE_KEY FROM IDN_OAUTH2_SCOPE IOS, " +
-            "IDN_OAUTH2_RESOURCE_SCOPE IORS WHERE RESOURCE_PATH = ? AND IORS.SCOPE_ID = IOS.SCOPE_ID";
-
-    public static final String RETRIEVE_IOS_SCOPE_KEY_WITH_TENANT = "SELECT IOS.SCOPE_KEY, IOS.TENANT_ID FROM " +
-            "IDN_OAUTH2_SCOPE IOS, IDN_OAUTH2_RESOURCE_SCOPE IORS WHERE RESOURCE_PATH = ? AND " +
-            "IORS.SCOPE_ID = IOS.SCOPE_ID";
-
-    public static final String RETRIEVE_ALL_SCOPES = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM IDN_OAUTH2_SCOPE " +
-            "WHERE TENANT_ID=?";
-
-    public static final String RETRIEVE_ALL_SCOPE_BINDINGS = "SELECT Scopes.SCOPE_ID, ScopeBindings.SCOPE_BINDING FROM IDN_OAUTH2_SCOPE AS Scopes " +
+    public static final String RETRIEVE_ALL_SCOPES = "SELECT Scopes.SCOPE_ID, Scopes.NAME, Scopes.DESCRIPTION, " +
+            "ScopeBindings.SCOPE_BINDING FROM IDN_OAUTH2_SCOPE AS Scopes " +
             "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON Scopes.SCOPE_ID=ScopeBindings.SCOPE_ID " +
             "WHERE Scopes.TENANT_ID=?";
 
-    public static final String RETRIEVE_SCOPE_BINDINGS = "SELECT SCOPE_BINDING FROM IDN_OAUTH2_SCOPE_BINDING " +
-            "WHERE SCOPE_ID=?";
+    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_MYSQL =
+            "SELECT filteredScopes.SCOPE_ID, filteredScopes.NAME, filteredScopes.DESCRIPTION, ScopeBindings.SCOPE_BINDING FROM " +
+                    "(SELECT Scopes.SCOPE_ID, Scopes.NAME, Scopes.DESCRIPTION FROM IDN_OAUTH2_SCOPE AS Scopes " +
+                    "WHERE Scopes.TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID +
+                    "; LIMIT :limit; OFFSET :offset;) AS filteredScopes " +
+                    "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON filteredScopes.SCOPE_ID=ScopeBindings.SCOPE_ID";
 
+    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_ORACLE =
+            "SELECT filteredScopes.SCOPE_ID, filteredScopes.NAME, filteredScopes.DESCRIPTION, ScopeBindings.SCOPE_BINDING FROM " +
+                    "(SELECT Scopes.SCOPE_ID, Scopes.NAME, Scopes.DESCRIPTION FROM IDN_OAUTH2_SCOPE AS Scopes " +
+                    "WHERE Scopes.TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID +
+                    "; AND ROWNUM < :limit;) AS filteredScopes " +
+                    "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON filteredScopes.SCOPE_ID=ScopeBindings.SCOPE_ID";
 
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_MYSQL = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + "; LIMIT :limit; OFFSET :offset;";
+    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_DB2SQL =
+            "SELECT filteredScopes.SCOPE_ID, filteredScopes.NAME, filteredScopes.DESCRIPTION, ScopeBindings.SCOPE_BINDING FROM " +
+                    "(SELECT Scopes.SCOPE_ID, Scopes.NAME, Scopes.DESCRIPTION FROM IDN_OAUTH2_SCOPE AS Scopes " +
+                    "WHERE Scopes.TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID +
+                    "; FETCH FIRST :limit; ROWS ONLY) AS filteredScopes " +
+                    "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON filteredScopes.SCOPE_ID=ScopeBindings.SCOPE_ID";
 
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_ORACLE = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + "; AND ROWNUM < :limit;";
+    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_MSSQL =
+            "SELECT filteredScopes.SCOPE_ID, filteredScopes.NAME, filteredScopes.DESCRIPTION, ScopeBindings.SCOPE_BINDING FROM " +
+                    "(SELECT TOP :limit; SELECT Scopes.SCOPE_ID, Scopes.NAME, Scopes.DESCRIPTION FROM IDN_OAUTH2_SCOPE AS Scopes " +
+                    "WHERE Scopes.TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID +
+                    ";) AS filteredScopes " +
+                    "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON filteredScopes.SCOPE_ID=ScopeBindings.SCOPE_ID";
 
-    /*public static final String RETRIEVE_SCOPES_WITH_PAGINATION_ORACLE = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = ? AND OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";*/
+    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_POSTGRESQL =
+            "SELECT filteredScopes.SCOPE_ID, filteredScopes.NAME, filteredScopes.DESCRIPTION, ScopeBindings.SCOPE_BINDING FROM " +
+                    "(SELECT Scopes.SCOPE_ID, Scopes.NAME, Scopes.DESCRIPTION FROM IDN_OAUTH2_SCOPE AS Scopes " +
+                    "WHERE Scopes.TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID +
+                    "; LIMIT :limit;) AS filteredScopes " +
+                    "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON filteredScopes.SCOPE_ID=ScopeBindings.SCOPE_ID";
 
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_DB2SQL = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + "; FETCH FIRST :limit; ROWS ONLY";
+    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_INFORMIX =
+            "SELECT filteredScopes.SCOPE_ID, filteredScopes.NAME, filteredScopes.DESCRIPTION, ScopeBindings.SCOPE_BINDING FROM " +
+                    "(SELECT FIRST :limit; * FROM  (SELECT Scopes.SCOPE_ID, Scopes.NAME, Scopes.DESCRIPTION FROM IDN_OAUTH2_SCOPE AS Scopes " +
+                    "WHERE Scopes.TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID +
+                    ";) RESULT) AS filteredScopes " +
+                    "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON filteredScopes.SCOPE_ID=ScopeBindings.SCOPE_ID";
 
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_MSSQL = "SELECT TOP :limit; SELECT SCOPE_ID, NAME, DESCRIPTION " +
-            "FROM IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + ";";
-
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_POSTGRESQL = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + "; LIMIT :limit;";
-
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_INFORMIX = "SELECT FIRST :limit; * FROM  " +
-            "(SELECT SCOPE_ID, NAME, DESCRIPTION FROM IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" +
-            Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + ";) RESULT";
-
-
-
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_MYSQL = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + "; " +
-            "AND " + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_NAME + "=" +
-            ":" + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_VALUE + "; LIMIT :limit; OFFSET :offset;";
-
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_ORACLE = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + "; " +
-            "AND " + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_NAME + "=" +
-            ":" + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_VALUE + "; AND ROWNUM < :limit;";
-
-    /*public static final String RETRIEVE_SCOPES_WITH_PAGINATION_ORACLE = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = ? AND OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";*/
-
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_DB2SQL = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + "; " +
-            "AND " + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_NAME + "=" +
-            ":" + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_VALUE + "; FETCH FIRST :limit; ROWS ONLY";
-
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_MSSQL = "SELECT TOP :limit; SELECT SCOPE_ID, NAME, DESCRIPTION " +
-            "FROM IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + ";" +
-            "AND " + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_NAME + "=" +
-            ":" + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_VALUE + ";";
-
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_POSTGRESQL = "SELECT SCOPE_ID, NAME, DESCRIPTION FROM " +
-            "IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" + Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + ";" +
-            "AND " + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_NAME + "=" +
-            ":" + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_VALUE + "; LIMIT :limit;";
-
-    public static final String RETRIEVE_SCOPES_WITH_PAGINATION_AND_FILTER_INFORMIX = "SELECT FIRST :limit; * FROM  " +
-            "(SELECT SCOPE_ID, NAME, DESCRIPTION FROM IDN_OAUTH2_SCOPE WHERE TENANT_ID = :" +
-            Oauth2ScopeConstants.SQLPlaceholders.TENANT_ID + ";" +
-            "AND " + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_NAME + "=" +
-            ":" + Oauth2ScopeConstants.SQLPlaceholders.ATTRIBUTE_VALUE + ";) RESULT";
-
-
-
-    public static final String RETRIEVE_SCOPE_BY_ID = "SELECT Scopes.SCOPE_ID, Scopes.NAME, Scopes.DESCRIPTION, " +
+    public static final String RETRIEVE_SCOPE_BY_NAME = "SELECT Scopes.NAME, Scopes.DESCRIPTION, " +
             "ScopeBindings.SCOPE_BINDING FROM IDN_OAUTH2_SCOPE AS Scopes " +
             "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON Scopes.SCOPE_ID=ScopeBindings.SCOPE_ID " +
-            "WHERE Scopes.SCOPE_ID=? AND Scopes.TENANT_ID=?";
+            "WHERE Scopes.NAME=? AND Scopes.TENANT_ID=?";
 
     public static final String  RETRIEVE_SCOPE_ID_BY_NAME = "SELECT SCOPE_ID FROM IDN_OAUTH2_SCOPE " +
             "WHERE NAME=? AND TENANT_ID=?";
 
-    public static final String RETRIEVE_ROLES_OF_SCOPE = "SELECT IOS.ROLES FROM IDN_OAUTH2_SCOPE IOS WHERE SCOPE_KEY" +
-            " = ?";
+    public static final String DELETE_SCOPE_BY_NAME = "DELETE FROM IDN_OAUTH2_SCOPE WHERE NAME = ? AND TENANT_ID = ?";
 
-    public static final String RETRIEVE_ROLES_OF_SCOPE_FOR_TENANT = "SELECT IOS.ROLES FROM IDN_OAUTH2_SCOPE IOS WHERE" +
-            " SCOPE_KEY = ? AND TENANT_ID = ?";
+    public static final String UPDATE_SCOPE_BY_NAME = "UPDATE IDN_OAUTH2_SCOPE SET NAME = ?, DESCRIPTION = ? " +
+            "WHERE NAME = ? AND TENANT_ID = ?";
 
-    public static final String DELETE_SCOPE_BY_ID = "DELETE FROM IDN_OAUTH2_SCOPE WHERE SCOPE_ID = ? AND TENANT_ID = ?";
+    public static final String DELETE_SCOPE_BINDINGS = "DELETE FROM IDN_OAUTH2_SCOPE_BINDING WHERE SCOPE_ID = ?";
+
+
+
+
+    public static final String RETRIEVE_SCOPE_NAME_FOR_RESOURCE = "SELECT Scopes.NAME FROM IDN_OAUTH2_SCOPE AS Scopes, " +
+            "IDN_OAUTH2_RESOURCE_SCOPE AS ScopeResources WHERE RESOURCE_PATH = ? AND ScopeResources.SCOPE_ID = Scopes.SCOPE_ID";
+
+    public static final String RETRIEVE_SCOPE_WITH_TENANT_FOR_RESOURCE = "SELECT Scopes.NAME, Scopes.TENANT_ID FROM " +
+            "IDN_OAUTH2_SCOPE AS Scopes, IDN_OAUTH2_RESOURCE_SCOPE AS ScopeResources WHERE RESOURCE_PATH = ? AND " +
+            "ScopeResources.SCOPE_ID = Scopes.SCOPE_ID";
+
+    public static final String RETRIEVE_BINDINGS_OF_SCOPE =
+            "SELECT ScopeBindings.SCOPE_BINDING FROM IDN_OAUTH2_SCOPE AS Scopes " +
+                    "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON Scopes.SCOPE_ID=ScopeBindings.SCOPE_ID " +
+                    "WHERE Scopes.NAME = ?";
+
+    public static final String RETRIEVE_BINDINGS_OF_SCOPE_FOR_TENANT =
+            "SELECT ScopeBindings.SCOPE_BINDING FROM IDN_OAUTH2_SCOPE AS Scopes " +
+                    "INNER JOIN IDN_OAUTH2_SCOPE_BINDING AS ScopeBindings ON Scopes.SCOPE_ID=ScopeBindings.SCOPE_ID " +
+                    "WHERE Scopes.NAME = ? AND TENANT_ID = ?";
 
     private SQLQueries() {
 

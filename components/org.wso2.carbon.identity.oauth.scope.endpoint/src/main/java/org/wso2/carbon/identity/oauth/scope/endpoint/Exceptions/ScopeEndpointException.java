@@ -22,24 +22,12 @@ import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ErrorDTO;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
-public class ConflictException extends WebApplicationException {
+public class ScopeEndpointException extends WebApplicationException {
 
-    private String message;
-
-    public ConflictException(ErrorDTO errorDTO) {
-        super(Response.status(Response.Status.CONFLICT)
+    public ScopeEndpointException(Response.Status status, ErrorDTO errorDTO) {
+        super(Response.status(status)
                 .entity(errorDTO)
                 .header(Constants.HEADER_CONTENT_TYPE, Constants.DEFAULT_RESPONSE_CONTENT_TYPE)
                 .build());
-        message = errorDTO.getDescription();
-    }
-
-    public ConflictException() {
-        super(Response.Status.CONFLICT);
-    }
-
-    @Override
-    public String getMessage() {
-        return message;
     }
 }

@@ -16,6 +16,9 @@
 
 package org.wso2.carbon.identity.oauth.scope.endpoint;
 
+/**
+ * This class holds the constants used by ScopesApiServiceImpl.
+ */
 public final class Constants {
 
     public static final String SERVER_ERROR = "Error occurred in the server while performing the task.";

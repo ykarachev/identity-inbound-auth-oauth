@@ -151,7 +151,7 @@ paths:
         - Scope Management
 
   # Endpoint uses to get scope by scope name
-  /scopes/name/{scope_name}:
+  /scopes/name/{name}:
     get:
       description: |
          This API is used to get a scope by given scope name.
@@ -168,7 +168,7 @@ paths:
 
       parameters:
         -
-          name: scope_name
+          name: name
           in: path
           description: scope name of the scope which the details to be retrieved
           required: true
@@ -208,7 +208,7 @@ paths:
 
       parameters:
         -
-          name: scope_name
+          name: name
           in: path
           description: scope name of the scope which need to get deleted
           required: true
@@ -252,7 +252,7 @@ paths:
           schema:
             $ref: '#/definitions/scope'
         -
-          name: scope_name
+          name: name
           in: path
           description: scope name of the scope which need to get updated
           required: true

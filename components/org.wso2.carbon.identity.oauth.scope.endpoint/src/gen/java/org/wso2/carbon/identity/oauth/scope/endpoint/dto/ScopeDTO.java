@@ -25,9 +25,7 @@ public class ScopeDTO  {
   
   private List<String> bindings = new ArrayList<String>();
 
-
-
-
+  
   /**
    **/
   @ApiModelProperty(value = "")

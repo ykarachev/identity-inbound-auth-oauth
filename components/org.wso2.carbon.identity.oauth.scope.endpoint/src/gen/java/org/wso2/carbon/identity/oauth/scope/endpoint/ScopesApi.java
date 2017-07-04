@@ -27,7 +27,7 @@ public class ScopesApi  {
    private final ScopesApiService delegate = ScopesApiServiceFactory.getScopesApi();
 
     @DELETE
-    @Path("/name/{scope_name}")
+    @Path("/name/{name}")
     @Consumes({ "application/json", "application/xml" })
     @Produces({ "application/json", "application/xml" })
     @io.swagger.annotations.ApiOperation(value = "Deletes a Scope\n", notes = "This API is used to delete scope by scope name.\n", response = String.class)
@@ -36,12 +36,12 @@ public class ScopesApi  {
         
         @io.swagger.annotations.ApiResponse(code = 500, message = "Server Error") })
 
-    public Response deleteScope(@ApiParam(value = "scope name of the scope which need to get deleted",required=true ) @PathParam("scope_name") String scopeName)
+    public Response deleteScope(@ApiParam(value = "scope name of the scope which need to get deleted",required=true ) @PathParam("name") String name)
     {
-    return delegate.deleteScope(scopeName);
+    return delegate.deleteScope(name);
     }
     @GET
-    @Path("/name/{scope_name}")
+    @Path("/name/{name}")
     @Consumes({ "application/json", "application/xml" })
     @Produces({ "application/json", "application/xml" })
     @io.swagger.annotations.ApiOperation(value = "Returns a Scope by Scope Name\n", notes = "This API is used to get a scope by given scope name.\n", response = ScopeDTO.class)
@@ -52,9 +52,9 @@ public class ScopesApi  {
         
         @io.swagger.annotations.ApiResponse(code = 500, message = "Server Error") })
 
-    public Response getScope(@ApiParam(value = "scope name of the scope which the details to be retrieved",required=true ) @PathParam("scope_name") String scopeName)
+    public Response getScope(@ApiParam(value = "scope name of the scope which the details to be retrieved",required=true ) @PathParam("name") String name)
     {
-    return delegate.getScope(scopeName);
+    return delegate.getScope(name);
     }
     @GET
     
@@ -74,7 +74,7 @@ public class ScopesApi  {
     return delegate.getScopes(startIndex,count);
     }
     @HEAD
-    @Path("/name/{scope_name}")
+    @Path("/name/{name}")
     @Consumes({ "application/json", "application/xml" })
     @Produces({ "application/json", "application/xml" })
     @io.swagger.annotations.ApiOperation(value = "Check Scope Existance using Scope Name\n", notes = "This API is used to check scope existance using scope name.\n", response = String.class)
@@ -108,7 +108,7 @@ public class ScopesApi  {
     return delegate.registerScope(scope);
     }
     @PUT
-    @Path("/name/{scope_name}")
+    @Path("/name/{name}")
     @Consumes({ "application/json", "application/xml" })
     @Produces({ "application/json", "application/xml" })
     @io.swagger.annotations.ApiOperation(value = "Updates a Scope\n", notes = "This API is used to update a scope by scope name.\n", response = ScopeDTO.class)
@@ -120,9 +120,9 @@ public class ScopesApi  {
         @io.swagger.annotations.ApiResponse(code = 500, message = "Server Error") })
 
     public Response updateScope(@ApiParam(value = "updated scope" ,required=true ) ScopeDTO scope,
-    @ApiParam(value = "scope name of the scope which need to get updated",required=true ) @PathParam("scope_name") String scopeName)
+    @ApiParam(value = "scope name of the scope which need to get updated",required=true ) @PathParam("name") String name)
     {
-    return delegate.updateScope(scope,scopeName);
+    return delegate.updateScope(scope,name);
     }
 }
 

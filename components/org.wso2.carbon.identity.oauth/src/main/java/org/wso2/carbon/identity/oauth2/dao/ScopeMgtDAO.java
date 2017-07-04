@@ -451,7 +451,16 @@ public class ScopeMgtDAO {
             ps.setInt(4, tenantID);
             ps.execute();
 
-            int scopeID = getScopeIDByName(updatedScope.getName(), tenantID);
+            int scopeID = -1;
+            ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME);
+            ps.setString(1, updatedScope.getName());
+            ps.setInt(2, tenantID);
+            rs = ps.executeQuery();
+
+            if (rs.next()) {
+                scopeID = rs.getInt(1);
+            }
+            
             ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BINDINGS, new String[]{scopeIdField});
             ps.setInt(1, scopeID);
             ps.execute();

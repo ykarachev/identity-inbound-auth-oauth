@@ -24,8 +24,9 @@ public class Oauth2ScopeConstants {
     public static final int MAX_FILTER_COUNT = 30;
 
     public enum ErrorMessages {
-        ERROR_CODE_BAD_REQUEST_SCOPE_NAME("41001", "Specified Scope Name %s is invalid or not specified."),
-        ERROR_CODE_BAD_REQUEST_SCOPE_DESCRIPTION("41002", "Specified Scope Description is invalid or not specified."),
+        ERROR_CODE_BAD_REQUEST_SCOPE_NAME_NOT_SPECIFIED("41001", "Scope Name is not specified."),
+        ERROR_CODE_BAD_REQUEST_SCOPE_NAME_INVALID("41001", "Specified Scope Name is invalid."),
+        ERROR_CODE_BAD_REQUEST_SCOPE_DESCRIPTION_NOT_SPECIFIED("41002", "Scope Description is not specified."),
         ERROR_CODE_CONFLICT_REQUEST_EXISTING_SCOPE("41003",
                 "Scope with the name %s already exists in the system. Please use a different scope name."),
 

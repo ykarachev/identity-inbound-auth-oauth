@@ -174,6 +174,7 @@ public class ScopesApiServiceImpl extends ScopesApiService {
     public Response updateScope(ScopeDTO scope, String name) {
         try {
             ScopeUtils.getOAuth2ScopeService().updateScope(ScopeUtils.getScope(scope), name);
+            scope.setName(name);
         } catch (IdentityOAuth2ScopeClientException e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Client Error while updating scope \n" + scope.toString(), e);

@@ -41,7 +41,6 @@ import java.util.HashMap;
  * Data Access Layer functionality for Scope management. This includes storing, updating, deleting and retrieving scopes
  */
 public class ScopeMgtDAO {
-
     private static final Log log = LogFactory.getLog(ScopeMgtDAO.class);
 
     /**
@@ -140,7 +139,12 @@ public class ScopeMgtDAO {
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
 
-            ps = conn.prepareStatement(SQLQueries.RETRIEVE_ALL_SCOPES);
+            String scopeIdField = "SCOPE_ID";
+            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
+                scopeIdField = "scope_id";
+            }
+
+            ps = conn.prepareStatement(SQLQueries.RETRIEVE_ALL_SCOPES, new String[]{scopeIdField});
             ps.setInt(1, tenantID);
             rs = ps.executeQuery();
             while (rs.next()) {
@@ -304,7 +308,12 @@ public class ScopeMgtDAO {
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
 
-            ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BY_NAME);
+            String scopeIdField = "SCOPE_ID";
+            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
+                scopeIdField = "scope_id";
+            }
+
+            ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BY_NAME, new String[]{scopeIdField});
             ps.setString(1, name);
             ps.setInt(2, tenantID);
             rs = ps.executeQuery();
@@ -358,7 +367,12 @@ public class ScopeMgtDAO {
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
 
-            ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME);
+            String scopeIdField = "SCOPE_ID";
+            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
+                scopeIdField = "scope_id";
+            }
+
+            ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME, new String[]{scopeIdField});
             ps.setString(1, scopeName);
             ps.setInt(2, tenantID);
             rs = ps.executeQuery();
@@ -400,7 +414,12 @@ public class ScopeMgtDAO {
         try {
             conn = IdentityDatabaseUtil.getDBConnection();
 
-            ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_NAME);
+            String scopeIdField = "SCOPE_ID";
+            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
+                scopeIdField = "scope_id";
+            }
+
+            ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_NAME, new String[]{scopeIdField});
             ps.setString(1, name);
             ps.setInt(2, tenantID);
             ps.execute();
@@ -430,7 +449,7 @@ public class ScopeMgtDAO {
      * @param tenantID     tenant ID
      * @throws IdentityOAuth2ScopeServerException
      */
-    public void updateScopeByName(String name, Scope updatedScope, int tenantID) throws IdentityOAuth2ScopeServerException {
+    public void updateScopeByName(Scope updatedScope, int tenantID) throws IdentityOAuth2ScopeServerException {
 
         Connection conn = null;
         PreparedStatement ps = null;
@@ -444,37 +463,49 @@ public class ScopeMgtDAO {
                 scopeIdField = "scope_id";
             }
 
-            ps = conn.prepareStatement(SQLQueries.UPDATE_SCOPE_BY_NAME, new String[]{scopeIdField});
-            ps.setString(1, updatedScope.getName());
-            ps.setString(2, updatedScope.getDescription());
-            ps.setString(3, name);
-            ps.setInt(4, tenantID);
-            ps.execute();
-
-            int scopeID = -1;
-            ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME);
+            ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_NAME, new String[]{scopeIdField});
             ps.setString(1, updatedScope.getName());
             ps.setInt(2, tenantID);
-            rs = ps.executeQuery();
-
-            if (rs.next()) {
-                scopeID = rs.getInt(1);
-            }
-            
-            ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BINDINGS, new String[]{scopeIdField});
-            ps.setInt(1, scopeID);
             ps.execute();
 
-            for (String binding : updatedScope.getBindings()) {
-                if (StringUtils.isNotBlank(binding)) {
-                    ps = conn.prepareStatement(SQLQueries.ADD_SCOPE_BINDING, new String[]{scopeIdField});
-                    ps.setInt(1, scopeID);
-                    ps.setString(2, binding);
-                    ps.addBatch();
-                }
-                ps.executeBatch();
-            }
+            if (updatedScope != null) {
+                ps = conn.prepareStatement(SQLQueries.ADD_SCOPE, new String[]{scopeIdField});
+                ps.setString(1, updatedScope.getName());
+                ps.setString(2, updatedScope.getDescription());
+                ps.setInt(3, tenantID);
+                ps.execute();
 
+                rs = ps.getGeneratedKeys();
+
+                int scopeID = 0;
+                if (rs.next()) {
+                    scopeID = rs.getInt(1);
+                }
+                // some JDBC Drivers returns this in the result, some don't
+                if (scopeID == 0) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("JDBC Driver did not return the scope id, executing Select operation");
+                    }
+                    ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME, new String[]{scopeIdField});
+                    ps.setString(1, updatedScope.getName());
+                    ps.setInt(2, tenantID);
+                    rs = ps.executeQuery();
+
+                    if (rs.next()) {
+                        scopeID = rs.getInt(1);
+                    }
+                }
+
+                for (String binding : updatedScope.getBindings()) {
+                    if (StringUtils.isNotBlank(binding)) {
+                        ps = conn.prepareStatement(SQLQueries.ADD_SCOPE_BINDING, new String[]{scopeIdField});
+                        ps.setInt(1, scopeID);
+                        ps.setString(2, binding);
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+            }
             conn.commit();
         } catch (SQLException e) {
             try {

@@ -19,8 +19,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.*;
 
 @Path("/scopes")
-@Consumes({ "application/json", "application/xml" })
-@Produces({ "application/json", "application/xml" })
+@Consumes({ "application/json" })
+@Produces({ "application/json" })
 @io.swagger.annotations.Api(value = "/scopes", description = "the scopes API")
 public class ScopesApi  {
 
@@ -28,8 +28,8 @@ public class ScopesApi  {
 
     @DELETE
     @Path("/name/{name}")
-    @Consumes({ "application/json", "application/xml" })
-    @Produces({ "application/json", "application/xml" })
+    @Consumes({ "application/json" })
+    @Produces({ "application/json" })
     @io.swagger.annotations.ApiOperation(value = "Deletes a Scope\n", notes = "This API is used to delete scope by scope name.\n", response = String.class)
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 204, message = "Successful deleted"),
@@ -42,8 +42,8 @@ public class ScopesApi  {
     }
     @GET
     @Path("/name/{name}")
-    @Consumes({ "application/json", "application/xml" })
-    @Produces({ "application/json", "application/xml" })
+    @Consumes({ "application/json" })
+    @Produces({ "application/json" })
     @io.swagger.annotations.ApiOperation(value = "Returns a Scope by Scope Name\n", notes = "This API is used to get a scope by given scope name.\n", response = ScopeDTO.class)
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 200, message = "Successful Retrieved"),
@@ -58,8 +58,8 @@ public class ScopesApi  {
     }
     @GET
     
-    @Consumes({ "application/json", "application/xml" })
-    @Produces({ "application/json", "application/xml" })
+    @Consumes({ "application/json" })
+    @Produces({ "application/json" })
     @io.swagger.annotations.ApiOperation(value = "Returns all available Scopes\n", notes = "This API is used to get all the available scopes.\n", response = ScopeDTO.class, responseContainer = "List")
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 200, message = "Successful Retrieved"),
@@ -75,8 +75,8 @@ public class ScopesApi  {
     }
     @HEAD
     @Path("/name/{name}")
-    @Consumes({ "application/json", "application/xml" })
-    @Produces({ "application/json", "application/xml" })
+    @Consumes({ "application/json" })
+    @Produces({ "application/json" })
     @io.swagger.annotations.ApiOperation(value = "Check Scope Existance using Scope Name\n", notes = "This API is used to check scope existance using scope name.\n", response = String.class)
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 200, message = "Scope Exists"),
@@ -91,8 +91,8 @@ public class ScopesApi  {
     }
     @POST
     
-    @Consumes({ "application/json", "application/xml" })
-    @Produces({ "application/json", "application/xml" })
+    @Consumes({ "application/json" })
+    @Produces({ "application/json" })
     @io.swagger.annotations.ApiOperation(value = "Registers a Scope\n", notes = "This API is used to create a scope.\n", response = ScopeDTO.class)
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 201, message = "Successfully Created"),
@@ -109,8 +109,8 @@ public class ScopesApi  {
     }
     @PUT
     @Path("/name/{name}")
-    @Consumes({ "application/json", "application/xml" })
-    @Produces({ "application/json", "application/xml" })
+    @Consumes({ "application/json" })
+    @Produces({ "application/json" })
     @io.swagger.annotations.ApiOperation(value = "Updates a Scope\n", notes = "This API is used to update a scope by scope name.\n", response = ScopeDTO.class)
     @io.swagger.annotations.ApiResponses(value = { 
         @io.swagger.annotations.ApiResponse(code = 200, message = "Successful updated"),

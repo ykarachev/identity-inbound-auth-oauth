@@ -443,10 +443,10 @@ public class SQLQueries {
 
     /** Scope related queries **/
     public static final String ADD_SCOPE =
-            " INSERT INTO IDN_OAUTH2_SCOPE (NAME , DESCRIPTION, TENANT_ID) VALUES(?,?,?)";
+            "INSERT INTO IDN_OAUTH2_SCOPE (NAME, DESCRIPTION, TENANT_ID) VALUES(?,?,?)";
 
     public static final String ADD_SCOPE_BINDING =
-            " INSERT INTO IDN_OAUTH2_SCOPE_BINDING (SCOPE_ID, SCOPE_BINDING) VALUES(?,?)";
+            "INSERT INTO IDN_OAUTH2_SCOPE_BINDING (SCOPE_ID, SCOPE_BINDING) VALUES(?,?)";
 
     public static final String RETRIEVE_ALL_SCOPES = "SELECT Scopes.SCOPE_ID, Scopes.NAME, Scopes.DESCRIPTION, " +
             "ScopeBindings.SCOPE_BINDING FROM IDN_OAUTH2_SCOPE AS Scopes " +
@@ -504,12 +504,6 @@ public class SQLQueries {
             "WHERE NAME=? AND TENANT_ID=?";
 
     public static final String DELETE_SCOPE_BY_NAME = "DELETE FROM IDN_OAUTH2_SCOPE WHERE NAME = ? AND TENANT_ID = ?";
-
-    public static final String UPDATE_SCOPE_BY_NAME = "UPDATE IDN_OAUTH2_SCOPE SET NAME = ?, DESCRIPTION = ? " +
-            "WHERE NAME = ? AND TENANT_ID = ?";
-
-    public static final String DELETE_SCOPE_BINDINGS = "DELETE FROM IDN_OAUTH2_SCOPE_BINDING WHERE SCOPE_ID = ?";
-
 
 
 

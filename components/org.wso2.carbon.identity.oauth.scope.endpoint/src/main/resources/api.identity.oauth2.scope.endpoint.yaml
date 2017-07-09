@@ -44,7 +44,6 @@ basePath: /api/identity/oauth2/v1.0
 # be set, but supporting it serves extensibility.
 consumes:
   - application/json
-  - application/xml
 
 # The following media types may be passed as output in message bodies of the API.
 # The media type(s) consumable by the requestor is specified in the Accept header field
@@ -55,7 +54,6 @@ consumes:
 # set the value, but supporting it serves extensibility.
 produces:
   - application/json
-  - application/xml
 paths:
   /scopes:
     # Endpoint uses to create scope

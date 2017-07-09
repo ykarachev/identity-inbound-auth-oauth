@@ -32,10 +32,9 @@ import java.util.Set;
  * OAuth2ScopeService use for scope handling
  */
 public class OAuth2ScopeService {
-    //TODO get the instance inside the constructor
+    private static final Log log = LogFactory.getLog(OAuth2ScopeService.class);
     private static ScopeMgtDAO scopeMgtDAO = new ScopeMgtDAO();
     private OAuthScopeCache scopeCache = OAuthScopeCache.getInstance();
-    private static final Log log = LogFactory.getLog(OAuth2ScopeService.class);
 
     /**
      * Register a scope with the bindings
@@ -101,9 +100,8 @@ public class OAuth2ScopeService {
                 throw Oauth2ScopeUtils.generateServerException(Oauth2ScopeConstants.ErrorMessages.
                         ERROR_CODE_FAILED_TO_GET_ALL_SCOPES, e);
             }
-        }
-        //check if it is a pagination request.
-        else {
+        } else {
+            //check if it is a pagination request.
             scopes = listScopesWithPagination(startIndex, count);
         }
         return scopes;
@@ -145,7 +143,7 @@ public class OAuth2ScopeService {
 
         if (scope == null) {
             throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_BAD_REQUEST_SCOPE_NAME_INVALID, name);
+                    ERROR_CODE_NOT_FOUND_SCOPE, name);
         }
 
         return scope;
@@ -161,7 +159,6 @@ public class OAuth2ScopeService {
      */
     public boolean isScopeExists(String name)
             throws IdentityOAuth2ScopeServerException, IdentityOAuth2ScopeClientException {
-        int scopeID;
         boolean isScopeExists = false;
         int tenantID = Oauth2ScopeUtils.getTenantID();
 
@@ -176,13 +173,10 @@ public class OAuth2ScopeService {
             isScopeExists = true;
         } else {
             try {
-                scopeID = scopeMgtDAO.getScopeIDByName(name, tenantID);
+                isScopeExists = scopeMgtDAO.isScopeExists(name, tenantID);
             } catch (IdentityOAuth2ScopeServerException e) {
                 throw Oauth2ScopeUtils.generateServerException(Oauth2ScopeConstants.ErrorMessages.
                         ERROR_CODE_FAILED_TO_GET_SCOPE_BY_NAME, name, e);
-            }
-            if (scopeID != -1) {
-                isScopeExists = true;
             }
         }
 
@@ -203,6 +197,13 @@ public class OAuth2ScopeService {
                     ERROR_CODE_BAD_REQUEST_SCOPE_NAME_NOT_SPECIFIED, null);
         }
 
+        // check whether a scope exists with the provided scope name which to be deleted
+        boolean isScopeExists = isScopeExists(name);
+        if (!isScopeExists) {
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_NOT_FOUND_SCOPE, name);
+        }
+
         scopeCache.clearCacheEntry(new OAuthScopeCacheKey(name, Integer.toString(tenantID)));
 
         try {
@@ -220,10 +221,12 @@ public class OAuth2ScopeService {
      * Update the scope of the given scope ID
      *
      * @param updatedScope details of updated scope
+     * @param name         name of the scope to be updated
+     * @return updated scope
      * @throws IdentityOAuth2ScopeServerException
      * @throws IdentityOAuth2ScopeClientException
      */
-    public void updateScope(Scope updatedScope, String name)
+    public Scope updateScope(Scope updatedScope, String name)
             throws IdentityOAuth2ScopeServerException, IdentityOAuth2ScopeClientException {
         int tenantID = Oauth2ScopeUtils.getTenantID();
         if (name == null) {
@@ -235,7 +238,7 @@ public class OAuth2ScopeService {
         boolean isScopeExists = isScopeExists(name);
         if (!isScopeExists) {
             throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_BAD_REQUEST_SCOPE_NAME_INVALID, updatedScope.getName());
+                    ERROR_CODE_NOT_FOUND_SCOPE, name);
         }
 
         // check whether the scope name has been modified
@@ -251,6 +254,7 @@ public class OAuth2ScopeService {
                     ERROR_CODE_FAILED_TO_UPDATE_SCOPE_BY_NAME, name, e);
         }
         scopeCache.addToCache(new OAuthScopeCacheKey(updatedScope.getName(), Integer.toString(tenantID)), updatedScope);
+        return updatedScope;
     }
 
     /**

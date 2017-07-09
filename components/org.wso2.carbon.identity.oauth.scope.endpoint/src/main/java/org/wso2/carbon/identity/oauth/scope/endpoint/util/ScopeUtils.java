@@ -19,10 +19,10 @@ package org.wso2.carbon.identity.oauth.scope.endpoint.util;
 import org.apache.commons.logging.Log;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.oauth.scope.endpoint.Exceptions.ScopeEndpointException;
-import org.wso2.carbon.identity.oauth2.OAuth2ScopeService;
-import org.wso2.carbon.identity.oauth2.bean.Scope;
 import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ErrorDTO;
 import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ScopeDTO;
+import org.wso2.carbon.identity.oauth2.OAuth2ScopeService;
+import org.wso2.carbon.identity.oauth2.bean.Scope;
 
 import javax.ws.rs.core.Response;
 import java.util.HashSet;
@@ -41,27 +41,30 @@ public class ScopeUtils {
     /**
      * Logs the error, builds a ScopeEndpointException with specified details and throws it
      *
-     * @param status response status
-     * @param message error message
-     * @param code status code
+     * @param status      response status
+     * @param message     error message
+     * @param code        status code
      * @param description error description
-     * @param log Log instance
-     * @param throwable throwable
+     * @param log         Log instance
+     * @param throwable   throwable
      * @throws ScopeEndpointException
      */
     public static void handleScopeEndpointException(Response.Status status, String message,
-                                                    String code, String description, Log log, Throwable throwable)
+                                                    String code, String description, Log log, Throwable throwable,
+                                                    boolean isServerException)
             throws ScopeEndpointException {
-        if (throwable == null) {
-            log.error(message);
-        } else {
-            log.error(message, throwable);
+        if (isServerException) {
+            if (throwable == null) {
+                log.error(message);
+            } else {
+                log.error(message, throwable);
+            }
         }
         throw buildScopeEndpointException(status, message, code, description);
     }
 
     private static ScopeEndpointException buildScopeEndpointException(Response.Status status, String message,
-                                                                     String code, String description) {
+                                                                      String code, String description) {
         ErrorDTO errorDTO = getErrorDTO(message, code, description);
         return new ScopeEndpointException(status, errorDTO);
     }
@@ -97,7 +100,7 @@ public class ScopeUtils {
 
     public static Set<ScopeDTO> getScopeDTOs(Set<Scope> scopes) {
         Set<ScopeDTO> scopeDTOs = new HashSet<>();
-        for(Scope scope : scopes) {
+        for (Scope scope : scopes) {
             ScopeDTO scopeDTO = new ScopeDTO();
             scopeDTO.setName(scope.getName());
             scopeDTO.setDescription(scope.getDescription());

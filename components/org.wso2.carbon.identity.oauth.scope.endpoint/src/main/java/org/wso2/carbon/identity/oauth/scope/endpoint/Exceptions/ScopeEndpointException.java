@@ -16,7 +16,6 @@
 
 package org.wso2.carbon.identity.oauth.scope.endpoint.Exceptions;
 
-import org.wso2.carbon.identity.oauth.scope.endpoint.Constants;
 import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ErrorDTO;
 
 import javax.ws.rs.WebApplicationException;
@@ -27,7 +26,6 @@ public class ScopeEndpointException extends WebApplicationException {
     public ScopeEndpointException(Response.Status status, ErrorDTO errorDTO) {
         super(Response.status(status)
                 .entity(errorDTO)
-                .header(Constants.HEADER_CONTENT_TYPE, Constants.DEFAULT_RESPONSE_CONTENT_TYPE)
                 .build());
     }
 }

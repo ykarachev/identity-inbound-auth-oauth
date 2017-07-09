@@ -18,21 +18,15 @@ package org.wso2.carbon.identity.oauth.scope.endpoint.impl;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.identity.oauth.scope.endpoint.ApiResponseMessage;
-import org.wso2.carbon.identity.oauth.scope.endpoint.Constants;
 import org.wso2.carbon.identity.oauth.scope.endpoint.ScopesApiService;
-import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ErrorDTO;
 import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ScopeDTO;
 import org.wso2.carbon.identity.oauth.scope.endpoint.util.ScopeUtils;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeClientException;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeException;
-import org.wso2.carbon.identity.oauth2.OAuth2ScopeService;
 import org.wso2.carbon.identity.oauth2.Oauth2ScopeConstants;
 import org.wso2.carbon.identity.oauth2.bean.Scope;
-import org.wso2.carbon.identity.oauth2.util.Oauth2ScopeUtils;
 
 import javax.ws.rs.core.Response;
-import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -59,18 +53,20 @@ public class ScopesApiServiceImpl extends ScopesApiService {
             if (Oauth2ScopeConstants.ErrorMessages.ERROR_CODE_CONFLICT_REQUEST_EXISTING_SCOPE.getCode()
                     .equals(e.getErrorCode())) {
                 ScopeUtils.handleScopeEndpointException(Response.Status.CONFLICT,
-                        Constants.STATUS_CONFLICT_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                        Response.Status.CONFLICT.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
             } else {
                 ScopeUtils.handleScopeEndpointException(Response.Status.BAD_REQUEST,
-                        Constants.STATUS_BAD_REQUEST_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                        Response.Status.BAD_REQUEST.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
             }
         } catch (IdentityOAuth2ScopeException e) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e,
+                    true);
         } catch (Throwable throwable) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, Oauth2ScopeConstants
-                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), Oauth2ScopeConstants
+                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable,
+                    true);
         }
         return Response.status(Response.Status.CREATED).entity(registeredScope).build();
     }
@@ -92,15 +88,17 @@ public class ScopesApiServiceImpl extends ScopesApiService {
                 LOG.debug("Client Error while getting scope " + name, e);
             }
             ScopeUtils.handleScopeEndpointException(Response.Status.BAD_REQUEST,
-                    Constants.STATUS_BAD_REQUEST_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                    Response.Status.BAD_REQUEST.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
 
         } catch (IdentityOAuth2ScopeException e) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e,
+                    true);
         } catch (Throwable throwable) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, Oauth2ScopeConstants
-                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), Oauth2ScopeConstants
+                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable,
+                    true);
         }
         return Response.status(Response.Status.OK).entity(ScopeUtils.getScopeDTO(scope)).build();
     }
@@ -120,11 +118,13 @@ public class ScopesApiServiceImpl extends ScopesApiService {
             scopes = ScopeUtils.getOAuth2ScopeService().getScopes(startIndex, count);
         } catch (IdentityOAuth2ScopeException e) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e,
+                    true);
         } catch (Throwable throwable) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, Oauth2ScopeConstants
-                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), Oauth2ScopeConstants
+                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable,
+                    true);
         }
         return Response.status(Response.Status.OK).entity(ScopeUtils.getScopeDTOs(scopes)).build();
     }
@@ -146,15 +146,17 @@ public class ScopesApiServiceImpl extends ScopesApiService {
                 LOG.debug("Client Error while getting scope existence of scope name " + name, e);
             }
             ScopeUtils.handleScopeEndpointException(Response.Status.BAD_REQUEST,
-                    Constants.STATUS_BAD_REQUEST_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                    Response.Status.BAD_REQUEST.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
 
         } catch (IdentityOAuth2ScopeException e) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e,
+                    true);
         } catch (Throwable throwable) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, Oauth2ScopeConstants
-                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), Oauth2ScopeConstants
+                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable,
+                    true);
         }
 
         if (isScopeExists) {
@@ -172,25 +174,33 @@ public class ScopesApiServiceImpl extends ScopesApiService {
      */
     @Override
     public Response updateScope(ScopeDTO scope, String name) {
+        ScopeDTO updatedScope = null;
         try {
-            ScopeUtils.getOAuth2ScopeService().updateScope(ScopeUtils.getScope(scope), name);
-            scope.setName(name);
+            updatedScope = ScopeUtils.getScopeDTO(ScopeUtils.getOAuth2ScopeService()
+                    .updateScope(ScopeUtils.getScope(scope), name));
         } catch (IdentityOAuth2ScopeClientException e) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Client Error while updating scope \n" + scope.toString(), e);
             }
-            ScopeUtils.handleScopeEndpointException(Response.Status.BAD_REQUEST,
-                    Constants.STATUS_BAD_REQUEST_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
-
+            if (Oauth2ScopeConstants.ErrorMessages.ERROR_CODE_NOT_FOUND_SCOPE.getCode()
+                    .equals(e.getErrorCode())) {
+                ScopeUtils.handleScopeEndpointException(Response.Status.NOT_FOUND,
+                        Response.Status.NOT_FOUND.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
+            } else {
+                ScopeUtils.handleScopeEndpointException(Response.Status.BAD_REQUEST,
+                        Response.Status.BAD_REQUEST.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
+            }
         } catch (IdentityOAuth2ScopeException e) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e,
+                    true);
         } catch (Throwable throwable) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, Oauth2ScopeConstants
-                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), Oauth2ScopeConstants
+                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable,
+                    true);
         }
-        return Response.status(Response.Status.OK).entity(scope).build();
+        return Response.status(Response.Status.OK).entity(updatedScope).build();
     }
 
     /**
@@ -207,16 +217,23 @@ public class ScopesApiServiceImpl extends ScopesApiService {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Client Error while deleting scope " + name, e);
             }
-            ScopeUtils.handleScopeEndpointException(Response.Status.BAD_REQUEST,
-                    Constants.STATUS_BAD_REQUEST_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
-
+            if (Oauth2ScopeConstants.ErrorMessages.ERROR_CODE_NOT_FOUND_SCOPE.getCode()
+                    .equals(e.getErrorCode())) {
+                ScopeUtils.handleScopeEndpointException(Response.Status.NOT_FOUND,
+                        Response.Status.NOT_FOUND.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
+            } else {
+                ScopeUtils.handleScopeEndpointException(Response.Status.BAD_REQUEST,
+                        Response.Status.BAD_REQUEST.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
+            }
         } catch (IdentityOAuth2ScopeException e) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, e.getErrorCode(), e.getMessage(), LOG, e);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e,
+                    true);
         } catch (Throwable throwable) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,
-                    Constants.STATUS_INTERNAL_SERVER_ERROR_MESSAGE_DEFAULT, Oauth2ScopeConstants
-                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable);
+                    Response.Status.INTERNAL_SERVER_ERROR.getReasonPhrase(), Oauth2ScopeConstants
+                            .ErrorMessages.ERROR_CODE_UNEXPECTED.getCode(), throwable.getMessage(), LOG, throwable,
+                    true);
         }
         return Response.status(Response.Status.OK).build();
     }

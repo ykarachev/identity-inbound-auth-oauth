@@ -138,7 +138,7 @@ public class JDBCScopeValidator extends OAuth2ScopeValidator {
 
         try {
             //Get the roles associated with the scope, if any
-            Set<String> rolesOfScope = tokenMgtDAO.getRolesOfScopeByScopeKey(resourceScope, resourceTenantId);
+            Set<String> rolesOfScope = tokenMgtDAO.getBindingsOfScopeByScopeName(resourceScope, resourceTenantId);
 
             //If the scope doesn't have any roles associated with it.
             if(rolesOfScope == null || rolesOfScope.isEmpty()){

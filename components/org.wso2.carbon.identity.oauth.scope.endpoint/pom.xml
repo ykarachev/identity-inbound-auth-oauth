@@ -87,7 +87,6 @@
             <plugin>
                 <groupId>org.wso2.maven.plugins</groupId>
                 <artifactId>swagger2cxf-maven-plugin</artifactId>
-                <version>1.0-SNAPSHOT</version>
                 <configuration>
                     <inputSpec>${project.basedir}/src/main/resources/api.identity.oauth2.scope.endpoint.yaml</inputSpec>
                 </configuration>

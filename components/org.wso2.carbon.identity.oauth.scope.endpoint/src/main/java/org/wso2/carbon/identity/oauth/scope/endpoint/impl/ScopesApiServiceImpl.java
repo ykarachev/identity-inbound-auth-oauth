@@ -87,8 +87,14 @@ public class ScopesApiServiceImpl extends ScopesApiService {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Client Error while getting scope " + name, e);
             }
-            ScopeUtils.handleScopeEndpointException(Response.Status.BAD_REQUEST,
-                    Response.Status.BAD_REQUEST.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
+            if (Oauth2ScopeConstants.ErrorMessages.ERROR_CODE_NOT_FOUND_SCOPE.getCode()
+                    .equals(e.getErrorCode())) {
+                ScopeUtils.handleScopeEndpointException(Response.Status.NOT_FOUND,
+                        Response.Status.NOT_FOUND.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
+            } else {
+                ScopeUtils.handleScopeEndpointException(Response.Status.BAD_REQUEST,
+                        Response.Status.BAD_REQUEST.getReasonPhrase(), e.getErrorCode(), e.getMessage(), LOG, e, false);
+            }
 
         } catch (IdentityOAuth2ScopeException e) {
             ScopeUtils.handleScopeEndpointException(Response.Status.INTERNAL_SERVER_ERROR,

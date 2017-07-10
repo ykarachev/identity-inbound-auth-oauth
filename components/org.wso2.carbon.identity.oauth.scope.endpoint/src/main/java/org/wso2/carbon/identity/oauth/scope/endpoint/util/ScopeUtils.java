@@ -60,13 +60,18 @@ public class ScopeUtils {
                 log.error(message, throwable);
             }
         }
-        throw buildScopeEndpointException(status, message, code, description);
+        throw buildScopeEndpointException(status, message, code, description, isServerException);
     }
 
     private static ScopeEndpointException buildScopeEndpointException(Response.Status status, String message,
-                                                                      String code, String description) {
+                                                                      String code, String description,
+                                                                      boolean isServerException) {
         ErrorDTO errorDTO = getErrorDTO(message, code, description);
-        return new ScopeEndpointException(status, errorDTO);
+        if(isServerException) {
+            return new ScopeEndpointException(status);
+        } else {
+            return new ScopeEndpointException(status, errorDTO);
+        }
     }
 
     /**

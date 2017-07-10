@@ -28,4 +28,9 @@ public class ScopeEndpointException extends WebApplicationException {
                 .entity(errorDTO)
                 .build());
     }
+
+    public ScopeEndpointException(Response.Status status) {
+        super(Response.status(status)
+                .build());
+    }
 }

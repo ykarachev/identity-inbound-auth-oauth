@@ -460,7 +460,11 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             authorizationGrantCacheEntry.setEssentialClaims(authorizeReqDTO.getEssentialClaims());
         }
 
-        String sub = userAttributes.get(OAuth2Util.SUB);
+        ClaimMapping key = new ClaimMapping();
+        Claim claimOfKey = new Claim();
+        claimOfKey.setClaimUri(OAuth2Util.SUB);
+        key.setRemoteClaim(claimOfKey);
+        String sub = userAttributes.get(key);
 
         AccessTokenDO accessTokenDO = (AccessTokenDO)msgCtx.getProperty(OAuth2Util.ACCESS_TOKEN_DO);
         if (accessTokenDO != null && StringUtils.isNotBlank(accessTokenDO.getTokenId())) {
@@ -468,17 +472,11 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         }
 
         if (StringUtils.isBlank(sub)) {
-
             sub = authorizeReqDTO.getUser().getAuthenticatedSubjectIdentifier();
         }
 
         if (StringUtils.isNotBlank(sub)) {
-
-            ClaimMapping claimMapping = new ClaimMapping();
-            Claim claim = new Claim();
-            claim.setClaimUri(OAuth2Util.SUB);
-            claimMapping.setRemoteClaim(claim);
-            userAttributes.put(claimMapping, sub);
+            userAttributes.put(key, sub);
         }
 
         AuthorizationGrantCache.getInstance().addToCacheByToken(authorizationGrantCacheKey,

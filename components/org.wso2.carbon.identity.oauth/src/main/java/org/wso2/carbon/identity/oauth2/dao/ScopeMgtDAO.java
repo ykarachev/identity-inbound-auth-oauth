@@ -20,11 +20,13 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
-import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeClientException;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeException;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeServerException;
 import org.wso2.carbon.identity.oauth2.Oauth2ScopeConstants;
 import org.wso2.carbon.identity.oauth2.bean.Scope;
 import org.wso2.carbon.identity.oauth2.util.NamedPreparedStatement;
+import org.wso2.carbon.identity.oauth2.util.Oauth2ScopeUtils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -383,67 +385,78 @@ public class ScopeMgtDAO {
      *
      * @param updatedScope details of the updated scope
      * @param tenantID     tenant ID
-     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeException
      */
-    public void updateScopeByName(Scope updatedScope, int tenantID) throws IdentityOAuth2ScopeServerException {
-        try (Connection conn = IdentityDatabaseUtil.getDBConnection();) {
+    public void updateScopeByName(Scope updatedScope, int tenantID) throws IdentityOAuth2ScopeClientException,
+            IdentityOAuth2ScopeServerException {
+        try (Connection conn = IdentityDatabaseUtil.getDBConnection()) {
 
             String scopeIdField = "SCOPE_ID";
             if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
                 scopeIdField = "scope_id";
             }
 
-            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_NAME,
-                    new String[]{scopeIdField});) {
-                ps.setString(1, updatedScope.getName());
-                ps.setInt(2, tenantID);
-                ps.execute();
-            }
-
-            int scopeID = 0;
             if (updatedScope != null) {
-                try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE, new String[]{scopeIdField});) {
-                    ps.setString(1, updatedScope.getName());
-                    ps.setString(2, updatedScope.getDescription());
-                    ps.setInt(3, tenantID);
-                    ps.execute();
-
-                    try (ResultSet rs = ps.getGeneratedKeys();) {
-                        if (rs.next()) {
-                            scopeID = rs.getInt(1);
-                        }
-                    }
-                }
-                // some JDBC Drivers returns this in the result, some don't
-                if (scopeID == 0) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("JDBC Driver did not return the scope id, executing Select operation");
-                    }
-                    try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME,
-                            new String[]{scopeIdField});) {
+                if (StringUtils.isNotBlank(updatedScope.getName())) {
+                    try (PreparedStatement ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_NAME,
+                            new String[]{scopeIdField})) {
                         ps.setString(1, updatedScope.getName());
                         ps.setInt(2, tenantID);
-                        try (ResultSet rs = ps.executeQuery();) {
+                        ps.execute();
+                    }
+
+                    int scopeID = 0;
+                    try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE,
+                            new String[]{scopeIdField})) {
+                        ps.setString(1, updatedScope.getName());
+                        ps.setString(2, updatedScope.getDescription());
+                        ps.setInt(3, tenantID);
+                        ps.execute();
+
+                        try (ResultSet rs = ps.getGeneratedKeys()) {
                             if (rs.next()) {
                                 scopeID = rs.getInt(1);
                             }
                         }
                     }
-                }
-
-                for (String binding : updatedScope.getBindings()) {
-                    try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE_BINDING,
-                            new String[]{scopeIdField});) {
-                        if (StringUtils.isNotBlank(binding)) {
-                            ps.setInt(1, scopeID);
-                            ps.setString(2, binding);
-                            ps.addBatch();
+                    // some JDBC Drivers returns this in the result, some don't
+                    if (scopeID == 0) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("JDBC Driver did not return the scope id, executing Select operation");
                         }
-                        ps.executeBatch();
+                        try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME,
+                                new String[]{scopeIdField})) {
+                            ps.setString(1, updatedScope.getName());
+                            ps.setInt(2, tenantID);
+                            try (ResultSet rs = ps.executeQuery()) {
+                                if (rs.next()) {
+                                    scopeID = rs.getInt(1);
+                                }
+                            }
+                        }
                     }
+
+                    for (String binding : updatedScope.getBindings()) {
+                        try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE_BINDING,
+                                new String[]{scopeIdField})) {
+                            if (StringUtils.isNotBlank(binding)) {
+                                ps.setInt(1, scopeID);
+                                ps.setString(2, binding);
+                                ps.addBatch();
+                            }
+                            ps.executeBatch();
+                        }
+                    }
+                    conn.commit();
+                } else {
+                    throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                            ERROR_CODE_BAD_REQUEST_SCOPE_NAME_NOT_SPECIFIED, updatedScope.getName());
                 }
+            } else {
+                throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                        ERROR_CODE_BAD_REQUEST_SCOPE_NOT_SPECIFIED, null);
             }
-            conn.commit();
+
         } catch (SQLException e) {
             String msg = "Error occurred while updating scope by ID ";
             throw new IdentityOAuth2ScopeServerException(msg, e);

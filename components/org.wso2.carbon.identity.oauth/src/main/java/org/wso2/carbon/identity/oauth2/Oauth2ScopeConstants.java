@@ -29,6 +29,7 @@ public class Oauth2ScopeConstants {
         ERROR_CODE_NOT_FOUND_SCOPE("41003", "Scope %s is not found."),
         ERROR_CODE_CONFLICT_REQUEST_EXISTING_SCOPE("41004",
                 "Scope with the name %s already exists in the system. Please use a different scope name."),
+        ERROR_CODE_BAD_REQUEST_SCOPE_NOT_SPECIFIED("41005", "Scope is not specified."),
 
         ERROR_CODE_FAILED_TO_REGISTER_SCOPE("51001", "Error occurred while registering scope %s."),
         ERROR_CODE_FAILED_TO_GET_ALL_SCOPES("51002", "Error occurred while retrieving all available scopes."),

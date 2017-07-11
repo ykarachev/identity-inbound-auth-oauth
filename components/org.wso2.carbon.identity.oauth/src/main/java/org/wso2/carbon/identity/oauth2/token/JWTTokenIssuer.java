@@ -33,13 +33,13 @@ import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
-import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.identity.openidconnect.CustomClaimsCallbackHandler;
 
 import java.security.Key;
 import java.security.interfaces.RSAPrivateKey;
@@ -68,21 +68,15 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
     private static final String SHA384_WITH_EC = "SHA384withEC";
     private static final String SHA512_WITH_EC = "SHA512withEC";
 
-    private static final String PREVIOUS_ACCESS_TOKEN = "previousAccessToken";
-    private static final String JWT_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
-    private static final String CLIENT_CREDENTIAL_GRANT_TYPE = "client_credentials";
-    private static final String WSO2_CLAIM_DIALECT = "http://wso2.org/claims";
-    private static final String OIDC_CLAIM_DIALECT = "http://wso2.org/oidc/claim";
-
     private static final String KEY_STORE_EXTENSION = ".jks";
     private static final String AUTHORIZATION_PARTY = "azp";
+    private static final String AUDIENCE = "aud";
 
     private static final Log log = LogFactory.getLog(JWTTokenIssuer.class);
 
-    /**
-     * Map for private keys
-     */
-    private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<Integer, Key>();
+    // We are keeping a private key map which will have private key for each tenant domain. We are keeping this as a
+    // static Map since then we don't need to read the key from keystore every time.
+    private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<>();
     private Algorithm signatureAlgorithm = null;
 
     public JWTTokenIssuer() throws IdentityOAuth2Exception {
@@ -93,67 +87,55 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
         OAuthServerConfiguration config = OAuthServerConfiguration.getInstance();
 
-        // Map signature algorithm from identity.xml to nimbus format, this is a one time configuration
+        // Map signature algorithm from identity.xml to nimbus format, this is a one time configuration.
         signatureAlgorithm = mapSignatureAlgorithm(config.getSignatureAlgorithm());
     }
 
+    @Override
     public String accessToken(OAuthTokenReqMessageContext oAuthTokenReqMessageContext) throws OAuthSystemException {
 
         if (log.isDebugEnabled()) {
             log.debug("Access token request with token request message context. Authorized user " +
                     oAuthTokenReqMessageContext.getAuthorizedUser().toString());
         }
-        return this.accessToken(oAuthTokenReqMessageContext, null);
+
+        try {
+            return this.buildJWTToken(oAuthTokenReqMessageContext);
+        } catch (IdentityOAuth2Exception e) {
+            throw new OAuthSystemException(e);
+        }
     }
 
-
+    @Override
     public String accessToken(OAuthAuthzReqMessageContext oAuthAuthzReqMessageContext) throws OAuthSystemException {
 
         if (log.isDebugEnabled()) {
             log.debug("Access token request with authorization request message context message context. Authorized " +
                     "user " + oAuthAuthzReqMessageContext.getAuthorizationReqDTO().getUser().toString());
         }
-        return this.accessToken(null, oAuthAuthzReqMessageContext);
-    }
-
-    private String accessToken(OAuthTokenReqMessageContext oAuthTokenReqMessageContext,
-                               OAuthAuthzReqMessageContext oAuthAuthzReqMessageContext) throws OAuthSystemException {
 
         try {
-            if (oAuthTokenReqMessageContext != null) {
-                return this.buildIDToken(oAuthTokenReqMessageContext);
-            } else {
-                return this.buildIDToken(oAuthAuthzReqMessageContext);
-            }
+            return this.buildJWTToken(oAuthAuthzReqMessageContext);
         } catch (IdentityOAuth2Exception e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Error occurred while issuing jwt access token. Hence returning default token", e);
-            }
-
-            // Return default access token if it fails to build jwt.
-            if (oAuthTokenReqMessageContext != null) {
-                return super.accessToken(oAuthTokenReqMessageContext);
-            } else {
-                return super.accessToken(oAuthAuthzReqMessageContext);
-            }
+            throw new OAuthSystemException(e);
         }
     }
 
     /**
-     * To build id token from OauthToken request message context
+     * Build a signed jwt token from OauthToken request message context.
      *
-     * @param request Token request message context
+     * @param request Token request message context.
      * @return Signed jwt string.
      * @throws IdentityOAuth2Exception
      */
-    protected String buildIDToken(OAuthTokenReqMessageContext request)
+    protected String buildJWTToken(OAuthTokenReqMessageContext request)
             throws IdentityOAuth2Exception {
 
         // Set claims to jwt token.
-        JWTClaimsSet jwtClaimsSet = createJWTClaimSet(request.getAuthorizedUser(), request.getOauth2AccessTokenReqDTO()
-                .getClientId(), request.getOauth2AccessTokenReqDTO().getGrantType());
+        JWTClaimsSet jwtClaimsSet = createJWTClaimSet(null, request, request.getOauth2AccessTokenReqDTO()
+                .getClientId());
 
-        if (Arrays.asList((request.getScope())).contains("aud")) {
+        if (Arrays.asList((request.getScope())).contains(AUDIENCE)) {
             jwtClaimsSet.setAudience(Arrays.asList(request.getScope()));
         }
 
@@ -161,23 +143,23 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
             return new PlainJWT(jwtClaimsSet).serialize();
         }
 
-        return signJWT(jwtClaimsSet, request);
+        return signJWT(jwtClaimsSet, request, null);
     }
 
     /**
-     * Build a signed jwt token from authorization request message context
+     * Build a signed jwt token from authorization request message context.
      *
-     * @param request Oauth authorization message context
-     * @return Signed jwt string
+     * @param request Oauth authorization message context.
+     * @return Signed jwt string.
      * @throws IdentityOAuth2Exception
      */
-    protected String buildIDToken(OAuthAuthzReqMessageContext request)
+    protected String buildJWTToken(OAuthAuthzReqMessageContext request)
             throws IdentityOAuth2Exception {
 
-        JWTClaimsSet jwtClaimsSet = createJWTClaimSet(request.getAuthorizationReqDTO().getUser(),
-                request.getAuthorizationReqDTO().getConsumerKey(), request.getAuthorizationReqDTO().getResponseType());
+        // Set claims to jwt token.
+        JWTClaimsSet jwtClaimsSet = createJWTClaimSet(request, null, request.getAuthorizationReqDTO().getConsumerKey());
 
-        if (Arrays.asList((request.getApprovedScope())).contains("aud")) {
+        if (Arrays.asList((request.getApprovedScope())).contains(AUDIENCE)) {
             jwtClaimsSet.setAudience(Arrays.asList(request.getApprovedScope()));
         }
 
@@ -185,81 +167,76 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
             return new PlainJWT(jwtClaimsSet).serialize();
         }
 
-        return signJWT(jwtClaimsSet, request);
-    }
-
-    private JWTClaimsSet createJWTClaimSet(AuthenticatedUser user, String consumerKey, String grantType)
-            throws IdentityOAuth2Exception {
-
-        String issuer = OAuth2Util.getIDTokenIssuer();
-        int tenantId = OAuth2Util.getTenantId(user.getTenantDomain());
-        SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util.getSpTokenExpiryTimeConfig(consumerKey, tenantId);
-
-        long lifetimeInMillis = OAuthServerConfiguration.getInstance().
-                getApplicationAccessTokenValidityPeriodInSeconds() * 1000;
-        if (spTimeConfigObj.getApplicationAccessTokenExpiryTime() != null) {
-            lifetimeInMillis = spTimeConfigObj.getApplicationAccessTokenExpiryTime();
-        }
-        long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
-
-        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
-        jwtClaimsSet.setIssuer(issuer);
-        jwtClaimsSet.setSubject(user.getAuthenticatedSubjectIdentifier());
-        jwtClaimsSet.setClaim(AUTHORIZATION_PARTY, consumerKey);
-        jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
-        jwtClaimsSet.setIssueTime(new Date(curTimeInMillis));
-        jwtClaimsSet.setJWTID(UUID.randomUUID().toString());
-
-        jwtClaimsSet.setAudience(Collections.singletonList(consumerKey));
-
-        if (!CLIENT_CREDENTIAL_GRANT_TYPE.equals(grantType)) {
-            addUserClaims(jwtClaimsSet, user);
-        }
-
-        return jwtClaimsSet;
+        return signJWT(jwtClaimsSet, null, request);
     }
 
     /**
-     * sign JWT token from RSA algorithm
-     *
-     * @param jwtClaimsSet contains JWT body
-     * @param request
-     * @return signed JWT token
+     * Sign ghe JWT token according to the given signature signing algorithm.
+     * @param jwtClaimsSet JWT claim set to be signed.
+     * @param tokenContext Token context.
+     * @param authorizationContext Authorization context.
+     * @return Signed JWT.
      * @throws IdentityOAuth2Exception
      */
-    protected String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext request)
-            throws IdentityOAuth2Exception {
-        return this.signJWTWithRSA(jwtClaimsSet, request, null);
+    protected String signJWT(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext tokenContext,
+                           OAuthAuthzReqMessageContext authorizationContext) throws IdentityOAuth2Exception {
+
+        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.RS512.equals(signatureAlgorithm)) {
+            return signJWTWithRSA(jwtClaimsSet, tokenContext, authorizationContext);
+        } else if (JWSAlgorithm.HS256.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.HS512.equals(signatureAlgorithm)) {
+            return signJWTWithHMAC(jwtClaimsSet, tokenContext, authorizationContext);
+        } else if (JWSAlgorithm.ES256.equals(signatureAlgorithm) || JWSAlgorithm.ES384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.ES512.equals(signatureAlgorithm)) {
+            return signJWTWithECDSA(jwtClaimsSet, tokenContext, authorizationContext);
+        } else {
+            throw new IdentityOAuth2Exception("Invalid signature algorithm provided. " + signatureAlgorithm);
+        }
     }
 
-    protected String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, OAuthAuthzReqMessageContext request)
-            throws IdentityOAuth2Exception {
-        return this.signJWTWithRSA(jwtClaimsSet, null, request);
-    }
-
-    private String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext tokenContext,
-                                  OAuthAuthzReqMessageContext auhthorizationContext) throws IdentityOAuth2Exception {
+    /**
+     * Sign the JWT token with RSA (SHA-256, SHA-384, SHA-512) algorithm.
+     * @param jwtClaimsSet JWT claim set to be signed.
+     * @param tokenContext Token context if available.
+     * @param authorizationContext Authorization context if available.
+     * @return Signed JWT token.
+     * @throws IdentityOAuth2Exception
+     */
+    protected String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext tokenContext,
+                                  OAuthAuthzReqMessageContext authorizationContext) throws IdentityOAuth2Exception {
 
         try {
-            String tenantDomain;
+            String tenantDomain = null;
             if (tokenContext != null) {
                 tenantDomain = tokenContext.getAuthorizedUser().getTenantDomain();
-            } else {
+            } else if (authorizationContext != null) {
+                tenantDomain = authorizationContext.getAuthorizationReqDTO().getUser().getTenantDomain();
+            }
 
-                // All applications are registered under super tenant domain and currently we don't have access to SP
-                // tenant domain.
-                tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+            if (tenantDomain == null) {
+                throw new IdentityOAuth2Exception("Cannot resolve the tenant domain of the user.");
             }
 
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
 
             Key privateKey;
+            if (privateKeys.containsKey(tenantId)) {
 
-            if (!(privateKeys.containsKey(tenantId))) {
+                // PrivateKey will not be null because containsKey() true says given key is exist and ConcurrentHashMap
+                // does not allow to store null values.
+                privateKey = privateKeys.get(tenantId);
+            } else {
 
                 // Get tenant's key store manager.
                 KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
-                if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
+                if (MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenantDomain)) {
+                    try {
+                        privateKey = tenantKSM.getDefaultPrivateKey();
+                    } catch (Exception e) {
+                        throw new IdentityOAuth2Exception("Error while obtaining private key for super tenant", e);
+                    }
+                } else {
 
                     // Derive key store name.
                     String ksName = tenantDomain.trim().replace(".", "-");
@@ -267,22 +244,12 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
                     // Obtain private key.
                     privateKey = tenantKSM.getPrivateKey(jksName, tenantDomain);
-                } else {
-                    try {
-                        privateKey = tenantKSM.getDefaultPrivateKey();
-                    } catch (Exception e) {
-                        throw new IdentityOAuth2Exception("Error while obtaining private key for super tenant", e);
-                    }
                 }
 
-                // Private Key will not be null always.
+                // Add the private key to the static concurrent hash map for later uses.
                 privateKeys.put(tenantId, privateKey);
-            } else {
-
-                // PrivateKey will not be null because containsKey() true says given key is exist and ConcurrentHashMap
-                // does not allow to store null values.
-                privateKey = privateKeys.get(tenantId);
             }
+
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             SignedJWT signedJWT = new SignedJWT(new JWSHeader((JWSAlgorithm) signatureAlgorithm), jwtClaimsSet);
             signedJWT.sign(signer);
@@ -292,47 +259,25 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
         }
     }
 
-    /**
-     * Generic Signing function
-     *
-     * @param jwtClaimsSet contains JWT body
-     * @param request
-     * @return
-     * @throws IdentityOAuth2Exception
-     */
-    protected String signJWT(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext request)
-            throws IdentityOAuth2Exception {
-        return this.signJWT(jwtClaimsSet, request, null);
+    // TODO: Implement JWT signing with HMAC SHA (SHA-256, SHA-384, SHA-512).
+    protected String signJWTWithHMAC(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext tokenContext,
+                                   OAuthAuthzReqMessageContext authorizationContext) throws IdentityOAuth2Exception {
+
+        throw new IdentityOAuth2Exception("Given signature algorithm " + signatureAlgorithm + " is not supported " +
+                "by the current implementation.");
     }
 
-    protected String signJWT(JWTClaimsSet jwtClaimsSet, OAuthAuthzReqMessageContext request)
-            throws IdentityOAuth2Exception {
-        return this.signJWT(jwtClaimsSet, null, request);
-    }
+    // TODO: Implement JWT signing with ECDSA (SHA-256, SHA-384, SHA-512).
+    protected String signJWTWithECDSA(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext tokenContext,
+                                   OAuthAuthzReqMessageContext authorizationContext) throws IdentityOAuth2Exception {
 
-    private String signJWT(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext tokenContext,
-                           OAuthAuthzReqMessageContext authorizationContext) throws IdentityOAuth2Exception {
-
-        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
-                JWSAlgorithm.RS512.equals(signatureAlgorithm)) {
-            return signJWTWithRSA(jwtClaimsSet, tokenContext, authorizationContext);
-        } else if (JWSAlgorithm.HS256.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
-                JWSAlgorithm.HS512.equals(signatureAlgorithm)) {
-
-            // Implementation need to be done.
-            return null;
-        } else {
-
-            // Implementation need to be done.
-            return null;
-        }
+        throw new IdentityOAuth2Exception("Given signature algorithm " + signatureAlgorithm + " is not supported " +
+                "by the current implementation.");
     }
 
     /**
-     * This method map signature algorithm define in identity.xml to nimbus
-     * signature algorithm
-     * format, Strings are defined inline hence there are not being used any
-     * where
+     * This method map signature algorithm define in identity.xml to nimbus signature algorithm format, Strings are
+     * defined inline hence there are not being used any where
      *
      * @param signatureAlgorithm Signature algorithm.
      * @return JWS algorithm.
@@ -340,38 +285,86 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
      */
     protected JWSAlgorithm mapSignatureAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
 
-        if (NONE.equals(signatureAlgorithm)) {
-            return new JWSAlgorithm(JWSAlgorithm.NONE.getName());
-        } else if (SHA256_WITH_RSA.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS256;
-        } else if (SHA384_WITH_RSA.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS384;
-        } else if (SHA512_WITH_RSA.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS512;
-        } else if (SHA256_WITH_HMAC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS256;
-        } else if (SHA384_WITH_HMAC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS384;
-        } else if (SHA512_WITH_HMAC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS512;
-        } else if (SHA256_WITH_EC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES256;
-        } else if (SHA384_WITH_EC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES384;
-        } else if (SHA512_WITH_EC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES512;
+        switch (signatureAlgorithm) {
+            case NONE:
+                return new JWSAlgorithm(JWSAlgorithm.NONE.getName());
+            case SHA256_WITH_RSA:
+                return JWSAlgorithm.RS256;
+            case SHA384_WITH_RSA:
+                return JWSAlgorithm.RS384;
+            case SHA512_WITH_RSA:
+                return JWSAlgorithm.RS512;
+            case SHA256_WITH_HMAC:
+                return JWSAlgorithm.HS256;
+            case SHA384_WITH_HMAC:
+                return JWSAlgorithm.HS384;
+            case SHA512_WITH_HMAC:
+                return JWSAlgorithm.HS512;
+            case SHA256_WITH_EC:
+                return JWSAlgorithm.ES256;
+            case SHA384_WITH_EC:
+                return JWSAlgorithm.ES384;
+            case SHA512_WITH_EC:
+                return JWSAlgorithm.ES512;
         }
+
         throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
     }
 
-    private void addUserClaims(JWTClaimsSet jwtClaimsSet, AuthenticatedUser user) throws IdentityOAuth2Exception {
+    /**
+     * Create a JWT claim set according to the JWT format.
+     * @param authAuthzReqMessageContext Oauth authorization request message context.
+     * @param tokenReqMessageContext Token request message context.
+     * @param consumerKey Consumer key of the application.
+     * @return JWT claim set.
+     * @throws IdentityOAuth2Exception
+     */
+    private JWTClaimsSet createJWTClaimSet(OAuthAuthzReqMessageContext authAuthzReqMessageContext,
+                                           OAuthTokenReqMessageContext tokenReqMessageContext, String consumerKey)
+            throws IdentityOAuth2Exception {
 
-        if (!user.getUserAttributes().isEmpty()) {
-            for (Map.Entry<ClaimMapping, String> entry : user.getUserAttributes().entrySet()) {
-                jwtClaimsSet.setClaim(entry.getKey().getLocalClaim().getClaimUri(), entry.getValue());
-            }
-        } else if (log.isDebugEnabled()) {
-            log.debug("User: " + user.getUserName() + " does not have any claims.");
+        AuthenticatedUser user;
+        if (authAuthzReqMessageContext != null) {
+            user = authAuthzReqMessageContext.getAuthorizationReqDTO().getUser();
+        } else {
+            user = tokenReqMessageContext.getAuthorizedUser();
         }
+
+        String issuer = OAuth2Util.getIDTokenIssuer();
+        int tenantId = OAuth2Util.getTenantId(user.getTenantDomain());
+        SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util.getSpTokenExpiryTimeConfig(consumerKey, tenantId);
+
+        long lifetimeInMillis = OAuthServerConfiguration.getInstance()
+                .getApplicationAccessTokenValidityPeriodInSeconds() * 1000;
+
+        if (spTimeConfigObj.getApplicationAccessTokenExpiryTime() != null) {
+            lifetimeInMillis = spTimeConfigObj.getApplicationAccessTokenExpiryTime();
+        }
+
+        long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
+
+        // Set the default claims.
+        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
+        jwtClaimsSet.setIssuer(issuer);
+        jwtClaimsSet.setSubject(user.getAuthenticatedSubjectIdentifier());
+        jwtClaimsSet.setClaim(AUTHORIZATION_PARTY, consumerKey);
+        jwtClaimsSet.setExpirationTime(new Date(curTimeInMillis + lifetimeInMillis));
+        jwtClaimsSet.setIssueTime(new Date(curTimeInMillis));
+        jwtClaimsSet.setJWTID(UUID.randomUUID().toString());
+
+        // This is a spec (openid-connect-core-1_0:2.0) requirement for ID tokens. But we are keeping this in JWT
+        // as well.
+        jwtClaimsSet.setAudience(Collections.singletonList(consumerKey));
+
+        CustomClaimsCallbackHandler claimsCallBackHandler =
+                OAuthServerConfiguration.getInstance().getOpenIDConnectCustomClaimsCallbackHandler();
+
+        if (authAuthzReqMessageContext != null) {
+            claimsCallBackHandler.handleCustomClaims(jwtClaimsSet, authAuthzReqMessageContext);
+        } else {
+            claimsCallBackHandler.handleCustomClaims(jwtClaimsSet, tokenReqMessageContext);
+        }
+
+        return jwtClaimsSet;
     }
 }

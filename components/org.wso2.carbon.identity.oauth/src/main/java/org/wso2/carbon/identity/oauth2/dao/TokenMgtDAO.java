@@ -79,11 +79,14 @@ public class TokenMgtDAO {
     private static final String FEDERATED_USER_DOMAIN_SEPARATOR = ":";
     private static TokenPersistenceProcessor persistenceProcessor;
 
-    private static int maxPoolSize = 100;
+    private static final int DEFAULT_POOL_SIZE = 100;
+    private static final int DEFAULT_TOKEN_PERSIST_RETRY_COUNT = 5;
+    private static final boolean DEFAULT_PERSIST_ENABLED = true;
 
-    private static int tokenPersistRetryCount = 5;
 
-    private boolean enablePersist = true;
+    private static int maxPoolSize;
+    private static int tokenPersistRetryCount;
+    private boolean enablePersist;
 
     private static BlockingDeque<AccessContextTokenDO> accessContextTokenQueue = new LinkedBlockingDeque<>();
 
@@ -92,28 +95,25 @@ public class TokenMgtDAO {
     private static final Log log = LogFactory.getLog(TokenMgtDAO.class);
 
     private static final String IDN_OAUTH2_ACCESS_TOKEN = "IDN_OAUTH2_ACCESS_TOKEN";
-
     private static final String IDN_OAUTH2_AUTHORIZATION_CODE = "IDN_OAUTH2_AUTHORIZATION_CODE";
+
+    // These config properties are defined in identity.xml
+    private static final String OAUTH_TOKEN_PERSISTENCE_ENABLE = "OAuth.TokenPersistence.Enable";
+    private static final String OAUTH_TOKEN_PERSISTENCE_POOLSIZE = "OAuth.TokenPersistence.PoolSize";
+    private static final String OAUTH_TOKEN_PERSISTENCE_RETRY_COUNT = "OAuth.TokenPersistence.RetryCount";
+
+    // We read from these properties for the sake of backward compatibility
+    private static final String FRAMEWORK_PERSISTENCE_ENABLE = "JDBCPersistenceManager.SessionDataPersist.PoolSize";
+    private static final String FRAMEWORK_PERSISTENCE_POOLSIZE = "JDBCPersistenceManager.SessionDataPersist.PoolSize";
+
 
     static {
 
         final Log log = LogFactory.getLog(TokenMgtDAO.class);
 
-        try {
-            String maxPoolSizeConfigValue = IdentityUtil.getProperty("JDBCPersistenceManager.SessionDataPersist" +
-                    ".PoolSize");
-            if (StringUtils.isNotBlank(maxPoolSizeConfigValue)) {
-                maxPoolSize = Integer.parseInt(maxPoolSizeConfigValue);
-            }
-        } catch (NumberFormatException e) {
-            if (log.isDebugEnabled()) {
-                log.debug("Error while parsing the JDBCPersistenceManager.SessionDataPersist.PoolSize.", e);
-            }
-            log.warn("Session data persistence pool size is not configured. Using default value.");
-        }
-
+        maxPoolSize = getTokenPersistPoolSize();
         if (maxPoolSize > 0) {
-            log.info("Thread pool size for session persistent consumer : " + maxPoolSize);
+            log.info("Thread pool size for OAuth Token persistent consumer : " + maxPoolSize);
 
             ExecutorService threadPool = Executors.newFixedThreadPool(maxPoolSize);
 
@@ -138,12 +138,17 @@ public class TokenMgtDAO {
             persistenceProcessor = new PlainTextPersistenceProcessor();
         }
 
-        if (IdentityUtil.getProperty("JDBCPersistenceManager.TokenPersist.Enable") != null) {
-            enablePersist = Boolean.parseBoolean(IdentityUtil.getProperty("JDBCPersistenceManager.TokenPersist.Enable"));
+        enablePersist = isPersistenceEnabled();
+        if (IdentityUtil.getProperty(OAUTH_TOKEN_PERSISTENCE_RETRY_COUNT) != null) {
+            tokenPersistRetryCount = Integer.parseInt(IdentityUtil.getProperty(OAUTH_TOKEN_PERSISTENCE_RETRY_COUNT));
+        } else {
+            tokenPersistRetryCount = DEFAULT_TOKEN_PERSIST_RETRY_COUNT;
         }
 
-        if (IdentityUtil.getProperty("OAuth.TokenPersistence.RetryCount") != null) {
-            tokenPersistRetryCount = Integer.parseInt(IdentityUtil.getProperty("OAuth.TokenPersistence.RetryCount"));
+        if (log.isDebugEnabled()) {
+            log.debug("OAuth Token Persistence Enabled: " + enablePersist);
+            log.debug("OAuth Token Persistence PoolSize: " + maxPoolSize);
+            log.debug("OAuth Token Persistence Retry count set to " + tokenPersistRetryCount);
         }
     }
 
@@ -2783,5 +2788,40 @@ public class TokenMgtDAO {
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }
+    }
+
+    private boolean isPersistenceEnabled() {
+
+        boolean enablePersist = DEFAULT_PERSIST_ENABLED;
+        if (IdentityUtil.getProperty(OAUTH_TOKEN_PERSISTENCE_ENABLE) != null) {
+            enablePersist = Boolean.parseBoolean(IdentityUtil.getProperty(OAUTH_TOKEN_PERSISTENCE_ENABLE));
+        } else if (IdentityUtil.getProperty(FRAMEWORK_PERSISTENCE_ENABLE) != null) {
+            enablePersist = Boolean.parseBoolean(IdentityUtil.getProperty(FRAMEWORK_PERSISTENCE_ENABLE));
+        }
+
+        return enablePersist;
+    }
+
+    private static int getTokenPersistPoolSize () {
+
+        int maxPoolSize = DEFAULT_POOL_SIZE;
+        try {
+            String maxPoolSizeConfigValue = IdentityUtil.getProperty(OAUTH_TOKEN_PERSISTENCE_POOLSIZE);
+            if (StringUtils.isNotBlank(maxPoolSizeConfigValue)) {
+                maxPoolSize = Integer.parseInt(maxPoolSizeConfigValue);
+            } else {
+                maxPoolSizeConfigValue = IdentityUtil.getProperty(FRAMEWORK_PERSISTENCE_POOLSIZE);
+                if (StringUtils.isNotBlank(maxPoolSizeConfigValue)) {
+                    maxPoolSize = Integer.parseInt(maxPoolSizeConfigValue);
+                }
+            }
+        } catch (NumberFormatException e) {
+            if (log.isDebugEnabled()) {
+                log.debug("Error while parsing OAuth Token Persistence PoolSize", e);
+            }
+            log.warn("OAuth Token Persistence Pool size is not configured. Using default value: " + maxPoolSize);
+        }
+
+        return maxPoolSize;
     }
 }

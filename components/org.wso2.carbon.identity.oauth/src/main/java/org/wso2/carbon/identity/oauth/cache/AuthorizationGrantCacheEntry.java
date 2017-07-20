@@ -20,7 +20,10 @@ package org.wso2.carbon.identity.oauth.cache;
 
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,6 +47,10 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     private LinkedHashSet acrValue;
 
+    private String selectedAcrValue;
+
+    private List<String> amrList = new ArrayList<>();
+
     private String essentialClaims;
 
     private long authTime;
@@ -62,6 +69,14 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     public void setAcrValue(LinkedHashSet acrValue) {
         this.acrValue = acrValue;
+    }
+
+    public String getSelectedAcrValue() {
+        return selectedAcrValue;
+    }
+
+    public void setSelectedAcrValue(String selectedAcrValue) {
+        this.selectedAcrValue = selectedAcrValue;
     }
 
     public long getAuthTime() {
@@ -122,5 +137,22 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     public void setPkceCodeChallengeMethod(String pkceCodeChallengeMethod) {
         this.pkceCodeChallengeMethod = pkceCodeChallengeMethod;
+    }
+
+    /**
+     * Adds authentication method reference to AMR.
+     * @param reference  any string representation of an authentication method.
+     */
+    public void addAmr(String reference) {
+        amrList.add(reference);
+    }
+
+    /**
+     * Returns a list of Authentication Method references.
+     *
+     * @return an unmodifiable list of internal AMR list.
+     */
+    public List<String> getAmrList() {
+        return Collections.unmodifiableList(amrList);
     }
 }

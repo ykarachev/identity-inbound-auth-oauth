@@ -58,6 +58,7 @@ import org.wso2.carbon.utils.CarbonUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -89,6 +90,7 @@ public class OAuthServerConfiguration {
             "org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML2BearerGrantHandler";
     private static final String IWA_NTLM_BEARER_GRANT_HANDLER_CLASS =
             "org.wso2.carbon.identity.oauth2.token.handlers.grant.iwa.ntlm.NTLMAuthenticationGrantHandler";
+    private static final QName NIL_QNAME = new QName("http://www.w3.org/2001/XMLSchema-instance", "nil");
     private static Log log = LogFactory.getLog(OAuthServerConfiguration.class);
     private static OAuthServerConfiguration instance;
     private static String oauth1RequestTokenUrl = null;

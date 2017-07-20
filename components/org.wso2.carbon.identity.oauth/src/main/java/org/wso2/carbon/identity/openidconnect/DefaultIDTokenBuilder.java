@@ -36,7 +36,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
-import org.wso2.carbon.core.util.KeyStoreManager;
+import org.wso2.carbon.identity.application.authentication.framework.AuthenticationMethodNameTranslator;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
 import org.wso2.carbon.identity.application.common.model.IdentityProvider;
@@ -45,6 +45,7 @@ import org.wso2.carbon.identity.application.common.util.IdentityApplicationConst
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationManagementUtil;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.core.KeyProviderService;
 import org.wso2.carbon.identity.core.util.IdentityConfigParser;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
@@ -65,6 +66,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.identity.oauth2.util.CertificatesStore;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.idp.mgt.IdentityProviderManagementException;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
@@ -73,19 +75,19 @@ import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
 
 import java.security.Key;
-import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.xml.namespace.QName;
 
@@ -119,7 +121,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
     private static final Log log = LogFactory.getLog(DefaultIDTokenBuilder.class);
     private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<>();
-    private static Map<Integer, Certificate> publicCerts = new ConcurrentHashMap<>();
+    private CertificatesStore certificatesStore = new CertificatesStore();
     private OAuthServerConfiguration config = null;
     private Algorithm signatureAlgorithm = null;
 
@@ -214,43 +216,29 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         String nonceValue = null;
         long authTime = 0;
 
-        LinkedHashSet acrValue = new LinkedHashSet();
+        String acrValue = null;
+        List<String> amrValues = Collections.emptyList();
+        Set<String> requestedAcrValues = Collections.emptySet();
         // AuthorizationCode only available for authorization code grant type
         if (request.getProperty(AUTHORIZATION_CODE) != null) {
             AuthorizationGrantCacheEntry authorizationGrantCacheEntry = getAuthorizationGrantCacheEntry(request);
             if (authorizationGrantCacheEntry != null) {
                 nonceValue = authorizationGrantCacheEntry.getNonceValue();
-                acrValue = authorizationGrantCacheEntry.getAcrValue();
+                acrValue = authorizationGrantCacheEntry.getSelectedAcrValue();
+                requestedAcrValues = authorizationGrantCacheEntry.getAcrValue();
                 authTime = authorizationGrantCacheEntry.getAuthTime();
+                amrValues = authorizationGrantCacheEntry.getAmrList();
             }
+        } else {
+            amrValues = request.getOauth2AccessTokenReqDTO().getAuthenticationMethodReferences();
         }
         // Get access token issued time
         long accessTokenIssuedTime = getAccessTokenIssuedTime(tokenRespDTO.getAccessToken(), request) / 1000;
 
         String atHash = null;
         if (!JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
-            String digAlg = mapDigestAlgorithm(signatureAlgorithm);
-            MessageDigest md;
-            try {
-                md = MessageDigest.getInstance(digAlg);
-            } catch (NoSuchAlgorithmException e) {
-                throw new IdentityOAuth2Exception("Invalid Algorithm : " + digAlg);
-            }
-            md.update(tokenRespDTO.getAccessToken().getBytes(Charsets.UTF_8));
-            byte[] digest = md.digest();
-            int leftHalfBytes = 16;
-            if (SHA384.equals(digAlg)) {
-                leftHalfBytes = 24;
-            } else if (SHA512.equals(digAlg)) {
-                leftHalfBytes = 32;
-            }
-            byte[] leftmost = new byte[leftHalfBytes];
-            for (int i = 0; i < leftHalfBytes; i++) {
-                leftmost[i] = digest[i];
-            }
-            atHash = new String(Base64.encodeBase64URLSafe(leftmost), Charsets.UTF_8);
+            atHash = generateAtHash(tokenRespDTO.getAccessToken());
         }
-
 
         if (log.isDebugEnabled()) {
             StringBuilder stringBuilder = (new StringBuilder())
@@ -285,8 +273,11 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         if (nonceValue != null) {
             jwtClaimsSet.setClaim("nonce", nonceValue);
         }
-        if (acrValue != null) {
-            jwtClaimsSet.setClaim("acr", "urn:mace:incommon:iap:silver");
+        if (acrValue != null && !acrValue.isEmpty()) {
+            jwtClaimsSet.setClaim("acr", translateAcrToResponse(acrValue, requestedAcrValues));
+        }
+        if (amrValues != null) {
+            jwtClaimsSet.setClaim("amr", translateAmrToResponse(amrValues));
         }
 
         request.addProperty(OAuthConstants.ACCESS_TOKEN, tokenRespDTO.getAccessToken());
@@ -323,7 +314,9 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         String subject = request.getAuthorizationReqDTO().getUser().getAuthenticatedSubjectIdentifier();
 
         String nonceValue = request.getAuthorizationReqDTO().getNonce();
-        LinkedHashSet acrValue = request.getAuthorizationReqDTO().getACRValues();
+        LinkedHashSet requestedAcrValueSet = request.getAuthorizationReqDTO().getACRValues();
+        String acrValue = request.getAuthorizationReqDTO().getSelectedAcr();
+        List<String> amrValues = Collections.emptyList(); //TODO:
 
         // Get access token issued time
         long accessTokenIssuedTime = getAccessTokenIssuedTime(tokenRespDTO.getAccessToken(), request) / 1000;
@@ -334,28 +327,8 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         if (!JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName()) &&
                 !OAuthConstants.ID_TOKEN.equalsIgnoreCase(responseType) &&
                 !OAuthConstants.NONE.equalsIgnoreCase(responseType)) {
-            String digAlg = mapDigestAlgorithm(signatureAlgorithm);
-            MessageDigest md;
-            try {
-                md = MessageDigest.getInstance(digAlg);
-            } catch (NoSuchAlgorithmException e) {
-                throw new IdentityOAuth2Exception("Invalid Algorithm : " + digAlg);
-            }
-            md.update(tokenRespDTO.getAccessToken().getBytes(Charsets.UTF_8));
-            byte[] digest = md.digest();
-            int leftHalfBytes = 16;
-            if (SHA384.equals(digAlg)) {
-                leftHalfBytes = 24;
-            } else if (SHA512.equals(digAlg)) {
-                leftHalfBytes = 32;
-            }
-            byte[] leftmost = new byte[leftHalfBytes];
-            for (int i = 0; i < leftHalfBytes; i++) {
-                leftmost[i] = digest[i];
-            }
-            atHash = new String(Base64.encodeBase64URLSafe(leftmost), Charsets.UTF_8);
+            atHash = generateAtHash(tokenRespDTO.getAccessToken());
         }
-
 
         if (log.isDebugEnabled()) {
             StringBuilder stringBuilder = (new StringBuilder())
@@ -386,14 +359,17 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         if (request.getAuthorizationReqDTO().getAuthTime() != 0) {
             jwtClaimsSet.setClaim("auth_time", request.getAuthorizationReqDTO().getAuthTime() / 1000);
         }
-        if(atHash != null){
+        if (atHash != null) {
             jwtClaimsSet.setClaim("at_hash", atHash);
         }
         if (nonceValue != null) {
             jwtClaimsSet.setClaim("nonce", nonceValue);
         }
-        if (acrValue != null) {
-            jwtClaimsSet.setClaim("acr", "urn:mace:incommon:iap:silver");
+        if (acrValue != null && !acrValue.isEmpty()) {
+            jwtClaimsSet.setClaim("acr", translateAcrToResponse(acrValue, requestedAcrValueSet));
+        }
+        if (amrValues != null) {
+            jwtClaimsSet.setClaim("amr", translateAmrToResponse(amrValues));
         }
 
         request.addProperty(OAuthConstants.ACCESS_TOKEN, tokenRespDTO.getAccessToken());
@@ -429,15 +405,19 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
 
-            Key privateKey = getPrivateKey(tenantDomain, tenantId);
+            //Key privateKey = getPrivateKey(tenantDomain, tenantId);
+            KeyProviderService pkProvider = OAuth2ServiceComponentHolder.getKeyProvider();
+            Key privateKey = pkProvider.getPrivateKey(tenantDomain);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
             header.setKeyID(kid);
-            header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
+            header.setX509CertThumbprint(new Base64URL(certificatesStore.getThumbPrint(tenantDomain, tenantId)));
             SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
             signedJWT.sign(signer);
             return signedJWT.serialize();
         } catch (JOSEException e) {
+            throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
+        } catch (Exception e) {
             throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
         }
     }
@@ -456,55 +436,21 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
 
-            Key privateKey = getPrivateKey(tenantDomain, tenantId);
+            KeyProviderService pkProvider = OAuth2ServiceComponentHolder.getKeyProvider();
+            //Key privateKey = getPrivateKey(tenantDomain, tenantId);
+            Key privateKey = pkProvider.getPrivateKey(tenantDomain);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
-            header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
+            header.setX509CertThumbprint(new Base64URL(certificatesStore.getThumbPrint(tenantDomain, tenantId)));
             header.setKeyID(kid);
             SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
             signedJWT.sign(signer);
             return signedJWT.serialize();
         } catch (JOSEException e) {
             throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
+        } catch (Exception e) {
+            throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
         }
-    }
-
-    private Key getPrivateKey(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
-        Key privateKey;
-        if (!(privateKeys.containsKey(tenantId))) {
-
-            try {
-                IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
-            } catch (IdentityException e) {
-                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain,
-                        e);
-            }
-
-            // get tenant's key store manager
-            KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
-
-            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
-                // derive key store name
-                String ksName = tenantDomain.trim().replace(".", "-");
-                String jksName = ksName + ".jks";
-                // obtain private key
-                privateKey = tenantKSM.getPrivateKey(jksName, tenantDomain);
-
-            } else {
-                try {
-                    privateKey = tenantKSM.getDefaultPrivateKey();
-                } catch (Exception e) {
-                    throw new IdentityOAuth2Exception("Error while obtaining private key for super tenant", e);
-                }
-            }
-            //privateKey will not be null always
-            privateKeys.put(tenantId, privateKey);
-        } else {
-            //privateKey will not be null because containsKey() true says given key is exist and ConcurrentHashMap
-            // does not allow to store null values
-            privateKey = privateKeys.get(tenantId);
-        }
-        return privateKey;
     }
 
     /**
@@ -692,102 +638,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         throw new RuntimeException("Cannot map Signature Algorithm in identity.xml to hashing algorithm");
     }
 
-    /**
-     * Helper method to add public certificate to JWT_HEADER to signature verification.
-     *
-     * @param tenantDomain
-     * @param tenantId
-     * @throws IdentityOAuth2Exception
-     */
-    private String getThumbPrint(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
-
-        try {
-
-            Certificate certificate = getCertificate(tenantDomain, tenantId);
-
-            // TODO: maintain a hashmap with tenants' pubkey thumbprints after first initialization
-
-            //generate the SHA-1 thumbprint of the certificate
-            MessageDigest digestValue = MessageDigest.getInstance("SHA-1");
-            byte[] der = certificate.getEncoded();
-            digestValue.update(der);
-            byte[] digestInBytes = digestValue.digest();
-
-            String publicCertThumbprint = hexify(digestInBytes);
-            String base64EncodedThumbPrint = new String(new Base64(0, null, true).encode(
-                    publicCertThumbprint.getBytes(Charsets.UTF_8)), Charsets.UTF_8);
-            return base64EncodedThumbPrint;
-
-        } catch (Exception e) {
-            String error = "Error in obtaining certificate for tenant " + tenantDomain;
-            throw new IdentityOAuth2Exception(error, e);
-        }
-    }
-
-    private Certificate getCertificate(String tenantDomain, int tenantId) throws Exception {
-
-        if (tenantDomain == null) {
-            tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
-        }
-
-        if (tenantId == 0) {
-            tenantId = OAuth2Util.getTenantId(tenantDomain);
-        }
-
-        Certificate publicCert = null;
-
-        if (!(publicCerts.containsKey(tenantId))) {
-
-            try {
-                IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
-            } catch (IdentityException e) {
-                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain, e);
-            }
-
-            // get tenant's key store manager
-            KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
-
-            KeyStore keyStore = null;
-            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
-                // derive key store name
-                String ksName = tenantDomain.trim().replace(".", "-");
-                String jksName = ksName + ".jks";
-                keyStore = tenantKSM.getKeyStore(jksName);
-                publicCert = keyStore.getCertificate(tenantDomain);
-            } else {
-                publicCert = tenantKSM.getDefaultPrimaryCertificate();
-            }
-            if (publicCert != null) {
-                publicCerts.put(tenantId, publicCert);
-            }
-        } else {
-            publicCert = publicCerts.get(tenantId);
-        }
-        return publicCert;
-    }
-
-    /**
-     * Helper method to hexify a byte array.
-     * TODO:need to verify the logic
-     *
-     * @param bytes
-     * @return  hexadecimal representation
-     */
-    private String hexify(byte bytes[]) {
-
-        char[] hexDigits = {'0', '1', '2', '3', '4', '5', '6', '7',
-                    +                            '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-        StringBuilder buf = new StringBuilder(bytes.length * 2);
-
-        for (int i = 0; i < bytes.length; ++i) {
-            buf.append(hexDigits[(bytes[i] & 0xf0) >> 4]);
-            buf.append(hexDigits[bytes[i] & 0x0f]);
-        }
-
-        return buf.toString();
-    }
-
     private List<String> getOIDCEndpointUrl() {
         List<String> OIDCEntityId = getOIDCAudiences();
         return OIDCEntityId;
@@ -848,5 +698,83 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
     }
 
+    private String generateAtHash(String accessToken) throws IdentityOAuth2Exception {
+        String atHash;
+        String digAlg = mapDigestAlgorithm(signatureAlgorithm);
+        MessageDigest md;
+        try {
+            md = MessageDigest.getInstance(digAlg);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IdentityOAuth2Exception("Invalid Algorithm : " + digAlg);
+        }
+        md.update(accessToken.getBytes(Charsets.UTF_8));
+        byte[] digest = md.digest();
+        int leftHalfBytes = 16;
+        if (SHA384.equals(digAlg)) {
+            leftHalfBytes = 24;
+        } else if (SHA512.equals(digAlg)) {
+            leftHalfBytes = 32;
+        }
+        byte[] leftmost = new byte[leftHalfBytes];
+        for (int i = 0; i < leftHalfBytes; i++) {
+            leftmost[i] = digest[i];
+        }
+        atHash = new String(Base64.encodeBase64URLSafe(leftmost), Charsets.UTF_8);
+        return atHash;
+    }
+
+    /**
+     * Converts the internal representation to external (response) form.
+     * The resultant list will not have any duplicate values.
+     * @param internalList
+     * @return a list of amr values to be sent via ID token. May be empty, but not null.
+     */
+    private List<String> translateAmrToResponse(List<String> internalList) {
+        Set<String> result = new HashSet<>();
+        for (String internalValue : internalList) {
+            result.addAll(translateToResponse(internalValue));
+        }
+        return new ArrayList<>(result);
+    }
+
+    /**
+     * Converts the internal representation to external (response) form.
+     * The resultant list will not have any duplicate values.
+     * @param internalAcr
+     * @return the ACR value to be sent via ID token. Can be null.
+     */
+    private String translateAcrToResponse(String internalAcr, Set<String> requestedAcrValueSet) {
+        String result = internalAcr;
+        AuthenticationMethodNameTranslator authenticationMethodNameTranslator = OAuth2ServiceComponentHolder
+                .getAuthenticationMethodNameTranslator();
+        if (authenticationMethodNameTranslator != null) {
+            Set<String> externalAcrSet = authenticationMethodNameTranslator
+                    .translateToExternalAcr(internalAcr, INBOUND_AUTH2_TYPE);
+            result = externalAcrSet.stream().filter(e -> requestedAcrValueSet.contains(e)).findFirst().orElse(result);
+        }
+        return result;
+    }
+
+    private List<String> translateToResponse(String internalValue) {
+        List<String> result = null;
+        AuthenticationMethodNameTranslator authenticationMethodNameTranslator = OAuth2ServiceComponentHolder
+                .getAuthenticationMethodNameTranslator();
+        if (authenticationMethodNameTranslator != null) {
+            Set<String> externalAmrSet = authenticationMethodNameTranslator
+                    .translateToExternalAmr(internalValue, INBOUND_AUTH2_TYPE);
+            if (externalAmrSet == null || externalAmrSet.isEmpty()) {
+                if (log.isDebugEnabled()) {
+                    log.debug(
+                            "There was no mapping found to translate AMR from internal to external URI. Internal Method Reference : "
+                                    + internalValue);
+                }
+                result = new ArrayList<>();
+                result.add(internalValue);
+            } else {
+                result = new ArrayList<>(externalAmrSet);
+            }
+        }
+        return result;
+    }
 }
 

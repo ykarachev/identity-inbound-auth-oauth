@@ -7,8 +7,6 @@ import com.nimbusds.jwt.SignedJWT;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.base.MultitenantConstants;
-import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationRequestCacheEntry;
@@ -16,7 +14,7 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.application.authentication.framework.model.CommonAuthRequestWrapper;
 import org.wso2.carbon.identity.application.authentication.framework.model.CommonAuthResponseWrapper;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
-import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.core.KeyProviderService;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
@@ -32,11 +30,6 @@ import org.wso2.carbon.identity.oidc.session.cache.OIDCSessionDataCacheKey;
 import org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
@@ -45,11 +38,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 public class OIDCLogoutServlet extends HttpServlet {
 
     private static final Log log = LogFactory.getLog(OIDCLogoutServlet.class);
     private static final long serialVersionUID = -9203934217770142011L;
+    private KeyProviderService keyProviderService;
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -223,20 +222,9 @@ public class OIDCLogoutServlet extends HttpServlet {
         if (StringUtils.isEmpty(tenantDomain)) {
             return false;
         }
-        int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
-        RSAPublicKey publicKey;
-
         try {
-            KeyStoreManager keyStoreManager = KeyStoreManager.getInstance(tenantId);
-
-            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
-                String ksName = tenantDomain.trim().replace(".", "-");
-                String jksName = ksName + ".jks";
-                publicKey = (RSAPublicKey) keyStoreManager.getKeyStore(jksName).getCertificate(tenantDomain)
-                        .getPublicKey();
-            } else {
-                publicKey = (RSAPublicKey) keyStoreManager.getDefaultPublicKey();
-            }
+            RSAPublicKey publicKey = (RSAPublicKey) keyProviderService.getCertificate(tenantDomain)
+                    .getPublicKey();
             SignedJWT signedJWT = SignedJWT.parse(idToken);
             JWSVerifier verifier = new RSASSAVerifier(publicKey);
 
@@ -492,5 +480,9 @@ public class OIDCLogoutServlet extends HttpServlet {
     private static boolean getOpenIDConnectSkipeUserConsent() {
         return OAuthServerConfiguration.getInstance().getOpenIDConnectSkipeUserConsentConfig();
 
+    }
+
+    public void setKeyProviderService(KeyProviderService keyProviderService) {
+        this.keyProviderService = keyProviderService;
     }
 }

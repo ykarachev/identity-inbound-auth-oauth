@@ -23,6 +23,11 @@ import org.apache.commons.logging.LogFactory;
 import org.eclipse.equinox.http.helper.ContextPathServletAdaptor;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.http.HttpService;
 import org.wso2.carbon.identity.webfinger.DefaultWebFingerProcessor;
 import org.wso2.carbon.identity.webfinger.WebFingerProcessor;
@@ -32,15 +37,11 @@ import org.wso2.carbon.user.core.service.RealmService;
 import javax.servlet.Servlet;
 
 /**
- * @scr.component name="identity.webfinger.component" immediate="true"
- * @scr.reference name="user.realmservice.default"
- * interface="org.wso2.carbon.user.core.service.RealmService" cardinality="1..1"
- * policy="dynamic" bind="setRealmService" unbind="unsetRealmService"
- * @scr.reference name="osgi.httpservice" interface="org.osgi.service.http.HttpService"
- * cardinality="1..1" policy="dynamic" bind="setHttpService"
- * unbind="unsetHttpService"
  */
-
+@Component(
+        name = "identity.webfinger.component",
+        immediate = true
+)
 public class WebFingerServiceComponent {
     private static Log log = LogFactory.getLog(WebFingerServiceComponent.class);
     private static BundleContext bundleContext = null;
@@ -49,6 +50,7 @@ public class WebFingerServiceComponent {
         return bundleContext;
     }
 
+    @Activate
     protected void activate(ComponentContext context) {
         try {
             bundleContext = context.getBundleContext();
@@ -75,6 +77,13 @@ public class WebFingerServiceComponent {
         }
     }
 
+    @Reference(
+            name = "user.realmservice.default",
+            service = RealmService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetRealmService"
+    )
     protected void setRealmService(RealmService realmService) {
         if (log.isDebugEnabled()) {
             log.info("Setting the Realm Service");
@@ -89,6 +98,13 @@ public class WebFingerServiceComponent {
         WebFingerServiceComponentHolder.setRealmService(null);
     }
 
+    @Reference(
+            name = "osgi.httpservice",
+            service = HttpService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetHttpService"
+    )
     protected void setHttpService(HttpService httpService) {
         if (log.isDebugEnabled()) {
             log.debug("HTTP Service is set in the OpenID Connect WebFinger bundle");

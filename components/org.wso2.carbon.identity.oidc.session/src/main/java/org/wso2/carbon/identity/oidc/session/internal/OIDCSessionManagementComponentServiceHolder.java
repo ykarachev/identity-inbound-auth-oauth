@@ -19,11 +19,13 @@
 package org.wso2.carbon.identity.oidc.session.internal;
 
 import org.osgi.service.http.HttpService;
+import org.wso2.carbon.identity.core.KeyProviderService;
 import org.wso2.carbon.user.core.service.RealmService;
 
 public class OIDCSessionManagementComponentServiceHolder {
     private static HttpService httpService;
     private static RealmService realmService;
+    private static KeyProviderService keyProvider;
 
     private OIDCSessionManagementComponentServiceHolder() {
 
@@ -42,5 +44,13 @@ public class OIDCSessionManagementComponentServiceHolder {
 
     public static RealmService getRealmService() {
         return realmService;
+    }
+
+    public static KeyProviderService getKeyProvider() {
+        return keyProvider;
+    }
+
+    public static void setKeyProvider(KeyProviderService keyProvider) {
+        OIDCSessionManagementComponentServiceHolder.keyProvider = keyProvider;
     }
 }

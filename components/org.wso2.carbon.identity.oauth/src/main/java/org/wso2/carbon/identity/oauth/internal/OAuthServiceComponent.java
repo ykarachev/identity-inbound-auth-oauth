@@ -22,6 +22,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.component.annotations.ReferenceCardinality;
+import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
@@ -32,20 +36,12 @@ import org.wso2.carbon.user.core.listener.UserOperationEventListener;
 import org.wso2.carbon.user.core.service.RealmService;
 
 /**
- * @scr.component name="identity.oauth.component" immediate="true"
- * @scr.reference name="registry.service"
- * interface="org.wso2.carbon.registry.core.service.RegistryService"
- * cardinality="1..1" policy="dynamic" bind="setRegistryService"
- * unbind="unsetRegistryService"
- * @scr.reference name="org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor"
- * interface="org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor"
- * cardinality="0..n" policy="dynamic"
- * bind="setOAuthEventInterceptorProxy"
- * unbind="unsetOAuthEventInterceptor"
- * @scr.reference name="user.realmservice.default"
- * interface="org.wso2.carbon.user.core.service.RealmService" cardinality="1..1"
- * policy="dynamic" bind="setRealmService" unbind="unsetRealmService"
+ *  OAuthService OSGI Component.
  */
+@Component(
+        name = "identity.oauth.component",
+        immediate = true
+)
 public class OAuthServiceComponent {
 
     private static Log log = LogFactory.getLog(OAuthServiceComponent.class);
@@ -87,6 +83,13 @@ public class OAuthServiceComponent {
         }
     }
 
+    @Reference(
+            name = "registry.service",
+            service = RegistryService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetRegistryService"
+    )
     protected void setRegistryService(RegistryService registryService) {
 
         if (log.isDebugEnabled()) {
@@ -103,6 +106,13 @@ public class OAuthServiceComponent {
         OAuthComponentServiceHolder.getInstance().setRegistryService(null);
     }
 
+    @Reference(
+            name = "user.realmservice.default",
+            service = RealmService.class,
+            cardinality = ReferenceCardinality.MANDATORY,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetRealmService"
+    )
     protected void setRealmService(RealmService realmService) {
 
         if (log.isDebugEnabled()) {
@@ -119,6 +129,13 @@ public class OAuthServiceComponent {
         OAuthComponentServiceHolder.getInstance().setRealmService(null);
     }
 
+    @Reference(
+            name = "org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor",
+            service = OAuthEventInterceptor.class,
+            cardinality = ReferenceCardinality.MULTIPLE,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetOAuthEventInterceptor"
+    )
     protected void setOAuthEventInterceptorProxy(OAuthEventInterceptor oAuthEventInterceptor) {
 
         if (oAuthEventInterceptor == null) {

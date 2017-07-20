@@ -19,6 +19,7 @@ package org.wso2.carbon.identity.oauth.endpoint.authz;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -303,7 +304,6 @@ public class OAuth2AuthzEndpoint {
                         }
                         sessionDataCacheEntry.setLoggedInUser(authenticatedUser);
                         sessionDataCacheEntry.setAuthenticatedIdPs(authnResult.getAuthenticatedIdPs());
-                        
                         SessionDataCache.getInstance().addToCache(cacheKey, sessionDataCacheEntry);
 
                         OIDCSessionState sessionState = new OIDCSessionState();
@@ -754,14 +754,14 @@ public class OAuth2AuthzEndpoint {
                 sessionDataCacheEntry.getoAuth2Parameters().getEssentialClaims());
         authorizationGrantCacheEntry.setAuthTime(sessionDataCacheEntry.getAuthTime());
         String[] sessionIds = sessionDataCacheEntry.getParamMap().get(FrameworkConstants.SESSION_DATA_KEY);
-        if (sessionIds != null && sessionIds.length > 0) {
+        if (ArrayUtils.isEmpty(sessionIds)) {
             String commonAuthSessionId = sessionIds[0];
             SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(commonAuthSessionId);
             String selectedAcr = sessionContext.getSessionAuthHistory().getSelectedAcrValue();
             authorizationGrantCacheEntry.setSelectedAcrValue(selectedAcr);
         }
 
-        String[] amrEntries = sessionDataCacheEntry.getParamMap().get("amr");
+        String[] amrEntries = sessionDataCacheEntry.getParamMap().get(OAuthConstants.AMR);
         if(amrEntries != null) {
             for (String amrEntry :amrEntries) {
                 authorizationGrantCacheEntry.addAmr(amrEntry);
@@ -1370,7 +1370,7 @@ public class OAuth2AuthzEndpoint {
             for (AuthHistory authHistory : sessionContext.getSessionAuthHistory().getHistory()) {
                 authMethods.add(authHistory.toTranslatableString());
             }
-            resultFromLogin.getParamMap().put("amr", authMethods.toArray(new String[authMethods.size()]));
+            resultFromLogin.getParamMap().put(OAuthConstants.AMR, authMethods.toArray(new String[authMethods.size()]));
         }
     }
 

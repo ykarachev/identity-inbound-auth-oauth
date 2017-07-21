@@ -432,8 +432,14 @@ public class TokenMgtDAO {
         String tenantDomain = authzUser.getTenantDomain();
         int tenantId = OAuth2Util.getTenantId(tenantDomain);
         String tenantAwareUsernameWithNoUserDomain = authzUser.getUserName();
-        String userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
+
+        String userDomain;
+        if (authzUser.isFederatedUser()) {
+            userDomain = getFederatedUserDomain(authzUser.getFederatedIdPName());
+        } else {
+            userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
+        }
 
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
@@ -2606,8 +2612,14 @@ public class TokenMgtDAO {
         String tenantDomain = authzUser.getTenantDomain();
         int tenantId = OAuth2Util.getTenantId(tenantDomain);
         String tenantAwareUsernameWithNoUserDomain = authzUser.getUserName();
-        String userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
+
+        String userDomain;
+        if (authzUser.isFederatedUser()) {
+            userDomain = getFederatedUserDomain(authzUser.getFederatedIdPName());
+        } else {
+            userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
+        }
 
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;

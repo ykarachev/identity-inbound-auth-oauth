@@ -34,6 +34,7 @@ import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
@@ -52,7 +53,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Custom self contained access token builder.
+ * Self contained access token builder.
  */
 public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
@@ -208,7 +209,12 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
         try {
             String tenantDomain = null;
-            if (tokenContext != null) {
+
+            // Read the property whether we have to get the tenant domain of the SP instead of user.
+            if (OAuthServerConfiguration.getInstance().getUseSPTenantDomainValue()) {
+                tenantDomain = OAuth2Util.getAppInformationByClientId(authorizationContext.getAuthorizationReqDTO()
+                        .getConsumerKey()).getUser().getTenantDomain();
+            } else if (tokenContext != null) {
                 tenantDomain = tokenContext.getAuthorizedUser().getTenantDomain();
             } else if (authorizationContext != null) {
                 tenantDomain = authorizationContext.getAuthorizationReqDTO().getUser().getTenantDomain();
@@ -254,7 +260,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
             SignedJWT signedJWT = new SignedJWT(new JWSHeader((JWSAlgorithm) signatureAlgorithm), jwtClaimsSet);
             signedJWT.sign(signer);
             return signedJWT.serialize();
-        } catch (JOSEException e) {
+        } catch (JOSEException | InvalidOAuthClientException e) {
             throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
         }
     }

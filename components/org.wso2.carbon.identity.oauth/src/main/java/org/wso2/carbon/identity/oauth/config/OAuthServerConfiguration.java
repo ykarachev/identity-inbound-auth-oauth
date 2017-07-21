@@ -170,6 +170,9 @@ public class OAuthServerConfiguration {
     // property added to fix IDENTITY-4112 in backward compatible manner
     private boolean isRevokeResponseHeadersEnabled = true;
 
+    // Use the SP tenant domain instead of user domain.
+    private boolean useSPTenantDomainValue;
+
     private OAuthServerConfiguration() {
         buildOAuthServerConfiguration();
     }
@@ -269,6 +272,9 @@ public class OAuthServerConfiguration {
 
         // parse identity OAuth 2.0 token generator
         parseOAuthTokenIssuerConfig(oauthElem);
+
+        // Read the value of UseSPTenantDomain config.
+        parseUseSPTenantDomainConfig(oauthElem);
 
         parseRevokeResponseHeadersEnableConfig(oauthElem);
     }
@@ -855,6 +861,16 @@ public class OAuthServerConfiguration {
 
         // If this element is not present in the XML, we will send true to maintain the backward compatibility.
         return isRefreshTokenAllowed == null ? true : isRefreshTokenAllowed;
+    }
+
+    /**
+     * Get the value of the property "UseSPTenantDomain". This property is used to decide whether to use SP tenant
+     * domain or user tenant domain.
+     * @return value of the "UseSPTenantDomain".
+     */
+    public boolean getUseSPTenantDomainValue() {
+
+        return useSPTenantDomainValue;
     }
 
     private void parseOAuthCallbackHandlers(OMElement callbackHandlersElem) {
@@ -1655,6 +1671,20 @@ public class OAuthServerConfiguration {
         this.oAuth2ScopeValidator = oAuth2ScopeValidator;
     }
 
+    private void parseUseSPTenantDomainConfig(OMElement oauthElem) {
+
+        OMElement useSPTenantDomainValueElement = oauthElem
+                .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OAUTH_USE_SP_TENANT_DOMAIN));
+
+        if (useSPTenantDomainValueElement != null) {
+            useSPTenantDomainValue = Boolean.parseBoolean(useSPTenantDomainValueElement.getText().trim());
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Use SP tenant domain value is set to: " + useSPTenantDomainValue);
+        }
+    }
+
     /**
      * Localpart names for the OAuth configuration in identity.xml.
      */
@@ -1768,6 +1798,9 @@ public class OAuthServerConfiguration {
         // To enable revoke response headers
         private static final String ENABLE_REVOKE_RESPONSE_HEADERS = "EnableRevokeResponseHeaders";
         private static final String REFRESH_TOKEN_ALLOWED = "IsRefreshTokenAllowed";
+
+        // Property to decide whether to pick the user tenant domain or SP tenant domain.
+        private static final String OAUTH_USE_SP_TENANT_DOMAIN = "UseSPTenantDomain";
     }
 
 }

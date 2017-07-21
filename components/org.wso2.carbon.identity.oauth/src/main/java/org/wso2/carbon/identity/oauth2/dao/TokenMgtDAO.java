@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.oauth2.dao;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -26,6 +27,7 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
+import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
@@ -133,6 +135,9 @@ public class TokenMgtDAO {
     public TokenMgtDAO() {
         try {
             persistenceProcessor = OAuthServerConfiguration.getInstance().getPersistenceProcessor();
+            if (log.isDebugEnabled()) {
+                log.debug("TokenPersistenceProcessor set for: " + persistenceProcessor.getClass());
+            }
         } catch (IdentityOAuth2Exception e) {
             log.error("Error retrieving TokenPersistenceProcessor. Defaulting to PlainTextProcessor", e);
             persistenceProcessor = new PlainTextPersistenceProcessor();
@@ -173,6 +178,15 @@ public class TokenMgtDAO {
             return;
         }
 
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+                log.debug("Persisting authorization code (hashed): " + DigestUtils.sha256Hex(authzCode) + " for " +
+                        "client: " + consumerKey + " user: " + authzCodeDO.getAuthorizedUser().toString());
+            } else {
+                log.debug("Persisting authorization code for client: " + consumerKey + " user: " + authzCodeDO
+                        .getAuthorizedUser().toString());
+            }
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
         String userDomain = authzCodeDO.getAuthorizedUser().getUserStoreDomain();
@@ -219,7 +233,6 @@ public class TokenMgtDAO {
                 prepStmt.setString(11, persistenceProcessor.getProcessedClientId(consumerKey));
 
             }
-
 
             prepStmt.execute();
             connection.commit();
@@ -272,6 +285,17 @@ public class TokenMgtDAO {
                                   Connection connection, String userStoreDomain, int retryAttempt)
             throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                log.debug("Persisting access token(hashed): " + DigestUtils.sha256Hex(accessToken) + " for client: " +
+                        consumerKey + " user: " + accessTokenDO.getAuthzUser().toString() + " scope: "
+                        + Arrays.toString(accessTokenDO.getScope()));
+            } else {
+                log.debug("Persisting access token for client: " + consumerKey + " user: " +
+                        accessTokenDO.getAuthzUser().toString() + " scope: "
+                        + Arrays.toString(accessTokenDO.getScope()));
+            }
+        }
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
         String userDomain = accessTokenDO.getAuthzUser().getUserStoreDomain();
         String authenticatedIDP = accessTokenDO.getAuthzUser().getFederatedIdPName();
@@ -282,6 +306,9 @@ public class TokenMgtDAO {
         if (StringUtils.isNotBlank(userStoreDomain) &&
                 !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
             accessTokenStoreTable = accessTokenStoreTable + "_" + userStoreDomain;
+            if (log.isDebugEnabled()) {
+                log.debug("IDN_OAUTH2_ACCESS_TOKEN table name is changed as: " + accessTokenStoreTable);
+            }
         }
 
         if (accessTokenDO.getAuthzUser().isFederatedUser()) {
@@ -400,6 +427,17 @@ public class TokenMgtDAO {
             return false;
         }
 
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                log.debug("Persisting access token(hashed): " + DigestUtils.sha256Hex(accessToken) + " for client: " +
+                        consumerKey + " user: " + newAccessTokenDO.getAuthzUser().toString() + " scope: " + Arrays
+                        .toString(newAccessTokenDO.getScope()));
+            } else {
+                log.debug("Persisting access token for client: " + consumerKey + " user: " + newAccessTokenDO
+                        .getAuthzUser().toString() + " scope: " + Arrays.toString(newAccessTokenDO.getScope()));
+            }
+        }
+
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
@@ -432,6 +470,10 @@ public class TokenMgtDAO {
                                                    boolean includeExpiredTokens)
             throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving latest access token for client: " + consumerKey + " user: " + authzUser.toString()
+                    + " scope: " + scope);
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
@@ -556,6 +598,11 @@ public class TokenMgtDAO {
                     accessTokenDO.setRefreshToken(refreshToken);
                     accessTokenDO.setTokenState(tokenState);
                     accessTokenDO.setTokenId(tokenId);
+                    if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens
+                            .ACCESS_TOKEN)) {
+                        log.debug("Retrieved latest access token(hashed): " + DigestUtils.sha256Hex(accessToken) +
+                                " for client: " + consumerKey + " user: " + authzUser.toString() + " scope: " + scope);
+                    }
                     return accessTokenDO;
                 }
             }
@@ -576,6 +623,10 @@ public class TokenMgtDAO {
     public Set<AccessTokenDO> retrieveAccessTokens(String consumerKey, AuthenticatedUser userName,
                                                    String userStoreDomain, boolean includeExpired)
             throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving access tokens for client: " + consumerKey + " user: " + userName.toString());
+        }
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(userName.toString());
@@ -673,6 +724,15 @@ public class TokenMgtDAO {
 
     public AuthzCodeDO validateAuthorizationCode(String consumerKey, String authorizationKey)
             throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+                log.debug("Validating authorization code(hashed): " + DigestUtils.sha256Hex(authorizationKey)
+                        + " for client: " +  consumerKey);
+            } else {
+                log.debug("Validating authorization code for client: " + consumerKey);
+            }
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
         ResultSet resultSet = null;
@@ -732,6 +792,16 @@ public class TokenMgtDAO {
 
                     if (!OAuthConstants.AuthorizationCodeState.ACTIVE.equals(codeState)) {
                         //revoking access token issued for authorization code as per RFC 6749 Section 4.1.2
+                        if (log.isDebugEnabled()) {
+                            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+                                log.debug("Validated authorization code(hashed): " + DigestUtils.sha256Hex
+                                        (authorizationKey) + " for client: " + consumerKey + " is not active. So " +
+                                        "revoking the access tokens issued for the authorization code.");
+                            } else {
+                                log.debug("Validated authorization code for client: " + consumerKey + " is not active" +
+                                        ". So revoking the access tokens issued for the authorization code.");
+                            }
+                        }
                         String tokenId = resultSet.getString(9);
                         revokeToken(tokenId, authorizedUser);
                     }
@@ -776,6 +846,17 @@ public class TokenMgtDAO {
                     authorizedUser = UserCoreUtil.addTenantDomainToEntry(authorizedUser, tenantDomain);
 
                     if (!OAuthConstants.AuthorizationCodeState.ACTIVE.equals(codeState)) {
+                        if (log.isDebugEnabled()) {
+                            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+                                log.debug("Validated authorization code(hashed): " + DigestUtils.sha256Hex
+                                        (authorizationKey) + " for client: " + consumerKey + " is not active. So " +
+                                        "revoking the access tokens issued for the authorization code.");
+                            } else {
+                                log.debug("Validated authorization code for client: " + consumerKey + " is not active" +
+                                        ". So revoking the access tokens issued for the authorization code.");
+                            }
+                        }
+
                         //revoking access token issued for authorization code as per RFC 6749 Section 4.1.2
                         String tokenId = resultSet.getString(9);
                         revokeToken(tokenId, authorizedUser);
@@ -813,6 +894,29 @@ public class TokenMgtDAO {
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
 
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+                StringBuilder stringBuilder = new StringBuilder();
+                for (AuthzCodeDO authzCodeDO : authzCodeDOs) {
+                    stringBuilder.append("Deactivating authorization code(hashed): ")
+                            .append(DigestUtils.sha256Hex(authzCodeDO.getAuthorizationCode()))
+                            .append(" client: ")
+                            .append(authzCodeDO.getConsumerKey()).append(" user: ")
+                            .append(authzCodeDO.getAuthorizedUser().toString())
+                            .append("\n");
+                }
+                log.debug(stringBuilder.toString());
+            } else {
+                StringBuilder stringBuilder = new StringBuilder();
+                for (AuthzCodeDO authzCodeDO : authzCodeDOs) {
+                    stringBuilder.append("Deactivating authorization code client: ")
+                            .append(authzCodeDO.getConsumerKey()).append(" user: ")
+                            .append(authzCodeDO.getAuthorizedUser().toString())
+                            .append("\n");
+                }
+                log.debug(stringBuilder.toString());
+            }
+        }
         try {
             prepStmt = connection.prepareStatement(SQLQueries.DEACTIVATE_AUTHZ_CODE_AND_INSERT_CURRENT_TOKEN);
             for (AuthzCodeDO authzCodeDO : authzCodeDOs) {
@@ -830,6 +934,16 @@ public class TokenMgtDAO {
     }
 
     public void doChangeAuthzCodeState(String authzCode, String newState) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+                log.debug("Changing state of authorization code(hashed): " + DigestUtils.sha256Hex(authzCode)
+                        + " to: " + newState);
+            } else {
+                log.debug("Changing state of authorization code  to: " + newState);
+            }
+        }
+
         String authCodeStoreTable = OAuthConstants.AUTHORIZATION_CODE_STORE_TABLE;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
@@ -865,6 +979,18 @@ public class TokenMgtDAO {
 
     private void deactivateAuthorizationCode(AuthzCodeDO authzCodeDO, Connection connection) throws
             IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+                log.debug("Deactivating authorization code(hashed): " + DigestUtils.sha256Hex(authzCodeDO
+                        .getAuthorizationCode()) + " client: " + authzCodeDO.getConsumerKey() + " user: " +
+                        authzCodeDO.getAuthorizedUser().toString());
+            } else {
+                log.debug("Deactivating authorization code for client: " + authzCodeDO.getConsumerKey()
+                        + " user: " + authzCodeDO.getAuthorizedUser().toString());
+            }
+        }
+
         PreparedStatement prepStmt = null;
         try {
             prepStmt = connection.prepareStatement(SQLQueries.DEACTIVATE_AUTHZ_CODE_AND_INSERT_CURRENT_TOKEN);
@@ -880,6 +1006,15 @@ public class TokenMgtDAO {
 
     public RefreshTokenValidationDataDO validateRefreshToken(String consumerKey, String refreshToken)
             throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.REFRESH_TOKEN)) {
+                log.debug("Validating refresh token(hashed): " + DigestUtils.sha256Hex(refreshToken) + " client: " +
+                        consumerKey);
+            } else {
+                log.debug("Validating refresh token for client: " + consumerKey);
+            }
+        }
 
         RefreshTokenValidationDataDO validationDataDO = new RefreshTokenValidationDataDO();
         Connection connection = IdentityDatabaseUtil.getDBConnection();
@@ -1010,6 +1145,10 @@ public class TokenMgtDAO {
     public AccessTokenDO retrieveAccessToken(String accessTokenIdentifier, boolean includeExpired)
             throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+            log.debug("Retrieving information of access token(hashed): " + DigestUtils.sha256Hex
+                    (accessTokenIdentifier));
+        }
         AccessTokenDO dataDO = null;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
@@ -1126,6 +1265,9 @@ public class TokenMgtDAO {
             throws IdentityOAuth2Exception {
         PreparedStatement prepStmt = null;
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("Changing status of access token with id: " + tokenId + " to: " + tokenState);
+            }
 
             String sql = SQLQueries.UPDATE_TOKE_STATE;
             if (StringUtils.isNotBlank(userStoreDomain) &&
@@ -1164,6 +1306,17 @@ public class TokenMgtDAO {
 
     public void revokeTokensBatch(String[] tokens) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                StringBuilder stringBuilder = new StringBuilder();
+                for (String token : tokens){
+                    stringBuilder.append(DigestUtils.sha256Hex(token)).append(" ");
+                }
+                log.debug("Revoking access tokens(hashed): " + stringBuilder.toString());
+            } else {
+                log.debug("Revoking access tokens in batch mode");
+            }
+        }
         String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
@@ -1210,6 +1363,17 @@ public class TokenMgtDAO {
 
     public void revokeTokensIndividual(String[] tokens) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                StringBuilder stringBuilder = new StringBuilder();
+                for (String token : tokens){
+                    stringBuilder.append(DigestUtils.sha256Hex(token)).append(" ");
+                }
+                log.debug("Revoking access tokens(hashed): " + stringBuilder.toString());
+            } else {
+                log.debug("Revoking access tokens in individual mode");
+            }
+        }
         String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
@@ -1252,6 +1416,9 @@ public class TokenMgtDAO {
      */
     public void revokeToken(String tokenId, String userId) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Revoking access token with id: " + tokenId + " user: " + userId);
+        }
         String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
@@ -1284,8 +1451,12 @@ public class TokenMgtDAO {
      * @return
      * @throws IdentityOAuth2Exception
      */
-    public Set<String> getAccessTokensForUser(AuthenticatedUser authenticatedUser) throws
-            IdentityOAuth2Exception {
+    public Set<String> getAccessTokensForUser(AuthenticatedUser authenticatedUser) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving access tokens of user: " + authenticatedUser.toString());
+        }
+
         String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
@@ -1335,6 +1506,10 @@ public class TokenMgtDAO {
     public Set<String> getAuthorizationCodesForUser(AuthenticatedUser authenticatedUser) throws
             IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving authorization codes of user: " + authenticatedUser.toString());
+        }
+
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -1379,6 +1554,11 @@ public class TokenMgtDAO {
     }
 
     public Set<String> getActiveTokensForConsumerKey(String consumerKey) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving active access tokens of client: " + consumerKey);
+        }
+
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -1404,6 +1584,11 @@ public class TokenMgtDAO {
     }
 
     public Set<AccessTokenDO> getActiveDetailedTokensForConsumerKey(String consumerKey) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving active access tokens for client: " + consumerKey);
+        }
+
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -1456,6 +1641,11 @@ public class TokenMgtDAO {
     }
 
     public Set<String> getAuthorizationCodesForConsumerKey(String consumerKey) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving authorization codes for client: " + consumerKey);
+        }
+
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -1480,6 +1670,11 @@ public class TokenMgtDAO {
     }
 
     public Set<String> getActiveAuthorizationCodesForConsumerKey(String consumerKey) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving active authorization codes for client: " + consumerKey);
+        }
+
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         ResultSet rs = null;
@@ -1512,6 +1707,10 @@ public class TokenMgtDAO {
      * @throws IdentityOAuth2Exception if failed to update the access token
      */
     public Set<String> getAllTimeAuthorizedClientIds(AuthenticatedUser authzUser) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving all authorized clients by user: " + authzUser.toString());
+        }
 
         String accessTokenStoreTable = OAuthConstants.ACCESS_TOKEN_STORE_TABLE;
         PreparedStatement ps = null;
@@ -1554,6 +1753,13 @@ public class TokenMgtDAO {
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
         }
+        if (log.isDebugEnabled()) {
+            StringBuilder consumerKeys = new StringBuilder();
+            for (String consumerKey : distinctConsumerKeys) {
+                consumerKeys.append(consumerKey).append(" ");
+            }
+            log.debug("Found authorized clients " + consumerKeys.toString() + " for user: " + authzUser.toString());
+        }
         return distinctConsumerKeys;
     }
 
@@ -1567,6 +1773,9 @@ public class TokenMgtDAO {
     @Deprecated
     public String findScopeOfResource(String resourceUri) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving scope for resource: " + resourceUri);
+        }
         String sql = SQLQueries.RETRIEVE_SCOPE_NAME_FOR_RESOURCE;
         try (Connection connection = IdentityDatabaseUtil.getDBConnection();
                 PreparedStatement ps = connection.prepareStatement(sql);) {
@@ -1593,6 +1802,9 @@ public class TokenMgtDAO {
      */
     public Pair<String, Integer> findTenantAndScopeOfResource(String resourceUri) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving tenant and scope for resource: " + resourceUri);
+        }
         String sql = SQLQueries.RETRIEVE_SCOPE_WITH_TENANT_FOR_RESOURCE;
         try (Connection connection = IdentityDatabaseUtil.getDBConnection();
                 PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -1602,6 +1814,10 @@ public class TokenMgtDAO {
                 if (rs.next()) {
                     String scopeName = rs.getString("NAME");
                     int tenantId = rs.getInt("TENANT_ID");
+                    if (log.isDebugEnabled()) {
+                        log.debug("Found tenant id: " + tenantId + " and scope: " + scopeName + " for resource: " +
+                                resourceUri);
+                    }
                     return Pair.of(scopeName, tenantId);
                 }
             }
@@ -1631,6 +1847,19 @@ public class TokenMgtDAO {
                                             String consumerKey, String tokenStateId,
                                             AccessTokenDO accessTokenDO, String userStoreDomain)
             throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                log.debug("Invalidating access token with id: " + oldAccessTokenId + " and creating new access token" +
+                        "(hashed): " + DigestUtils.sha256Hex(accessTokenDO.getAccessToken()) + " for client: " +
+                        consumerKey + " user: " + accessTokenDO.getAuthzUser().toString() + " scope: " + Arrays
+                        .toString(accessTokenDO.getScope()));
+            } else {
+                log.debug("Invalidating and creating new access token for client: " + consumerKey + " user: " +
+                        accessTokenDO.getAuthzUser().toString() + " scope: "
+                        + Arrays.toString(accessTokenDO.getScope()));
+            }
+        }
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         try {
@@ -1666,6 +1895,10 @@ public class TokenMgtDAO {
      */
     public void revokeOAuthConsentByApplicationAndUser(String username, String applicationName)
             throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Revoking OAuth consent for application: " + applicationName + " by user: " + username);
+        }
 
         if (username == null || applicationName == null) {
             log.error("Could not remove consent of user " + username + " for application " + applicationName);
@@ -1704,6 +1937,11 @@ public class TokenMgtDAO {
      */
     public void revokeOAuthConsentByApplicationAndUser(String username, String tenantDomain, String applicationName)
             throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Revoking OAuth consent for application: " + applicationName + " by user: " + username + " " +
+                    "tenant: " + tenantDomain);
+        }
 
         if (username == null || applicationName == null) {
             log.error("Could not remove consent of user " + username + " for application " + applicationName);
@@ -1744,6 +1982,11 @@ public class TokenMgtDAO {
     public void updateApproveAlwaysForAppConsentByResourceOwner(String tenantAwareUserName, String tenantDomain, String applicationName, String state)
             throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Setting consent for " + state + " OAuth consent for application: " + applicationName + " by " +
+                    "user: " + tenantAwareUserName + " tenant: " + tenantDomain);
+        }
+
         if (tenantAwareUserName == null || applicationName == null) {
             log.error("Could not remove consent of user " + tenantAwareUserName + " for application " + applicationName);
             return;
@@ -1775,6 +2018,9 @@ public class TokenMgtDAO {
 
     public Set<AccessTokenDO> getAccessTokensOfTenant(int tenantId) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving all access tokens of tenant id: " + tenantId);
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
 
         PreparedStatement prepStmt = null;
@@ -1837,6 +2083,10 @@ public class TokenMgtDAO {
     public Set<AccessTokenDO> getAccessTokensOfUserStore(int tenantId, String userStoreDomain) throws
             IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving all ACTIVE and EXPIRED access tokens of userstore: " + userStoreDomain + " tenant " +
+                    "id: " + tenantId);
+        }
         //we do not support access token partitioning here
         Connection connection = IdentityDatabaseUtil.getDBConnection();
 
@@ -1900,6 +2150,10 @@ public class TokenMgtDAO {
     public void renameUserStoreDomainInAccessTokenTable(int tenantId, String currentUserStoreDomain, String
             newUserStoreDomain) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Renaming userstore domain: " + currentUserStoreDomain + " as: " + newUserStoreDomain
+                    + " tenant id: " + tenantId + " in IDN_OAUTH2_ACCESS_TOKEN table");
+        }
         //we do not support access token partitioning here
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
@@ -1928,6 +2182,9 @@ public class TokenMgtDAO {
 
     public List<AuthzCodeDO> getLatestAuthorizationCodesOfTenant(int tenantId) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving latest authorization codes of tenant id: " + tenantId);
+        }
         //we do not support access token partitioning here
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
@@ -1971,6 +2228,10 @@ public class TokenMgtDAO {
     public List<AuthzCodeDO> getLatestAuthorizationCodesOfUserStore(int tenantId, String userStorDomain) throws
             IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving latest authorization codes of userstore: " + userStorDomain + " tenant id: " +
+                    tenantId);
+        }
         //we do not support access token partitioning here
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
@@ -2015,6 +2276,10 @@ public class TokenMgtDAO {
     public void renameUserStoreDomainInAuthorizationCodeTable(int tenantId, String currentUserStoreDomain, String
             newUserStoreDomain) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Renaming userstore domain: " + currentUserStoreDomain + " as: " + newUserStoreDomain
+                    + " tenant id: " + tenantId + " in IDN_OAUTH2_AUTHORIZATION_CODE table");
+        }
         //we do not support access token partitioning here
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
@@ -2042,6 +2307,9 @@ public class TokenMgtDAO {
 
     public String getCodeIdByAuthorizationCode(String authzCode) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+            log.debug("Retrieving id of authorization code(hashed): " + DigestUtils.sha256Hex(authzCode));
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
 
         PreparedStatement prepStmt = null;
@@ -2071,6 +2339,9 @@ public class TokenMgtDAO {
 
     public String getAuthzCodeByCodeId(String codeId) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving authorization code by code id: " + codeId);
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
 
         PreparedStatement prepStmt = null;
@@ -2101,6 +2372,9 @@ public class TokenMgtDAO {
 
     public String getTokenIdByToken(String token) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                log.debug("Retrieving id of access token(hashed): " + DigestUtils.sha256Hex(token));
+        }
         Connection connection = IdentityDatabaseUtil.getDBConnection();
 
         PreparedStatement prepStmt = null;
@@ -2130,6 +2404,10 @@ public class TokenMgtDAO {
 
 
     public String getTokenByTokenId(String tokenId) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving access token by token id: " + tokenId);
+        }
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
 
@@ -2161,6 +2439,12 @@ public class TokenMgtDAO {
 
     private void updateTokenIdIfAutzCodeGrantType(String oldAccessTokenId, String newAccessTokenId, Connection
             connection) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.info("Updating access token reference of authorization code issued for access token id: " +
+                    oldAccessTokenId + " by new access token id:" + newAccessTokenId);
+        }
+
         PreparedStatement prepStmt = null;
         try {
             String updateNewTokenAgaintAuthzCodeSql = SQLQueries.UPDATE_NEW_TOKEN_AGAINST_AUTHZ_CODE;
@@ -2186,6 +2470,10 @@ public class TokenMgtDAO {
     @Deprecated
     public Set<String> getBindingsOfScopeByScopeName(String scopeName) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving bindings of scope: " + scopeName);
+        }
+
         Connection connection = IdentityDatabaseUtil.getDBConnection();
 
         PreparedStatement ps = null;
@@ -2206,6 +2494,13 @@ public class TokenMgtDAO {
                 }
             }
             connection.commit();
+            if (log.isDebugEnabled()) {
+                StringBuilder bindingsStringBuilder = new StringBuilder();
+                for (String binding : bindings) {
+                    bindingsStringBuilder.append(binding).append(" ");
+                }
+                log.debug("Binding for scope: " + scopeName + " found: " + bindingsStringBuilder.toString());
+            }
             return bindings;
         } catch (SQLException e) {
             String errorMsg = "Error getting roles of scope - " + scopeName;
@@ -2224,6 +2519,10 @@ public class TokenMgtDAO {
      * @throws IdentityOAuth2Exception If an SQL error occurs while retrieving the roles.
      */
     public Set<String> getBindingsOfScopeByScopeName(String scopeName, int tenantId) throws IdentityOAuth2Exception {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving bindings of scope: " + scopeName + " tenant id: " + tenantId);
+        }
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
 
@@ -2246,6 +2545,14 @@ public class TokenMgtDAO {
                 }
             }
             connection.commit();
+            if (log.isDebugEnabled()) {
+                StringBuilder bindingStringBuilder = new StringBuilder();
+                for (String binding : bindings) {
+                    bindingStringBuilder.append(binding).append(" ");
+                }
+                log.debug("Binding for scope: " + scopeName + " found: " + bindingStringBuilder.toString() + " tenant" +
+                        " id: " + tenantId);
+            }
             return bindings;
         } catch (SQLException e) {
             String errorMsg = "Error getting bindings of scope - " + scopeName;
@@ -2258,6 +2565,11 @@ public class TokenMgtDAO {
     public void updateAppAndRevokeTokensAndAuthzCodes(String consumerKey, Properties properties,
                                                       String[] authorizationCodes, String[] accessTokens)
             throws IdentityOAuth2Exception, IdentityApplicationManagementException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Updating state of client: " + consumerKey + " and revoking all access tokens and " +
+                    "authorization codes.");
+        }
 
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement updateStateStatement = null;
@@ -2280,6 +2592,10 @@ public class TokenMgtDAO {
                     throw new IdentityOAuth2Exception("New App State is not specified.");
                 }
 
+                if (log.isDebugEnabled()) {
+                    log.debug("Changing the state of the client: " + consumerKey + " to " + newAppState + " state.");
+                }
+
                 // update application state of the oauth app
                 updateStateStatement = connection.prepareStatement
                         (org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_APPLICATION_STATE);
@@ -2293,6 +2609,10 @@ public class TokenMgtDAO {
                     newSecretKey = properties.getProperty(OAuthConstants.OAUTH_APP_NEW_SECRET_KEY);
                 } else {
                     throw new IdentityOAuth2Exception("New Consumer Secret is not specified.");
+                }
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Regenerating the client secret of: " + consumerKey);
                 }
 
                 // update consumer secret of the oauth app
@@ -2451,6 +2771,11 @@ public class TokenMgtDAO {
                                                           boolean includeExpiredTokens, int limit)
             throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving " + (includeExpiredTokens ? " active" : " all ") + " latest " + limit + " access " +
+                    "token for user: " + authzUser.toString() + " client: " + consumerKey + " scope: " + scope);
+        }
+
         if (authzUser == null) {
             throw new IdentityOAuth2Exception("Invalid user information for given consumerKey: " + consumerKey);
         }
@@ -2492,7 +2817,7 @@ public class TokenMgtDAO {
                 sql = sql.replace("TOKEN_SCOPE_HASH=?", "TOKEN_SCOPE_HASH=? AND TOKEN_STATE='ACTIVE'");
             }
 
-            if(!sqlAltered){
+            if (!sqlAltered) {
                 sql = sql.replace("LIMIT 1", "LIMIT " + Integer.toString(limit));
             }
 
@@ -2597,6 +2922,10 @@ public class TokenMgtDAO {
                                              String userStoreDomain, String scope, boolean active)
             throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieving latest " + (active ? " active" : " non active") + " access token for user: " +
+                    authzUser.toString() + " client: " + consumerKey + " scope: " + scope);
+        }
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authzUser.toString());
         String tenantDomain = authzUser.getTenantDomain();
         int tenantId = OAuth2Util.getTenantId(tenantDomain);
@@ -2761,6 +3090,10 @@ public class TokenMgtDAO {
      */
     public void revokeSaaSTokensOfOtherTenants(String consumerKey, int tenantId) throws IdentityOAuth2Exception {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Revoking access tokens of client: " + consumerKey + " tenant id: " + tenantId + " issued for " +
+                    "other tenants");
+        }
         if (consumerKey == null) {
             log.error("invalid parameters provided. Client ID: " + consumerKey + "and tenant ID: " + tenantId);
             return;

@@ -60,15 +60,8 @@ public class OAuthServiceComponent {
         // initialize the OAuth Server configuration
         OAuthServerConfiguration oauthServerConfig = OAuthServerConfiguration.getInstance();
 
-        if (oauthServerConfig.isCacheEnabled()) {
+        if (OAuthCache.getInstance().isEnabled()) {
             log.debug("OAuth Caching is enabled. Initializing the cache.");
-            // initialize the cache
-            OAuthCache cache = OAuthCache.getInstance();
-            if (cache != null) {
-                log.debug("OAuth Cache initialization was successful.");
-            } else {
-                log.debug("OAuth Cache initialization was unsuccessful.");
-            }
         }
 
         listener = new IdentityOathEventListener();

@@ -39,7 +39,6 @@ import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientExcepti
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
-import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO;
@@ -69,7 +68,6 @@ public class OAuthAdminService extends AbstractAdmin {
     public static final String AUTHORIZATION_CODE = "authorization_code";
     private static List<String> allowedGrants = null;
     protected Log log = LogFactory.getLog(OAuthAdminService.class);
-    private AppInfoCache appInfoCache = AppInfoCache.getInstance();
 
     /**
      * Registers an consumer secret against the logged in user. A given user can only have a single
@@ -275,9 +273,7 @@ public class OAuthAdminService extends AbstractAdmin {
                     app.setPkceSupportPlain(application.getPkceSupportPlain());
                 }
                 dao.addOAuthApplication(app);
-                if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-                    appInfoCache.addToCache(app.getOauthConsumerKey(), app);
-                }
+                AppInfoCache.getInstance().addToCache(app.getOauthConsumerKey(), app);
             }
         }
     }
@@ -320,9 +316,7 @@ public class OAuthAdminService extends AbstractAdmin {
             oauthappdo.setGrantTypes(consumerAppDTO.getGrantTypes());
         }
         dao.updateConsumerApplication(oauthappdo);
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            appInfoCache.addToCache(oauthappdo.getOauthConsumerKey(), oauthappdo);
-        }
+        AppInfoCache.getInstance().addToCache(oauthappdo.getOauthConsumerKey(), oauthappdo);
     }
 
     /**
@@ -343,18 +337,16 @@ public class OAuthAdminService extends AbstractAdmin {
 
         OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
         try {
-            if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-                OAuthAppDO oAuthAppDO = appInfoCache.getValueFromCache(consumerKey);
-                if (oAuthAppDO != null) {
-                    oAuthAppDO.setState(newState);
-                } else {
-                    oAuthAppDO = oAuthAppDAO.getAppInformation(consumerKey);
-                }
-                appInfoCache.addToCache(consumerKey, oAuthAppDO);
+            OAuthAppDO oAuthAppDO = AppInfoCache.getInstance().getValueFromCache(consumerKey);
+            if (oAuthAppDO != null) {
+                oAuthAppDO.setState(newState);
+            } else {
+                oAuthAppDO = oAuthAppDAO.getAppInformation(consumerKey);
+            }
+            AppInfoCache.getInstance().addToCache(consumerKey, oAuthAppDO);
 
-                if (log.isDebugEnabled()) {
-                    log.debug("App state is updated in the cache.");
-                }
+            if (log.isDebugEnabled()) {
+                log.debug("App state is updated in the cache.");
             }
 
             Properties properties = new Properties();
@@ -374,12 +366,10 @@ public class OAuthAdminService extends AbstractAdmin {
     public void updateOauthSecretKey(String consumerKey) throws IdentityOAuthAdminException {
 
         String newSecretKey = OAuthUtil.getRandomNumber();
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            CacheEntry clientCredentialDO = new ClientCredentialDO(newSecretKey);
-            OAuthCache.getInstance().addToCache(new OAuthCacheKey(consumerKey), clientCredentialDO);
-            if (log.isDebugEnabled()) {
-                log.debug("Client Secret is updated in the cache.");
-            }
+        CacheEntry clientCredentialDO = new ClientCredentialDO(newSecretKey);
+        OAuthCache.getInstance().addToCache(new OAuthCacheKey(consumerKey), clientCredentialDO);
+        if (log.isDebugEnabled()) {
+            log.debug("Client Secret is updated in the cache.");
         }
 
         Properties properties = new Properties();
@@ -396,44 +386,38 @@ public class OAuthAdminService extends AbstractAdmin {
             Set<AccessTokenDO> activeDetailedTokens = tokenMgtDAO.getActiveDetailedTokensForConsumerKey(consumerKey);
             String[] accessTokens = new String[activeDetailedTokens.size()];
 
-            if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-                OAuthCache oauthCache = OAuthCache.getInstance();
-                for (AccessTokenDO detailToken : activeDetailedTokens) {
-                    String token = detailToken.getAccessToken();
-                    accessTokens[countToken] = token;
-                    countToken++;
+            for (AccessTokenDO detailToken : activeDetailedTokens) {
+                String token = detailToken.getAccessToken();
+                accessTokens[countToken] = token;
+                countToken++;
 
-                    OAuthCacheKey cacheKeyToken = new OAuthCacheKey(token);
-                    oauthCache.clearCacheEntry(cacheKeyToken);
+                OAuthCacheKey cacheKeyToken = new OAuthCacheKey(token);
+                OAuthCache.getInstance().clearCacheEntry(cacheKeyToken);
 
-                    String scope = OAuth2Util.buildScopeString(detailToken.getScope());
-                    String authorizedUser = detailToken.getAuthzUser().toString();
-                    boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
-                    String cacheKeyString;
-                    if (isUsernameCaseSensitive) {
-                        cacheKeyString = consumerKey + ":" + authorizedUser + ":" + scope;
-                    } else {
-                        cacheKeyString = consumerKey + ":" + authorizedUser.toLowerCase() + ":" + scope;
-                    }
-                    OAuthCacheKey cacheKeyUser = new OAuthCacheKey(cacheKeyString);
-                    oauthCache.clearCacheEntry(cacheKeyUser);
+                String scope = OAuth2Util.buildScopeString(detailToken.getScope());
+                String authorizedUser = detailToken.getAuthzUser().toString();
+                boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
+                String cacheKeyString;
+                if (isUsernameCaseSensitive) {
+                    cacheKeyString = consumerKey + ":" + authorizedUser + ":" + scope;
+                } else {
+                    cacheKeyString = consumerKey + ":" + authorizedUser.toLowerCase() + ":" + scope;
                 }
+                OAuthCacheKey cacheKeyUser = new OAuthCacheKey(cacheKeyString);
+                OAuthCache.getInstance().clearCacheEntry(cacheKeyUser);
+            }
 
-                if (log.isDebugEnabled()) {
-                    log.debug("Access tokens and token of users are removed from the cache.");
-                }
+            if (log.isDebugEnabled()) {
+                log.debug("Access tokens and token of users are removed from the cache.");
             }
 
             Set<String> authorizationCodes = tokenMgtDAO.getActiveAuthorizationCodesForConsumerKey(consumerKey);
-            if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-                OAuthCache oauthCache = OAuthCache.getInstance();
-                for (String authorizationCode : authorizationCodes) {
-                    OAuthCacheKey cacheKey = new OAuthCacheKey(authorizationCode);
-                    oauthCache.clearCacheEntry(cacheKey);
-                }
-                if (log.isDebugEnabled()) {
-                    log.debug("Access tokens are removed from the cache.");
-                }
+            for (String authorizationCode : authorizationCodes) {
+                OAuthCacheKey cacheKey = new OAuthCacheKey(authorizationCode);
+                OAuthCache.getInstance().clearCacheEntry(cacheKey);
+            }
+            if (log.isDebugEnabled()) {
+                log.debug("Access tokens are removed from the cache.");
             }
 
             tokenMgtDAO.updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties,
@@ -456,13 +440,12 @@ public class OAuthAdminService extends AbstractAdmin {
         OAuthAppDAO dao = new OAuthAppDAO();
         dao.removeConsumerApplication(consumerKey);
         // remove client credentials from cache
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            OAuthCache.getInstance().clearCacheEntry(new OAuthCacheKey(consumerKey));
-            appInfoCache.clearCacheEntry(consumerKey);
-            if (log.isDebugEnabled()) {
-                log.debug("Client credentials are removed from the cache.");
-            }
+        OAuthCache.getInstance().clearCacheEntry(new OAuthCacheKey(consumerKey));
+        AppInfoCache.getInstance().clearCacheEntry(consumerKey);
+        if (log.isDebugEnabled()) {
+            log.debug("Client credentials are removed from the cache.");
         }
+
     }
 
     /**

@@ -181,12 +181,10 @@ public class OAuth2Util {
     public static final String APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS = "applicationAccessTokenExpireTime";
 
     private static Log log = LogFactory.getLog(OAuth2Util.class);
-    private static boolean cacheEnabled = OAuthServerConfiguration.getInstance().isCacheEnabled();
-    private static OAuthCache cache = OAuthCache.getInstance();
     private static long timestampSkew = OAuthServerConfiguration.getInstance().getTimeStampSkewInSeconds() * 1000;
     private static ThreadLocal<Integer> clientTenatId = new ThreadLocal<>();
-    private static ThreadLocal<OAuthTokenReqMessageContext> tokenRequestContext = new ThreadLocal<OAuthTokenReqMessageContext>();
-    private static ThreadLocal<OAuthAuthzReqMessageContext> authzRequestContext = new ThreadLocal<OAuthAuthzReqMessageContext>();
+    private static ThreadLocal<OAuthTokenReqMessageContext> tokenRequestContext = new ThreadLocal<>();
+    private static ThreadLocal<OAuthAuthzReqMessageContext> authzRequestContext = new ThreadLocal<>();
     //Precompile PKCE Regex pattern for performance improvement
     private static Pattern pkceCodeVerifierPattern = Pattern.compile("[\\w\\-\\._~]+");
 
@@ -331,16 +329,14 @@ public class OAuth2Util {
         String clientSecret = null;
 
         // Check the cache first.
-        if (cacheEnabled) {
-            CacheEntry cacheResult = cache.getValueFromCache(new OAuthCacheKey(clientId));
-            if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
-                ClientCredentialDO clientCredentialDO = (ClientCredentialDO) cacheResult;
-                clientSecret = clientCredentialDO.getClientSecret();
-                cacheHit = true;
-                if (log.isDebugEnabled()) {
-                    log.debug("Client credentials were available in the cache for client id : " +
-                            clientId);
-                }
+        CacheEntry cacheResult = OAuthCache.getInstance().getValueFromCache(new OAuthCacheKey(clientId));
+        if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
+            ClientCredentialDO clientCredentialDO = (ClientCredentialDO) cacheResult;
+            clientSecret = clientCredentialDO.getClientSecret();
+            cacheHit = true;
+            if (log.isDebugEnabled()) {
+                log.debug("Client credentials were available in the cache for client id : " +
+                        clientId);
             }
         }
 
@@ -374,9 +370,9 @@ public class OAuth2Util {
             log.debug("Successfully authenticated the client with client id : " + clientId);
         }
 
-        if (cacheEnabled && !cacheHit) {
+        if (!cacheHit) {
 
-            cache.addToCache(new OAuthCacheKey(clientId), new ClientCredentialDO(clientSecret));
+            OAuthCache.getInstance().addToCache(new OAuthCacheKey(clientId), new ClientCredentialDO(clientSecret));
             if (log.isDebugEnabled()) {
                 log.debug("Client credentials were added to the cache for client id : " + clientId);
             }
@@ -403,19 +399,19 @@ public class OAuth2Util {
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(username);
 
         if (OAuth2Util.authenticateClient(clientId, clientSecretProvided)) {
-            // check cache
-            if (cacheEnabled) {
-                CacheEntry cacheResult = cache.getValueFromCache(new OAuthCacheKey(clientId + ":" + username));
-                if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
-                    // Ugh. This is fugly. Have to have a generic way of caching a key:value pair
-                    username = ((ClientCredentialDO) cacheResult).getClientSecret();
-                    cacheHit = true;
-                    if (log.isDebugEnabled()) {
-                        log.debug("Username was available in the cache : " +
-                                username);
-                    }
+
+            CacheEntry cacheResult =
+                    OAuthCache.getInstance().getValueFromCache(new OAuthCacheKey(clientId + ":" + username));
+            if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
+                // Ugh. This is fugly. Have to have a generic way of caching a key:value pair
+                username = ((ClientCredentialDO) cacheResult).getClientSecret();
+                cacheHit = true;
+                if (log.isDebugEnabled()) {
+                    log.debug("Username was available in the cache : " +
+                            username);
                 }
             }
+
 
             if (username == null) {
                 // Cache miss
@@ -426,17 +422,18 @@ public class OAuth2Util {
                 }
             }
 
-            if (username != null && cacheEnabled && !cacheHit) {
-                /**
-                 * Using the same ClientCredentialDO to host username. Semantically wrong since ClientCredentialDo
-                 * accept a client secret and we're storing a username in the secret variable. Do we have to make our
-                 * own cache key and cache entry class every time we need to put something to it? Ideal solution is
-                 * to have a generalized way of caching a key:value pair
+            if (username != null && !cacheHit) {
+                /*
+                  Using the same ClientCredentialDO to host username. Semantically wrong since ClientCredentialDo
+                  accept a client secret and we're storing a username in the secret variable. Do we have to make our
+                  own cache key and cache entry class every time we need to put something to it? Ideal solution is
+                  to have a generalized way of caching a key:value pair
                  */
                 if (isUsernameCaseSensitive) {
-                    cache.addToCache(new OAuthCacheKey(clientId + ":" + username), new ClientCredentialDO(username));
+                    OAuthCache.getInstance()
+                            .addToCache(new OAuthCacheKey(clientId + ":" + username), new ClientCredentialDO(username));
                 } else {
-                    cache.addToCache(new OAuthCacheKey(clientId + ":" + username.toLowerCase()),
+                    OAuthCache.getInstance().addToCache(new OAuthCacheKey(clientId + ":" + username.toLowerCase()),
                             new ClientCredentialDO(username));
                 }
                 if (log.isDebugEnabled()) {
@@ -1026,17 +1023,16 @@ public class OAuth2Util {
             IdentityOAuth2Exception {
         boolean cacheHit = false;
         AccessTokenDO accessTokenDO = null;
+
         // check the cache, if caching is enabled.
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            OAuthCache oauthCache = OAuthCache.getInstance();
-            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
-            CacheEntry result = oauthCache.getValueFromCache(cacheKey);
-            // cache hit, do the type check.
-            if (result instanceof AccessTokenDO) {
-                accessTokenDO = (AccessTokenDO) result;
-                cacheHit = true;
-            }
+        OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+        CacheEntry result = OAuthCache.getInstance().getValueFromCache(cacheKey);
+        // cache hit, do the type check.
+        if (result != null && result instanceof AccessTokenDO) {
+            accessTokenDO = (AccessTokenDO) result;
+            cacheHit = true;
         }
+
         // cache miss, load the access token info from the database.
         if (accessTokenDO == null) {
             accessTokenDO = new TokenMgtDAO().retrieveAccessToken(accessTokenIdentifier, false);
@@ -1047,10 +1043,9 @@ public class OAuth2Util {
         }
 
         // add the token back to the cache in the case of a cache miss
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled() && !cacheHit) {
-            OAuthCache oauthCache = OAuthCache.getInstance();
-            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
-            oauthCache.addToCache(cacheKey, accessTokenDO);
+        if (!cacheHit) {
+            cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+            OAuthCache.getInstance().addToCache(cacheKey, accessTokenDO);
             if (log.isDebugEnabled()) {
                 log.debug("Access Token Info object was added back to the cache.");
             }

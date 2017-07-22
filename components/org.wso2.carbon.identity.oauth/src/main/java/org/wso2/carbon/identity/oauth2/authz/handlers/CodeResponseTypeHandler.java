@@ -22,6 +22,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
+import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
@@ -42,25 +43,23 @@ import java.util.UUID;
 public class CodeResponseTypeHandler extends AbstractResponseTypeHandler {
 
     private static Log log = LogFactory.getLog(CodeResponseTypeHandler.class);
-    private AppInfoCache appInfoCache;
+
     @Override
     public OAuth2AuthorizeRespDTO issue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx)
             throws IdentityOAuth2Exception {
         OAuth2AuthorizeRespDTO respDTO = new OAuth2AuthorizeRespDTO();
         String authorizationCode;
         String codeId;
-        appInfoCache = AppInfoCache.getInstance();
-
         OAuth2AuthorizeReqDTO authorizationReqDTO = oauthAuthzMsgCtx.getAuthorizationReqDTO();
 
-        OAuthAppDO oAuthAppDO = appInfoCache.getValueFromCache(authorizationReqDTO.getConsumerKey());
+        OAuthAppDO oAuthAppDO = AppInfoCache.getInstance().getValueFromCache(authorizationReqDTO.getConsumerKey());
         if (oAuthAppDO == null) {
             try {
                 oAuthAppDO = new OAuthAppDAO().getAppInformation(authorizationReqDTO.getConsumerKey());
             } catch (InvalidOAuthClientException e) {
                 throw new IdentityOAuth2Exception("Invalid consumer application. Failed to issue Grant token.", e);
             }
-            appInfoCache.addToCache(oAuthAppDO.getOauthConsumerKey(), oAuthAppDO);
+            AppInfoCache.getInstance().addToCache(oAuthAppDO.getOauthConsumerKey(), oAuthAppDO);
         }
 
         Timestamp timestamp = new Timestamp(new Date().getTime());
@@ -112,7 +111,7 @@ public class CodeResponseTypeHandler extends AbstractResponseTypeHandler {
             // tokens and authorization codes are in a single cache.
             String cacheKeyString = OAuth2Util.buildCacheKeyStringForAuthzCode(
                     authorizationReqDTO.getConsumerKey(), authorizationCode);
-            oauthCache.addToCache(new OAuthCacheKey(cacheKeyString), authzCodeDO);
+            OAuthCache.getInstance().addToCache(new OAuthCacheKey(cacheKeyString), authzCodeDO);
             if (log.isDebugEnabled()) {
                 log.debug("Authorization Code info was added to the cache for client id : " +
                         authorizationReqDTO.getConsumerKey());

@@ -89,9 +89,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
         revokeAccessTokensWhenSaaSDisabled(serviceProvider, tenantDomain);
         addClientSecret(serviceProvider);
         updateAuthApplication(serviceProvider);
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            removeEntriesFromCache(serviceProvider, tenantDomain, userName);
-        }
+        removeEntriesFromCache(serviceProvider, tenantDomain, userName);
         return true;
     }
 
@@ -105,9 +103,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
     public boolean doPreDeleteApplication(String applicationName, String tenantDomain, String userName) throws IdentityApplicationManagementException {
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
         ServiceProvider serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(applicationName, tenantDomain);
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            removeEntriesFromCache(serviceProvider, tenantDomain, userName);
-        }
+        removeEntriesFromCache(serviceProvider, tenantDomain, userName);
         return true;
     }
 

@@ -48,7 +48,6 @@ public abstract class AbstractResponseTypeHandler implements ResponseTypeHandler
     protected OauthTokenIssuer oauthIssuerImpl;
     protected TokenMgtDAO tokenMgtDAO;
     protected boolean cacheEnabled;
-    protected OAuthCache oauthCache;
     private OAuthCallbackManager callbackManager;
 
     @Override
@@ -56,10 +55,7 @@ public abstract class AbstractResponseTypeHandler implements ResponseTypeHandler
         callbackManager = new OAuthCallbackManager();
         oauthIssuerImpl = OAuthServerConfiguration.getInstance().getIdentityOauthTokenIssuer();
         tokenMgtDAO = new TokenMgtDAO();
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            cacheEnabled = true;
-            oauthCache = OAuthCache.getInstance();
-        }
+        cacheEnabled = OAuthCache.getInstance().isEnabled();
     }
 
     @Override

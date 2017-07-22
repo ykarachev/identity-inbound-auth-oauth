@@ -1357,18 +1357,6 @@ public class OAuthServerConfiguration {
         }
     }
 
-//    private void parseCachingConfiguration(OMElement oauthConfigElem) {
-//        OMElement enableCacheElem =
-//                oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.ENABLE_CACHE));
-//        if (enableCacheElem != null) {
-//            cacheEnabled = Boolean.parseBoolean(enableCacheElem.getText());
-//        }
-//
-//        if (log.isDebugEnabled()) {
-//            log.debug("Enable OAuth Cache was set to : " + cacheEnabled);
-//        }
-//    }
-
     private void parseRefreshTokenRenewalConfiguration(OMElement oauthConfigElem) {
 
         OMElement enableRefreshTokenRenewalElem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(

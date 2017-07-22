@@ -313,7 +313,7 @@ public class OAuth2Service extends AbstractAdmin {
                     CacheEntry result = OAuthCache.getInstance().getValueFromCache(cacheKey);
 
                     // check cache hit, do the type check.
-                    if (result!= null && result instanceof AccessTokenDO) {
+                    if (result != null && result instanceof AccessTokenDO) {
                         accessTokenDO = (AccessTokenDO) result;
                     }
 

@@ -46,7 +46,6 @@ public class AuthorizationHandlerManager {
 
     private Map<String, ResponseTypeHandler> responseHandlers = new HashMap<>();
 
-//    private AppInfoCache appInfoCache;
 
     private AuthorizationHandlerManager() throws IdentityOAuth2Exception {
         responseHandlers = OAuthServerConfiguration.getInstance().getSupportedResponseTypes();

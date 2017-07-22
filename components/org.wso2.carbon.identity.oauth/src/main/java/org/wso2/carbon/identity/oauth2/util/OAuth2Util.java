@@ -382,6 +382,8 @@ public class OAuth2Util {
     }
 
     /**
+     * @deprecated
+     *
      * Authenticate the OAuth consumer and return the username of user which own the provided client id and client
      * secret.
      *
@@ -407,8 +409,7 @@ public class OAuth2Util {
                 username = ((ClientCredentialDO) cacheResult).getClientSecret();
                 cacheHit = true;
                 if (log.isDebugEnabled()) {
-                    log.debug("Username was available in the cache : " +
-                            username);
+                    log.debug("Username was available in the cache : " + username);
                 }
             }
 

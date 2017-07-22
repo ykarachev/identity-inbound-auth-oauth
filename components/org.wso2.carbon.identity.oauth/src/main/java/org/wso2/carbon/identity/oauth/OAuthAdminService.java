@@ -105,10 +105,10 @@ public class OAuthAdminService extends AbstractAdmin {
         OAuthConsumerAppDTO[] dtos = new OAuthConsumerAppDTO[0];
 
         if (userName == null) {
-            if (log.isErrorEnabled()) {
-                log.debug("User not logged in");
+            if (log.isDebugEnabled()) {
+                log.debug("User not logged in to get all registered OAuth Applications");
             }
-            throw new IdentityOAuthAdminException("User not logged in");
+            throw new IdentityOAuthAdminException("User not logged in to get all registered OAuth Applications");
         }
 
         String tenantUser = MultitenantUtils.getTenantAwareUsername(userName);
@@ -162,7 +162,8 @@ public class OAuthAdminService extends AbstractAdmin {
             }
             return dto;
         } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error while retrieving the app information using consumer key", e);
+            throw new IdentityOAuthAdminException("Error while retrieving the app information using consumerKey: " +
+                    consumerKey, e);
         }
 
     }
@@ -192,7 +193,8 @@ public class OAuthAdminService extends AbstractAdmin {
             }
             return dto;
         } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error while retrieving the app information by app name", e);
+            throw new IdentityOAuthAdminException("Error while retrieving the app information by app name: " +
+                    appName, e);
         }
     }
 
@@ -289,6 +291,7 @@ public class OAuthAdminService extends AbstractAdmin {
         String userName = CarbonContext.getThreadLocalCarbonContext().getUsername();
         String tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(userName);
         String tenantDomain = CarbonContext.getThreadLocalCarbonContext().getTenantDomain();
+
         OAuthAppDAO dao = new OAuthAppDAO();
         OAuthAppDO oauthappdo = new OAuthAppDO();
         AuthenticatedUser user = new AuthenticatedUser();
@@ -296,7 +299,9 @@ public class OAuthAdminService extends AbstractAdmin {
         user.setTenantDomain(tenantDomain);
         user.setUserStoreDomain(IdentityUtil.extractDomainFromName(userName));
         oauthappdo.setUser(user);
-        oauthappdo.setOauthConsumerKey(consumerAppDTO.getOauthConsumerKey());
+
+        String consumerKey = consumerAppDTO.getOauthConsumerKey();
+        oauthappdo.setOauthConsumerKey(consumerKey);
         oauthappdo.setOauthConsumerSecret(consumerAppDTO.getOauthConsumerSecret());
         oauthappdo.setCallbackUrl(consumerAppDTO.getCallbackUrl());
         oauthappdo.setApplicationName(consumerAppDTO.getApplicationName());
@@ -310,7 +315,8 @@ public class OAuthAdminService extends AbstractAdmin {
                     continue;
                 }
                 if (!allowedGrants.contains(requestedGrant)) {
-                    throw new IdentityOAuthAdminException(requestedGrant + " not allowed");
+                    throw new IdentityOAuthAdminException(requestedGrant + " not allowed for OAuth App with " +
+                            "consumerKey: " + consumerKey);
                 }
             }
             oauthappdo.setGrantTypes(consumerAppDTO.getGrantTypes());
@@ -338,15 +344,16 @@ public class OAuthAdminService extends AbstractAdmin {
         OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
         try {
             OAuthAppDO oAuthAppDO = AppInfoCache.getInstance().getValueFromCache(consumerKey);
-            if (oAuthAppDO != null) {
-                oAuthAppDO.setState(newState);
-            } else {
+            if (oAuthAppDO == null) {
                 oAuthAppDO = oAuthAppDAO.getAppInformation(consumerKey);
             }
+            // change the state
+            oAuthAppDO.setState(newState);
             AppInfoCache.getInstance().addToCache(consumerKey, oAuthAppDO);
 
             if (log.isDebugEnabled()) {
-                log.debug("App state is updated in the cache.");
+                log.debug("App state is updated to:" + newState + " in the AppInfoCache for OAuth App with " +
+                        "consumerKey: " + consumerKey);
             }
 
             Properties properties = new Properties();
@@ -355,7 +362,8 @@ public class OAuthAdminService extends AbstractAdmin {
             updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties);
 
         } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error while updating consumer application state", e);
+            throw new IdentityOAuthAdminException("Error while updating state of OAuth app with consumerKey: " +
+                    consumerKey, e);
         }
     }
 
@@ -369,7 +377,7 @@ public class OAuthAdminService extends AbstractAdmin {
         CacheEntry clientCredentialDO = new ClientCredentialDO(newSecretKey);
         OAuthCache.getInstance().addToCache(new OAuthCacheKey(consumerKey), clientCredentialDO);
         if (log.isDebugEnabled()) {
-            log.debug("Client Secret is updated in the cache.");
+            log.debug("Client Secret for OAuth app with consumerKey: " + consumerKey + " updated in OAuthCache.");
         }
 
         Properties properties = new Properties();
@@ -408,7 +416,8 @@ public class OAuthAdminService extends AbstractAdmin {
             }
 
             if (log.isDebugEnabled()) {
-                log.debug("Access tokens and token of users are removed from the cache.");
+                log.debug("Access tokens and token of users are removed from the cache for OAuth App with " +
+                        "consumerKey: " + consumerKey);
             }
 
             Set<String> authorizationCodes = tokenMgtDAO.getActiveAuthorizationCodesForConsumerKey(consumerKey);
@@ -417,7 +426,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 OAuthCache.getInstance().clearCacheEntry(cacheKey);
             }
             if (log.isDebugEnabled()) {
-                log.debug("Access tokens are removed from the cache.");
+                log.debug("Access tokens are removed from the cache for OAuth App with consumerKey: " + consumerKey);
             }
 
             tokenMgtDAO.updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties,
@@ -425,7 +434,8 @@ public class OAuthAdminService extends AbstractAdmin {
                     accessTokens);
 
         } catch (IdentityOAuth2Exception | IdentityApplicationManagementException e) {
-            throw new IdentityOAuthAdminException("Error in updating oauth app & revoking access tokens and authz codes.", e);
+            throw new IdentityOAuthAdminException("Error in updating oauth app & revoking access tokens and authz " +
+                    "codes for OAuth App with consumerKey: " + consumerKey, e);
         }
     }
 
@@ -443,7 +453,7 @@ public class OAuthAdminService extends AbstractAdmin {
         OAuthCache.getInstance().clearCacheEntry(new OAuthCacheKey(consumerKey));
         AppInfoCache.getInstance().clearCacheEntry(consumerKey);
         if (log.isDebugEnabled()) {
-            log.debug("Client credentials are removed from the cache.");
+            log.debug("Client credentials are removed from the cache for OAuth App with consumerKey: " + consumerKey);
         }
 
     }

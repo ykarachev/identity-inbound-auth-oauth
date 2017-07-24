@@ -13,13 +13,10 @@ import javax.validation.constraints.NotNull;
 
 
 @ApiModel(description = "")
-public class ScopeDTO  {
+public class ScopeToUpdateDTO  {
   
   
-  @NotNull
-  private String name = null;
   
-  @NotNull
   private String description = null;
   
   
@@ -28,19 +25,7 @@ public class ScopeDTO  {
   
   /**
    **/
-  @ApiModelProperty(required = true, value = "")
-  @JsonProperty("name")
-  public String getName() {
-    return name;
-  }
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  
-  /**
-   **/
-  @ApiModelProperty(required = true, value = "")
+  @ApiModelProperty(value = "")
   @JsonProperty("description")
   public String getDescription() {
     return description;
@@ -66,9 +51,8 @@ public class ScopeDTO  {
   @Override
   public String toString()  {
     StringBuilder sb = new StringBuilder();
-    sb.append("class ScopeDTO {\n");
+    sb.append("class ScopeToUpdateDTO {\n");
     
-    sb.append("  name: ").append(name).append("\n");
     sb.append("  description: ").append(description).append("\n");
     sb.append("  bindings: ").append(bindings).append("\n");
     sb.append("}\n");

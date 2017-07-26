@@ -1396,7 +1396,7 @@ public class TokenMgtDAO {
         Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement ps = null;
         ResultSet rs = null;
-        Set<AccessTokenDO> activeDetailedTokens = new HashSet<>();
+        Set<AccessTokenDO> activeDetailedTokens;
         Map<String, AccessTokenDO> tokenMap = new HashMap<>();
         try {
             String sqlQuery = SQLQueries.GET_ACTIVE_DETAILS_FOR_CONSUMER_KEY;
@@ -1410,9 +1410,7 @@ public class TokenMgtDAO {
                     AccessTokenDO tokenObj = tokenMap.get(token);
                     String[] previousScope = tokenObj.getScope();
                     String[] newSope = new String[tokenObj.getScope().length + 1];
-                    for (int size = 0; size < previousScope.length; size++) {
-                        newSope[size] = previousScope[size];
-                    }
+                    System.arraycopy(previousScope, 0, newSope, 0, previousScope.length);
                     newSope[previousScope.length] = rs.getString(5);
                     tokenObj.setScope(newSope);
                 } else {
@@ -1558,27 +1556,20 @@ public class TokenMgtDAO {
     @Deprecated
     public String findScopeOfResource(String resourceUri) throws IdentityOAuth2Exception {
 
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
-        PreparedStatement ps = null;
-        ResultSet rs = null;
+        String sql = SQLQueries.RETRIEVE_SCOPE_NAME_FOR_RESOURCE;
+        try (Connection connection = IdentityDatabaseUtil.getDBConnection();
+                PreparedStatement ps = connection.prepareStatement(sql);) {
 
-        try {
-            String sql = SQLQueries.RETRIEVE_SCOPE_NAME_FOR_RESOURCE;
-
-            ps = connection.prepareStatement(sql);
             ps.setString(1, resourceUri);
-            rs = ps.executeQuery();
-
-            if (rs.next()) {
-                return rs.getString("NAME");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("NAME");
+                }
             }
-            connection.commit();
             return null;
         } catch (SQLException e) {
             String errorMsg = "Error getting scopes for resource - " + resourceUri + " : " + e.getMessage();
             throw new IdentityOAuth2Exception(errorMsg, e);
-        } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
         }
     }
     
@@ -1591,29 +1582,22 @@ public class TokenMgtDAO {
      */
     public Pair<String, Integer> findTenantAndScopeOfResource(String resourceUri) throws IdentityOAuth2Exception {
 
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
-        PreparedStatement ps = null;
-        ResultSet rs = null;
+        String sql = SQLQueries.RETRIEVE_SCOPE_WITH_TENANT_FOR_RESOURCE;
+        try (Connection connection = IdentityDatabaseUtil.getDBConnection();
+                PreparedStatement ps = connection.prepareStatement(sql)) {
 
-        try {
-            String sql = SQLQueries.RETRIEVE_SCOPE_WITH_TENANT_FOR_RESOURCE;
-
-            ps = connection.prepareStatement(sql);
             ps.setString(1, resourceUri);
-            rs = ps.executeQuery();
-
-            if (rs.next()) {
-                String scopeName = rs.getString("NAME");
-                int tenantId = rs.getInt("TENANT_ID");
-                return Pair.of(scopeName, tenantId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String scopeName = rs.getString("NAME");
+                    int tenantId = rs.getInt("TENANT_ID");
+                    return Pair.of(scopeName, tenantId);
+                }
             }
-            connection.commit();
             return null;
         } catch (SQLException e) {
             String errorMsg = "Error getting scopes for resource - " + resourceUri;
             throw new IdentityOAuth2Exception(errorMsg, e);
-        } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, rs, ps);
         }
     }
 

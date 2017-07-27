@@ -22,6 +22,7 @@ package org.wso2.carbon.identity.oauth2;
 public class Oauth2ScopeConstants {
 
     public static final int MAX_FILTER_COUNT = 30;
+    public static final int INVALID_SCOPE_ID = -1;
 
     public enum ErrorMessages {
         ERROR_CODE_BAD_REQUEST_SCOPE_NAME_NOT_SPECIFIED("41001", "Scope Name is not specified."),

@@ -50,91 +50,56 @@ public class ScopeMgtDAO {
      *
      * @param scope    Scope
      * @param tenantID tenant ID
-     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeException IdentityOAuth2ScopeException
      */
-    public void addScope(Scope scope, int tenantID) throws IdentityOAuth2ScopeServerException {
+    public void addScope(Scope scope, int tenantID) throws IdentityOAuth2ScopeException {
 
-        try (Connection conn = IdentityDatabaseUtil.getDBConnection();) {
-
-            String scopeIdField = "SCOPE_ID";
-            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
-                scopeIdField = "scope_id";
+        if (scope == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("Scope is not defined");
             }
 
-            if (scope != null) {
-                int scopeID = 0;
-                try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE, new String[]{scopeIdField});) {
-                    ps.setString(1, scope.getName());
-                    ps.setString(2, scope.getDescription());
-                    ps.setInt(3, tenantID);
-                    ps.execute();
+            Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_BAD_REQUEST_SCOPE_NAME_NOT_SPECIFIED, null);
+        }
 
-                    try (ResultSet rs = ps.getGeneratedKeys();) {
-                        if (rs.next()) {
-                            scopeID = rs.getInt(1);
-                        }
-                    }
-                }
+        if (log.isDebugEnabled()) {
+            log.debug("Adding scope :" + scope.getName());
+        }
 
-                // some JDBC Drivers returns this in the result, some don't
-                if (scopeID == 0) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("JDBC Driver did not return the scope id, executing Select operation");
-                    }
-                    try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME,
-                            new String[]{scopeIdField});) {
-                        ps.setString(1, scope.getName());
-                        ps.setInt(2, tenantID);
-                        try (ResultSet rs = ps.executeQuery();) {
-                            if (rs.next()) {
-                                scopeID = rs.getInt(1);
-                            }
-                        }
-                    }
-                }
+        try (Connection conn = IdentityDatabaseUtil.getDBConnection()) {
 
-                for (String binding : scope.getBindings()) {
-                    try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE_BINDING,
-                            new String[]{scopeIdField});) {
-                        if (StringUtils.isNotBlank(binding)) {
-                            ps.setInt(1, scopeID);
-                            ps.setString(2, binding);
-                            ps.addBatch();
-                        }
-                        ps.executeBatch();
-                    }
-                }
-                conn.commit();
-            }
+            addScope(scope, conn, tenantID);
+            conn.commit();
+
         } catch (SQLException e) {
-            String msg = "Error occurred while creating scopes ";
+            String msg = "Error occurred while creating scope :" + scope.getName();
             throw new IdentityOAuth2ScopeServerException(msg, e);
         }
     }
+
 
     /**
      * Get all available scopes
      *
      * @param tenantID tenant ID
      * @return available scope list
-     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeServerException IdentityOAuth2ScopeServerException
      */
     public Set<Scope> getAllScopes(int tenantID) throws IdentityOAuth2ScopeServerException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Get all scopes for tenantId  :" + tenantID);
+        }
 
         Set<Scope> scopes = new HashSet<>();
         Map<Integer, Scope> scopeMap = new HashMap<>();
 
-        try (Connection conn = IdentityDatabaseUtil.getDBConnection();) {
+        try (Connection conn = IdentityDatabaseUtil.getDBConnection()) {
 
-            String scopeIdField = "SCOPE_ID";
-            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
-                scopeIdField = "scope_id";
-            }
-
-            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_ALL_SCOPES,
-                    new String[]{scopeIdField});) {
+            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_ALL_SCOPES)) {
                 ps.setInt(1, tenantID);
-                try (ResultSet rs = ps.executeQuery();) {
+                try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         int scopeID = rs.getInt(1);
                         String name = rs.getString(2);
@@ -179,14 +144,18 @@ public class ScopeMgtDAO {
      * @param limit    number of elements of the result set
      * @param tenantID tenant ID
      * @return available scope list
-     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeServerException IdentityOAuth2ScopeServerException
      */
     public Set<Scope> getScopesWithPagination(Integer offset, Integer limit, int tenantID) throws IdentityOAuth2ScopeServerException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Get scopes with pagination for tenantId  :" + tenantID);
+        }
 
         Set<Scope> scopes = new HashSet<>();
         Map<Integer, Scope> scopeMap = new HashMap<>();
 
-        try (Connection conn = IdentityDatabaseUtil.getDBConnection();) {
+        try (Connection conn = IdentityDatabaseUtil.getDBConnection()) {
 
             String query;
             if (conn.getMetaData().getDriverName().contains("MySQL")
@@ -213,7 +182,7 @@ public class ScopeMgtDAO {
             namedPreparedStatement.setInt(Oauth2ScopeConstants.SQLPlaceholders.OFFSET, offset);
             namedPreparedStatement.setInt(Oauth2ScopeConstants.SQLPlaceholders.LIMIT, limit);
             try (PreparedStatement preparedStatement = namedPreparedStatement.getPreparedStatement();) {
-                try (ResultSet rs = preparedStatement.executeQuery();) {
+                try (ResultSet rs = preparedStatement.executeQuery()) {
                     while (rs.next()) {
                         int scopeID = rs.getInt(1);
                         String name = rs.getString(2);
@@ -258,24 +227,22 @@ public class ScopeMgtDAO {
      * @param name     name of the scope
      * @param tenantID tenant ID
      * @return Scope for the provided ID
-     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeServerException IdentityOAuth2ScopeServerException
      */
     public Scope getScopeByName(String name, int tenantID) throws IdentityOAuth2ScopeServerException {
 
+        if (log.isDebugEnabled()) {
+            log.debug("Get scope by name called for scope name:" + name);
+        }
+
         Scope scope = null;
 
-        try (Connection conn = IdentityDatabaseUtil.getDBConnection();) {
+        try (Connection conn = IdentityDatabaseUtil.getDBConnection()) {
 
-            String scopeIdField = "SCOPE_ID";
-            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
-                scopeIdField = "scope_id";
-            }
-
-            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BY_NAME,
-                    new String[]{scopeIdField});) {
+            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_BY_NAME)) {
                 ps.setString(1, name);
                 ps.setInt(2, tenantID);
-                try (ResultSet rs = ps.executeQuery();) {
+                try (ResultSet rs = ps.executeQuery()) {
 
                     String description = null;
                     List<String> bindings = new ArrayList<>();
@@ -284,7 +251,9 @@ public class ScopeMgtDAO {
                         if (StringUtils.isBlank(description)) {
                             description = rs.getString(2);
                         }
-                        bindings.add(rs.getString(3));
+                        if (StringUtils.isNotBlank(rs.getString(3))) {
+                            bindings.add(rs.getString(3));
+                        }
                     }
 
                     if (StringUtils.isNotBlank(name) && StringUtils.isNotBlank(description)) {
@@ -305,12 +274,17 @@ public class ScopeMgtDAO {
      * @param scopeName name of the scope
      * @param tenantID tenant ID
      * @return true if scope is exists
-     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeServerException IdentityOAuth2ScopeServerException
      */
     public boolean isScopeExists(String scopeName, int tenantID) throws IdentityOAuth2ScopeServerException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Is scope exists called for scope:" + scopeName);
+        }
+
         boolean isScopeExists = false;
         int scopeID = getScopeIDByName(scopeName, tenantID);
-        if (scopeID != -1) {
+        if (scopeID != Oauth2ScopeConstants.INVALID_SCOPE_ID) {
             isScopeExists = true;
         }
         return isScopeExists;
@@ -322,23 +296,21 @@ public class ScopeMgtDAO {
      * @param scopeName name of the scope
      * @param tenantID  tenant ID
      * @return scope ID for the provided scope name
-     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeServerException IdentityOAuth2ScopeServerException
      */
     public int getScopeIDByName(String scopeName, int tenantID) throws IdentityOAuth2ScopeServerException {
 
-        int scopeID = -1;
-        try (Connection conn = IdentityDatabaseUtil.getDBConnection();) {
+        if (log.isDebugEnabled()) {
+            log.debug("Get scope ID by name called for scope name:" + scopeName);
+        }
 
-            String scopeIdField = "SCOPE_ID";
-            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
-                scopeIdField = "scope_id";
-            }
+        int scopeID = Oauth2ScopeConstants.INVALID_SCOPE_ID;
+        try (Connection conn = IdentityDatabaseUtil.getDBConnection()) {
 
-            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME,
-                    new String[]{scopeIdField});) {
+            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME)) {
                 ps.setString(1, scopeName);
                 ps.setInt(2, tenantID);
-                try (ResultSet rs = ps.executeQuery();) {
+                try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         scopeID = rs.getInt(1);
                     }
@@ -356,23 +328,17 @@ public class ScopeMgtDAO {
      *
      * @param name     name of the scope
      * @param tenantID tenant ID
-     * @throws IdentityOAuth2ScopeServerException
+     * @throws IdentityOAuth2ScopeServerException IdentityOAuth2ScopeServerException
      */
     public void deleteScopeByName(String name, int tenantID) throws IdentityOAuth2ScopeServerException {
 
-        try (Connection conn = IdentityDatabaseUtil.getDBConnection();) {
+        if (log.isDebugEnabled()) {
+            log.debug("Delete scope by name for scope name:" + name);
+        }
 
-            String scopeIdField = "SCOPE_ID";
-            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
-                scopeIdField = "scope_id";
-            }
+        try (Connection conn = IdentityDatabaseUtil.getDBConnection()) {
 
-            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_NAME,
-                    new String[]{scopeIdField});) {
-                ps.setString(1, name);
-                ps.setInt(2, tenantID);
-                ps.execute();
-            }
+            deleteScope(name, tenantID, conn);
             conn.commit();
         } catch (SQLException e) {
             String msg = "Error occurred while deleting scopes ";
@@ -385,81 +351,76 @@ public class ScopeMgtDAO {
      *
      * @param updatedScope details of the updated scope
      * @param tenantID     tenant ID
-     * @throws IdentityOAuth2ScopeException
+     * @throws IdentityOAuth2ScopeServerException IdentityOAuth2ScopeServerException
      */
-    public void updateScopeByName(Scope updatedScope, int tenantID) throws IdentityOAuth2ScopeClientException,
-            IdentityOAuth2ScopeServerException {
+    public void updateScopeByName(Scope updatedScope, int tenantID) throws IdentityOAuth2ScopeServerException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Updae scope by name for scope name:" + updatedScope.getName());
+        }
+
         try (Connection conn = IdentityDatabaseUtil.getDBConnection()) {
-
-            String scopeIdField = "SCOPE_ID";
-            if (conn.getMetaData().getDriverName().contains("PostgreSQL")) {
-                scopeIdField = "scope_id";
-            }
-
-            if (updatedScope != null) {
-                if (StringUtils.isNotBlank(updatedScope.getName())) {
-                    try (PreparedStatement ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_NAME,
-                            new String[]{scopeIdField})) {
-                        ps.setString(1, updatedScope.getName());
-                        ps.setInt(2, tenantID);
-                        ps.execute();
-                    }
-
-                    int scopeID = 0;
-                    try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE,
-                            new String[]{scopeIdField})) {
-                        ps.setString(1, updatedScope.getName());
-                        ps.setString(2, updatedScope.getDescription());
-                        ps.setInt(3, tenantID);
-                        ps.execute();
-
-                        try (ResultSet rs = ps.getGeneratedKeys()) {
-                            if (rs.next()) {
-                                scopeID = rs.getInt(1);
-                            }
-                        }
-                    }
-                    // some JDBC Drivers returns this in the result, some don't
-                    if (scopeID == 0) {
-                        if (log.isDebugEnabled()) {
-                            log.debug("JDBC Driver did not return the scope id, executing Select operation");
-                        }
-                        try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME,
-                                new String[]{scopeIdField})) {
-                            ps.setString(1, updatedScope.getName());
-                            ps.setInt(2, tenantID);
-                            try (ResultSet rs = ps.executeQuery()) {
-                                if (rs.next()) {
-                                    scopeID = rs.getInt(1);
-                                }
-                            }
-                        }
-                    }
-
-                    for (String binding : updatedScope.getBindings()) {
-                        try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE_BINDING,
-                                new String[]{scopeIdField})) {
-                            if (StringUtils.isNotBlank(binding)) {
-                                ps.setInt(1, scopeID);
-                                ps.setString(2, binding);
-                                ps.addBatch();
-                            }
-                            ps.executeBatch();
-                        }
-                    }
-                    conn.commit();
-                } else {
-                    throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
-                            ERROR_CODE_BAD_REQUEST_SCOPE_NAME_NOT_SPECIFIED, updatedScope.getName());
-                }
-            } else {
-                throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
-                        ERROR_CODE_BAD_REQUEST_SCOPE_NOT_SPECIFIED, null);
-            }
-
+            deleteScope(updatedScope.getName(), tenantID, conn);
+            addScope(updatedScope, conn, tenantID);
+            conn.commit();
         } catch (SQLException e) {
             String msg = "Error occurred while updating scope by ID ";
             throw new IdentityOAuth2ScopeServerException(msg, e);
+        }
+    }
+
+    private void addScope(Scope scope, Connection conn, int tenantID) throws SQLException {
+        //Adding the scope
+        if (scope != null) {
+            int scopeID = 0;
+            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE)) {
+                ps.setString(1, scope.getName());
+                ps.setString(2, scope.getDescription());
+                ps.setInt(3, tenantID);
+                ps.execute();
+
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        scopeID = rs.getInt(1);
+                    }
+                }
+            }
+
+            // some JDBC Drivers returns this in the result, some don't
+            if (scopeID == 0) {
+                if (log.isDebugEnabled()) {
+                    log.debug("JDBC Driver did not return the scope id, executing Select operation");
+                }
+                try (PreparedStatement ps = conn.prepareStatement(SQLQueries.RETRIEVE_SCOPE_ID_BY_NAME)) {
+                    ps.setString(1, scope.getName());
+                    ps.setInt(2, tenantID);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            scopeID = rs.getInt(1);
+                        }
+                    }
+                }
+            }
+
+            //Adding scope bindings
+            try (PreparedStatement ps = conn.prepareStatement(SQLQueries.ADD_SCOPE_BINDING)) {
+                for (String binding : scope.getBindings()) {
+                    if (StringUtils.isNotBlank(binding)) {
+                        ps.setInt(1, scopeID);
+                        ps.setString(2, binding);
+                        ps.addBatch();
+                    }
+                }
+                ps.executeBatch();
+            }
+        }
+    }
+
+    private void deleteScope(String name, int tenantID, Connection conn) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(SQLQueries.DELETE_SCOPE_BY_NAME)) {
+            ps.setString(1, name);
+            ps.setInt(2, tenantID);
+            ps.execute();
         }
     }
 }

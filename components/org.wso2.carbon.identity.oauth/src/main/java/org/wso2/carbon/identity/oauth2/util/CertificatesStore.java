@@ -65,6 +65,9 @@ public class CertificatesStore {
 
         if (publicCert != null) {
             publicCerts.put(tenantId, publicCert);
+        } else {
+            String error = "Error in obtaining certificate for tenant " + tenantDomain;
+            throw new IdentityOAuth2Exception(error);
         }
 
         return publicCert;
@@ -83,7 +86,7 @@ public class CertificatesStore {
 
             Certificate certificate = getCertificate(tenantDomain, tenantId);
 
-            // TODO: maintain a hashmap with tenants' pubkey thumbprints after first initialization
+        // TODO: maintain a hashmap with tenants' pubkey thumbprints after first initialization
 
             //generate the SHA-1 thumbprint of the certificate
             MessageDigest digestValue = MessageDigest.getInstance("SHA-1");
@@ -133,7 +136,7 @@ public class CertificatesStore {
             KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
 
             KeyStore keyStore = null;
-            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
+            if (!MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenantDomain)) {
                 // derive key store name
                 String ksName = tenantDomain.trim().replace(".", "-");
                 String jksName = ksName + ".jks";

@@ -274,10 +274,10 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             jwtClaimsSet.setClaim("nonce", nonceValue);
         }
         if (acrValue != null && !acrValue.isEmpty()) {
-            jwtClaimsSet.setClaim("acr", translateAcrToResponse(acrValue, requestedAcrValues));
+            jwtClaimsSet.setClaim(OAuthConstants.ACR, translateAcrToResponse(acrValue, requestedAcrValues));
         }
         if (amrValues != null) {
-            jwtClaimsSet.setClaim("amr", translateAmrToResponse(amrValues));
+            jwtClaimsSet.setClaim(OAuthConstants.AMR, translateAmrToResponse(amrValues));
         }
 
         request.addProperty(OAuthConstants.ACCESS_TOKEN, tokenRespDTO.getAccessToken());
@@ -360,7 +360,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             jwtClaimsSet.setClaim("auth_time", request.getAuthorizationReqDTO().getAuthTime() / 1000);
         }
         if (atHash != null) {
-            jwtClaimsSet.setClaim("at_hash", atHash);
+            jwtClaimsSet.setClaim(OAuthConstants.AT_HASH, atHash);
         }
         if (nonceValue != null) {
             jwtClaimsSet.setClaim("nonce", nonceValue);

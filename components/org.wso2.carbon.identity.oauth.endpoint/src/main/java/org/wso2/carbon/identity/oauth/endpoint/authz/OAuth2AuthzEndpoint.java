@@ -145,6 +145,15 @@ public class OAuth2AuthzEndpoint {
         carbonContext.setTenantId(MultitenantConstants.SUPER_TENANT_ID);
         carbonContext.setTenantDomain(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME);
 
+        // Validate repeated parameters
+        if (!(request instanceof OAuthRequestWrapper)) {
+            if (!EndpointUtil.validateParams(request, response, null)) {
+                return Response.status(HttpServletResponse.SC_BAD_REQUEST).location(new URI(
+                        EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST,
+                                "Invalid authorization request with repeated parameters", null))).build();
+            }
+        }
+
         String clientId = request.getParameter("client_id");
 
         String sessionDataKeyFromLogin = getSessionDataKey(request);
@@ -223,6 +232,17 @@ public class OAuth2AuthzEndpoint {
                 OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
                 try {
                     String appState = oAuthAppDAO.getConsumerAppState(clientId);
+                    if (StringUtils.isEmpty(appState)) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("A valid OAuth client could not be found for client_id: " + clientId);
+                        }
+                        OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
+                                .setError(OAuth2ErrorCodes.INVALID_CLIENT)
+                                .setErrorDescription("A valid OAuth client could not be found for client_id: " +
+                                        clientId).buildJSONMessage();
+                        return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
+                    }
+
                     if(!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
                         if (log.isDebugEnabled()) {
                             log.debug("Oauth App is not in active state.");
@@ -269,21 +289,8 @@ public class OAuth2AuthzEndpoint {
                 }
 
             } else if (resultFromLogin != null) { // Authentication response
-                long authTime = 0;
                 Cookie cookie = FrameworkUtils.getAuthCookie(request);
-                if (cookie != null) {
-                    String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
-                    SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
-                    if (sessionContext != null) {
-                        if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
-                            authTime = Long.parseLong(
-                                    sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
-                        } else {
-                            authTime = Long.parseLong(
-                                    sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
-                        }
-                    }
-                }
+                long authTime = getAuthenticatedTimeFromCommonAuthCookie(cookie);
                 sessionDataCacheEntry = resultFromLogin;
                 if (authTime > 0) {
                     sessionDataCacheEntry.setAuthTime(authTime);
@@ -370,16 +377,10 @@ public class OAuth2AuthzEndpoint {
 
             } else if (resultFromConsent != null) { // Consent submission
                 sessionDataCacheEntry = resultFromConsent;
-                long authTime = 0;
                 Cookie cookie = FrameworkUtils.getAuthCookie(request);
+                long authTime = getAuthenticatedTimeFromCommonAuthCookie(cookie);
                 if (cookie != null) {
                     String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
-                    SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
-                    if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
-                        authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
-                    } else {
-                        authTime = Long.parseLong(sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
-                    }
                     sessionDataCacheEntry.getParamMap()
                             .put(FrameworkConstants.SESSION_DATA_KEY, new String[] { sessionContextKey });
                 }
@@ -611,6 +612,13 @@ public class OAuth2AuthzEndpoint {
     @Produces("text/html")
     public Response authorizePost(@Context HttpServletRequest request,@Context HttpServletResponse response,  MultivaluedMap paramMap)
             throws URISyntaxException {
+
+        // Validate repeated parameters
+        if (!EndpointUtil.validateParams(request, response, paramMap)) {
+            return Response.status(HttpServletResponse.SC_BAD_REQUEST).location(new URI(
+                    EndpointUtil.getErrorPageURL(OAuth2ErrorCodes.INVALID_REQUEST,
+                            "Invalid authorization request with repeated parameters", null))).build();
+        }
         HttpServletRequestWrapper httpRequest = new OAuthRequestWrapper(request, paramMap);
         return authorize(httpRequest, response);
     }
@@ -722,27 +730,31 @@ public class OAuth2AuthzEndpoint {
         AuthorizationGrantCacheKey authorizationGrantCacheKey = new AuthorizationGrantCacheKey(code);
         AuthorizationGrantCacheEntry authorizationGrantCacheEntry = new AuthorizationGrantCacheEntry(
                 sessionDataCacheEntry.getLoggedInUser().getUserAttributes());
-        String sub = sessionDataCacheEntry.getLoggedInUser().getUserAttributes().get("sub");
-        if(StringUtils.isBlank(sub)){
+
+        ClaimMapping key = new ClaimMapping();
+        Claim claimOfKey = new Claim();
+        claimOfKey.setClaimUri(OAuth2Util.SUB);
+        key.setRemoteClaim(claimOfKey);
+        String sub = sessionDataCacheEntry.getLoggedInUser().getUserAttributes().get(key);
+
+        if (StringUtils.isBlank(sub)) {
             sub = sessionDataCacheEntry.getLoggedInUser().getAuthenticatedSubjectIdentifier();
         }
-        if(StringUtils.isNotBlank(sub)){
-            ClaimMapping claimMapping = new ClaimMapping();
-            Claim claim = new Claim();
-            claim.setClaimUri("sub");
-            claimMapping.setRemoteClaim(claim);
-            sessionDataCacheEntry.getLoggedInUser().getUserAttributes().put(claimMapping, sub);
+        if (StringUtils.isNotBlank(sub)) {
+            sessionDataCacheEntry.getLoggedInUser().getUserAttributes().put(key, sub);
         }
         //PKCE
-        String[] pkceCodeChallengeArray = sessionDataCacheEntry.getParamMap().get(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE);
-        String[] pkceCodeChallengeMethodArray = sessionDataCacheEntry.getParamMap().get(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE_METHOD);
+        String[] pkceCodeChallengeArray = sessionDataCacheEntry.getParamMap().get(
+                OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE);
+        String[] pkceCodeChallengeMethodArray = sessionDataCacheEntry.getParamMap().get(
+                OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE_METHOD);
         String pkceCodeChallenge = null;
         String pkceCodeChallengeMethod = null;
 
-        if(pkceCodeChallengeArray != null && pkceCodeChallengeArray.length > 0){
+        if (ArrayUtils.isNotEmpty(pkceCodeChallengeArray)) {
             pkceCodeChallenge = pkceCodeChallengeArray[0];
         }
-        if(pkceCodeChallengeMethodArray != null && pkceCodeChallengeMethodArray.length > 0) {
+        if (ArrayUtils.isNotEmpty(pkceCodeChallengeMethodArray)) {
             pkceCodeChallengeMethod = pkceCodeChallengeMethodArray[0];
         }
         authorizationGrantCacheEntry.setAcrValue(sessionDataCacheEntry.getoAuth2Parameters().getACRValues());
@@ -1385,5 +1397,27 @@ public class OAuth2AuthzEndpoint {
             return FrameworkUtils.getSessionContextFromCache(sessionContextKey);
         }
         return null;
+    }
+    /**
+     * Gets the last authenticated value from the commonAuthId cookie
+     * @param cookie CommonAuthId cookie
+     * @return the last authenticated timestamp
+     */
+    private long getAuthenticatedTimeFromCommonAuthCookie(Cookie cookie) {
+        long authTime = 0;
+        if (cookie != null) {
+            String sessionContextKey = DigestUtils.sha256Hex(cookie.getValue());
+            SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(sessionContextKey);
+            if (sessionContext != null) {
+                if (sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP) != null) {
+                    authTime = Long.parseLong(
+                            sessionContext.getProperty(FrameworkConstants.UPDATED_TIMESTAMP).toString());
+                } else {
+                    authTime = Long.parseLong(
+                            sessionContext.getProperty(FrameworkConstants.CREATED_TIMESTAMP).toString());
+                }
+            }
+        }
+        return authTime;
     }
 }

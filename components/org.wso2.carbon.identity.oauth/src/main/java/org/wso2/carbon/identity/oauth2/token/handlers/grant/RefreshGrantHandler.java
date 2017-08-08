@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 
 import org.apache.axiom.util.base64.Base64Utils;
 import org.apache.commons.io.Charsets;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
@@ -30,6 +31,7 @@ import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.ResponseHeader;
+import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -39,6 +41,7 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -130,7 +133,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             }
 
             if (log.isDebugEnabled()) {
-                log.debug("Refresh token validation successful for " + "Client id : " + tokenReqDTO.getClientId() +
+                log.debug("Refresh token validation successful for Client id : " + tokenReqDTO.getClientId() +
                           ", Authorized User : " + validationDataDO.getAuthorizedUser() +
                           ", Token Scope : " + OAuth2Util.buildScopeString(validationDataDO.getScope()));
             }
@@ -151,6 +154,16 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         OAuth2AccessTokenRespDTO tokenRespDTO = new OAuth2AccessTokenRespDTO();
         OAuth2AccessTokenReqDTO oauth2AccessTokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
         String scope = OAuth2Util.buildScopeString(tokReqMsgCtx.getScope());
+        SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util
+                .getSpTokenExpiryTimeConfig(oauth2AccessTokenReqDTO.getClientId(), OAuth2Util
+                        .getTenantId(oauth2AccessTokenReqDTO.getTenantDomain()));
+        if (log.isDebugEnabled()) {
+            log.debug("Service Provider specific expiry time enabled for application : " +
+                    oauth2AccessTokenReqDTO.getClientId() + ". Application access token expiry time : " +
+                    spTimeConfigObj.getApplicationAccessTokenExpiryTime() + ", User access token expiry time : " +
+                    spTimeConfigObj.getUserAccessTokenExpiryTime() + ", Refresh token expiry time : "
+                    + spTimeConfigObj.getRefreshTokenExpiryTime());
+        }
 
         String tokenId;
         String accessToken;
@@ -200,8 +213,13 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         }
 
         // Default Validity Period (in seconds)
-        long validityPeriodInMillis = OAuthServerConfiguration.getInstance()
-                .getUserAccessTokenValidityPeriodInSeconds() * 1000;
+        long validityPeriodInMillis = 0;
+        if (spTimeConfigObj.getUserAccessTokenExpiryTime() != null) {
+            validityPeriodInMillis = spTimeConfigObj.getUserAccessTokenExpiryTime();
+        } else {
+            validityPeriodInMillis = OAuthServerConfiguration.getInstance()
+                    .getUserAccessTokenValidityPeriodInSeconds() * 1000;
+        }
 
         // if a VALID validity period is set through the callback, then use it
         long callbackValidityPeriod = tokReqMsgCtx.getValidityPeriod();
@@ -212,8 +230,12 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         // If issuing new refresh token, use default refresh token validity Period
         // otherwise use existing refresh token's validity period
         if (refreshTokenValidityPeriodInMillis == 0) {
-            refreshTokenValidityPeriodInMillis = OAuthServerConfiguration.getInstance()
-                                                         .getRefreshTokenValidityPeriodInSeconds() * 1000;
+            if (spTimeConfigObj.getRefreshTokenExpiryTime() != null) {
+                refreshTokenValidityPeriodInMillis = spTimeConfigObj.getRefreshTokenExpiryTime();
+            } else {
+                refreshTokenValidityPeriodInMillis = OAuthServerConfiguration.getInstance()
+                        .getRefreshTokenValidityPeriodInSeconds() * 1000;
+            }
         }
 
         String tokenType;
@@ -338,10 +360,37 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         header.setValue(oldAccessToken.getAccessToken());
         respHeaders.add(header);
 
-        tokReqMsgCtx.addProperty("RESPONSE_HEADERS", respHeaders.toArray(
+        tokReqMsgCtx.addProperty(OAuthConstants.RESPONSE_HEADERS_PROPERTY, respHeaders.toArray(
                 new ResponseHeader[respHeaders.size()]));
 
         return tokenRespDTO;
+    }
+
+    @Override
+    public boolean validateScope(OAuthTokenReqMessageContext tokReqMsgCtx)
+            throws IdentityOAuth2Exception {
+
+        /**
+         * The requested scope MUST NOT include any scope
+         * not originally granted by the resource owner, and if omitted is
+         * treated as equal to the scope originally granted by the
+         * resource owner
+         */
+        String[] requestedScopes = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getScope();
+        String[] grantedScopes = tokReqMsgCtx.getScope();
+        if (ArrayUtils.isNotEmpty(requestedScopes)) {
+            if (ArrayUtils.isEmpty(grantedScopes)) {
+                return false;
+            }
+            List<String> grantedScopeList = Arrays.asList(grantedScopes);
+            for (String scope : requestedScopes) {
+                if (!grantedScopeList.contains(scope)) {
+                    return false;
+                }
+            }
+            tokReqMsgCtx.setScope(requestedScopes);
+        }
+        return super.validateScope(tokReqMsgCtx);
     }
 
     private OAuth2AccessTokenRespDTO handleError(String errorCode, String errorMsg,

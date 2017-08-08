@@ -754,7 +754,7 @@ public class OAuth2AuthzEndpoint {
                 sessionDataCacheEntry.getoAuth2Parameters().getEssentialClaims());
         authorizationGrantCacheEntry.setAuthTime(sessionDataCacheEntry.getAuthTime());
         String[] sessionIds = sessionDataCacheEntry.getParamMap().get(FrameworkConstants.SESSION_DATA_KEY);
-        if (ArrayUtils.isEmpty(sessionIds)) {
+        if (ArrayUtils.isNotEmpty(sessionIds)) {
             String commonAuthSessionId = sessionIds[0];
             SessionContext sessionContext = FrameworkUtils.getSessionContextFromCache(commonAuthSessionId);
             String selectedAcr = sessionContext.getSessionAuthHistory().getSelectedAcrValue();

@@ -32,6 +32,7 @@ import org.wso2.carbon.identity.application.authentication.framework.inbound.Htt
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.IdentityRequest;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequest;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
@@ -40,14 +41,14 @@ import org.wso2.carbon.registry.core.utils.UUIDGenerator;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.util.regex.Matcher;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
-import java.io.IOException;
-import java.io.Reader;
-import java.util.regex.Matcher;
 
 import static org.wso2.carbon.identity.oauth.dcr.factory.HttpRegistrationResponseFactory.INVALID_CLIENT_METADATA;
 
@@ -58,9 +59,10 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
 
     private static Log log = LogFactory.getLog(RegistrationRequestFactory.class);
 
+
     @Override
-    public boolean canHandle(HttpServletRequest request, HttpServletResponse response) throws
-                                                                                       FrameworkRuntimeException {
+    public boolean canHandle(HttpServletRequest request, HttpServletResponse response)
+            throws FrameworkRuntimeException {
         boolean canHandle = false;
         if (request != null) {
             Matcher matcher = DCRConstants.DCR_ENDPOINT_REGISTER_URL_PATTERN.matcher(request.getRequestURI());
@@ -74,17 +76,15 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
         return canHandle;
     }
 
-
     @Override
     public RegistrationRequest.RegistrationRequestBuilder create(HttpServletRequest request,
-                                                                 HttpServletResponse response)
-            throws FrameworkClientException {
+            HttpServletResponse response) throws FrameworkClientException {
 
         if (log.isDebugEnabled()) {
             log.debug("create RegistrationRequest.RegistrationRequestBuilder by RegistrationRequestFactory.");
         }
-        RegistrationRequest.RegistrationRequestBuilder registerRequestBuilder = new
-                RegistrationRequest.RegistrationRequestBuilder(request, response);
+        RegistrationRequest.RegistrationRequestBuilder registerRequestBuilder = new RegistrationRequest.
+                RegistrationRequestBuilder(request, response);
         create(registerRequestBuilder, request, response);
         return registerRequestBuilder;
 
@@ -92,10 +92,10 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
 
     @Override
     public void create(IdentityRequest.IdentityRequestBuilder builder, HttpServletRequest request,
-                       HttpServletResponse response) throws FrameworkClientException {
+            HttpServletResponse response) throws FrameworkClientException {
 
-        RegistrationRequest.RegistrationRequestBuilder registerRequestBuilder =
-                (RegistrationRequest.RegistrationRequestBuilder) builder;
+        RegistrationRequest.RegistrationRequestBuilder registerRequestBuilder = (RegistrationRequest.
+                RegistrationRequestBuilder) builder;
 
         super.create(registerRequestBuilder, request, response);
 
@@ -107,47 +107,54 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                 log.debug("DCR request json : " + jsonData.toJSONString());
             }
 
-            RegistrationRequestProfile registrationRequestProfile =
-                    registerRequestBuilder.getRegistrationRequestProfile();
+            RegistrationRequestProfile registrationRequestProfile = registerRequestBuilder
+                    .getRegistrationRequestProfile();
             if (registrationRequestProfile == null) {
                 registrationRequestProfile = new RegistrationRequestProfile();
             }
 
-            Object obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.REDIRECT_URIS);
-            if (obj != null && obj instanceof JSONArray) {
-                JSONArray redirectUris = (JSONArray) obj;
-                for (int i = 0; i < redirectUris.size(); i++) {
-                    registrationRequestProfile.getRedirectUris().add(redirectUris.get(i).toString());
+            Object obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.GRANT_TYPES);
+            if (obj instanceof JSONArray) {
+                JSONArray grantTypes = (JSONArray) obj;
+                for (Object grantType : grantTypes) {
+                    if (grantType instanceof String && IdentityUtil.isNotBlank((String) grantType)) {
+                        registrationRequestProfile.getGrantTypes().add((String) grantType);
+                    }
                 }
-            } else if (obj != null) {
+            } else if (obj instanceof  String) {
+                String grantType = (String) obj;
+                if (IdentityUtil.isNotBlank(grantType)) {
+                    registrationRequestProfile.getGrantTypes().add(grantType);
+                }
+            }
+
+            obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.REDIRECT_URIS);
+            if (obj instanceof JSONArray) {
+                JSONArray redirectUris = (JSONArray) obj;
+                for (Object redirectUri : redirectUris) {
+                    if (redirectUri instanceof String) {
+                        registrationRequestProfile.getRedirectUris().add((String) redirectUri);
+                    }
+                }
+            } else if (obj instanceof String) {
                 registrationRequestProfile.getRedirectUris().add((String) obj);
-            } else {
-                throw IdentityException.error(FrameworkClientException.class, "RedirectUris property must have at " +
-                        "least one URI value.");
+
+            } else if (registrationRequestProfile.getGrantTypes().contains(DCRConstants.GrantTypes.AUTHORIZATION_CODE)
+                    || registrationRequestProfile.getGrantTypes().contains(DCRConstants.GrantTypes.IMPLICIT)) {
+                throw IdentityException.error(FrameworkClientException.class,
+                        "RedirectUris property must have at least one URI value.");
             }
 
-            registrationRequestProfile.setTokenEndpointAuthMethod((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.TOKEN_ENDPOINT_AUTH_METHOD));
-
-
-            obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.GRANT_TYPES);
-            if (obj != null && obj instanceof JSONArray) {
-                JSONArray redirectUris = (JSONArray) obj;
-                for (int i = 0; i < redirectUris.size(); i++) {
-                    registrationRequestProfile.getGrantTypes().add(redirectUris.get(i).toString());
-                }
-            } else if (obj != null) {
-                registrationRequestProfile.getGrantTypes().add((String) obj);
-            }
-
+            registrationRequestProfile.setTokenEndpointAuthMethod(
+                    (String) jsonData.get(RegistrationRequest.RegisterRequestConstant.TOKEN_ENDPOINT_AUTH_METHOD));
 
             obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.RESPONSE_TYPES);
-            if (obj != null && obj instanceof JSONArray) {
+            if (obj instanceof JSONArray) {
                 JSONArray redirectUris = (JSONArray) obj;
                 for (int i = 0; i < redirectUris.size(); i++) {
                     registrationRequestProfile.getResponseTypes().add(redirectUris.get(i).toString());
                 }
-            } else if (obj != null) {
+            } else if (obj instanceof String) {
                 registrationRequestProfile.getResponseTypes().add((String) obj);
             }
 
@@ -159,44 +166,42 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
                 registrationRequestProfile.setClientName(UUIDGenerator.generateUUID());
             }
 
-            registrationRequestProfile.setClientUri((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.CLIENT_URI));
-            registrationRequestProfile.setLogoUri((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.LOGO_URI));
-
+            registrationRequestProfile
+                    .setClientUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.CLIENT_URI));
+            registrationRequestProfile
+                    .setLogoUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.LOGO_URI));
 
             obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.SCOPE);
-            if (obj != null && obj instanceof JSONArray) {
+            if (obj instanceof JSONArray) {
                 JSONArray redirectUris = (JSONArray) obj;
                 for (int i = 0; i < redirectUris.size(); i++) {
                     registrationRequestProfile.getScopes().add(redirectUris.get(i).toString());
                 }
-            } else if (obj != null) {
+            } else if (obj instanceof String) {
                 registrationRequestProfile.getScopes().add((String) obj);
             }
 
             obj = jsonData.get(RegistrationRequest.RegisterRequestConstant.CONTACTS);
-            if (obj != null && obj instanceof JSONArray) {
+            if (obj instanceof JSONArray) {
                 JSONArray redirectUris = (JSONArray) obj;
                 for (int i = 0; i < redirectUris.size(); i++) {
                     registrationRequestProfile.getContacts().add(redirectUris.get(i).toString());
                 }
-            } else if (obj != null) {
+            } else if (obj instanceof String) {
                 registrationRequestProfile.getContacts().add((String) obj);
             }
 
             registrationRequestProfile
                     .setTosUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.TOS_URI));
-            registrationRequestProfile.setPolicyUri((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.POLICY_URI));
-            registrationRequestProfile.setJwksUri((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.JWKS_URI));
-            registrationRequestProfile.setJkws((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.JWKS));
-            registrationRequestProfile.setSoftwareId((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.SOFTWARE_ID));
-            registrationRequestProfile.setSoftwareVersion((String) jsonData
-                    .get(RegistrationRequest.RegisterRequestConstant.SOFTWARE_VERSION));
+            registrationRequestProfile
+                    .setPolicyUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.POLICY_URI));
+            registrationRequestProfile
+                    .setJwksUri((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.JWKS_URI));
+            registrationRequestProfile.setJkws((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.JWKS));
+            registrationRequestProfile
+                    .setSoftwareId((String) jsonData.get(RegistrationRequest.RegisterRequestConstant.SOFTWARE_ID));
+            registrationRequestProfile.setSoftwareVersion(
+                    (String) jsonData.get(RegistrationRequest.RegisterRequestConstant.SOFTWARE_VERSION));
 
             //TODO:This parameter is a custom one and we have to remove if we can collect the user name by having
             // some authentication mechanism.
@@ -221,7 +226,6 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
             registrationRequestProfile.setOwner(username);
             registerRequestBuilder.setRegistrationRequestProfile(registrationRequestProfile);
 
-
         } catch (IOException e) {
             String errorMessage = "Error occurred while reading servlet request body, " + e.getMessage();
             FrameworkClientException.error(errorMessage, e);
@@ -233,17 +237,14 @@ public class RegistrationRequestFactory extends HttpIdentityRequestFactory {
 
     @Override
     public HttpIdentityResponse.HttpIdentityResponseBuilder handleException(FrameworkClientException exception,
-                                                                            HttpServletRequest request,
-                                                                            HttpServletResponse response) {
-        HttpIdentityResponse.HttpIdentityResponseBuilder builder =
-                new HttpIdentityResponse.HttpIdentityResponseBuilder();
+            HttpServletRequest request, HttpServletResponse response) {
+        HttpIdentityResponse.HttpIdentityResponseBuilder builder = new HttpIdentityResponse.HttpIdentityResponseBuilder();
         String errorMessage = generateErrorResponse(INVALID_CLIENT_METADATA, exception.getMessage()).toJSONString();
         builder.setBody(errorMessage);
         builder.setStatusCode(HttpServletResponse.SC_BAD_REQUEST);
         builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
-                          OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE);
-        builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
-                          OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
+                OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE);
+        builder.addHeader(OAuthConstants.HTTP_RESP_HEADER_PRAGMA, OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
         builder.addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
 
         return builder;

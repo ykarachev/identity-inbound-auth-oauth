@@ -152,12 +152,11 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         // Check whether the grant is expired
         long issuedTimeInMillis = authzCodeDO.getIssuedTime().getTime();
         long validityPeriodInMillis = authzCodeDO.getValidityPeriod();
-        long timestampSkew = OAuthServerConfiguration.getInstance()
-                .getTimeStampSkewInSeconds() * 1000;
+        long timestampSkew = OAuthServerConfiguration.getInstance().getTimeStampSkewInSeconds() * 1000;
         long currentTimeInMillis = System.currentTimeMillis();
 
-        // if authorization code is expired.
-        if ((currentTimeInMillis - timestampSkew) > (issuedTimeInMillis + validityPeriodInMillis)) {
+        // check if authorization code is expired.
+        if (OAuth2Util.calculateValidityInMillis(issuedTimeInMillis, validityPeriodInMillis) < 1000) {
             if (log.isDebugEnabled()) {
                 log.debug("Authorization Code is expired." +
                         " Issued Time(ms) : " + issuedTimeInMillis +
@@ -278,4 +277,10 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         }
     }
 
+    @Override
+    public boolean issueRefreshToken() throws IdentityOAuth2Exception {
+
+        return OAuthServerConfiguration.getInstance()
+                .getValueForIsRefreshTokenAllowed(OAuthConstants.GrantTypes.AUTHORIZATION_CODE);
+    }
 }

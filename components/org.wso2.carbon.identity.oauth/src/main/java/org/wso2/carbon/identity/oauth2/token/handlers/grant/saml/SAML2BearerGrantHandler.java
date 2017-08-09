@@ -53,7 +53,6 @@ import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandler;
-import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.oauth2.util.X509CredentialImpl;
 import org.wso2.carbon.idp.mgt.IdentityProviderManagementException;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
@@ -69,6 +68,8 @@ import java.util.*;
 public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
 
     private static Log log = LogFactory.getLog(SAML2BearerGrantHandler.class);
+    private static final String SAMLSSO_AUTHENTICATOR = "samlsso";
+
     SAMLSignatureProfileValidator profileValidator = null;
 
     @Override
@@ -125,8 +126,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         // Logging the SAML token
         if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.SAML_ASSERTION)) {
             log.debug("Received SAML assertion : " +
-                            new String(Base64.decodeBase64(tokReqMsgCtx.getOauth2AccessTokenReqDTO().getAssertion()))
-            );
+                            new String(Base64.decodeBase64(tokReqMsgCtx.getOauth2AccessTokenReqDTO().getAssertion())));
         }
 
         try {
@@ -196,7 +196,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             try {
                 identityProvider = IdentityProviderManager.getInstance().
                         getIdPByAuthenticatorPropertyValue("IdPEntityId",
-                                assertion.getIssuer().getValue(), tenantDomain, false);
+                                assertion.getIssuer().getValue(), tenantDomain, SAMLSSO_AUTHENTICATOR, false);
                 // IF Federated IDP not found get the resident IDP and check,
                 // resident IDP entityID == issuer
                 if (identityProvider != null) {
@@ -278,8 +278,11 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         Conditions conditions = assertion.getConditions();
         if (conditions != null) {
             //Set validity period extracted from SAML Assertion
-            long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
-            tokReqMsgCtx.setValidityPeriod(conditions.getNotOnOrAfter().getMillis() - curTimeInMillis);
+            if (conditions.getNotOnOrAfter() != null) {
+                long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
+                tokReqMsgCtx.setValidityPeriod(conditions.getNotOnOrAfter().getMillis() - curTimeInMillis);
+            }
+
             List<AudienceRestriction> audienceRestrictions = conditions.getAudienceRestrictions();
             if (audienceRestrictions != null && !audienceRestrictions.isEmpty()) {
                 boolean audienceFound = false;
@@ -453,9 +456,11 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         }
 
         boolean validSubjectConfirmationDataExists = false;
+        DateTime notOnOrAfterFromSubjectConfirmations = null;
         if (!notOnOrAfterFromAndNotBeforeSubjectConfirmations.isEmpty()) {
             for (Map.Entry<DateTime, DateTime> entry : notOnOrAfterFromAndNotBeforeSubjectConfirmations.entrySet()) {
                 if (entry.getKey() != null) {
+                    notOnOrAfterFromSubjectConfirmations = entry.getKey();
                     if (entry.getKey().compareTo(new DateTime()) >= 1) {
                         validSubjectConfirmationDataExists = true;
                     }
@@ -466,6 +471,20 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
                     }
                 }
             }
+        }
+
+        if (notOnOrAfterFromConditions == null && notOnOrAfterFromSubjectConfirmations != null) {
+            //Set validity period extracted from SAML subject confirmation
+            long curTimeInMillis = Calendar.getInstance().getTimeInMillis();
+            tokReqMsgCtx.setValidityPeriod(notOnOrAfterFromSubjectConfirmations.getMillis() - curTimeInMillis);
+        }
+
+        if (notOnOrAfterFromConditions == null && notOnOrAfterFromAndNotBeforeSubjectConfirmations == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("No valid NotOnOrAfter element found in either Conditions or SubjectConfirmationData " +
+                        "element");
+            }
+            return false;
         }
 
         if (notOnOrAfterFromConditions == null && !validSubjectConfirmationDataExists) {
@@ -546,5 +565,12 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         }
 
         return true;
+    }
+
+    @Override
+    public boolean issueRefreshToken() throws IdentityOAuth2Exception {
+
+        return OAuthServerConfiguration.getInstance()
+                .getValueForIsRefreshTokenAllowed(OAuthConstants.OAUTH_SAML2_BEARER_METHOD);
     }
 }

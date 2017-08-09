@@ -2656,23 +2656,11 @@ public class TokenMgtDAO {
             }
 
             //Deactivate all active authorization codes
-            if (ArrayUtils.isNotEmpty(authorizationCodes)) {
-                for (String authzCode : authorizationCodes) {
-                    if (maxPoolSize > 0) {
-                        authContextTokenQueue.push(new AuthContextTokenDO(authzCode));
-                    } else {
-                        String authCodeStoreTable = OAuthConstants.AUTHORIZATION_CODE_STORE_TABLE;
-
-                        String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE.replace(IDN_OAUTH2_AUTHORIZATION_CODE,
-                                authCodeStoreTable);
-                        deactiveActiveCodesStatement = connection.prepareStatement(sqlQuery);
-                        deactiveActiveCodesStatement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);
-                        deactiveActiveCodesStatement.setString(2, persistenceProcessor.getPreprocessedAuthzCode(authzCode));
-                        deactiveActiveCodesStatement.execute();
-
-                    }
-                }
-            }
+            String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE_FOR_CONSUMER_KEY;
+            deactiveActiveCodesStatement = connection.prepareStatement(sqlQuery);
+            deactiveActiveCodesStatement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);
+            deactiveActiveCodesStatement.setString(2, consumerKey);
+            deactiveActiveCodesStatement.executeUpdate();
 
             connection.commit();
 

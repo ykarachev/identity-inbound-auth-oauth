@@ -30,6 +30,7 @@ import org.wso2.carbon.identity.base.IdentityRuntimeException;
 import org.wso2.carbon.identity.core.util.IdentityCoreInitializedEvent;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth2.OAuth2ScopeService;
 import org.wso2.carbon.identity.oauth2.OAuth2Service;
 import org.wso2.carbon.identity.oauth2.OAuth2TokenValidationService;
 import org.wso2.carbon.identity.oauth2.dao.SQLQueries;
@@ -62,12 +63,10 @@ import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.checkAudienceEnabl
  * policy="dynamic" bind="setRegistryService" unbind="unsetRegistryService"
  */
 public class OAuth2ServiceComponent {
-
     private static Log log = LogFactory.getLog(OAuth2ServiceComponent.class);
     private static BundleContext bundleContext;
 
     protected void activate(ComponentContext context) {
-
         int tenantId = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantId();
         OAuth2Util.initiateOIDCScopes(tenantId);
         OAuth2Util.initTokenExpiryTimesOfSps(tenantId);
@@ -75,6 +74,8 @@ public class OAuth2ServiceComponent {
         //Registering OAuth2Service as a OSGIService
         bundleContext = context.getBundleContext();
         bundleContext.registerService(OAuth2Service.class.getName(), new OAuth2Service(), null);
+        //Registering OAuth2ScopeService as a OSGIService
+        bundleContext.registerService(OAuth2ScopeService.class.getName(), new OAuth2ScopeService(), null);
         //Registering TenantCreationEventListener
         ServiceRegistration scopeTenantMgtListenerSR = bundleContext.registerService(
                 TenantMgtListener.class.getName(), scopeTenantMgtListener, null);
@@ -114,9 +115,8 @@ public class OAuth2ServiceComponent {
             log.error("OAuth - UserStoreConfigListener could not be registered.");
         }
 
-        ServiceRegistration oauthApplicationMgtListenerSR =
-                bundleContext.registerService(ApplicationMgtListener.class.getName(),
-                        new OAuthApplicationMgtListener(), null);
+        ServiceRegistration oauthApplicationMgtListenerSR = bundleContext.registerService(ApplicationMgtListener.class.getName(),
+                new OAuthApplicationMgtListener(), null);
         if (oauthApplicationMgtListenerSR != null) {
             if (log.isDebugEnabled()) {
                 log.debug("OAuth - ApplicationMgtListener registered.");
@@ -124,7 +124,7 @@ public class OAuth2ServiceComponent {
         } else {
             log.error("OAuth - ApplicationMgtListener could not be registered.");
         }
-        if (checkPKCESupport()) {
+        if(checkPKCESupport()) {
             OAuth2ServiceComponentHolder.setPkceEnabled(true);
             log.info("PKCE Support enabled.");
         } else {
@@ -150,7 +150,6 @@ public class OAuth2ServiceComponent {
      * @param applicationMgtService Application management service
      */
     protected void setApplicationMgtService(ApplicationManagementService applicationMgtService) {
-
         if (log.isDebugEnabled()) {
             log.debug("ApplicationManagementService set in Identity OAuth2ServiceComponent bundle");
         }
@@ -163,7 +162,6 @@ public class OAuth2ServiceComponent {
      * @param applicationMgtService Application management service
      */
     protected void unsetApplicationMgtService(ApplicationManagementService applicationMgtService) {
-
         if (log.isDebugEnabled()) {
             log.debug("ApplicationManagementService unset in Identity OAuth2ServiceComponent bundle");
         }
@@ -181,57 +179,41 @@ public class OAuth2ServiceComponent {
     }
 
     private boolean checkPKCESupport() {
+        try (Connection connection = IdentityDatabaseUtil.getDBConnection()) {
 
-        Connection connection = null;
-        try {
-            connection = IdentityDatabaseUtil.getDBConnection();
-        } catch (IdentityRuntimeException e) {
+            String sql;
+            if (connection.getMetaData().getDriverName().contains("MySQL")
+                    || connection.getMetaData().getDriverName().contains("H2")) {
+                sql = SQLQueries.RETRIEVE_PKCE_TABLE_MYSQL;
+            } else if (connection.getMetaData().getDatabaseProductName().contains("DB2")) {
+                sql = SQLQueries.RETRIEVE_PKCE_TABLE_DB2SQL;
+            } else if (connection.getMetaData().getDriverName().contains("MS SQL") ||
+                    connection.getMetaData().getDriverName().contains("Microsoft")) {
+                sql = SQLQueries.RETRIEVE_PKCE_TABLE_MSSQL;
+            } else if (connection.getMetaData().getDriverName().contains("PostgreSQL")) {
+                sql = SQLQueries.RETRIEVE_PKCE_TABLE_MYSQL;
+            } else if (connection.getMetaData().getDriverName().contains("Informix")) {
+                // Driver name = "IBM Informix JDBC Driver for IBM Informix Dynamic Server"
+                sql = SQLQueries.RETRIEVE_PKCE_TABLE_INFORMIX;
+            } else {
+                sql = SQLQueries.RETRIEVE_PKCE_TABLE_ORACLE;
+            }
+
+            try (PreparedStatement preparedStatement = connection.prepareStatement(sql);
+                 ResultSet resultSet = preparedStatement.executeQuery()) {
+                // Following statement will throw SQLException if the column is not found
+                resultSet.findColumn("PKCE_MANDATORY");
+                // If we are here then the column exists, so PKCE is supported by the database.
+                return true;
+            }
+
+        } catch (IdentityRuntimeException | SQLException e) {
             return false;
         }
 
-
-        if (connection != null) {
-            try {
-                String sql;
-                if (connection.getMetaData().getDriverName().contains("MySQL")
-                        || connection.getMetaData().getDriverName().contains("H2")) {
-                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_MYSQL;
-                } else if (connection.getMetaData().getDatabaseProductName().contains("DB2")) {
-                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_DB2SQL;
-                } else if (connection.getMetaData().getDriverName().contains("MS SQL") ||
-                        connection.getMetaData().getDriverName().contains("Microsoft")) {
-                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_MSSQL;
-                } else if (connection.getMetaData().getDriverName().contains("PostgreSQL")) {
-                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_MYSQL;
-                } else if (connection.getMetaData().getDriverName().contains("Informix")) {
-                    // Driver name = "IBM Informix JDBC Driver for IBM Informix Dynamic Server"
-                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_INFORMIX;
-                } else {
-                    sql = SQLQueries.RETRIEVE_PKCE_TABLE_ORACLE;
-                }
-                PreparedStatement preparedStatement = connection.prepareStatement(sql);
-                ResultSet resultSet = preparedStatement.executeQuery();
-                if (resultSet != null) {
-                    //following statement will throw SQLException if the column is not found
-                    resultSet.findColumn("PKCE_MANDATORY");
-                    //if we are here then the column exists, so PKCE is supported by the database.
-                    return true;
-                }
-            } catch (SQLException e) {
-
-            } finally {
-                try {
-                    connection.close();
-                } catch (SQLException e) {
-
-                }
-            }
-        }
-        return false;
     }
 
     protected void setRegistryService(RegistryService registryService) {
-
         if (log.isDebugEnabled()) {
             log.debug("Setting the Registry Service");
         }
@@ -239,7 +221,6 @@ public class OAuth2ServiceComponent {
     }
 
     protected void unsetRegistryService(RegistryService registryService) {
-
         if (log.isDebugEnabled()) {
             log.debug("UnSetting the Registry Service");
         }

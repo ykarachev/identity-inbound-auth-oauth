@@ -48,7 +48,6 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.openidconnect.IDTokenBuilder;
 import org.wso2.carbon.utils.CarbonUtils;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -321,13 +320,12 @@ public class AccessTokenIssuer {
                 String idToken = builder.buildIDToken(tokReqMsgCtx, tokenRespDTO);
                 tokenRespDTO.setIDToken(idToken);
             } catch (IDTokenValidationFailureException e) {
-                if (e.getMessage().equals("Error while validating JWT token")) {
-                    tokenRespDTO = handleError(
-                            OAuth2ErrorCodes.SERVER_ERROR,
-                            "Server Error",
-                            tokenReqDTO);
-                    return tokenRespDTO;
-                }
+                log.error(e.getMessage());
+                tokenRespDTO = handleError(
+                        OAuth2ErrorCodes.SERVER_ERROR,
+                        "Server Error",
+                        tokenReqDTO);
+                return tokenRespDTO;
             }
         }
 

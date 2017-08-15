@@ -314,7 +314,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         claimsCallBackHandler.handleCustomClaims(jwtClaimsSet, request);
         jwtClaimsSet.setSubject(subject);
         if (!isValidIdToken(jwtClaimsSet)) {
-            throw new IDTokenValidationFailureException("Error while validating JWT token");
+            throw new IDTokenValidationFailureException("Error while validating JWT token for required claims");
         }
         if (JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
             return new PlainJWT(jwtClaimsSet).serialize();
@@ -871,16 +871,17 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     }
 
     /**
-     *Method to check whether id token contains the required claims(iss,sub,aud,exp,iat) defined by the oidc spec
+     * Method to check whether id token contains the required claims(iss,sub,aud,exp,iat) defined by the oidc spec
+     *
      * @param jwtClaimsSet jwt claim set
      * @return true or false(whether id token contains the required claims)
      */
     private boolean isValidIdToken(JWTClaimsSet jwtClaimsSet) {
 
-        if (jwtClaimsSet.getIssuer() == null) {
+        if (StringUtils.isBlank(jwtClaimsSet.getIssuer())) {
             log.error("ID token does not have required issuer claim");
             return false;
-        } else if (jwtClaimsSet.getSubject() == null) {
+        } else if (StringUtils.isBlank(jwtClaimsSet.getSubject())) {
             log.error("ID token does not have required subject claim");
             return false;
         } else if (jwtClaimsSet.getAudience() == null) {

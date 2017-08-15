@@ -878,25 +878,28 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
      */
     private boolean isValidIdToken(JWTClaimsSet jwtClaimsSet) {
 
+        boolean isValidIdToken = true;
         if (StringUtils.isBlank(jwtClaimsSet.getIssuer())) {
             log.error("ID token does not have required issuer claim");
-            return false;
-        } else if (StringUtils.isBlank(jwtClaimsSet.getSubject())) {
-            log.error("ID token does not have required subject claim");
-            return false;
-        } else if (jwtClaimsSet.getAudience() == null) {
-            log.error("ID token does not have required audience claim");
-            return false;
-        } else if (jwtClaimsSet.getExpirationTime() == null) {
-            log.error("ID token does not have required expiration time claim");
-            return false;
-        } else if (jwtClaimsSet.getIssueTime() == null) {
-            log.error("ID token does not have required issued time claim");
-            return false;
-        } else {
-            return true;
+            isValidIdToken = false;
         }
-
+        if (StringUtils.isBlank(jwtClaimsSet.getSubject())) {
+            log.error("ID token does not have required subject claim");
+            isValidIdToken = false;
+        }
+        if (jwtClaimsSet.getAudience() == null) {
+            log.error("ID token does not have required audience claim");
+            isValidIdToken = false;
+        }
+        if (jwtClaimsSet.getExpirationTime() == null) {
+            log.error("ID token does not have required expiration time claim");
+            isValidIdToken = false;
+        }
+        if (jwtClaimsSet.getIssueTime() == null) {
+            log.error("ID token does not have required issued time claim");
+            isValidIdToken = false;
+        }
+        return isValidIdToken;
     }
 
 }

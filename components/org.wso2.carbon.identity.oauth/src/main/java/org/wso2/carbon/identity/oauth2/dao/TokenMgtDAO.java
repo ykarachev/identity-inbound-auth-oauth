@@ -77,8 +77,6 @@ public class TokenMgtDAO {
     public static final String AUTHZ_USER = "AUTHZ_USER";
     public static final String LOWER_AUTHZ_USER = "LOWER(AUTHZ_USER)";
     private static final String UTC = "UTC";
-    private static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
-    private static final String FEDERATED_USER_DOMAIN_SEPARATOR = ":";
     private static TokenPersistenceProcessor persistenceProcessor;
 
     private static final int DEFAULT_POOL_SIZE = 100;
@@ -193,7 +191,7 @@ public class TokenMgtDAO {
         String authenticatedIDP = authzCodeDO.getAuthorizedUser().getFederatedIdPName();
 
         if (authzCodeDO.getAuthorizedUser().isFederatedUser()) {
-            userDomain = getFederatedUserDomain(authenticatedIDP);
+            userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
         }
 
         try {
@@ -312,7 +310,7 @@ public class TokenMgtDAO {
         }
 
         if (accessTokenDO.getAuthzUser().isFederatedUser()) {
-            userDomain = getFederatedUserDomain(authenticatedIDP);
+            userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
         }
 
         String sql = SQLQueries.INSERT_OAUTH2_ACCESS_TOKEN.replaceAll("\\$accessTokenStoreTable",
@@ -483,7 +481,7 @@ public class TokenMgtDAO {
 
         String userDomain;
         if (authzUser.isFederatedUser()) {
-            userDomain = getFederatedUserDomain(authzUser.getFederatedIdPName());
+            userDomain = OAuth2Util.getFederatedUserDomain(authzUser.getFederatedIdPName());
         } else {
             userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
         }
@@ -1219,7 +1217,7 @@ public class TokenMgtDAO {
                     }
                     user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
 
-                    if (userDomain.startsWith(FEDERATED_USER_DOMAIN_PREFIX)) {
+                    if (userDomain.startsWith(OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX)) {
                         user.setFederatedUser(true);
                     }
 
@@ -2922,7 +2920,7 @@ public class TokenMgtDAO {
 
         String userDomain;
         if (authzUser.isFederatedUser()) {
-            userDomain = getFederatedUserDomain(authzUser.getFederatedIdPName());
+            userDomain = OAuth2Util.getFederatedUserDomain(authzUser.getFederatedIdPName());
         } else {
             userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
         }
@@ -3053,19 +3051,6 @@ public class TokenMgtDAO {
             throw new IdentityOAuth2Exception(errorMsg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(null, resultSet, prepStmt);
-        }
-    }
-
-    /**
-     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
-     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
-     * @return
-     */
-    private static String getFederatedUserDomain (String authenticatedIDP) {
-        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
-            return FEDERATED_USER_DOMAIN_PREFIX + FEDERATED_USER_DOMAIN_SEPARATOR + authenticatedIDP;
-        } else {
-            return FEDERATED_USER_DOMAIN_PREFIX;
         }
     }
 

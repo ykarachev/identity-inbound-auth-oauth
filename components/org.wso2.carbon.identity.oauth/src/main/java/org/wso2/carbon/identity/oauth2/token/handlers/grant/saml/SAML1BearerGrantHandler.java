@@ -190,13 +190,6 @@ public class SAML1BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             return false;
         }
 
-        if (assertion == null) {
-            if (log.isDebugEnabled()) {
-                log.debug("Assertion is null, cannot continue");
-            }
-            return false;
-        }
-
         /**
          * The Assertion MUST contain a <Subject> element.  The subject MAY identify the resource owner for whom
          * the access token is being requested.  For client authentication, the Subject MUST be the "client_id"
@@ -400,32 +393,24 @@ public class SAML1BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             notOnOrAfterFromConditions = assertion.getConditions().getNotOnOrAfter();
         }
 
-        if (subject != null) {
-            SubjectConfirmation subjectConfirmation = subject.getSubjectConfirmation();
-            List<ConfirmationMethod> confirmationMethods = subjectConfirmation.getConfirmationMethods();
-            for (ConfirmationMethod confirmationMethod : confirmationMethods) {
-                if (OAuthConstants.OAUTH_SAML1_BEARER_METHOD.equals(confirmationMethod.getConfirmationMethod())) {
-                    bearerFound = true;
-                }
-
-            }
-            if (!bearerFound) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Cannot find Method attribute in SubjectConfirmation " + subject.getSubjectConfirmation());
-                }
-                return false;
+        SubjectConfirmation subjectConfirmation = subject.getSubjectConfirmation();
+        List<ConfirmationMethod> confirmationMethods = subjectConfirmation.getConfirmationMethods();
+        for (ConfirmationMethod confirmationMethod : confirmationMethods) {
+            if (OAuthConstants.OAUTH_SAML1_BEARER_METHOD.equals(confirmationMethod.getConfirmationMethod())) {
+                bearerFound = true;
             }
 
-            XMLObject confirmationData = subject.getSubjectConfirmation().getSubjectConfirmationData();
-            if (confirmationData == null) {
-                log.warn("Subject confirmation data is missing.");
-            }
-
-        } else {
+        }
+        if (!bearerFound) {
             if (log.isDebugEnabled()) {
-                log.debug("No SubjectConfirmation exist in Assertion");
+                log.debug("Cannot find Method attribute in SubjectConfirmation " + subject.getSubjectConfirmation());
             }
             return false;
+        }
+
+        XMLObject confirmationData = subject.getSubjectConfirmation().getSubjectConfirmationData();
+        if (confirmationData == null) {
+            log.warn("Subject confirmation data is missing.");
         }
 
         if (!bearerFound) {

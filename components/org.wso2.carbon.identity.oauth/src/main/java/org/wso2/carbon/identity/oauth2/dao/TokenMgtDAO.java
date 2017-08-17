@@ -3095,7 +3095,7 @@ public class TokenMgtDAO {
                     "other tenants");
         }
         if (consumerKey == null) {
-            log.error("invalid parameters provided. Client ID: " + consumerKey + "and tenant ID: " + tenantId);
+            log.error("Couldn't revoke token for tenant ID: " + tenantId + " because of null consumer key");
             return;
         }
         Connection connection = IdentityDatabaseUtil.getDBConnection();

@@ -272,7 +272,7 @@ public class OAuth2Util {
      * @param tenantId
      */
     public static void setClientTenatId(int tenantId) {
-        Integer id = new Integer(tenantId);
+        Integer id = Integer.valueOf(tenantId);
         clientTenatId.set(id);
     }
 

@@ -89,6 +89,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
     private static final String EMAIL_VERIFIED = "email_verified";
     private static final String ADDRESS_PREFIX = "address.";
+    private static final String ADDRESS = "address";
 
     private static String userAttributeSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
 
@@ -611,7 +612,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             PrivilegedCarbonContext.endTenantFlow();
         }
         if (oidcScopesResource != null && oidcScopesResource.getProperties() != null) {
-            addressValues = oidcScopesResource.getProperty("address");
+            addressValues = oidcScopesResource.getProperty(ADDRESS);
         }
 
         for (String requestedScope : requestedScopes) {
@@ -634,7 +635,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                                 // prefix or in address scope.
                                 if (requestedClaims.contains(ADDRESS_PREFIX)) {
                                     claimsforAddressScope.put(entry.getKey().substring(ADDRESS_PREFIX.length()), claims.get(entry.getKey()));
-                                } else if (addressValues.contains(requestedClaims)) {
+                                } else if (addressValues != null && addressValues.contains(requestedClaims)) {
                                     claimsforAddressScope.put(entry.getKey(), claims.get(entry.getKey()));
                                 } else {
                                     returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
@@ -651,7 +652,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             for (Map.Entry<String, Object> entry : claimsforAddressScope.entrySet()) {
                 jsonObject.put(entry.getKey(), entry.getValue());
             }
-            returnClaims.put("address", jsonObject);
+            returnClaims.put(ADDRESS, jsonObject);
         }
         if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
             if (returnClaims.get(UPDATED_AT) instanceof String) {

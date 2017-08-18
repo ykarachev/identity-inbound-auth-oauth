@@ -84,15 +84,15 @@
                     <warName>api#identity#oauth#dcr#v1.0</warName>
                 </configuration>
             </plugin>
-
-            <plugin>
+            <!-- Plugin for generating the swagger server stubs-->
+            <!--plugin>
                 <groupId>org.wso2.maven.plugins</groupId>
                 <artifactId>swagger2cxf-maven-plugin</artifactId>
                 <version>1.0-SNAPSHOT</version>
                 <configuration>
                     <inputSpec>${project.basedir}/src/main/resources/api.identity.oauth.dcr.endpoint.yaml</inputSpec>
                 </configuration>
-            </plugin>
+            </plugin-->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>

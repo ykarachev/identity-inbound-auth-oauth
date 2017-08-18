@@ -89,7 +89,6 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
     private static final String EMAIL_VERIFIED = "email_verified";
     private static final String ADDRESS_PREFIX = "address.";
-    private static final int ADDRESS_PREFIX_LENGTH = 8;
 
     private static String userAttributeSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
 
@@ -634,7 +633,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                                 // Address claim is handled for both ways, where address claims are sent as "address."
                                 // prefix or in address scope.
                                 if (requestedClaims.contains(ADDRESS_PREFIX)) {
-                                    claimsforAddressScope.put(entry.getKey().substring(ADDRESS_PREFIX_LENGTH), claims.get(entry.getKey()));
+                                    claimsforAddressScope.put(entry.getKey().substring(ADDRESS_PREFIX.length()), claims.get(entry.getKey()));
                                 } else if (addressValues.contains(requestedClaims)) {
                                     claimsforAddressScope.put(entry.getKey(), claims.get(entry.getKey()));
                                 } else {

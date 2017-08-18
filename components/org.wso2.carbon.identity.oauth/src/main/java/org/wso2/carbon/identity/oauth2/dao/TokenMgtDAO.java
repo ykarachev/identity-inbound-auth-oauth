@@ -980,15 +980,10 @@ public class TokenMgtDAO {
     private void deactivateAuthorizationCode(AuthzCodeDO authzCodeDO, Connection connection) throws
             IdentityOAuth2Exception {
 
-        if (log.isDebugEnabled()) {
-            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
-                log.debug("Deactivating authorization code(hashed): " + DigestUtils.sha256Hex(authzCodeDO
-                        .getAuthorizationCode()) + " client: " + authzCodeDO.getConsumerKey() + " user: " +
-                        authzCodeDO.getAuthorizedUser().toString());
-            } else {
-                log.debug("Deactivating authorization code for client: " + authzCodeDO.getConsumerKey()
-                        + " user: " + authzCodeDO.getAuthorizedUser().toString());
-            }
+        if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+            log.debug("Deactivating authorization code(hashed): " + DigestUtils.sha256Hex(authzCodeDO
+                        .getAuthorizationCode()));
+
         }
 
         PreparedStatement prepStmt = null;

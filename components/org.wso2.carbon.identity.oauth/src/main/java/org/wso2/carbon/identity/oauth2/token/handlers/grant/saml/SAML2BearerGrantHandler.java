@@ -535,10 +535,9 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             tokReqMsgCtx.setValidityPeriod(notOnOrAfterFromSubjectConfirmations.getMillis() - curTimeInMillis);
         }
 
-        if (notOnOrAfterFromConditions == null && notOnOrAfterFromAndNotBeforeSubjectConfirmations == null) {
+        if (notOnOrAfterFromConditions == null) {
             if (log.isDebugEnabled()) {
-                log.debug("No valid NotOnOrAfter element found in either Conditions or SubjectConfirmationData " +
-                        "element");
+                log.debug("No valid NotOnOrAfter element found");
             }
             return false;
         }
@@ -630,7 +629,12 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
                 .getValueForIsRefreshTokenAllowed(OAuthConstants.OAUTH_SAML2_BEARER_METHOD);
     }
 
-
+    /**
+     * Build and set Federated User Object.
+     * @param tokReqMsgCtx Token request message context.
+     * @param assertion SAML2 Assertion.
+     * @param tenantDomain Tenant Domain.
+     */
     protected void setFederatedUser(OAuthTokenReqMessageContext tokReqMsgCtx, Assertion assertion, String
             tenantDomain) {
 
@@ -673,7 +677,6 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
                     tokReqMsgCtx.getOauth2AccessTokenReqDTO().getClientId() + " in tenant domain " + SPTenantDomain);
         }
 
-
         AuthenticatedUser authenticatedUser = buildLocalUser(tokReqMsgCtx, assertion, serviceProvider, SPTenantDomain);
         if (log.isDebugEnabled()) {
             log.debug("Setting local user with username :" + authenticatedUser.getUserName() + ". User store domain :" +
@@ -714,7 +717,6 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
                     false) + " doesn't exist in local user store.");
         }
         tokReqMsgCtx.setAuthorizedUser(authenticatedUser);
-
     }
 
     /**

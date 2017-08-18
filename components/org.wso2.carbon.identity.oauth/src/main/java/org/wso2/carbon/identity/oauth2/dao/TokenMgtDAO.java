@@ -77,8 +77,6 @@ public class TokenMgtDAO {
     public static final String AUTHZ_USER = "AUTHZ_USER";
     public static final String LOWER_AUTHZ_USER = "LOWER(AUTHZ_USER)";
     private static final String UTC = "UTC";
-    private static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
-    private static final String FEDERATED_USER_DOMAIN_SEPARATOR = ":";
     private static TokenPersistenceProcessor persistenceProcessor;
 
     private static final int DEFAULT_POOL_SIZE = 100;
@@ -105,7 +103,7 @@ public class TokenMgtDAO {
     private static final String OAUTH_TOKEN_PERSISTENCE_RETRY_COUNT = "OAuth.TokenPersistence.RetryCount";
 
     // We read from these properties for the sake of backward compatibility
-    private static final String FRAMEWORK_PERSISTENCE_ENABLE = "JDBCPersistenceManager.SessionDataPersist.PoolSize";
+    private static final String FRAMEWORK_PERSISTENCE_ENABLE = "JDBCPersistenceManager.SessionDataPersist.Enable";
     private static final String FRAMEWORK_PERSISTENCE_POOLSIZE = "JDBCPersistenceManager.SessionDataPersist.PoolSize";
 
 
@@ -193,7 +191,7 @@ public class TokenMgtDAO {
         String authenticatedIDP = authzCodeDO.getAuthorizedUser().getFederatedIdPName();
 
         if (authzCodeDO.getAuthorizedUser().isFederatedUser()) {
-            userDomain = getFederatedUserDomain(authenticatedIDP);
+            userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
         }
 
         try {
@@ -312,7 +310,7 @@ public class TokenMgtDAO {
         }
 
         if (accessTokenDO.getAuthzUser().isFederatedUser()) {
-            userDomain = getFederatedUserDomain(authenticatedIDP);
+            userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
         }
 
         String sql = SQLQueries.INSERT_OAUTH2_ACCESS_TOKEN.replaceAll("\\$accessTokenStoreTable",
@@ -362,7 +360,7 @@ public class TokenMgtDAO {
                         retryAttempt);
             }
         } catch (SQLIntegrityConstraintViolationException e) {
-
+            IdentityDatabaseUtil.rollBack(connection);
             if (retryAttempt >= tokenPersistRetryCount) {
                 log.error("'CON_APP_KEY' constrain violation retry count exceeds above the maximum count - " +
                         tokenPersistRetryCount);
@@ -375,8 +373,10 @@ public class TokenMgtDAO {
             recoverFromConAppKeyConstraintViolation(accessToken, consumerKey, accessTokenDO, connection,
                     userStoreDomain, retryAttempt + 1);
         } catch (DataTruncation e) {
+            IdentityDatabaseUtil.rollBack(connection);
             throw new IdentityOAuth2Exception("Invalid request", e);
         } catch (SQLException e) {
+            IdentityDatabaseUtil.rollBack(connection);
             // Handle constrain violation issue in JDBC drivers which does not throw
             // SQLIntegrityConstraintViolationException
             if (StringUtils.containsIgnoreCase(e.getMessage(), "CON_APP_KEY")) {
@@ -483,7 +483,7 @@ public class TokenMgtDAO {
 
         String userDomain;
         if (authzUser.isFederatedUser()) {
-            userDomain = getFederatedUserDomain(authzUser.getFederatedIdPName());
+            userDomain = OAuth2Util.getFederatedUserDomain(authzUser.getFederatedIdPName());
         } else {
             userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
         }
@@ -980,15 +980,10 @@ public class TokenMgtDAO {
     private void deactivateAuthorizationCode(AuthzCodeDO authzCodeDO, Connection connection) throws
             IdentityOAuth2Exception {
 
-        if (log.isDebugEnabled()) {
-            if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
-                log.debug("Deactivating authorization code(hashed): " + DigestUtils.sha256Hex(authzCodeDO
-                        .getAuthorizationCode()) + " client: " + authzCodeDO.getConsumerKey() + " user: " +
-                        authzCodeDO.getAuthorizedUser().toString());
-            } else {
-                log.debug("Deactivating authorization code for client: " + authzCodeDO.getConsumerKey()
-                        + " user: " + authzCodeDO.getAuthorizedUser().toString());
-            }
+        if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+            log.debug("Deactivating authorization code(hashed): " + DigestUtils.sha256Hex(authzCodeDO
+                        .getAuthorizationCode()));
+
         }
 
         PreparedStatement prepStmt = null;
@@ -1219,7 +1214,7 @@ public class TokenMgtDAO {
                     }
                     user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
 
-                    if (userDomain.startsWith(FEDERATED_USER_DOMAIN_PREFIX)) {
+                    if (userDomain.startsWith(OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX)) {
                         user.setFederatedUser(true);
                     }
 
@@ -1281,6 +1276,7 @@ public class TokenMgtDAO {
             prepStmt.setString(3, tokenId);
             prepStmt.executeUpdate();
         } catch (SQLException e) {
+            IdentityDatabaseUtil.rollBack(connection);
             throw new IdentityOAuth2Exception("Error while updating Access Token with ID : " +
                     tokenId + " to Token State : " + tokenState, e);
         } finally {
@@ -2922,7 +2918,7 @@ public class TokenMgtDAO {
 
         String userDomain;
         if (authzUser.isFederatedUser()) {
-            userDomain = getFederatedUserDomain(authzUser.getFederatedIdPName());
+            userDomain = OAuth2Util.getFederatedUserDomain(authzUser.getFederatedIdPName());
         } else {
             userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
         }
@@ -3002,6 +2998,7 @@ public class TokenMgtDAO {
             }
 
             resultSet = prepStmt.executeQuery();
+            AccessTokenDO accessTokenDO = null;
 
             if (resultSet.next()) {
                 String accessToken = persistenceProcessor.getPreprocessedAccessTokenIdentifier(
@@ -3034,16 +3031,17 @@ public class TokenMgtDAO {
                             "client id " + consumerKey, e);
                 }
                 user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
-                AccessTokenDO accessTokenDO = new AccessTokenDO(consumerKey, user, OAuth2Util.buildScopeArray
-                        (scope), new Timestamp(issuedTime), new Timestamp(refreshTokenIssuedTime)
-                        , validityPeriodInMillis, refreshTokenValidityPeriodInMillis, userType);
+                accessTokenDO = new AccessTokenDO(consumerKey, user, OAuth2Util.buildScopeArray(scope),
+                                                  new Timestamp(issuedTime), new Timestamp(refreshTokenIssuedTime),
+                                                  validityPeriodInMillis, refreshTokenValidityPeriodInMillis, userType);
                 accessTokenDO.setAccessToken(accessToken);
                 accessTokenDO.setRefreshToken(refreshToken);
                 accessTokenDO.setTokenId(tokenId);
-                return accessTokenDO;
             }
-            return null;
+            connection.commit();
+            return accessTokenDO;
         } catch (SQLException e) {
+            IdentityDatabaseUtil.rollBack(connection);
             String errorMsg = "Error occurred while trying to retrieve latest 'ACTIVE' " +
                     "access token for Client ID : " + consumerKey + ", User ID : " + authzUser +
                     " and  Scope : " + scope;
@@ -3053,19 +3051,6 @@ public class TokenMgtDAO {
             throw new IdentityOAuth2Exception(errorMsg, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(null, resultSet, prepStmt);
-        }
-    }
-
-    /**
-     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
-     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
-     * @return
-     */
-    private static String getFederatedUserDomain (String authenticatedIDP) {
-        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
-            return FEDERATED_USER_DOMAIN_PREFIX + FEDERATED_USER_DOMAIN_SEPARATOR + authenticatedIDP;
-        } else {
-            return FEDERATED_USER_DOMAIN_PREFIX;
         }
     }
 
@@ -3083,7 +3068,7 @@ public class TokenMgtDAO {
                     "other tenants");
         }
         if (consumerKey == null) {
-            log.error("invalid parameters provided. Client ID: " + consumerKey + "and tenant ID: " + tenantId);
+            log.error("Couldn't revoke token for tenant ID: " + tenantId + " because of null consumer key");
             return;
         }
         Connection connection = IdentityDatabaseUtil.getDBConnection();

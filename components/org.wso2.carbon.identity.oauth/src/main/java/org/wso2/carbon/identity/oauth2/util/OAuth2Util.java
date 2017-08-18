@@ -272,7 +272,7 @@ public class OAuth2Util {
      * @param tenantId
      */
     public static void setClientTenatId(int tenantId) {
-        Integer id = new Integer(tenantId);
+        Integer id = Integer.valueOf(tenantId);
         clientTenatId.set(id);
     }
 
@@ -1310,5 +1310,21 @@ public class OAuth2Util {
         }
         log.error("Unsupported Signature Algorithm in identity.xml");
         throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
+    }
+
+
+    /**
+     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
+     *
+     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
+     * @return
+     */
+    public static String getFederatedUserDomain(String authenticatedIDP) {
+        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
+            return OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX + OAuthConstants.UserType.FEDERATED_USER_DOMAIN_SEPARATOR +
+                    authenticatedIDP;
+        } else {
+            return OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX;
+        }
     }
 }

@@ -273,6 +273,7 @@ public final class OAuthConstants {
         public static final String APPLICATION_USER = "APPLICATION_USER";
         public static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
         public static final String FEDERATED_USER_DOMAIN_SEPARATOR = ":";
+        public static final String LOCAL_USER_TYPE = "LOCAL";
 
         private UserType() {
 

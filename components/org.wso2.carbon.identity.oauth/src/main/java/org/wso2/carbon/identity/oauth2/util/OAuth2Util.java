@@ -93,7 +93,16 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -1316,23 +1325,23 @@ public class OAuth2Util {
     /**
      * This method maps signature algorithm define in identity.xml to digest algorithms to generate the at_hash
      *
-     * @param digestAlgorithm
-     * @return
+     * @param signatureAlgorithm
+     * @return the mapped digest algorithm
      * @throws IdentityOAuth2Exception
      */
-    public static String mapDigestAlgorithm(Algorithm digestAlgorithm) throws IdentityOAuth2Exception {
+    public static String mapDigestAlgorithm(Algorithm signatureAlgorithm) throws IdentityOAuth2Exception {
 
-        if (JWSAlgorithm.RS256.equals(digestAlgorithm) || JWSAlgorithm.HS256.equals(digestAlgorithm) ||
-                JWSAlgorithm.ES256.equals(digestAlgorithm)) {
+        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.HS256.equals(signatureAlgorithm) ||
+                JWSAlgorithm.ES256.equals(signatureAlgorithm)) {
             return SHA256;
-        } else if (JWSAlgorithm.RS384.equals(digestAlgorithm) || JWSAlgorithm.HS384.equals(digestAlgorithm) ||
-                JWSAlgorithm.ES384.equals(digestAlgorithm)) {
+        } else if (JWSAlgorithm.RS384.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.ES384.equals(signatureAlgorithm)) {
             return SHA384;
-        } else if (JWSAlgorithm.RS512.equals(digestAlgorithm) || JWSAlgorithm.HS512.equals(digestAlgorithm) ||
-                JWSAlgorithm.ES512.equals(digestAlgorithm)) {
+        } else if (JWSAlgorithm.RS512.equals(signatureAlgorithm) || JWSAlgorithm.HS512.equals(signatureAlgorithm) ||
+                JWSAlgorithm.ES512.equals(signatureAlgorithm)) {
             return SHA512;
         } else {
-            throw new RuntimeException("Provided digest algorithm: " + digestAlgorithm +
+            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
                     " is not supported");
         }
     }

@@ -157,11 +157,6 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             return false;
         }
 
-        if (assertion == null) {
-            log.debug("Assertion is null, cannot continue");
-            return false;
-        }
-
         /*
           The Assertion MUST contain a <Subject> element.  The subject MAY identify the resource owner for whom
           the access token is being requested.  For client authentication, the Subject MUST be the "client_id"
@@ -492,7 +487,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             return false;
         }
 
-        if (notOnOrAfterFromConditions == null && !validSubjectConfirmationDataExists) {
+        if (!validSubjectConfirmationDataExists) {
             if (log.isDebugEnabled()){
                 log.debug("No valid NotOnOrAfter element found in SubjectConfirmations");
             }

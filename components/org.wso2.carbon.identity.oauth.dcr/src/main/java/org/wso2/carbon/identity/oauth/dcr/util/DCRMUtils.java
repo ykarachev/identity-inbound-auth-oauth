@@ -46,7 +46,7 @@ public class DCRMUtils {
 
         try {
             //Trying to parse the URI, just to verify the URI syntax is correct.
-            URI redirectURL = new URI(redirectUri);
+            new URI(redirectUri);
         } catch (URISyntaxException e) {
             String errorMessage = "The redirection URI: " + redirectUri + ", is not a valid URI.";
             log.error(errorMessage, e);

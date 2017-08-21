@@ -81,15 +81,17 @@ public class UserInfoJWTResponse implements UserInfoResponseBuilder {
         jwtClaimsSet.setAllClaims(claims);
 
         String sigAlg = OAuthServerConfiguration.getInstance().getUserInfoJWTSignatureAlgorithm();
-        if (sigAlg != null && !sigAlg.trim().isEmpty()) {
+        if (StringUtils.isNotBlank(sigAlg)) {
             try {
                 signatureAlgorithm = OAuth2Util.mapSignatureAlgorithm(sigAlg);
             } catch (IdentityOAuth2Exception e) {
-                throw new UserInfoEndpointException("Unsupported signature algorithm configured.", e);
+                throw new UserInfoEndpointException("Provided signature algorithm : " + sigAlg + " is not supported.",
+                        e);
             }
         }
 
         if (JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
+            log.debug("User Info JWT Signature algorithm is not defined. Returning unsigned JWT.");
             return new PlainJWT(jwtClaimsSet).serialize();
         }
 

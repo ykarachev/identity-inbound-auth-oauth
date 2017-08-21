@@ -18,7 +18,11 @@
 
 package org.wso2.carbon.identity.oauth2.util;
 
-import com.nimbusds.jose.*;
+import com.nimbusds.jose.Algorithm;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -31,13 +35,10 @@ import org.apache.commons.io.Charsets;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.json.JSONObject;
-import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
-import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityIOStreamUtils;
@@ -55,12 +56,10 @@ import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
-import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
-import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
@@ -75,6 +74,10 @@ import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
+import javax.xml.namespace.QName;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -90,23 +93,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.xml.namespace.QName;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
 
 /**
  * Utility methods for OAuth 2.0 implementation
@@ -1326,31 +1316,34 @@ public class OAuth2Util {
     /**
      * This method maps signature algorithm define in identity.xml to digest algorithms to generate the at_hash
      *
-     * @param signatureAlgorithm
+     * @param digestAlgorithm
      * @return
      * @throws IdentityOAuth2Exception
      */
-    public static String mapDigestAlgorithm(Algorithm signatureAlgorithm) throws IdentityOAuth2Exception {
+    public static String mapDigestAlgorithm(Algorithm digestAlgorithm) throws IdentityOAuth2Exception {
 
-        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.HS256.equals(signatureAlgorithm) ||
-                JWSAlgorithm.ES256.equals(signatureAlgorithm)) {
+        if (JWSAlgorithm.RS256.equals(digestAlgorithm) || JWSAlgorithm.HS256.equals(digestAlgorithm) ||
+                JWSAlgorithm.ES256.equals(digestAlgorithm)) {
             return SHA256;
-        } else if (JWSAlgorithm.RS384.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
-                JWSAlgorithm.ES384.equals(signatureAlgorithm)) {
+        } else if (JWSAlgorithm.RS384.equals(digestAlgorithm) || JWSAlgorithm.HS384.equals(digestAlgorithm) ||
+                JWSAlgorithm.ES384.equals(digestAlgorithm)) {
             return SHA384;
-        } else if (JWSAlgorithm.RS512.equals(signatureAlgorithm) || JWSAlgorithm.HS512.equals(signatureAlgorithm) ||
-                JWSAlgorithm.ES512.equals(signatureAlgorithm)) {
+        } else if (JWSAlgorithm.RS512.equals(digestAlgorithm) || JWSAlgorithm.HS512.equals(digestAlgorithm) ||
+                JWSAlgorithm.ES512.equals(digestAlgorithm)) {
             return SHA512;
+        } else {
+            throw new RuntimeException("Provided digest algorithm: " + digestAlgorithm +
+                    " is not supported");
         }
-        throw new RuntimeException("Cannot map Signature Algorithm in identity.xml to hashing algorithm");
     }
 
     /**
      * Generic Signing function
      *
      * @param jwtClaimsSet contains JWT body
-     * @param tokenResponse
-     * @return
+     * @param signatureAlgorithm JWT signing algorithm
+     * @param tenantDomain tenant domain
+     * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
     public static String signJWT(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
@@ -1362,10 +1355,12 @@ public class OAuth2Util {
         } else if (JWSAlgorithm.HS256.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
                 JWSAlgorithm.HS512.equals(signatureAlgorithm)) {
             // return signWithHMAC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
-            return null;
+            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
+                    " is not supported");
         } else {
             // return signWithEC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
-            return null;
+            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
+                    " is not supported");
         }
     }
 
@@ -1373,13 +1368,17 @@ public class OAuth2Util {
      * sign JWT token from RSA algorithm
      *
      * @param jwtClaimsSet contains JWT body
-     * @param tokenResponse
+     * @param signatureAlgorithm JWT signing algorithm
+     * @param tenantDomain tenant domain
      * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
     private static String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
             throws IdentityOAuth2Exception {
         try {
+            if (tenantDomain == null) {
+                tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+            }
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
             Key privateKey = getPrivateKey(tenantDomain, tenantId);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
@@ -1408,7 +1407,7 @@ public class OAuth2Util {
             // get tenant's key store manager
             KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
 
-            if (!tenantDomain.equals(org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
+            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
                 // derive key store name
                 String ksName = tenantDomain.trim().replace(".", "-");
                 String jksName = ksName + ".jks";
@@ -1465,15 +1464,6 @@ public class OAuth2Util {
     }
 
     private static Certificate getCertificate(String tenantDomain, int tenantId) throws Exception {
-
-        if (tenantDomain == null) {
-            tenantDomain = org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
-        }
-
-        if (tenantId == 0) {
-            tenantId = OAuth2Util.getTenantId(tenantDomain);
-        }
-
         Certificate publicCert = null;
 
         if (!(publicCerts.containsKey(tenantId))) {
@@ -1488,7 +1478,7 @@ public class OAuth2Util {
             KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
 
             KeyStore keyStore = null;
-            if (!tenantDomain.equals(org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
+            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
                 // derive key store name
                 String ksName = tenantDomain.trim().replace(".", "-");
                 String jksName = ksName + ".jks";

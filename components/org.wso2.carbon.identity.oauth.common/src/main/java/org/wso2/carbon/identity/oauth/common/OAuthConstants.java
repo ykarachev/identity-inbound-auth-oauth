@@ -106,6 +106,9 @@ public final class OAuthConstants {
     //Oauth Event Interceptor Proxy Name
     public static final String OAUTH_INTERCEPTOR_PROXY = "OauthDataInterceptorHandlerProxy";
 
+    public static final String RESPONSE_HEADERS_PROPERTY = "RESPONSE_HEADERS";
+
+
     //Constants used for multiple scopes
     public static final String OIDC_SCOPE_CONFIG_PATH = "oidc-scope-config.xml";
     public static final String SCOPE_RESOURCE_PATH = "/oidc";
@@ -268,6 +271,9 @@ public final class OAuthConstants {
     public static class UserType {
         public static final String APPLICATION = "APPLICATION";
         public static final String APPLICATION_USER = "APPLICATION_USER";
+        public static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
+        public static final String FEDERATED_USER_DOMAIN_SEPARATOR = ":";
+        public static final String LOCAL_USER_TYPE = "LOCAL";
 
         private UserType() {
 

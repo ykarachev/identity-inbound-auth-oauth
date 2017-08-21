@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  * 
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -17,16 +17,9 @@
  */
 package org.wso2.carbon.identity.openidconnect;
 
-import com.nimbusds.jose.Algorithm;
-import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
-import com.nimbusds.jwt.SignedJWT;
 import org.apache.axiom.om.OMElement;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections.CollectionUtils;
@@ -36,9 +29,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
-import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
-import org.wso2.carbon.identity.application.common.model.Claim;
 import org.wso2.carbon.identity.application.common.model.ClaimConfig;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
@@ -55,18 +46,14 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
-import org.wso2.carbon.identity.oauth.cache.CacheEntry;
-import org.wso2.carbon.identity.oauth.cache.OAuthCache;
-import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth2.IDTokenValidationFailureException;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
-import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
-import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.idp.mgt.IdentityProviderManagementException;
@@ -76,11 +63,9 @@ import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
 
 import java.security.Key;
-import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
-import java.security.interfaces.RSAPrivateKey;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -97,18 +82,7 @@ import javax.xml.namespace.QName;
  * IDToken Generator utilizes the Nimbus SDK to build the IDToken.
  */
 public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidconnect.IDTokenBuilder {
-
-    private static final String NONE = "NONE";
-    private static final String SHA256_WITH_RSA = "SHA256withRSA";
-    private static final String SHA384_WITH_RSA = "SHA384withRSA";
-    private static final String SHA512_WITH_RSA = "SHA512withRSA";
-    private static final String SHA256_WITH_HMAC = "SHA256withHMAC";
-    private static final String SHA384_WITH_HMAC = "SHA384withHMAC";
-    private static final String SHA512_WITH_HMAC = "SHA512withHMAC";
-    private static final String SHA256_WITH_EC = "SHA256withEC";
-    private static final String SHA384_WITH_EC = "SHA384withEC";
-    private static final String SHA512_WITH_EC = "SHA512withEC";
-    private static final String SHA256 = "SHA-256";
+    
     private static final String SHA384 = "SHA-384";
     private static final String SHA512 = "SHA-512";
     private static final String AUTHORIZATION_CODE = "AuthorizationCode";
@@ -241,8 +215,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                 authTime = authorizationGrantCacheEntry.getAuthTime();
             }
         }
-        // Get access token issued time
-        long accessTokenIssuedTime = getAccessTokenIssuedTime(tokenRespDTO.getAccessToken(), request) / 1000;
 
         String atHash = null;
         if (!JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
@@ -311,6 +283,9 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                 OAuthServerConfiguration.getInstance().getOpenIDConnectCustomClaimsCallbackHandler();
         claimsCallBackHandler.handleCustomClaims(jwtClaimsSet, request);
         jwtClaimsSet.setSubject(subject);
+        if (!isValidIdToken(jwtClaimsSet)) {
+            throw new IDTokenValidationFailureException("Error while validating JWT token for required claims");
+        }
         if (JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
             return new PlainJWT(jwtClaimsSet).serialize();
         }
@@ -349,9 +324,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         String nonceValue = request.getAuthorizationReqDTO().getNonce();
         LinkedHashSet acrValue = request.getAuthorizationReqDTO().getACRValues();
-
-        // Get access token issued time
-        long accessTokenIssuedTime = getAccessTokenIssuedTime(tokenRespDTO.getAccessToken(), request) / 1000;
 
         String atHash = null;
         String responseType = request.getAuthorizationReqDTO().getResponseType();
@@ -455,78 +427,6 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         return authorizationGrantCacheEntry;
     }
 
-    private long getAccessTokenIssuedTime(String accessToken, OAuthTokenReqMessageContext request)
-            throws IdentityOAuth2Exception {
-
-        AccessTokenDO accessTokenDO = null;
-        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
-
-        OAuthCache oauthCache = OAuthCache.getInstance();
-        String authorizedUser = request.getAuthorizedUser().toString();
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
-        if (!isUsernameCaseSensitive) {
-            authorizedUser = authorizedUser.toLowerCase();
-        }
-
-        OAuthCacheKey cacheKey = new OAuthCacheKey(
-                request.getOauth2AccessTokenReqDTO().getClientId() + ":" + authorizedUser +
-                        ":" + OAuth2Util.buildScopeString(request.getScope()));
-        CacheEntry result = oauthCache.getValueFromCache(cacheKey);
-
-        // cache hit, do the type check.
-        if (result instanceof AccessTokenDO) {
-            accessTokenDO = (AccessTokenDO) result;
-        }
-
-        // Cache miss, load the access token info from the database.
-        if (accessTokenDO == null) {
-            accessTokenDO = tokenMgtDAO.retrieveAccessToken(accessToken, false);
-        }
-
-        // if the access token or client id is not valid
-        if (accessTokenDO == null) {
-            throw new IdentityOAuth2Exception("Access token based information is not available in cache or database");
-        }
-
-        return accessTokenDO.getIssuedTime().getTime();
-    }
-
-    private long getAccessTokenIssuedTime(String accessToken, OAuthAuthzReqMessageContext request)
-            throws IdentityOAuth2Exception {
-
-        AccessTokenDO accessTokenDO = null;
-        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
-
-        OAuthCache oauthCache = OAuthCache.getInstance();
-        String authorizedUser = request.getAuthorizationReqDTO().getUser().toString();
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
-        if (!isUsernameCaseSensitive){
-            authorizedUser = authorizedUser.toLowerCase();
-        }
-
-        OAuthCacheKey cacheKey = new OAuthCacheKey(
-                request.getAuthorizationReqDTO().getConsumerKey() + ":" + authorizedUser +
-                        ":" + OAuth2Util.buildScopeString(request.getApprovedScope()));
-        CacheEntry result = oauthCache.getValueFromCache(cacheKey);
-
-        // cache hit, do the type check.
-        if (result instanceof AccessTokenDO) {
-            accessTokenDO = (AccessTokenDO) result;
-        }
-
-        // Cache miss, load the access token info from the database.
-        if (accessTokenDO == null) {
-            accessTokenDO = tokenMgtDAO.retrieveAccessToken(accessToken, false);
-        }
-
-        // if the access token or client id is not valid
-        if (accessTokenDO == null) {
-            throw new IdentityOAuth2Exception("Access token based information is not available in cache or database");
-        }
-
-        return accessTokenDO.getIssuedTime().getTime();
-    }
-
     private List<String> getOIDCEndpointUrl() {
         List<String> OIDCEntityId = getOIDCAudiences();
         return OIDCEntityId;
@@ -585,6 +485,38 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             String errorMsg = String.format(ERROR_GET_RESIDENT_IDP, tenantDomain);
             throw new IdentityOAuth2Exception(errorMsg, e);
         }
+    }
+
+    /**
+     * Method to check whether id token contains the required claims(iss,sub,aud,exp,iat) defined by the oidc spec
+     *
+     * @param jwtClaimsSet jwt claim set
+     * @return true or false(whether id token contains the required claims)
+     */
+    private boolean isValidIdToken(JWTClaimsSet jwtClaimsSet) {
+
+        boolean isValidIdToken = true;
+        if (StringUtils.isBlank(jwtClaimsSet.getIssuer())) {
+            log.error("ID token does not have required issuer claim");
+            isValidIdToken = false;
+        }
+        if (StringUtils.isBlank(jwtClaimsSet.getSubject())) {
+            log.error("ID token does not have required subject claim");
+            isValidIdToken = false;
+        }
+        if (jwtClaimsSet.getAudience() == null) {
+            log.error("ID token does not have required audience claim");
+            isValidIdToken = false;
+        }
+        if (jwtClaimsSet.getExpirationTime() == null) {
+            log.error("ID token does not have required expiration time claim");
+            isValidIdToken = false;
+        }
+        if (jwtClaimsSet.getIssueTime() == null) {
+            log.error("ID token does not have required issued time claim");
+            isValidIdToken = false;
+        }
+        return isValidIdToken;
     }
 
 }

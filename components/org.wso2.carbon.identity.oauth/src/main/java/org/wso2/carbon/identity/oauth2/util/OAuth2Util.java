@@ -305,7 +305,7 @@ public class OAuth2Util {
      * @param tenantId
      */
     public static void setClientTenatId(int tenantId) {
-        Integer id = new Integer(tenantId);
+        Integer id = Integer.valueOf(tenantId);
         clientTenatId.set(id);
     }
 
@@ -620,16 +620,10 @@ public class OAuth2Util {
             throw new IllegalArgumentException("accessTokenDO is " + "\'NULL\'");
         }
 
-        long validityPeriodMillis = accessTokenDO.getValidityPeriodInMillis();
-        if(validityPeriodMillis < 0 && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)){
-            log.debug("Access Token : " + accessTokenDO.getAccessToken() + " has infinite lifetime");
-            return -1;
-        }
-
         long accessTokenValidity = getAccessTokenExpireMillis(accessTokenDO);
         long refreshTokenValidity = getRefreshTokenExpireTimeMillis(accessTokenDO);
 
-        if(accessTokenValidity > 1000 && refreshTokenValidity > 1000){
+        if (accessTokenValidity > 1000 && refreshTokenValidity > 1000) {
             return accessTokenValidity;
         }
         return 0;
@@ -644,13 +638,15 @@ public class OAuth2Util {
         long refreshTokenValidityPeriodMillis = accessTokenDO.getRefreshTokenValidityPeriodInMillis();
 
         if (refreshTokenValidityPeriodMillis < 0) {
-            log.debug("Refresh Token has infinite lifetime");
+            if (log.isDebugEnabled()) {
+                log.debug("Refresh Token has infinite lifetime");
+            }
             return -1;
         }
 
         long refreshTokenIssuedTime = accessTokenDO.getRefreshTokenIssuedTime().getTime();
         long refreshTokenValidity = calculateValidityInMillis(refreshTokenIssuedTime, refreshTokenValidityPeriodMillis);
-        if(refreshTokenValidity > 1000){
+        if (refreshTokenValidity > 1000) {
             return refreshTokenValidity;
         }
         return 0;
@@ -658,13 +654,20 @@ public class OAuth2Util {
 
     public static long getAccessTokenExpireMillis(AccessTokenDO accessTokenDO) {
 
-        if(accessTokenDO == null){
+        if (accessTokenDO == null) {
             throw new IllegalArgumentException("accessTokenDO is " + "\'NULL\'");
         }
         long validityPeriodMillis = accessTokenDO.getValidityPeriodInMillis();
 
         if (validityPeriodMillis < 0) {
-            log.debug("Access Token has infinite lifetime");
+            if (log.isDebugEnabled()) {
+                if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                    log.debug("Access Token(hashed) : " + DigestUtils.sha256Hex(accessTokenDO.getAccessToken()) +
+                            " has infinite lifetime");
+                } else {
+                    log.debug("Access Token has infinite lifetime");
+                }
+            }
             return -1;
         }
 
@@ -1120,6 +1123,10 @@ public class OAuth2Util {
     public static SpOAuth2ExpiryTimeConfiguration getSpTokenExpiryTimeConfig(String consumerKey, int tenantId) {
         SpOAuth2ExpiryTimeConfiguration spTokenTimeObject = new SpOAuth2ExpiryTimeConfiguration();
         try {
+            if (log.isDebugEnabled()) {
+                log.debug("SP wise token expiry time feature is applied for tenant id : " + tenantId
+                        + "and consumer key : " + consumerKey);
+            }
             IdentityTenantUtil.initializeRegistry(tenantId, getTenantDomain(tenantId));
             Registry registry = IdentityTenantUtil.getConfigRegistry(tenantId);
             if (registry.resourceExists(OAuthConstants.TOKEN_EXPIRE_TIME_RESOURCE_PATH)) {
@@ -1138,6 +1145,11 @@ public class OAuth2Util {
                         try {
                             spTokenTimeObject.setUserAccessTokenExpiryTime(Long.parseLong(spTimeObject
                                     .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                            if (log.isDebugEnabled()) {
+                                log.debug("The user access token expiry time :" + spTimeObject
+                                        .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        "  for application id : " + consumerKey);
+                            }
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as user access token expiry time for consumer key %s," +
                                     " tenant id : %d. Given value: %s, Expected a long value", consumerKey, tenantId, spTimeObject
@@ -1152,8 +1164,13 @@ public class OAuth2Util {
                     if (spTimeObject.has(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS) &&
                             !spTimeObject.isNull(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS)) {
                         try {
-                            spTokenTimeObject.setUserAccessTokenExpiryTime(Long.parseLong(spTimeObject
+                            spTokenTimeObject.setApplicationAccessTokenExpiryTime(Long.parseLong(spTimeObject
                                     .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                            if (log.isDebugEnabled()) {
+                                log.debug("The application access token expiry time :" + spTimeObject
+                                        .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        "  for application id : " + consumerKey);
+                            }
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as application access token expiry time for " +
                                     "consumer key %s, tenant id : %d. Given value: %s, Expected a long value ", consumerKey, tenantId, spTimeObject
@@ -1170,6 +1187,12 @@ public class OAuth2Util {
                         try {
                             spTokenTimeObject.setRefreshTokenExpiryTime(Long.parseLong(spTimeObject
                                     .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                            if (log.isDebugEnabled()) {
+                                log.debug("The refresh token expiry time :" + spTimeObject
+                                        .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        " for application id : " + consumerKey);
+                            }
+
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as refresh token expiry time for consumer key %s," +
                                     " tenant id : %d. Given value: %s, Expected a long value", consumerKey, tenantId, spTimeObject
@@ -1322,6 +1345,21 @@ public class OAuth2Util {
         throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
     }
 
+
+    /**
+     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
+     *
+     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
+     * @return
+     */
+    public static String getFederatedUserDomain(String authenticatedIDP) {
+        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
+            return OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX + OAuthConstants.UserType.FEDERATED_USER_DOMAIN_SEPARATOR +
+                    authenticatedIDP;
+        } else {
+            return OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX;
+        }
+    }
     /**
      * This method maps signature algorithm define in identity.xml to digest algorithms to generate the at_hash
      *

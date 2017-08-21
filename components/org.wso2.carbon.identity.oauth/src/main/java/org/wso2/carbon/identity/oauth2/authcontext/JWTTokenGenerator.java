@@ -18,27 +18,15 @@
 
 package org.wso2.carbon.identity.oauth2.authcontext;
 
-import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jose.util.Base64URL;
-import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
-import com.nimbusds.jwt.SignedJWT;
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.io.Charsets;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.base.MultitenantConstants;
-import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
-import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
-import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
@@ -65,10 +53,7 @@ import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.security.Key;
-import java.security.KeyStore;
-import java.security.MessageDigest;
 import java.security.cert.Certificate;
-import java.security.interfaces.RSAPrivateKey;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -169,20 +154,22 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
     @Override
     public void generateToken(OAuth2TokenValidationMessageContext messageContext) throws IdentityOAuth2Exception {
 
-        String clientId = ((AccessTokenDO)messageContext.getProperty("AccessTokenDO")).getConsumerKey();
-        long issuedTime = ((AccessTokenDO)messageContext.getProperty("AccessTokenDO")).getIssuedTime().getTime();
+        AccessTokenDO accessTokenDO = (AccessTokenDO)messageContext.getProperty("AccessTokenDO");
+        String clientId = accessTokenDO.getConsumerKey();
+        long issuedTime = accessTokenDO.getIssuedTime().getTime();
         String authzUser = messageContext.getResponseDTO().getAuthorizedUser();
-        int tenantID = ((AccessTokenDO)messageContext.getProperty("AccessTokenDO")).getTenantID();
-        String tenantDomain = OAuth2Util.getTenantDomain(tenantID);
+        int tenantId = accessTokenDO.getTenantID();
+        String tenantDomain = OAuth2Util.getTenantDomain(tenantId);
         boolean isExistingUser = false;
         String tenantAwareUsername = null;
 
         RealmService realmService = OAuthComponentServiceHolder.getInstance().getRealmService();
-        // TODO : Need to handle situation where federated user name is similar to a one we have in our user store
-        if (realmService != null && tenantID != MultitenantConstants.INVALID_TENANT_ID ) {
-            tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(authzUser);
+        tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(authzUser);
+
+        if (realmService != null && tenantId != MultitenantConstants.INVALID_TENANT_ID && !accessTokenDO.getAuthzUser()
+                .isFederatedUser()) {
             try {
-                UserRealm userRealm = realmService.getTenantUserRealm(tenantID);
+                UserRealm userRealm = realmService.getTenantUserRealm(tenantId);
                 if (userRealm != null) {
                     UserStoreManager userStoreManager = (UserStoreManager) userRealm.getUserStoreManager();
                     isExistingUser = userStoreManager.isExistingUser(tenantAwareUsername);
@@ -257,7 +244,7 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
             }
 
             if(isExistingUser) {
-                String claimSeparator = getMultiAttributeSeparator(authzUser, tenantID);
+                String claimSeparator = getMultiAttributeSeparator(authzUser, tenantId);
                 if (StringUtils.isNotBlank(claimSeparator)) {
                     userAttributeSeparator = claimSeparator;
                 }

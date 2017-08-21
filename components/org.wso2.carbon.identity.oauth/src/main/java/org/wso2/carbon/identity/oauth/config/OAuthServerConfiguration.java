@@ -1613,7 +1613,7 @@ public class OAuthServerConfiguration {
         if (saml2TokenHandlerElement != null && StringUtils.isNotBlank(saml2TokenHandlerElement.getText())) {
             saml2TokenCallbackHandlerName = saml2TokenHandlerElement.getText().trim();
         }
-        if (saml2BearerUserTypeElement != null && StringUtils.isNotBlank(saml2BearerTokenUserType)) {
+        if (saml2BearerUserTypeElement != null && StringUtils.isNotBlank(saml2BearerUserTypeElement.getText())) {
             saml2BearerTokenUserType = saml2BearerUserTypeElement.getText().trim();
         }
     }

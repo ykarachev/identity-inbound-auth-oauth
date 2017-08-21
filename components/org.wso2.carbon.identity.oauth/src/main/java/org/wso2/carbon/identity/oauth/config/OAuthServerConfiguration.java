@@ -1940,7 +1940,7 @@ public class OAuthServerConfiguration {
         // SAML2 assertion profile configurations
         private static final String SAML2_GRANT = "SAML2Grant";
         private static final String SAML2_TOKEN_HANDLER = "SAML2TokenHandler";
-        private static final String SAML2_BEARER_USER_TYPE = "userType";
+        private static final String SAML2_BEARER_USER_TYPE = "UserType";
 
         // To enable revoke response headers
         private static final String ENABLE_REVOKE_RESPONSE_HEADERS = "EnableRevokeResponseHeaders";

@@ -17,6 +17,7 @@
  */
 package org.wso2.carbon.identity.openidconnect;
 
+import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
@@ -30,11 +31,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
-import org.wso2.carbon.identity.application.common.model.ClaimConfig;
-import org.wso2.carbon.identity.application.common.model.ClaimMapping;
-import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
-import org.wso2.carbon.identity.application.common.model.IdentityProvider;
-import org.wso2.carbon.identity.application.common.model.ServiceProvider;
+import org.wso2.carbon.identity.application.common.model.*;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationManagementUtil;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
@@ -62,6 +59,7 @@ import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
 
+import javax.xml.namespace.QName;
 import java.security.Key;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -75,7 +73,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.xml.namespace.QName;
 
 /**
  * This is the IDToken generator for the OpenID Connect Implementation. This
@@ -106,7 +103,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
         config = OAuthServerConfiguration.getInstance();
         //map signature algorithm from identity.xml to nimbus format, this is a one time configuration
-        signatureAlgorithm = OAuth2Util.mapSignatureAlgorithm(config.getIdTokenSignatureAlgorithm());
+        signatureAlgorithm = OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(config.getIdTokenSignatureAlgorithm());
     }
 
     @Override
@@ -291,7 +288,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
 
         boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
-        if(isJWTSignedWithSPKey) {
+        if (isJWTSignedWithSPKey) {
             tenantDomain = (String) request.getProperty(MultitenantConstants.TENANT_DOMAIN);
         } else {
             tenantDomain = request.getAuthorizedUser().getTenantDomain();
@@ -403,13 +400,55 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
 
         boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
-        if(isJWTSignedWithSPKey) {
+        if (isJWTSignedWithSPKey) {
             tenantDomain = (String) request.getProperty(MultitenantConstants.TENANT_DOMAIN);
         } else {
             tenantDomain = request.getAuthorizationReqDTO().getUser().getTenantDomain();
         }
 
         return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, tenantDomain);
+    }
+
+    /**
+     * sign JWT token from RSA algorithm
+     *
+     * @param jwtClaimsSet contains JWT body
+     * @param request
+     * @return signed JWT token
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    protected String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext request)
+            throws IdentityOAuth2Exception {
+        String tenantDomain = null;
+        boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
+        if (isJWTSignedWithSPKey) {
+            tenantDomain = (String) request.getProperty(MultitenantConstants.TENANT_DOMAIN);
+        } else {
+            tenantDomain = request.getAuthorizedUser().getTenantDomain();
+        }
+        return OAuth2Util.signJWTWithRSA(jwtClaimsSet, signatureAlgorithm, tenantDomain);
+    }
+
+    /**
+     * sign JWT token from RSA algorithm
+     *
+     * @param jwtClaimsSet contains JWT body
+     * @param request
+     * @return signed JWT token
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    protected String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, OAuthAuthzReqMessageContext request)
+            throws IdentityOAuth2Exception {
+        String tenantDomain = null;
+        boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
+        if (isJWTSignedWithSPKey) {
+            tenantDomain = (String) request.getProperty(MultitenantConstants.TENANT_DOMAIN);
+        } else {
+            tenantDomain = request.getAuthorizationReqDTO().getUser().getTenantDomain();
+        }
+        return OAuth2Util.signJWTWithRSA(jwtClaimsSet, signatureAlgorithm, tenantDomain);
     }
 
     /**
@@ -425,6 +464,82 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                 (AuthorizationGrantCacheEntry) AuthorizationGrantCache.getInstance().
                         getValueFromCacheByCode(authorizationGrantCacheKey);
         return authorizationGrantCacheEntry;
+    }
+
+    /**
+     * Generic Signing function
+     *
+     * @param jwtClaimsSet contains JWT body
+     * @param request
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    protected String signJWT(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext request)
+            throws IdentityOAuth2Exception {
+
+        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.RS512.equals(signatureAlgorithm)) {
+            return signJWTWithRSA(jwtClaimsSet, request);
+        } else if (JWSAlgorithm.HS256.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.HS512.equals(signatureAlgorithm)) {
+            // return signWithHMAC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
+            return null;
+        } else {
+            // return signWithEC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
+            return null;
+        }
+    }
+
+    /**
+     * Generic Signing function
+     *
+     * @param jwtClaimsSet contains JWT body
+     * @param request
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    protected String signJWT(JWTClaimsSet jwtClaimsSet, OAuthAuthzReqMessageContext request)
+            throws IdentityOAuth2Exception {
+
+        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.RS512.equals(signatureAlgorithm)) {
+            return signJWTWithRSA(jwtClaimsSet, request);
+        } else if (JWSAlgorithm.HS256.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.HS512.equals(signatureAlgorithm)) {
+            // return signWithHMAC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
+            return null;
+        } else {
+            // return signWithEC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
+            return null;
+        }
+    }
+
+    /**
+     * This method map signature algorithm define in identity.xml to nimbus
+     * signature algorithm
+     * format, Strings are defined inline hence there are not being used any
+     * where
+     *
+     * @param signatureAlgorithm
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    protected JWSAlgorithm mapSignatureAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
+        return OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(signatureAlgorithm);
+    }
+
+    /**
+     * This method maps signature algorithm define in identity.xml to digest algorithms to generate the at_hash
+     *
+     * @param signatureAlgorithm
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    protected String mapDigestAlgorithm(Algorithm signatureAlgorithm) throws IdentityOAuth2Exception {
+        return OAuth2Util.mapDigestAlgorithm(signatureAlgorithm);
     }
 
     private List<String> getOIDCEndpointUrl() {

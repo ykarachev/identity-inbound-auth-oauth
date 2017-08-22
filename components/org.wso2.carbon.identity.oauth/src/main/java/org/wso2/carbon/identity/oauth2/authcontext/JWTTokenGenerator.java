@@ -19,8 +19,10 @@
 package org.wso2.carbon.identity.oauth2.authcontext;
 
 import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
+import com.nimbusds.jwt.SignedJWT;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -125,7 +127,7 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
             String claimsRetrieverImplClass = OAuthServerConfiguration.getInstance().getClaimsRetrieverImplClass();
             String sigAlg =  OAuthServerConfiguration.getInstance().getSignatureAlgorithm();
             if(sigAlg != null && !sigAlg.trim().isEmpty()){
-                signatureAlgorithm = OAuth2Util.mapSignatureAlgorithm(sigAlg);
+                signatureAlgorithm = OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(sigAlg);
             }
             useMultiValueSeparator = OAuthServerConfiguration.getInstance().isUseMultiValueSeparatorForAuthContextToken();
             if(claimsRetrieverImplClass != null){
@@ -286,6 +288,54 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
         OAuth2TokenValidationResponseDTO.AuthorizationContextToken token;
         token = messageContext.getResponseDTO().new AuthorizationContextToken("JWT", jwt);
         messageContext.getResponseDTO().setAuthorizationContextToken(token);
+    }
+
+    /**
+     * Sign with given RSA Algorithm
+     *
+     * @param signedJWT
+     * @param jwsAlgorithm
+     * @param tenantDomain
+     * @param tenantId
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    protected SignedJWT signJWTWithRSA(SignedJWT signedJWT, JWSAlgorithm jwsAlgorithm, String tenantDomain,
+                                       int tenantId)
+            throws IdentityOAuth2Exception {
+       return OAuth2Util.signJWTWithRSA(signedJWT,tenantDomain,tenantId);
+    }
+
+    /**
+     * Generic Signing function
+     *
+     * @param signedJWT
+     * @param tenantDomain
+     * @param tenantId
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    protected JWT signJWT(SignedJWT signedJWT, String tenantDomain, int tenantId)
+            throws IdentityOAuth2Exception {
+        return OAuth2Util.signJWT(signedJWT, signatureAlgorithm, tenantDomain,tenantId);
+    }
+
+    /**
+     * This method map signature algorithm define in identity.xml to nimbus
+     * signature algorithm
+     * format, Strings are defined inline hence there are not being used any
+     * where
+     *
+     * @param signatureAlgorithm
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    protected JWSAlgorithm mapSignatureAlgorithm(String signatureAlgorithm)
+            throws IdentityOAuth2Exception {
+        return OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(signatureAlgorithm);
     }
 
     private long getTTL() {

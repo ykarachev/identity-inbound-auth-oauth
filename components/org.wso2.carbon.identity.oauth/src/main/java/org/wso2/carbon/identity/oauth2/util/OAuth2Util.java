@@ -25,6 +25,7 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.util.Base64URL;
+import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import org.apache.axiom.om.OMElement;
@@ -1318,7 +1319,43 @@ public class OAuth2Util {
      * @return
      * @throws IdentityOAuth2Exception
      */
-    public static JWSAlgorithm mapSignatureAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
+    @Deprecated
+    public static String mapSignatureAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
+        if (SHA256_WITH_RSA.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.RS256.getName();
+        } else if (SHA384_WITH_RSA.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.RS384.getName();
+        } else if (SHA512_WITH_RSA.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.RS512.getName();
+        } else if (SHA256_WITH_HMAC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.HS256.getName();
+        } else if (SHA384_WITH_HMAC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.HS384.getName();
+        } else if (SHA512_WITH_HMAC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.HS512.getName();
+        } else if (SHA256_WITH_EC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.ES256.getName();
+        } else if (SHA384_WITH_EC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.ES384.getName();
+        } else if (SHA512_WITH_EC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.ES512.getName();
+        } else if (ALGORITHM_NONE.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.NONE.getName();
+        } else {
+            log.error("Unsupported Signature Algorithm in identity.xml");
+            throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
+        }
+    }
+
+    /**
+     * This method map signature algorithm define in identity.xml to nimbus
+     * signature algorithm
+     *
+     * @param signatureAlgorithm
+     * @return
+     * @throws IdentityOAuth2Exception
+     */
+    public static JWSAlgorithm mapSignatureAlgorithmForJWSAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
 
         if (NONE.equalsIgnoreCase(signatureAlgorithm)) {
             return new JWSAlgorithm(JWSAlgorithm.NONE.getName());
@@ -1340,9 +1377,10 @@ public class OAuth2Util {
             return JWSAlgorithm.ES384;
         } else if (SHA512_WITH_EC.equals(signatureAlgorithm)) {
             return JWSAlgorithm.ES512;
+        } else {
+            log.error("Unsupported Signature Algorithm in identity.xml");
+            throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
         }
-        log.error("Unsupported Signature Algorithm in identity.xml");
-        throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
     }
 
 
@@ -1412,6 +1450,35 @@ public class OAuth2Util {
     }
 
     /**
+     * Generic Signing function
+     *
+     * @param signedJWT contains JWT body
+     * @param signatureAlgorithm JWT signing algorithm
+     * @param tenantDomain tenant domain
+     * @param tenantId tenant ID
+     * @return signed JWT token
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    public static JWT signJWT(SignedJWT signedJWT, JWSAlgorithm signatureAlgorithm, String tenantDomain, int tenantId)
+            throws IdentityOAuth2Exception {
+
+        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.RS512.equals(signatureAlgorithm)) {
+            return signJWTWithRSA(signedJWT, tenantDomain, tenantId);
+        } else if (JWSAlgorithm.HS256.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.HS512.equals(signatureAlgorithm)) {
+            // return signWithHMAC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
+            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
+                    " is not supported");
+        } else {
+            // return signWithEC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
+            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
+                    " is not supported");
+        }
+    }
+
+    /**
      * sign JWT token from RSA algorithm
      *
      * @param jwtClaimsSet contains JWT body
@@ -1420,7 +1487,8 @@ public class OAuth2Util {
      * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
-    private static String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
+    //TODO: After removing the deprecated "signJWTWithRSA", make this method private
+    public static String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
             throws IdentityOAuth2Exception {
         try {
             if (tenantDomain == null) {
@@ -1437,6 +1505,34 @@ public class OAuth2Util {
             return signedJWT.serialize();
         } catch (JOSEException e) {
             throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
+        }
+    }
+
+    /**
+     * sign JWT token from RSA algorithm
+     *
+     * @param signedJWT contains JWT body
+     * @param tenantDomain tenant domain
+     * @param tenantId tenant ID
+     * @return signed JWT token
+     * @throws IdentityOAuth2Exception
+     */
+    @Deprecated
+    public static SignedJWT signJWTWithRSA(SignedJWT signedJWT, String tenantDomain,
+                                       int tenantId)
+            throws IdentityOAuth2Exception {
+
+        try {
+            Key privateKey = getPrivateKey(tenantDomain, tenantId);
+            JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
+            signedJWT.sign(signer);
+            return signedJWT;
+        } catch (JOSEException e) {
+            log.error("Error in obtaining tenant's keystore", e);
+            throw new IdentityOAuth2Exception("Error in obtaining tenant's keystore", e);
+        } catch (Exception e) {
+            log.error("Error in obtaining tenant's keystore", e);
+            throw new IdentityOAuth2Exception("Error in obtaining tenant's keystore", e);
         }
     }
 

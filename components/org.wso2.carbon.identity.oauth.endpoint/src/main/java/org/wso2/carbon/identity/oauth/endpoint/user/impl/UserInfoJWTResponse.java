@@ -27,7 +27,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
-import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
@@ -40,10 +39,8 @@ import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
 import org.wso2.carbon.identity.oauth.user.UserInfoResponseBuilder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
-import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
-import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,11 +48,13 @@ import java.util.Map;
 public class UserInfoJWTResponse implements UserInfoResponseBuilder {
 
     private static final Log log = LogFactory.getLog(UserInfoJWTResponse.class);
-    private JWSAlgorithm signatureAlgorithm = new JWSAlgorithm(JWSAlgorithm.NONE.getName());
+    private static final JWSAlgorithm DEFAULT_SIGNATURE_ALGO = new JWSAlgorithm(JWSAlgorithm.NONE.getName());
 
     @Override
     public String getResponseString(OAuth2TokenValidationResponseDTO tokenResponse)
             throws UserInfoEndpointException, OAuthSystemException {
+
+        JWSAlgorithm signatureAlgorithm = DEFAULT_SIGNATURE_ALGO;
 
         Map<ClaimMapping, String> userAttributes = getUserAttributesFromCache(tokenResponse);
 
@@ -83,7 +82,7 @@ public class UserInfoJWTResponse implements UserInfoResponseBuilder {
         String sigAlg = OAuthServerConfiguration.getInstance().getUserInfoJWTSignatureAlgorithm();
         if (StringUtils.isNotBlank(sigAlg)) {
             try {
-                signatureAlgorithm = OAuth2Util.mapSignatureAlgorithm(sigAlg);
+                signatureAlgorithm = OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(sigAlg);
             } catch (IdentityOAuth2Exception e) {
                 throw new UserInfoEndpointException("Provided signature algorithm : " + sigAlg + " is not supported.",
                         e);
@@ -96,31 +95,37 @@ public class UserInfoJWTResponse implements UserInfoResponseBuilder {
         }
 
         boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
-        String tenantDomain;
-        if (isJWTSignedWithSPKey) {
+        String signingTenantDomain;
+        AccessTokenDO accessTokenDO;
+        try {
+            accessTokenDO = OAuth2Util.getAccessTokenDOfromTokenIdentifier(tokenResponse
+                    .getAuthorizationContextToken().getTokenString());
+        } catch (IdentityOAuth2Exception e) {
+            throw new UserInfoEndpointException("Error occurred while signing JWT", e);
+        }
+
+        signingTenantDomain = accessTokenDO.getAuthzUser().getTenantDomain();
+
+        if (isJWTSignedWithSPKey || StringUtils.isBlank(signingTenantDomain)) {
+            String clientId = null;
             try {
-                AccessTokenDO accessTokenDO = OAuth2Util.getAccessTokenDOfromTokenIdentifier(tokenResponse
-                        .getAuthorizationContextToken().getTokenString());
-                String clientId;
                 if (accessTokenDO != null) {
                     clientId = accessTokenDO.getConsumerKey();
                 } else {
                     // this means the token is not active so we can't proceed further
                     throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_TOKEN,
-                            "Invalid Access Token. Access token is not ACTIVE.");
+                            "Invalid Access Token.");
                 }
 
                 OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(clientId);
-                tenantDomain = OAuth2Util.getTenantDomainOfOauthApp(oAuthAppDO);
+                signingTenantDomain = OAuth2Util.getTenantDomainOfOauthApp(oAuthAppDO);
             } catch (IdentityOAuth2Exception | InvalidOAuthClientException e) {
-                throw new UserInfoEndpointException("Error occurred while signing JWT", e);
+                throw new UserInfoEndpointException("Error occurred while retrieving SP with client ID: " + clientId, e);
             }
-        } else {
-            tenantDomain = MultitenantUtils.getTenantDomain(tokenResponse.getAuthorizedUser());
         }
 
         try {
-            return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, tenantDomain);
+            return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, signingTenantDomain);
         } catch (IdentityOAuth2Exception e) {
             throw new UserInfoEndpointException("Error occurred while signing JWT", e);
         }

@@ -17,6 +17,10 @@
  */
 package org.wso2.carbon.identity.oauth.endpoint.authz;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSVerifier;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jwt.SignedJWT;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -32,6 +36,7 @@ import org.apache.oltu.oauth2.common.message.OAuthResponse;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
+import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationResultCacheEntry;
@@ -44,6 +49,7 @@ import org.wso2.carbon.identity.application.authentication.framework.util.Framew
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.Claim;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
@@ -53,7 +59,10 @@ import org.wso2.carbon.identity.oauth.cache.SessionDataCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.SessionDataCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
+import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.endpoint.OAuthRequestWrapper;
 import org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil;
 import org.wso2.carbon.identity.oauth.endpoint.util.OpenIDConnectUserRPStore;
@@ -69,6 +78,7 @@ import org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtil;
 import org.wso2.carbon.registry.core.utils.UUIDGenerator;
 import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -78,6 +88,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -1067,23 +1079,49 @@ public class OAuth2AuthzEndpoint {
 
         } else if ((OAuthConstants.Prompt.NONE).equals(oauth2Params.getPrompt())) {
             //Returning error if the user has not previous session
-            if (sessionDataCacheEntry.getLoggedInUser() == null) {
+            if (user == null) {
+                errorResponse = EndpointUtil.getErrorRedirectURL(
+                        OAuthProblemException.error(OAuth2ErrorCodes.LOGIN_REQUIRED), oauth2Params);
                 return errorResponse;
+            }
+            String idTokenHint = oauth2Params.getIDTokenHint();
+            //Evaluate the id_token_hint value if it is associate with the request.
+            if (StringUtils.isNotEmpty(idTokenHint)) {
+                try {
+                    if (!OAuth2Util.validateIdToken(idTokenHint)) {
+                        String msg = "ID token signature validation failed.";
+                        log.error(msg);
+                        return errorResponse;
+                    }
+                    String subjectValue = SignedJWT.parse(idTokenHint).getJWTClaimsSet().getSubject();
+                    if (StringUtils.isNotEmpty(loggedInUser) && loggedInUser.equals(subjectValue)) {
+                        if (skipConsent || hasUserApproved) {
+                            String redirectUrl =
+                                    handleUserConsent(request, APPROVE, oauth2Params, sessionDataCacheEntry, sessionState);
+                            sessionState.setAuthenticated(false);
+                            return redirectUrl;
+                        } else {
+                            errorResponse = EndpointUtil.getErrorRedirectURL(
+                                    OAuthProblemException.error(OAuth2ErrorCodes.CONSENT_REQUIRED), oauth2Params);
+                            return errorResponse;
+                        }
+                    } else {
+                        errorResponse = EndpointUtil.getErrorRedirectURL(
+                                OAuthProblemException.error(OAuth2ErrorCodes.LOGIN_REQUIRED), oauth2Params);
+                        return errorResponse;
+                    }
+                } catch (ParseException e) {
+                    String msg = "Error while getting clientId from the IdTokenHint.";
+                    log.error(msg, e);
+                    return errorResponse;
+                } catch (IdentityOAuth2Exception | InvalidOAuthClientException e) {
+                    String msg = "Error occurred while getting application information. Client id not found";
+                    log.error(msg, e);
+                    return errorResponse;
+                }
             } else {
                 sessionState.setAddSessionState(true);
                 if (skipConsent || hasUserApproved) {
-                    /**
-                     * Recommended Parameter : id_token_hint
-                     * As per the specification https://openid.net/specs/openid-connect-session-1_0.html#RFC6454,
-                     * it's recommended to expect id_token_hint parameter to determine which RP initiated the request.
-                     */
-
-                    /**
-                     * todo: At the moment we do not persist id_token issued for clients, thus we could not retrieve
-                     * todo: the RP that a specific id_token has been issued.
-                     * todo: Should validate the RP against the id_token_hint received.
-                     */
-
                     String redirectUrl =
                             handleUserConsent(request, APPROVE, oauth2Params, sessionDataCacheEntry, sessionState);
                     sessionState.setAuthenticated(false);

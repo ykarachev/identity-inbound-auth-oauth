@@ -190,7 +190,8 @@ public class TokenMgtDAO {
         String userDomain = authzCodeDO.getAuthorizedUser().getUserStoreDomain();
         String authenticatedIDP = authzCodeDO.getAuthorizedUser().getFederatedIdPName();
 
-        if (authzCodeDO.getAuthorizedUser().isFederatedUser()) {
+        if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && authzCodeDO.getAuthorizedUser()
+                .isFederatedUser()) {
             userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
         }
 
@@ -309,8 +310,18 @@ public class TokenMgtDAO {
             }
         }
 
-        if (accessTokenDO.getAuthzUser().isFederatedUser()) {
+        if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && accessTokenDO.getAuthzUser()
+                .isFederatedUser()) {
+            if (log.isDebugEnabled()) {
+                log.debug("Adding federated domain to user store domain to user " + accessTokenDO.getAuthzUser()
+                        .getAuthenticatedSubjectIdentifier());
+            }
             userDomain = OAuth2Util.getFederatedUserDomain(authenticatedIDP);
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Userstore domain for user " + accessTokenDO.getAuthzUser().getAuthenticatedSubjectIdentifier()
+                    + " is :" + userDomain);
         }
 
         String sql = SQLQueries.INSERT_OAUTH2_ACCESS_TOKEN.replaceAll("\\$accessTokenStoreTable",
@@ -482,10 +493,16 @@ public class TokenMgtDAO {
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
 
         String userDomain;
-        if (authzUser.isFederatedUser()) {
+        if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && authzUser.isFederatedUser()) {
+            if (log.isDebugEnabled()) {
+                log.debug("User is federated and not mapped to local users. Hence adding federated domain as domain");
+            }
             userDomain = OAuth2Util.getFederatedUserDomain(authzUser.getFederatedIdPName());
         } else {
             userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("User domain is set to :" + userDomain);
         }
 
         PreparedStatement prepStmt = null;
@@ -1214,7 +1231,12 @@ public class TokenMgtDAO {
                     }
                     user.setAuthenticatedSubjectIdentifier(subjectIdentifier, serviceProvider);
 
-                    if (userDomain.startsWith(OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX)) {
+                    if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && userDomain.startsWith
+                            (OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX)) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Federated prefix found in domain " + userDomain + "and federated users are not" +
+                                    " mapped to local users. Hence setting user to a federated user");
+                        }
                         user.setFederatedUser(true);
                     }
 
@@ -2917,7 +2939,7 @@ public class TokenMgtDAO {
         userStoreDomain = getSanitizedUserStoreDomain(userStoreDomain);
 
         String userDomain;
-        if (authzUser.isFederatedUser()) {
+        if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && authzUser.isFederatedUser()) {
             userDomain = OAuth2Util.getFederatedUserDomain(authzUser.getFederatedIdPName());
         } else {
             userDomain = getSanitizedUserStoreDomain(authzUser.getUserStoreDomain());

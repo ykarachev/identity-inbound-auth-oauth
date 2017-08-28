@@ -59,7 +59,6 @@ public class UserInfoJWTResponse implements UserInfoResponseBuilder {
         Map<ClaimMapping, String> userAttributes = getUserAttributesFromCache(tokenResponse);
 
         Map<String, Object> claims = null;
-
         if (userAttributes.isEmpty()) {
             if (log.isDebugEnabled()) {
                 log.debug("User attributes not found in cache. Trying to retrieve from user store.");

@@ -139,6 +139,7 @@ public class OAuthServerConfiguration {
     private List<ClientAuthenticationHandler> supportedClientAuthHandlers;
     private String saml2TokenCallbackHandlerName = null;
     private String saml2BearerTokenUserType;
+    private boolean mapFederatedUsersToLocal = false;
     private SAML2TokenCallbackHandler saml2TokenCallbackHandler = null;
     private Map<String, String> tokenValidatorClassNames = new HashMap();
     private boolean isAuthContextTokGenEnabled = false;
@@ -380,6 +381,7 @@ public class OAuthServerConfiguration {
 
     /**
      * Get the instance of the token value generator according to the identity xml configuration value.
+     *
      * @return ValueGenerator object instance.
      */
     public ValueGenerator getTokenValueGenerator() {
@@ -916,6 +918,7 @@ public class OAuthServerConfiguration {
     /**
      * Return the value of whether the refresh token is allowed for this grant type. Null will be returned if there is
      * no tag or empty tag.
+     *
      * @param grantType Name of the Grant type.
      * @return True or False if there is a value. Null otherwise.
      */
@@ -930,6 +933,7 @@ public class OAuthServerConfiguration {
     /**
      * Get the value of the property "UseSPTenantDomain". This property is used to decide whether to use SP tenant
      * domain or user tenant domain.
+     *
      * @return value of the "UseSPTenantDomain".
      */
     public boolean getUseSPTenantDomainValue() {
@@ -939,6 +943,10 @@ public class OAuthServerConfiguration {
 
     public String getSaml2BearerTokenUserType() {
         return saml2BearerTokenUserType;
+    }
+
+    public boolean isMapFederatedUsersToLocal() {
+        return mapFederatedUsersToLocal;
     }
 
     private void parseOAuthCallbackHandlers(OMElement callbackHandlersElem) {
@@ -1373,6 +1381,18 @@ public class OAuthServerConfiguration {
         }
         if (log.isDebugEnabled()) {
             log.debug("RenewRefreshTokenForRefreshGrant was set to : " + isRefreshTokenRenewalEnabled);
+        }
+    }
+
+    private void parseMapFederatedUsersToLocalConfiguration(OMElement oauthConfigElem) {
+
+        OMElement mapFederatedUsersToLocalConfigElem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
+                ConfigElements.MAP_FED_USERS_TO_LOCAL));
+        if (mapFederatedUsersToLocalConfigElem != null) {
+            mapFederatedUsersToLocal = Boolean.parseBoolean(mapFederatedUsersToLocalConfigElem.getText());
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("MapFederatedUsersToLocal was set to : " + mapFederatedUsersToLocal);
         }
     }
 
@@ -2044,6 +2064,7 @@ public class OAuthServerConfiguration {
 
         // Property to decide whether to pick the user tenant domain or SP tenant domain.
         private static final String OAUTH_USE_SP_TENANT_DOMAIN = "UseSPTenantDomain";
+        private static final String MAP_FED_USERS_TO_LOCAL = "MapFederatedUsersToLocal";
     }
 
 }

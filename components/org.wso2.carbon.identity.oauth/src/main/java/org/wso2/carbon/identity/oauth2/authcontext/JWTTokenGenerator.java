@@ -1,4 +1,4 @@
-/*
+    /*
  * Copyright (c) 2012, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
@@ -168,8 +168,9 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
         RealmService realmService = OAuthComponentServiceHolder.getInstance().getRealmService();
         tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(authzUser);
 
-        if (realmService != null && tenantId != MultitenantConstants.INVALID_TENANT_ID && !accessTokenDO.getAuthzUser()
-                .isFederatedUser()) {
+        if (realmService != null && tenantId != MultitenantConstants.INVALID_TENANT_ID && !(accessTokenDO
+                .getAuthzUser().isFederatedUser() && !OAuthServerConfiguration.getInstance()
+                .isMapFederatedUsersToLocal())) {
             try {
                 UserRealm userRealm = realmService.getTenantUserRealm(tenantId);
                 if (userRealm != null) {

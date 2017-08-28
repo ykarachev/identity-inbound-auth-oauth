@@ -38,6 +38,7 @@ import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
@@ -85,13 +86,18 @@ public class ClaimUtil {
             AccessTokenDO accessTokenDO = OAuth2Util.getAccessTokenDOfromTokenIdentifier(tokenResponse
                     .getAuthorizationContextToken().getTokenString());
 
-            // If the authenticated user is a federated user, no requirement to retrieve claims from local users tore.
-            if (accessTokenDO != null) {
+            // If the authenticated user is a federated user and had not mapped to local users, no requirement to
+            // retrieve claims from local userstore.
+            if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && accessTokenDO != null) {
                 AuthenticatedUser authenticatedUser = accessTokenDO.getAuthzUser();
                 if (StringUtils.isNotEmpty(authenticatedUser.getUserStoreDomain())) {
                     String userstoreDomain = authenticatedUser.getUserStoreDomain();
                     if (userstoreDomain.startsWith(OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX) ||
                             authenticatedUser.isFederatedUser()) {
+                        if (log.isDebugEnabled()) {
+                            log.debug("Federated user store prefix available in domain " + userstoreDomain + ". Hence" +
+                                    "returning without retrieving claims from user store");
+                        }
                         return new HashMap<>();
                     }
                 }

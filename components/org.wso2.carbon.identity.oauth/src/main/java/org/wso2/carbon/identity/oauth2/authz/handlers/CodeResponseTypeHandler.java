@@ -90,7 +90,7 @@ public class CodeResponseTypeHandler extends AbstractResponseTypeHandler {
             //if a federated user, treat the tenant domain as similar to application domain.
             authorizationReqDTO.getUser().setTenantDomain(authorizationReqDTO.getTenantDomain());
         }
-        
+
         try {
             authorizationCode = oauthIssuerImpl.authorizationCode(oauthAuthzMsgCtx);
             codeId = UUID.randomUUID().toString();

@@ -47,7 +47,6 @@ public class TokenValidationHandler {
     AuthorizationContextTokenGenerator tokenGenerator = null;
     private Log log = LogFactory.getLog(TokenValidationHandler.class);
     private Map<String, OAuth2TokenValidator> tokenValidators = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    private static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
 
     private TokenValidationHandler() {
         tokenValidators.put(DefaultOAuth2TokenValidator.TOKEN_TYPE, new DefaultOAuth2TokenValidator());
@@ -340,8 +339,14 @@ public class TokenValidationHandler {
     private String getAuthzUser(AccessTokenDO accessTokenDO) {
         User user = accessTokenDO.getAuthzUser();
         String userStore = user.getUserStoreDomain();
-        String authzUser = IdentityUtil.addDomainToName(user.getUserName(),
-                userStore.startsWith(FEDERATED_USER_DOMAIN_PREFIX) ? null : userStore);
+        if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && userStore != null && userStore
+                .startsWith(OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX)) {
+            if (log.isDebugEnabled()) {
+                log.debug("User store name : " + userStore + " has federated prefix. Hence removing it");
+            }
+            userStore = null;
+        }
+        String authzUser = IdentityUtil.addDomainToName(user.getUserName(), userStore);
         return UserCoreUtil.addTenantDomainToEntry(authzUser, user.getTenantDomain());
     }
 

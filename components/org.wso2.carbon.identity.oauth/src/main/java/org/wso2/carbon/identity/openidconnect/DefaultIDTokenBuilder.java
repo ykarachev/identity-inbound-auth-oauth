@@ -288,13 +288,14 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
 
         boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
+        String signingTenantDomain;
         if (isJWTSignedWithSPKey) {
-            tenantDomain = (String) request.getProperty(MultitenantConstants.TENANT_DOMAIN);
+            signingTenantDomain = (String) request.getProperty(MultitenantConstants.TENANT_DOMAIN);
         } else {
-            tenantDomain = request.getAuthorizedUser().getTenantDomain();
+            signingTenantDomain = request.getAuthorizedUser().getTenantDomain();
         }
 
-        return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, tenantDomain);
+        return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, signingTenantDomain);
     }
 
     @Override
@@ -400,13 +401,14 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
 
         boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
+        String signingTenantDomain;
         if (isJWTSignedWithSPKey) {
-            tenantDomain = (String) request.getProperty(MultitenantConstants.TENANT_DOMAIN);
+            signingTenantDomain = (String) request.getProperty(MultitenantConstants.TENANT_DOMAIN);
         } else {
-            tenantDomain = request.getAuthorizationReqDTO().getUser().getTenantDomain();
+            signingTenantDomain = request.getAuthorizationReqDTO().getUser().getTenantDomain();
         }
 
-        return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, tenantDomain);
+        return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, signingTenantDomain);
     }
 
     /**
@@ -538,6 +540,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
      * @return
      * @throws IdentityOAuth2Exception
      */
+    @Deprecated
     protected String mapDigestAlgorithm(Algorithm signatureAlgorithm) throws IdentityOAuth2Exception {
         return OAuth2Util.mapDigestAlgorithm(signatureAlgorithm);
     }

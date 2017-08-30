@@ -1408,42 +1408,12 @@ public class OAuth2Util {
      * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
-    //TODO: Can make this private after removing deprecated "signJWTWithRSA" methods in DefaultIDTokenBuilder
     public static JWT signJWT(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
             throws IdentityOAuth2Exception {
 
         if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
                 JWSAlgorithm.RS512.equals(signatureAlgorithm)) {
             return signJWTWithRSA(jwtClaimsSet, signatureAlgorithm, tenantDomain);
-        } else if (JWSAlgorithm.HS256.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
-                JWSAlgorithm.HS512.equals(signatureAlgorithm)) {
-            // return signWithHMAC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
-            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
-                    " is not supported");
-        } else {
-            // return signWithEC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
-            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
-                    " is not supported");
-        }
-    }
-
-    /**
-     * Generic Signing function
-     *
-     * @param signedJWT contains JWT body
-     * @param signatureAlgorithm JWT signing algorithm
-     * @param tenantDomain tenant domain
-     * @param tenantId tenant ID
-     * @return signed JWT token
-     * @throws IdentityOAuth2Exception
-     */
-    @Deprecated
-    public static JWT signJWT(SignedJWT signedJWT, JWSAlgorithm signatureAlgorithm, String tenantDomain, int tenantId)
-            throws IdentityOAuth2Exception {
-
-        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
-                JWSAlgorithm.RS512.equals(signatureAlgorithm)) {
-            return signJWTWithRSA(signedJWT, tenantDomain, tenantId);
         } else if (JWSAlgorithm.HS256.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
                 JWSAlgorithm.HS512.equals(signatureAlgorithm)) {
             // return signWithHMAC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
@@ -1465,6 +1435,7 @@ public class OAuth2Util {
      * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
+    //TODO: Can make this private after removing deprecated "signJWTWithRSA" methods in DefaultIDTokenBuilder
     public static JWT signJWTWithRSA(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
             throws IdentityOAuth2Exception {
         try {
@@ -1482,34 +1453,6 @@ public class OAuth2Util {
             return signedJWT;
         } catch (JOSEException e) {
             throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
-        }
-    }
-
-    /**
-     * sign JWT token from RSA algorithm
-     *
-     * @param signedJWT contains JWT body
-     * @param tenantDomain tenant domain
-     * @param tenantId tenant ID
-     * @return signed JWT token
-     * @throws IdentityOAuth2Exception
-     */
-    @Deprecated
-    public static SignedJWT signJWTWithRSA(SignedJWT signedJWT, String tenantDomain,
-                                       int tenantId)
-            throws IdentityOAuth2Exception {
-
-        try {
-            Key privateKey = getPrivateKey(tenantDomain, tenantId);
-            JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
-            signedJWT.sign(signer);
-            return signedJWT;
-        } catch (JOSEException e) {
-            log.error("Error in obtaining tenant's keystore", e);
-            throw new IdentityOAuth2Exception("Error in obtaining tenant's keystore", e);
-        } catch (Exception e) {
-            log.error("Error in obtaining tenant's keystore", e);
-            throw new IdentityOAuth2Exception("Error in obtaining tenant's keystore", e);
         }
     }
 

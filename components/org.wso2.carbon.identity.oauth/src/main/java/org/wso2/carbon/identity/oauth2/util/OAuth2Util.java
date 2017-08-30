@@ -1439,9 +1439,18 @@ public class OAuth2Util {
     public static JWT signJWTWithRSA(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
             throws IdentityOAuth2Exception {
         try {
-            if (tenantDomain == null) {
+            if (StringUtils.isBlank(tenantDomain)) {
                 tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+                if (log.isDebugEnabled()) {
+                    log.debug("Assign super tenant domain as signing domain.");
+                }
             }
+
+            if (log.isDebugEnabled()) {
+                log.debug("Signing JWT using the algorithm: " + signatureAlgorithm + " & key of the tenant: " +
+                        tenantDomain);
+            }
+
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
             Key privateKey = getPrivateKey(tenantDomain, tenantId);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);

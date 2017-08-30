@@ -89,7 +89,9 @@ public class UserInfoJWTResponse implements UserInfoResponseBuilder {
         }
 
         if (JWSAlgorithm.NONE.getName().equals(signatureAlgorithm.getName())) {
-            log.debug("User Info JWT Signature algorithm is not defined. Returning unsigned JWT.");
+            if (log.isDebugEnabled()) {
+                log.debug("User Info JWT Signature algorithm is not defined. Returning unsigned JWT.");
+            }
             return new PlainJWT(jwtClaimsSet).serialize();
         }
 

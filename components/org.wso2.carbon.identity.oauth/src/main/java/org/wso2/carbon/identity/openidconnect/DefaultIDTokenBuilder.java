@@ -31,7 +31,11 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
-import org.wso2.carbon.identity.application.common.model.*;
+import org.wso2.carbon.identity.application.common.model.ClaimConfig;
+import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.application.common.model.FederatedAuthenticatorConfig;
+import org.wso2.carbon.identity.application.common.model.IdentityProvider;
+import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationManagementUtil;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
@@ -473,7 +477,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
      *
      * @param jwtClaimsSet contains JWT body
      * @param request
-     * @return
+     * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
     @Deprecated
@@ -498,7 +502,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
      *
      * @param jwtClaimsSet contains JWT body
      * @param request
-     * @return
+     * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
     @Deprecated
@@ -524,8 +528,8 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
      * format, Strings are defined inline hence there are not being used any
      * where
      *
-     * @param signatureAlgorithm
-     * @return
+     * @param signatureAlgorithm signature algorithm
+     * @return digest algorithm
      * @throws IdentityOAuth2Exception
      */
     @Deprecated
@@ -536,8 +540,8 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     /**
      * This method maps signature algorithm define in identity.xml to digest algorithms to generate the at_hash
      *
-     * @param signatureAlgorithm
-     * @return
+     * @param signatureAlgorithm signature algorithm
+     * @return mapped digest algorithm
      * @throws IdentityOAuth2Exception
      */
     @Deprecated

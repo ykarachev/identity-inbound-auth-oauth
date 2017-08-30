@@ -1315,8 +1315,8 @@ public class OAuth2Util {
      * This method map signature algorithm define in identity.xml to nimbus
      * signature algorithm
      *
-     * @param signatureAlgorithm
-     * @return
+     * @param signatureAlgorithm name of the signature algorithm
+     * @return mapped JWSAlgorithm name
      * @throws IdentityOAuth2Exception
      */
     @Deprecated
@@ -1351,8 +1351,8 @@ public class OAuth2Util {
      * This method map signature algorithm define in identity.xml to nimbus
      * signature algorithm
      *
-     * @param signatureAlgorithm
-     * @return
+     * @param signatureAlgorithm name of the signature algorithm
+     * @return mapped JWSAlgorithm
      * @throws IdentityOAuth2Exception
      */
     public static JWSAlgorithm mapSignatureAlgorithmForJWSAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {

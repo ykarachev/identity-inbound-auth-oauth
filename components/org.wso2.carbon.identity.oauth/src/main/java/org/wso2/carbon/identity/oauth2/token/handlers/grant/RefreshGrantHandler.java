@@ -28,10 +28,11 @@ import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.ResponseHeader;
-import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -149,20 +150,20 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
 
     @Override
     public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
+            throws IdentityOAuth2Exception, InvalidOAuthClientException {
 
         OAuth2AccessTokenRespDTO tokenRespDTO = new OAuth2AccessTokenRespDTO();
         OAuth2AccessTokenReqDTO oauth2AccessTokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
         String scope = OAuth2Util.buildScopeString(tokReqMsgCtx.getScope());
-        SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util
-                .getSpTokenExpiryTimeConfig(oauth2AccessTokenReqDTO.getClientId(), OAuth2Util
-                        .getTenantId(oauth2AccessTokenReqDTO.getTenantDomain()));
+        // loading the stored application data
+        OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(oauth2AccessTokenReqDTO.getClientId());
+
         if (log.isDebugEnabled()) {
             log.debug("Service Provider specific expiry time enabled for application : " +
                     oauth2AccessTokenReqDTO.getClientId() + ". Application access token expiry time : " +
-                    spTimeConfigObj.getApplicationAccessTokenExpiryTime() + ", User access token expiry time : " +
-                    spTimeConfigObj.getUserAccessTokenExpiryTime() + ", Refresh token expiry time : "
-                    + spTimeConfigObj.getRefreshTokenExpiryTime());
+                    oAuthAppDO.getApplicationAccessTokenExpiryTime() + ", User access token expiry time : " +
+                    oAuthAppDO.getUserAccessTokenExpiryTime() + ", Refresh token expiry time : "
+                    + oAuthAppDO.getRefreshTokenExpiryTime());
         }
 
         String tokenId;
@@ -214,8 +215,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
 
         // Default Validity Period (in seconds)
         long validityPeriodInMillis = 0;
-        if (spTimeConfigObj.getUserAccessTokenExpiryTime() != null) {
-            validityPeriodInMillis = spTimeConfigObj.getUserAccessTokenExpiryTime();
+        if (oAuthAppDO.getUserAccessTokenExpiryTime() != null) {
+            validityPeriodInMillis = oAuthAppDO.getUserAccessTokenExpiryTime();
         } else {
             validityPeriodInMillis = OAuthServerConfiguration.getInstance()
                     .getUserAccessTokenValidityPeriodInSeconds() * 1000;
@@ -230,8 +231,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         // If issuing new refresh token, use default refresh token validity Period
         // otherwise use existing refresh token's validity period
         if (refreshTokenValidityPeriodInMillis == 0) {
-            if (spTimeConfigObj.getRefreshTokenExpiryTime() != null) {
-                refreshTokenValidityPeriodInMillis = spTimeConfigObj.getRefreshTokenExpiryTime();
+            if (oAuthAppDO.getRefreshTokenExpiryTime() != null) {
+                refreshTokenValidityPeriodInMillis = oAuthAppDO.getRefreshTokenExpiryTime();
             } else {
                 refreshTokenValidityPeriodInMillis = OAuthServerConfiguration.getInstance()
                         .getRefreshTokenValidityPeriodInSeconds() * 1000;

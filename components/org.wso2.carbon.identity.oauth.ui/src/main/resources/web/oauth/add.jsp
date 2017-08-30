@@ -187,6 +187,19 @@
 		                                   type="text" /></td>
 		                    </tr>
 		                    <% } %>
+                            <tr>
+                                <td class="leftCol-small"><fmt:message key='user.access.token.expiry.time'/></td>
+                                <td><input id="userAccessTokenExpiryTime" name="userAccessTokenExpiryTime"
+                                           type="text" value="3600000" /></td>
+                            </tr>
+                            <tr>
+                                <td class="leftCol-small"><fmt:message key='application.access.token.expiry.time'/></td>
+                                <td><input id="applicationAccessTokenExpiryTime" name="applicationAccessTokenExpiryTime" type="text" value="3600000" /></td>
+                            </tr>
+                            <tr>
+                                <td class="leftCol-small"><fmt:message key='refresh.token.expiry.time'/></td>
+                                <td><input id="refreshTokenExpiryTime" name="refreshTokenExpiryTime" type="text" value="84600000" /></td>
+                            </tr>
 		                    <tr id="callback_row">
 		                        <td class="leftCol-small"><fmt:message key='callback'/><span class="required">*</span></td>
                                 <td><input class="text-box-big" id="callback" name="callback" type="text"

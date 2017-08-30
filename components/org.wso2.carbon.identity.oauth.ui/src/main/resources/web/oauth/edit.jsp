@@ -280,11 +280,25 @@
 		                                   type="hidden" value="<%=Encode.forHtmlAttribute(applicationSPName)%>" /></td>
 		                    </tr>
 		                    <%} %>
+                            <tr>
+                                <td class="leftCol-small"><fmt:message key='user.access.token.expiry.time'/></td>
+                                <td><input id="userAccessTokenExpiryTime" name="userAccessTokenExpiryTime"
+                                           type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getUserAccessTokenExpiryTime()))%>" /></td>
+                            </tr>
+                            <tr>
+                                <td class="leftCol-small"><fmt:message key='application.access.token.expiry.time'/></td>
+                                <td><input id="applicationAccessTokenExpiryTime" name="applicationAccessTokenExpiryTime" type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getApplicationAccessTokenExpiryTime()))%>" /></td>
+                            </tr>
+                            <tr>
+                                <td class="leftCol-small"><fmt:message key='refresh.token.expiry.time'/></td>
+                                <td><input id="refreshTokenExpiryTime" name="refreshTokenExpiryTime" type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getRefreshTokenExpiryTime()))%>"/></td>
+                            </tr>
 		                    <tr id="callback_row">
 		                        <td class="leftCol-small"><fmt:message key='callback'/><span class="required">*</span></td>
                                 <td><input class="text-box-big" id="callback" name="callback"
                                            type="text" value="<%=Encode.forHtmlAttribute(app.getCallbackUrl())%>"/></td>
 		                    </tr>
+
                             <script>
                                 if(<%=app.getOAuthVersion().equals(OAuthConstants.OAuthVersions.VERSION_1A)%> || <%=codeGrant%> || <%=implicitGrant%>){
                                     $(jQuery('#callback_row')).attr('style','');

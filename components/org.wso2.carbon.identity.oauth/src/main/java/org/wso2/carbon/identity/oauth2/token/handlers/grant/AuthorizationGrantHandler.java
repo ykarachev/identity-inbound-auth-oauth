@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
@@ -102,7 +103,7 @@ public interface AuthorizationGrantHandler {
      * @throws IdentityException Error when generating or persisting the access token
      */
     public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception;
+            throws IdentityOAuth2Exception, InvalidOAuthClientException;
 
     /**
      * check whether client has authorization to get access token from provided grant type

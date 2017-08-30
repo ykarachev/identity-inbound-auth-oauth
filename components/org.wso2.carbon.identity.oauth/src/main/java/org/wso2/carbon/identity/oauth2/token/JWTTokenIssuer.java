@@ -36,9 +36,9 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
-import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.openidconnect.CustomClaimsCallbackHandler;
 
@@ -93,7 +93,8 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
     }
 
     @Override
-    public String accessToken(OAuthTokenReqMessageContext oAuthTokenReqMessageContext) throws OAuthSystemException {
+    public String accessToken(OAuthTokenReqMessageContext oAuthTokenReqMessageContext) throws OAuthSystemException,
+            InvalidOAuthClientException {
 
         if (log.isDebugEnabled()) {
             log.debug("Access token request with token request message context. Authorized user " +
@@ -108,7 +109,8 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
     }
 
     @Override
-    public String accessToken(OAuthAuthzReqMessageContext oAuthAuthzReqMessageContext) throws OAuthSystemException {
+    public String accessToken(OAuthAuthzReqMessageContext oAuthAuthzReqMessageContext) throws OAuthSystemException,
+            InvalidOAuthClientException {
 
         if (log.isDebugEnabled()) {
             log.debug("Access token request with authorization request message context message context. Authorized " +
@@ -130,7 +132,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
      * @throws IdentityOAuth2Exception
      */
     protected String buildJWTToken(OAuthTokenReqMessageContext request)
-            throws IdentityOAuth2Exception {
+            throws IdentityOAuth2Exception, InvalidOAuthClientException {
 
         // Set claims to jwt token.
         JWTClaimsSet jwtClaimsSet = createJWTClaimSet(null, request, request.getOauth2AccessTokenReqDTO()
@@ -155,7 +157,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
      * @throws IdentityOAuth2Exception
      */
     protected String buildJWTToken(OAuthAuthzReqMessageContext request)
-            throws IdentityOAuth2Exception {
+            throws IdentityOAuth2Exception, InvalidOAuthClientException {
 
         // Set claims to jwt token.
         JWTClaimsSet jwtClaimsSet = createJWTClaimSet(request, null, request.getAuthorizationReqDTO().getConsumerKey());
@@ -327,7 +329,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
      */
     private JWTClaimsSet createJWTClaimSet(OAuthAuthzReqMessageContext authAuthzReqMessageContext,
                                            OAuthTokenReqMessageContext tokenReqMessageContext, String consumerKey)
-            throws IdentityOAuth2Exception {
+            throws IdentityOAuth2Exception, InvalidOAuthClientException {
 
         AuthenticatedUser user;
         if (authAuthzReqMessageContext != null) {
@@ -338,13 +340,14 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
         String issuer = OAuth2Util.getIDTokenIssuer();
         int tenantId = OAuth2Util.getTenantId(user.getTenantDomain());
-        SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util.getSpTokenExpiryTimeConfig(consumerKey, tenantId);
+        // loading the stored application data
+        OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
 
         long lifetimeInMillis = OAuthServerConfiguration.getInstance()
                 .getApplicationAccessTokenValidityPeriodInSeconds() * 1000;
 
-        if (spTimeConfigObj.getApplicationAccessTokenExpiryTime() != null) {
-            lifetimeInMillis = spTimeConfigObj.getApplicationAccessTokenExpiryTime();
+        if (oAuthAppDO.getApplicationAccessTokenExpiryTime() != null) {
+            lifetimeInMillis = oAuthAppDO.getApplicationAccessTokenExpiryTime();
         }
 
         long curTimeInMillis = Calendar.getInstance().getTimeInMillis();

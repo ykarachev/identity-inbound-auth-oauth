@@ -216,7 +216,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
 
     @Override
     public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
+            throws IdentityOAuth2Exception, InvalidOAuthClientException {
         OAuth2AccessTokenRespDTO tokenRespDTO = super.issue(tokReqMsgCtx);
 
         // get the token from the OAuthTokenReqMessageContext which is stored while validating

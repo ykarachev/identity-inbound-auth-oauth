@@ -48,7 +48,7 @@
                 </xs:complexType>
             </xs:element>
             <xs:element name="registerOAuthApplicationData">
-                <xs:complexType>
+                <xs:complexType>m
                     <xs:sequence>
                         <xs:element minOccurs="0" name="application" nillable="true" type="ax229:OAuthConsumerAppDTO" />
                     </xs:sequence>

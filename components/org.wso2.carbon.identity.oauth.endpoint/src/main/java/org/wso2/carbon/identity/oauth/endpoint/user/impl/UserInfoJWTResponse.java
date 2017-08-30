@@ -105,19 +105,17 @@ public class UserInfoJWTResponse implements UserInfoResponseBuilder {
             throw new UserInfoEndpointException("Error occurred while signing JWT", e);
         }
 
+        if (accessTokenDO == null) {
+            // this means the token is not active so we can't proceed further
+            throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_TOKEN,
+                    "Invalid Access Token.");
+        }
         signingTenantDomain = accessTokenDO.getAuthzUser().getTenantDomain();
 
         if (isJWTSignedWithSPKey || StringUtils.isBlank(signingTenantDomain)) {
             String clientId = null;
             try {
-                if (accessTokenDO != null) {
-                    clientId = accessTokenDO.getConsumerKey();
-                } else {
-                    // this means the token is not active so we can't proceed further
-                    throw new UserInfoEndpointException(OAuthError.ResourceResponse.INVALID_TOKEN,
-                            "Invalid Access Token.");
-                }
-
+                clientId = accessTokenDO.getConsumerKey();
                 OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(clientId);
                 signingTenantDomain = OAuth2Util.getTenantDomainOfOauthApp(oAuthAppDO);
             } catch (IdentityOAuth2Exception | InvalidOAuthClientException e) {
@@ -126,7 +124,7 @@ public class UserInfoJWTResponse implements UserInfoResponseBuilder {
         }
 
         try {
-            return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, signingTenantDomain);
+            return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, signingTenantDomain).serialize();
         } catch (IdentityOAuth2Exception e) {
             throw new UserInfoEndpointException("Error occurred while signing JWT", e);
         }

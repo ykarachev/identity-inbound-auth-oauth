@@ -276,18 +276,18 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
             }
         }
 
-        String jwt = null;
+        JWT jwt = null;
         if(!JWSAlgorithm.NONE.equals(signatureAlgorithm)){
             jwt = OAuth2Util.signJWT(claimsSet, signatureAlgorithm, tenantDomain);
         } else {
-            jwt = new PlainJWT(claimsSet).serialize();
+            jwt = new PlainJWT(claimsSet);
         }
 
         if (log.isDebugEnabled()) {
             log.debug("JWT Assertion Value : " + jwt);
         }
         OAuth2TokenValidationResponseDTO.AuthorizationContextToken token;
-        token = messageContext.getResponseDTO().new AuthorizationContextToken("JWT", jwt);
+        token = messageContext.getResponseDTO().new AuthorizationContextToken("JWT", jwt.serialize());
         messageContext.getResponseDTO().setAuthorizationContextToken(token);
     }
 
@@ -305,7 +305,7 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
     protected SignedJWT signJWTWithRSA(SignedJWT signedJWT, JWSAlgorithm jwsAlgorithm, String tenantDomain,
                                        int tenantId)
             throws IdentityOAuth2Exception {
-       return OAuth2Util.signJWTWithRSA(signedJWT,tenantDomain,tenantId);
+       return OAuth2Util.signJWTWithRSA(signedJWT, tenantDomain, tenantId);
     }
 
     /**

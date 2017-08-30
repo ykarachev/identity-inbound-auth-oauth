@@ -1321,30 +1321,7 @@ public class OAuth2Util {
      */
     @Deprecated
     public static String mapSignatureAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
-        if (SHA256_WITH_RSA.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS256.getName();
-        } else if (SHA384_WITH_RSA.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS384.getName();
-        } else if (SHA512_WITH_RSA.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS512.getName();
-        } else if (SHA256_WITH_HMAC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS256.getName();
-        } else if (SHA384_WITH_HMAC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS384.getName();
-        } else if (SHA512_WITH_HMAC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS512.getName();
-        } else if (SHA256_WITH_EC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES256.getName();
-        } else if (SHA384_WITH_EC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES384.getName();
-        } else if (SHA512_WITH_EC.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES512.getName();
-        } else if (ALGORITHM_NONE.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.NONE.getName();
-        } else {
-            log.error("Unsupported Signature Algorithm in identity.xml");
-            throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
-        }
+        return mapSignatureAlgorithmForJWSAlgorithm(signatureAlgorithm).getName();
     }
 
     /**
@@ -1431,7 +1408,8 @@ public class OAuth2Util {
      * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
-    public static String signJWT(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
+    //TODO: Can make this private after removing deprecated "signJWTWithRSA" methods in DefaultIDTokenBuilder
+    public static JWT signJWT(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
             throws IdentityOAuth2Exception {
 
         if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
@@ -1487,8 +1465,7 @@ public class OAuth2Util {
      * @return signed JWT token
      * @throws IdentityOAuth2Exception
      */
-    //TODO: After removing the deprecated "signJWTWithRSA", make this method private
-    public static String signJWTWithRSA(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
+    public static JWT signJWTWithRSA(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
             throws IdentityOAuth2Exception {
         try {
             if (tenantDomain == null) {
@@ -1502,7 +1479,7 @@ public class OAuth2Util {
             header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
             SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
             signedJWT.sign(signer);
-            return signedJWT.serialize();
+            return signedJWT;
         } catch (JOSEException e) {
             throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
         }

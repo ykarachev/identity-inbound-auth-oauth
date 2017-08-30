@@ -299,7 +299,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             signingTenantDomain = request.getAuthorizedUser().getTenantDomain();
         }
 
-        return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, signingTenantDomain);
+        return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, signingTenantDomain).serialize();
     }
 
     @Override
@@ -412,7 +412,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             signingTenantDomain = request.getAuthorizationReqDTO().getUser().getTenantDomain();
         }
 
-        return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, signingTenantDomain);
+        return OAuth2Util.signJWT(jwtClaimsSet, signatureAlgorithm, signingTenantDomain).serialize();
     }
 
     /**
@@ -433,7 +433,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         } else {
             tenantDomain = request.getAuthorizedUser().getTenantDomain();
         }
-        return OAuth2Util.signJWTWithRSA(jwtClaimsSet, signatureAlgorithm, tenantDomain);
+        return OAuth2Util.signJWTWithRSA(jwtClaimsSet, signatureAlgorithm, tenantDomain).serialize();
     }
 
     /**
@@ -454,7 +454,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         } else {
             tenantDomain = request.getAuthorizationReqDTO().getUser().getTenantDomain();
         }
-        return OAuth2Util.signJWTWithRSA(jwtClaimsSet, signatureAlgorithm, tenantDomain);
+        return OAuth2Util.signJWTWithRSA(jwtClaimsSet, signatureAlgorithm, tenantDomain).serialize();
     }
 
     /**

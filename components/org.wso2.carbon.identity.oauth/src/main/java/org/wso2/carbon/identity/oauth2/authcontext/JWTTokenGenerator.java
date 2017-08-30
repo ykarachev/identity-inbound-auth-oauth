@@ -295,7 +295,7 @@ public class JWTTokenGenerator implements AuthorizationContextTokenGenerator {
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("JWT Assertion Value : " + jwt);
+            log.debug("JWT Assertion Value : " + jwt.serialize());
         }
         OAuth2TokenValidationResponseDTO.AuthorizationContextToken token;
         token = messageContext.getResponseDTO().new AuthorizationContextToken("JWT", jwt.serialize());

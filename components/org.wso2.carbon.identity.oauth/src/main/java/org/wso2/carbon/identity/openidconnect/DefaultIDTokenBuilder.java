@@ -83,7 +83,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * IDToken Generator utilizes the Nimbus SDK to build the IDToken.
  */
 public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidconnect.IDTokenBuilder {
-    
     private static final String SHA384 = "SHA-384";
     private static final String SHA512 = "SHA-512";
     private static final String AUTHORIZATION_CODE = "AuthorizationCode";
@@ -529,7 +528,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
      * where
      *
      * @param signatureAlgorithm signature algorithm
-     * @return digest algorithm
+     * @return mapped JWSAlgorithm
      * @throws IdentityOAuth2Exception
      */
     @Deprecated

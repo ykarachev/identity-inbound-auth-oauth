@@ -27,7 +27,7 @@ paths:
   /register:
     post:
       description: |
-        This API is used to create a OAuth2 application.
+        This API is used to create an OAuth2 application.
       x-wso2-request: |
         curl -X POST -H "Authorization: Basic YWRtaW46YWRtaW4=" -H
         "Content-Type: application/json" -d '{
@@ -44,7 +44,7 @@ paths:
         "redirect_uris":["https://client.example.org/callback"],
         "client_name":"application_owner_application_1" }
       summary: |
-        Registers a oauth2 application
+        Registers an OAuth2 application
       operationId: registerApplication
       parameters:
         - name: registrationRequest
@@ -78,7 +78,7 @@ paths:
       summary: |
         Get OAuth2 application information
       description: |
-         This API is used to get OAuth2 application by client_id.
+         This API is used to get/retrieve an OAuth2 application by client_id.
       x-wso2-request: |
         curl -X GET -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "Content-Type: application/json" -d '{}' "https://localhost:9443/api/identity/oauth2/dcr/v1.0/register/s6BhdRkqt3"
       x-wso2-response: |
@@ -96,7 +96,7 @@ paths:
           required: true
       responses:
         '200':
-          description: Successful Retrieved
+          description: Successfully Retrieved
           schema:
             $ref: '#/definitions/application'
         '404':
@@ -114,7 +114,7 @@ paths:
       summary: |
         Delete OAuth2 application
       description: |
-         This API is used to delete OAuth2 application by client_id.
+         This API is used to delete an OAuth2 application by client_id.
       x-wso2-request: |
         curl -X DELETE -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "Content-Type: application/json" -d '{}' "https://localhost:9443/api/identity/oauth2/dcr/v1.0/register/s6BhdRkqt3"
       x-wso2-response: |
@@ -127,7 +127,7 @@ paths:
           required: true
       responses:
         '204':
-          description: Successful deleted
+          description: Successfully deleted
         '404':
           description: Not Found
           schema:
@@ -141,7 +141,7 @@ paths:
 # Endpoint uses to update OAuth2 application
     put:
       description: |
-        This API is used to create a OAuth2 application.
+        This API is used to update an OAuth2 application.
       x-wso2-request: |
         curl -X PUT -H "Authorization: Basic YWRtaW46YWRtaW4=" -H
         "Content-Type: application/json" -d '{
@@ -158,7 +158,7 @@ paths:
         "redirect_uris":["https://client.example.org/callback"],
         "client_name":"application_owner_application_1" }
       summary: |
-        Registers a oauth2 application
+        Updates an OAuth2 application
       operationId: updateApplication
       parameters:
         - name: updateRequest
@@ -173,7 +173,7 @@ paths:
           required: true
       responses:
         '200':
-          description: Successful updated
+          description: Successfully updated
           schema:
             $ref: '#/definitions/application'
         '400':

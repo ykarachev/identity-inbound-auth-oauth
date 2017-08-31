@@ -49,6 +49,7 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
+import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
@@ -1101,6 +1102,126 @@ public class OAuth2Util {
         AccessTokenDO accessTokenDO = getAccessTokenDOfromTokenIdentifier(accessTokenIdentifier);
         return accessTokenDO.getConsumerKey();
     }
+
+    /***
+     * Read the configuration file at server start up.
+     * @param tenantId
+     * @deprecated due to UI implementation.
+     */
+    @Deprecated
+    public static void initTokenExpiryTimesOfSps(int tenantId) {
+        try{
+            Registry registry = OAuth2ServiceComponentHolder.getRegistryService().getConfigSystemRegistry(tenantId);
+            if (!registry.resourceExists(OAuthConstants.TOKEN_EXPIRE_TIME_RESOURCE_PATH)) {
+                Resource resource = registry.newResource();
+                registry.put(OAuthConstants.TOKEN_EXPIRE_TIME_RESOURCE_PATH, resource);
+            }
+        } catch (RegistryException e) {
+            log.error("Error while creating registry collection for :" + OAuthConstants.TOKEN_EXPIRE_TIME_RESOURCE_PATH, e);
+        }
+    }
+
+    /***
+     * Return the SP-token Expiry time configuration object when consumer key is given.
+     * @param consumerKey
+     * @param tenantId
+     * @return A SpOAuth2ExpiryTimeConfiguration Object
+     * @deprecated due to UI implementation
+     */
+    @Deprecated
+    public static SpOAuth2ExpiryTimeConfiguration getSpTokenExpiryTimeConfig(String consumerKey, int tenantId) {
+        SpOAuth2ExpiryTimeConfiguration spTokenTimeObject = new SpOAuth2ExpiryTimeConfiguration();
+        try {
+            if (log.isDebugEnabled()) {
+                log.debug("SP wise token expiry time feature is applied for tenant id : " + tenantId
+                        + "and consumer key : " + consumerKey);
+            }
+            IdentityTenantUtil.initializeRegistry(tenantId, getTenantDomain(tenantId));
+            Registry registry = IdentityTenantUtil.getConfigRegistry(tenantId);
+            if (registry.resourceExists(OAuthConstants.TOKEN_EXPIRE_TIME_RESOURCE_PATH)) {
+                Resource resource = registry.get(OAuthConstants.TOKEN_EXPIRE_TIME_RESOURCE_PATH);
+                String jsonString = "{}";
+                Object consumerKeyObject = resource.getProperties().get(consumerKey);
+                if (consumerKeyObject instanceof List) {
+                    if (!((List) consumerKeyObject).isEmpty()) {
+                        jsonString = ((List) consumerKeyObject).get(0).toString();
+                    }
+                }
+                JSONObject spTimeObject = new JSONObject(jsonString);
+                if (spTimeObject.length() > 0) {
+                    if (spTimeObject.has(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS) &&
+                            !spTimeObject.isNull(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS)) {
+                        try {
+                            spTokenTimeObject.setUserAccessTokenExpiryTime(Long.parseLong(spTimeObject
+                                    .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                            if (log.isDebugEnabled()) {
+                                log.debug("The user access token expiry time :" + spTimeObject
+                                        .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        "  for application id : " + consumerKey);
+                            }
+                        } catch (NumberFormatException e) {
+                            String errorMsg = String.format("Invalid value provided as user access token expiry time for consumer key %s," +
+                                    " tenant id : %d. Given value: %s, Expected a long value", consumerKey, tenantId, spTimeObject
+                                    .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString());
+                            log.error(errorMsg, e);
+                        }
+                    } else {
+                        spTokenTimeObject.setUserAccessTokenExpiryTime(OAuthServerConfiguration.getInstance()
+                                .getUserAccessTokenValidityPeriodInSeconds() * 1000);
+                    }
+
+                    if (spTimeObject.has(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS) &&
+                            !spTimeObject.isNull(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS)) {
+                        try {
+                            spTokenTimeObject.setApplicationAccessTokenExpiryTime(Long.parseLong(spTimeObject
+                                    .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                            if (log.isDebugEnabled()) {
+                                log.debug("The application access token expiry time :" + spTimeObject
+                                        .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        "  for application id : " + consumerKey);
+                            }
+                        } catch (NumberFormatException e) {
+                            String errorMsg = String.format("Invalid value provided as application access token expiry time for " +
+                                    "consumer key %s, tenant id : %d. Given value: %s, Expected a long value ", consumerKey, tenantId, spTimeObject
+                                    .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString());
+                            log.error(errorMsg, e);
+                        }
+                    } else {
+                        spTokenTimeObject.setApplicationAccessTokenExpiryTime(OAuthServerConfiguration.getInstance()
+                                .getApplicationAccessTokenValidityPeriodInSeconds() * 1000);
+                    }
+
+                    if (spTimeObject.has(REFRESH_TOKEN_TIME_IN_MILLISECONDS) &&
+                            !spTimeObject.isNull(REFRESH_TOKEN_TIME_IN_MILLISECONDS)) {
+                        try {
+                            spTokenTimeObject.setRefreshTokenExpiryTime(Long.parseLong(spTimeObject
+                                    .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                            if (log.isDebugEnabled()) {
+                                log.debug("The refresh token expiry time :" + spTimeObject
+                                        .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        " for application id : " + consumerKey);
+                            }
+
+                        } catch (NumberFormatException e) {
+                            String errorMsg = String.format("Invalid value provided as refresh token expiry time for consumer key %s," +
+                                    " tenant id : %d. Given value: %s, Expected a long value", consumerKey, tenantId, spTimeObject
+                                    .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString());
+                            log.error(errorMsg, e);
+                        }
+                    } else {
+                        spTokenTimeObject.setRefreshTokenExpiryTime(OAuthServerConfiguration.getInstance()
+                                .getRefreshTokenValidityPeriodInSeconds() * 1000);
+                    }
+                }
+            }
+        } catch (RegistryException e) {
+            log.error("Error while getting data from the registry.", e);
+        } catch (IdentityException e) {
+            log.error("Error while getting the tenant domain from tenant id : " + tenantId, e);
+        }
+        return spTokenTimeObject;
+    }
+
 
     private static Map<String, String> loadScopeConfigFile() {
         Map<String, String> scopes = new HashMap<>();

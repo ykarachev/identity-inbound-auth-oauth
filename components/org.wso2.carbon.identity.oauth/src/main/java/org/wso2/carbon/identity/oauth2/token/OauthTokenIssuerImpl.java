@@ -21,7 +21,6 @@ package org.wso2.carbon.identity.oauth2.token;
 
 import org.apache.oltu.oauth2.as.issuer.OAuthIssuer;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
-import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 
@@ -30,7 +29,7 @@ public class OauthTokenIssuerImpl implements OauthTokenIssuer {
     private OAuthIssuer oAuthIssuerImpl = OAuthServerConfiguration.getInstance()
             .getOAuthTokenGenerator();
 
-    public String accessToken(OAuthTokenReqMessageContext tokReqMsgCtx) throws OAuthSystemException, InvalidOAuthClientException {
+    public String accessToken(OAuthTokenReqMessageContext tokReqMsgCtx) throws OAuthSystemException {
         return oAuthIssuerImpl.accessToken();
     }
 
@@ -42,7 +41,7 @@ public class OauthTokenIssuerImpl implements OauthTokenIssuer {
         return oAuthIssuerImpl.authorizationCode();
     }
 
-    public String accessToken(OAuthAuthzReqMessageContext oauthAuthzMsgCtx) throws OAuthSystemException, InvalidOAuthClientException {
+    public String accessToken(OAuthAuthzReqMessageContext oauthAuthzMsgCtx) throws OAuthSystemException {
         return oAuthIssuerImpl.accessToken();
     }
 

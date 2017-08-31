@@ -191,6 +191,10 @@
 
                 function validate() {
                     var callbackUrl = document.getElementById('callback').value;
+                    var userTokenExpiryTime = document.getElementById("userAccessTokenExpiryTime").value;
+                    var applicationTokenExpiryTime = document.getElementById("userAccessTokenExpiryTime").value;
+                    var refreshTokenExpiryTime = document.getElementById("refreshTokenExpiryTime").value;
+
                     if (callbackUrl.indexOf("#") !== -1) {
                         CARBON.showWarningDialog('<fmt:message key="callback.is.fragment"/>');
                         return false;
@@ -213,11 +217,35 @@
                                 CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
                                 return false;
                             }
+                            if (!isWhiteListed(userTokenExpiryTime, ["digits-only"])) {
+                                CARBON.showWarningDialog('<fmt:message key="invalid.user.access.token.expiry.time"/>');
+                                return false;
+                            }
+                            if (!isWhiteListed(applicationTokenExpiryTime, ["digits-only"])) {
+                                CARBON.showWarningDialog('<fmt:message key="invalid.application.access.token.expiry.time"/>');
+                                return false;
+                            }
+                            if (!isWhiteListed(refreshTokenExpiryTime, ["digits-only"])) {
+                                CARBON.showWarningDialog('<fmt:message key="invalid.refresh.token.expiry.time"/>');
+                                return false;
+                            }
                         }
                     } else {
                         if (!isWhiteListed(callbackUrl, ["url"]) || !isNotBlackListed(callbackUrl,
                                         ["uri-unsafe-exists"])) {
                             CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
+                            return false;
+                        }
+                        if (!isWhiteListed(userTokenExpiryTime, ["digits-only"])) {
+                            CARBON.showWarningDialog('<fmt:message key="invalid.user.access.token.expiry.time"/>');
+                            return false;
+                        }
+                        if (!isWhiteListed(applicationTokenExpiryTime, ["digits-only"])) {
+                            CARBON.showWarningDialog('<fmt:message key="invalid.application.access.token.expiry.time"/>');
+                            return false;
+                        }
+                        if (!isWhiteListed(refreshTokenExpiryTime, ["digits-only"])) {
+                            CARBON.showWarningDialog('<fmt:message key="invalid.refresh.token.expiry.time"/>');
                             return false;
                         }
                     }
@@ -264,13 +292,13 @@
 			<td class="formRow">
 				<table class="normal" cellspacing="0">
                             <tr>
-                                <td class="leftCol-small"><fmt:message key='oauth.version'/></td>
+                                <td class="leftCol-med"><fmt:message key='oauth.version'/></td>
                                 <td><%=Encode.forHtml(app.getOAuthVersion())%><input id="oauthVersion" name="oauthVersion"
                                                                         type="hidden" value="<%=Encode.forHtmlAttribute(app.getOAuthVersion())%>" /></td>
                             </tr>
                             <%if (applicationSPName ==null) { %>
 				           <tr>
-		                        <td class="leftCol-small"><fmt:message key='application.name'/><span class="required">*</span></td>
+		                        <td class="leftCol-med"><fmt:message key='application.name'/><span class="required">*</span></td>
 		                        <td><input class="text-box-big" id="application" name="application"
 		                                   type="text" value="<%=Encode.forHtmlAttribute(app.getApplicationName())%>" /></td>
 		                    </tr>
@@ -280,21 +308,8 @@
 		                                   type="hidden" value="<%=Encode.forHtmlAttribute(applicationSPName)%>" /></td>
 		                    </tr>
 		                    <%} %>
-                            <tr>
-                                <td class="leftCol-small"><fmt:message key='user.access.token.expiry.time'/></td>
-                                <td><input id="userAccessTokenExpiryTime" name="userAccessTokenExpiryTime"
-                                           type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getUserAccessTokenExpiryTime()))%>" /></td>
-                            </tr>
-                            <tr>
-                                <td class="leftCol-small"><fmt:message key='application.access.token.expiry.time'/></td>
-                                <td><input id="applicationAccessTokenExpiryTime" name="applicationAccessTokenExpiryTime" type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getApplicationAccessTokenExpiryTime()))%>" /></td>
-                            </tr>
-                            <tr>
-                                <td class="leftCol-small"><fmt:message key='refresh.token.expiry.time'/></td>
-                                <td><input id="refreshTokenExpiryTime" name="refreshTokenExpiryTime" type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getRefreshTokenExpiryTime()))%>"/></td>
-                            </tr>
 		                    <tr id="callback_row">
-		                        <td class="leftCol-small"><fmt:message key='callback'/><span class="required">*</span></td>
+		                        <td class="leftCol-med"><fmt:message key='callback'/><span class="required">*</span></td>
                                 <td><input class="text-box-big" id="callback" name="callback"
                                            type="text" value="<%=Encode.forHtmlAttribute(app.getCallbackUrl())%>"/></td>
 		                    </tr>
@@ -308,7 +323,7 @@
                             </script>
                             <% if(app.getOAuthVersion().equals(OAuthConstants.OAuthVersions.VERSION_2)){ %>
                                  <tr id="grant_row" name="grant_row">
-                                    <td class="leftCol-small"><fmt:message key='grantTypes'/></td>
+                                    <td class="leftCol-med"><fmt:message key='grantTypes'/></td>
                                     <td>
                                     <table>
                                     <%
@@ -367,7 +382,7 @@
                                 </tr>
                                 <% if(client.isPKCESupportedEnabled()) {%>
                                 <tr id="pkce_enable">
-                                    <td class="leftcol-small">
+                                    <td class="leftCol-med">
                                         <fmt:message key='pkce.mandatory'/>
                                     </td>
                                     <td>
@@ -390,6 +405,28 @@
                                 </tr>
                                 <% } %>
                             <% } %>
+
+                        <tr>
+                            <td class="leftCol-med"><fmt:message key='user.access.token.expiry.time'/></td>
+                            <td><input id="userAccessTokenExpiryTime" name="userAccessTokenExpiryTime"
+                                       type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getUserAccessTokenExpiryTime()))%>" />
+                                <fmt:message key='seconds'/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="leftCol-med"><fmt:message key='application.access.token.expiry.time'/></td>
+                            <td>
+                                <input id="applicationAccessTokenExpiryTime" name="applicationAccessTokenExpiryTime" type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getApplicationAccessTokenExpiryTime()))%>" />
+                                <fmt:message key='seconds'/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="leftCol-med"><fmt:message key='refresh.token.expiry.time'/></td>
+                            <td>
+                                <input id="refreshTokenExpiryTime" name="refreshTokenExpiryTime" type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getRefreshTokenExpiryTime()))%>"/>
+                                <fmt:message key='seconds'/>
+                            </td>
+                        </tr>
 				</table>
 			</td>
 		    </tr>

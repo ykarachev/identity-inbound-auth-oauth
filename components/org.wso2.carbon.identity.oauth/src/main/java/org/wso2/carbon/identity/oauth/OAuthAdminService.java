@@ -39,7 +39,6 @@ import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientExcepti
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
-import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO;
@@ -47,6 +46,7 @@ import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
+import org.wso2.carbon.identity.oauth.dto.OAuthTokenExpiryTimeDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
@@ -768,4 +768,17 @@ public class OAuthAdminService extends AbstractAdmin {
     public boolean isPKCESupportEnabled() {
         return OAuth2Util.isPKCESupportEnabled();
     }
+
+    public OAuthTokenExpiryTimeDTO getTokenExpiryTimes() {
+
+        OAuthTokenExpiryTimeDTO tokenExpiryTime = new OAuthTokenExpiryTimeDTO();
+        tokenExpiryTime.setUserAccessTokenExpiryTime(OAuthServerConfiguration
+                .getInstance().getUserAccessTokenValidityPeriodInSeconds());
+        tokenExpiryTime.setApplicationAccessTokenExpiryTime(OAuthServerConfiguration
+                .getInstance().getApplicationAccessTokenValidityPeriodInSeconds());
+        tokenExpiryTime.setRefreshTokenExpiryTime(OAuthServerConfiguration
+                .getInstance().getRefreshTokenValidityPeriodInSeconds());
+        return tokenExpiryTime;
+    }
 }
+

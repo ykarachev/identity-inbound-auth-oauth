@@ -87,9 +87,9 @@ public class OAuthAppDAO {
                     prepStmt.setString(9, consumerAppDO.getGrantTypes());
                     prepStmt.setString(10, consumerAppDO.isPkceMandatory() ? "1" : "0");
                     prepStmt.setString(11, consumerAppDO.isPkceSupportPlain() ? "1" : "0");
-                    prepStmt.setString(12, Long.toString(consumerAppDO.getUserAccessTokenExpiryTime()));
-                    prepStmt.setString(13, Long.toString(consumerAppDO.getApplicationAccessTokenExpiryTime()));
-                    prepStmt.setString(14, Long.toString(consumerAppDO.getRefreshTokenExpiryTime()));
+                    prepStmt.setLong(12, consumerAppDO.getUserAccessTokenExpiryTime());
+                    prepStmt.setLong(13, consumerAppDO.getApplicationAccessTokenExpiryTime());
+                    prepStmt.setLong(14, consumerAppDO.getRefreshTokenExpiryTime());
                     prepStmt.execute();
                     connection.commit();
                 } else {
@@ -103,9 +103,9 @@ public class OAuthAppDAO {
                     prepStmt.setString(7, consumerAppDO.getOauthVersion());
                     prepStmt.setString(8, consumerAppDO.getCallbackUrl());
                     prepStmt.setString(9, consumerAppDO.getGrantTypes());
-                    prepStmt.setString(10, Long.toString(consumerAppDO.getUserAccessTokenExpiryTime()));
-                    prepStmt.setString(11, Long.toString(consumerAppDO.getApplicationAccessTokenExpiryTime()));
-                    prepStmt.setString(12, Long.toString(consumerAppDO.getRefreshTokenExpiryTime()));
+                    prepStmt.setLong(10, consumerAppDO.getUserAccessTokenExpiryTime());
+                    prepStmt.setLong(11, consumerAppDO.getApplicationAccessTokenExpiryTime());
+                    prepStmt.setLong(12, consumerAppDO.getRefreshTokenExpiryTime());
                     prepStmt.execute();
                     connection.commit();
                 }
@@ -131,12 +131,12 @@ public class OAuthAppDAO {
         String sqlStmt = null;
         String consumerKey;
         String consumerSecret = OAuthUtil.getRandomNumber();
-        String userAccessTokenExpireTime = Long.toString(OAuthServerConfiguration.getInstance()
-                .getUserAccessTokenValidityPeriodInSeconds()*1000);
-        String applicationAccessTokenExpireTime = Long.toString(OAuthServerConfiguration.getInstance()
-                .getApplicationAccessTokenValidityPeriodInSeconds()*1000);
-        String refreshTokenExpireTime = Long.toOctalString(OAuthServerConfiguration.getInstance()
-                .getRefreshTokenValidityPeriodInSeconds()*1000);
+        long userAccessTokenExpireTime = OAuthServerConfiguration.getInstance()
+                .getUserAccessTokenValidityPeriodInSeconds();
+        long applicationAccessTokenExpireTime = OAuthServerConfiguration.getInstance()
+                .getApplicationAccessTokenValidityPeriodInSeconds();
+        long refreshTokenExpireTime = OAuthServerConfiguration.getInstance()
+                .getRefreshTokenValidityPeriodInSeconds();
 
         do {
             consumerKey = OAuthUtil.getRandomNumber();
@@ -153,9 +153,9 @@ public class OAuthAppDAO {
             prepStmt.setString(5, userDomain);
             // it is assumed that the OAuth version is 1.0a because this is required with OAuth 1.0a
             prepStmt.setString(6, OAuthConstants.OAuthVersions.VERSION_1A);
-            prepStmt.setString(7, userAccessTokenExpireTime);
-            prepStmt.setString(8, applicationAccessTokenExpireTime);
-            prepStmt.setString(9, refreshTokenExpireTime);
+            prepStmt.setLong(7, userAccessTokenExpireTime);
+            prepStmt.setLong(8, applicationAccessTokenExpireTime);
+            prepStmt.setLong(9, refreshTokenExpireTime);
             prepStmt.execute();
 
             connection.commit();
@@ -416,16 +416,16 @@ public class OAuthAppDAO {
             if(OAuth2ServiceComponentHolder.isPkceEnabled()) {
                 prepStmt.setString(4, oauthAppDO.isPkceMandatory() ? "1" : "0");
                 prepStmt.setString(5, oauthAppDO.isPkceSupportPlain() ? "1" : "0");
-                prepStmt.setString(6, Long.toString(oauthAppDO.getUserAccessTokenExpiryTime()));
-                prepStmt.setString(7, Long.toString(oauthAppDO.getApplicationAccessTokenExpiryTime()));
-                prepStmt.setString(8, Long.toString(oauthAppDO.getRefreshTokenExpiryTime()));
+                prepStmt.setLong(6, oauthAppDO.getUserAccessTokenExpiryTime());
+                prepStmt.setLong(7, oauthAppDO.getApplicationAccessTokenExpiryTime());
+                prepStmt.setLong(8, oauthAppDO.getRefreshTokenExpiryTime());
 
                 prepStmt.setString(9, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
                 prepStmt.setString(10, persistenceProcessor.getProcessedClientSecret(oauthAppDO.getOauthConsumerSecret()));
             } else {
-                prepStmt.setString(4, Long.toString(oauthAppDO.getUserAccessTokenExpiryTime()));
-                prepStmt.setString(5, Long.toString(oauthAppDO.getApplicationAccessTokenExpiryTime()));
-                prepStmt.setString(6, Long.toString(oauthAppDO.getRefreshTokenExpiryTime()));
+                prepStmt.setLong(4, oauthAppDO.getUserAccessTokenExpiryTime());
+                prepStmt.setLong(5, oauthAppDO.getApplicationAccessTokenExpiryTime());
+                prepStmt.setLong(6, oauthAppDO.getRefreshTokenExpiryTime());
                 prepStmt.setString(7, persistenceProcessor.getProcessedClientId(oauthAppDO.getOauthConsumerKey()));
                 prepStmt.setString(8, persistenceProcessor.getProcessedClientSecret(oauthAppDO.getOauthConsumerSecret()));
             }

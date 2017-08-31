@@ -60,7 +60,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
     @Override
     public OAuth2AuthorizeRespDTO issue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx)
-            throws IdentityOAuth2Exception, InvalidOAuthClientException {
+            throws IdentityOAuth2Exception {
 
         OAuthEventInterceptor oAuthEventInterceptorProxy = OAuthComponentServiceHolder.getInstance()
                 .getOAuthEventInterceptorProxy();
@@ -83,8 +83,14 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
         String responseType = oauthAuthzMsgCtx.getAuthorizationReqDTO().getResponseType();
         String grantType;
-        // loading the stored application data
-        OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
+
+        // Loading the stored application data.
+        OAuthAppDO oAuthAppDO = null;
+        try {
+            oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception("Error while retrieving app information for clientId: " + consumerKey, e);
+        }
 
         if (StringUtils.contains(responseType, OAuthConstants.GrantTypes.TOKEN)) {
             grantType = OAuthConstants.GrantTypes.IMPLICIT;
@@ -296,8 +302,8 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             // Default token validity Period
             long validityPeriodInMillis = OAuthServerConfiguration.getInstance().
                     getUserAccessTokenValidityPeriodInSeconds() * 1000;
-            if (oAuthAppDO.getUserAccessTokenExpiryTime() != null) {
-                validityPeriodInMillis = oAuthAppDO.getUserAccessTokenExpiryTime();
+            if (oAuthAppDO.getUserAccessTokenExpiryTime() != 0) {
+                validityPeriodInMillis = oAuthAppDO.getUserAccessTokenExpiryTime() * 1000;
             }
 
             // if a VALID validity period is set through the callback, then use it
@@ -309,8 +315,8 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             // If issuing new refresh token, use default refresh token validity Period
             // otherwise use existing refresh token's validity period
             if (refreshTokenValidityPeriodInMillis == 0) {
-                if (oAuthAppDO.getRefreshTokenExpiryTime() != null) {
-                    refreshTokenValidityPeriodInMillis = oAuthAppDO.getRefreshTokenExpiryTime();
+                if (oAuthAppDO.getRefreshTokenExpiryTime() != 0) {
+                    refreshTokenValidityPeriodInMillis = oAuthAppDO.getRefreshTokenExpiryTime() * 1000;
                 } else {
                     refreshTokenValidityPeriodInMillis = OAuthServerConfiguration.getInstance()
                             .getRefreshTokenValidityPeriodInSeconds() * 1000;

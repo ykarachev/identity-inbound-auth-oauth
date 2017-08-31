@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.oauth2.authz.handlers;
 
-import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
@@ -35,7 +34,7 @@ public interface ResponseTypeHandler {
             throws IdentityOAuth2Exception;
 
     public OAuth2AuthorizeRespDTO issue(OAuthAuthzReqMessageContext oauthAuthzMsgCtx)
-            throws IdentityOAuth2Exception, InvalidOAuthClientException;
+            throws IdentityOAuth2Exception;
 
     /**
      * check whether client has authorization to get access token from provided grant type

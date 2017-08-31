@@ -93,8 +93,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
     }
 
     @Override
-    public String accessToken(OAuthTokenReqMessageContext oAuthTokenReqMessageContext) throws OAuthSystemException,
-            InvalidOAuthClientException {
+    public String accessToken(OAuthTokenReqMessageContext oAuthTokenReqMessageContext) throws OAuthSystemException {
 
         if (log.isDebugEnabled()) {
             log.debug("Access token request with token request message context. Authorized user " +
@@ -109,8 +108,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
     }
 
     @Override
-    public String accessToken(OAuthAuthzReqMessageContext oAuthAuthzReqMessageContext) throws OAuthSystemException,
-            InvalidOAuthClientException {
+    public String accessToken(OAuthAuthzReqMessageContext oAuthAuthzReqMessageContext) throws OAuthSystemException {
 
         if (log.isDebugEnabled()) {
             log.debug("Access token request with authorization request message context message context. Authorized " +
@@ -132,11 +130,11 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
      * @throws IdentityOAuth2Exception
      */
     protected String buildJWTToken(OAuthTokenReqMessageContext request)
-            throws IdentityOAuth2Exception, InvalidOAuthClientException {
+            throws IdentityOAuth2Exception {
 
         // Set claims to jwt token.
         JWTClaimsSet jwtClaimsSet = createJWTClaimSet(null, request, request.getOauth2AccessTokenReqDTO()
-                .getClientId());
+                    .getClientId());
 
         if (Arrays.asList((request.getScope())).contains(AUDIENCE)) {
             jwtClaimsSet.setAudience(Arrays.asList(request.getScope()));
@@ -156,8 +154,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
      * @return Signed jwt string.
      * @throws IdentityOAuth2Exception
      */
-    protected String buildJWTToken(OAuthAuthzReqMessageContext request)
-            throws IdentityOAuth2Exception, InvalidOAuthClientException {
+    protected String buildJWTToken(OAuthAuthzReqMessageContext request) throws IdentityOAuth2Exception {
 
         // Set claims to jwt token.
         JWTClaimsSet jwtClaimsSet = createJWTClaimSet(request, null, request.getAuthorizationReqDTO().getConsumerKey());
@@ -329,7 +326,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
      */
     private JWTClaimsSet createJWTClaimSet(OAuthAuthzReqMessageContext authAuthzReqMessageContext,
                                            OAuthTokenReqMessageContext tokenReqMessageContext, String consumerKey)
-            throws IdentityOAuth2Exception, InvalidOAuthClientException {
+            throws IdentityOAuth2Exception {
 
         AuthenticatedUser user;
         if (authAuthzReqMessageContext != null) {
@@ -341,13 +338,19 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
         String issuer = OAuth2Util.getIDTokenIssuer();
         int tenantId = OAuth2Util.getTenantId(user.getTenantDomain());
         // loading the stored application data
-        OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
+        OAuthAppDO oAuthAppDO = null;
+        try {
+            oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception("Error while retrieving app information for clientId: "
+                    + consumerKey, e);
+        }
 
         long lifetimeInMillis = OAuthServerConfiguration.getInstance()
                 .getApplicationAccessTokenValidityPeriodInSeconds() * 1000;
 
-        if (oAuthAppDO.getApplicationAccessTokenExpiryTime() != null) {
-            lifetimeInMillis = oAuthAppDO.getApplicationAccessTokenExpiryTime();
+        if (oAuthAppDO.getApplicationAccessTokenExpiryTime() != 0) {
+            lifetimeInMillis = oAuthAppDO.getApplicationAccessTokenExpiryTime() * 1000;
         }
 
         long curTimeInMillis = Calendar.getInstance().getTimeInMillis();

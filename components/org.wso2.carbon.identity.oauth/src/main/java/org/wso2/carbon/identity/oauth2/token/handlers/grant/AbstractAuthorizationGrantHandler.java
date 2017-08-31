@@ -93,8 +93,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     }
 
     @Override
-    public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception,
-            InvalidOAuthClientException {
+    public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
 
         OAuth2AccessTokenRespDTO tokenRespDTO;
         OAuth2AccessTokenReqDTO oAuth2AccessTokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
@@ -105,7 +104,12 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
 
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
         // loading the stored application data
-        OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
+        OAuthAppDO oAuthAppDO = null;
+        try {
+            oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception("Error while retrieving app information for clientId : " + consumerKey, e);
+        }
         if (log.isDebugEnabled()) {
             log.debug("Service Provider specific expiry time enabled for application : " + consumerKey +
                     ". Application access token expiry time : " + oAuthAppDO.getApplicationAccessTokenExpiryTime()
@@ -364,8 +368,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
             }
 
             // Default Validity Period (in seconds)
-            if (oAuthAppDO.getApplicationAccessTokenExpiryTime() != null) {
-                validityPeriodInMillis = oAuthAppDO.getApplicationAccessTokenExpiryTime();
+            if (oAuthAppDO.getApplicationAccessTokenExpiryTime() != 0) {
+                validityPeriodInMillis = oAuthAppDO.getApplicationAccessTokenExpiryTime() * 1000;
                 if (log.isDebugEnabled()) {
                     log.debug("OAuth application id : " + consumerKey + ", application access token validity time in " +
                             "milliseconds : " + validityPeriodInMillis);
@@ -377,8 +381,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
 
             // if the user is an application user
             if (isOfTypeApplicationUser()) {
-                if (oAuthAppDO.getUserAccessTokenExpiryTime() != null) {
-                    validityPeriodInMillis = oAuthAppDO.getUserAccessTokenExpiryTime();
+                if (oAuthAppDO.getUserAccessTokenExpiryTime() != 0) {
+                    validityPeriodInMillis = oAuthAppDO.getUserAccessTokenExpiryTime() * 1000;
                     if (log.isDebugEnabled()) {
                         log.debug("OAuth application id: " + consumerKey + ", user access token validity time " +
                                 validityPeriodInMillis + "ms");
@@ -398,8 +402,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
             // If issuing new refresh token, use default refresh token validity Period
             // otherwise use existing refresh token's validity period
             if (refreshTokenValidityPeriodInMillis == 0) {
-                if (oAuthAppDO.getRefreshTokenExpiryTime() != null) {
-                    refreshTokenValidityPeriodInMillis = oAuthAppDO.getRefreshTokenExpiryTime();
+                if (oAuthAppDO.getRefreshTokenExpiryTime() != 0) {
+                    refreshTokenValidityPeriodInMillis = oAuthAppDO.getRefreshTokenExpiryTime() * 1000;
                     if (log.isDebugEnabled()) {
                         log.debug("OAuth application id : " + consumerKey + ", refresh token validity time " +
                                 refreshTokenValidityPeriodInMillis + "ms");

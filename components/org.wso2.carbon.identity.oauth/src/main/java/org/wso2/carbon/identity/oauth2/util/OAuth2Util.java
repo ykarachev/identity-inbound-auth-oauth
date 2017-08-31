@@ -18,9 +18,11 @@
 
 package org.wso2.carbon.identity.oauth2.util;
 
-import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSVerifier;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jose.Algorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
@@ -91,9 +93,11 @@ import java.security.Key;
 import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPublicKey;
 import java.security.cert.Certificate;
 import java.security.interfaces.RSAPrivateKey;
 import java.sql.Timestamp;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -1375,6 +1379,56 @@ public class OAuth2Util {
             return OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX;
         }
     }
+
+
+    /**
+     * Validate Id token signature
+     *
+     * @param idToken Id token
+     * @return validation state
+     */
+    public static boolean validateIdToken(String idToken) {
+
+        boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
+        String tenantDomain;
+        try {
+            String clientId = SignedJWT.parse(idToken).getJWTClaimsSet().getAudience().get(0);
+            if (isJWTSignedWithSPKey) {
+                OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(clientId);
+                tenantDomain = OAuth2Util.getTenantDomainOfOauthApp(oAuthAppDO);
+            } else {
+                //It is not sending tenant domain with the subject in id_token by default, So to work this as
+                //expected, need to enable the option "Use tenant domain in local subject identifier" in SP config
+                tenantDomain = MultitenantUtils.getTenantDomain(SignedJWT.parse(idToken).getJWTClaimsSet().getSubject());
+            }
+            if (StringUtils.isEmpty(tenantDomain)) {
+                return false;
+            }
+            int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
+            RSAPublicKey publicKey;
+            KeyStoreManager keyStoreManager = KeyStoreManager.getInstance(tenantId);
+
+            if (!tenantDomain.equals(org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
+                String ksName = tenantDomain.trim().replace(".", "-");
+                String jksName = ksName + ".jks";
+                publicKey = (RSAPublicKey) keyStoreManager.getKeyStore(jksName).getCertificate(tenantDomain)
+                        .getPublicKey();
+            } else {
+                publicKey = (RSAPublicKey) keyStoreManager.getDefaultPublicKey();
+            }
+            SignedJWT signedJWT = SignedJWT.parse(idToken);
+            JWSVerifier verifier = new RSASSAVerifier(publicKey);
+
+            return signedJWT.verify(verifier);
+        } catch (JOSEException | ParseException e) {
+            log.error("Error occurred while validating id token signature.");
+            return false;
+        } catch (Exception e) {
+            log.error("Error occurred while validating id token signature.");
+            return false;
+        }
+    }
+
     /**
      * This method maps signature algorithm define in identity.xml to digest algorithms to generate the at_hash
      *
@@ -1589,6 +1643,5 @@ public class OAuth2Util {
 
         return buf.toString();
     }
-
 
 }

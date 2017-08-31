@@ -62,6 +62,7 @@ import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
+import org.wso2.carbon.user.core.util.UserCoreUtil;
 
 import javax.xml.namespace.QName;
 import java.security.Key;
@@ -177,8 +178,15 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                         if (StringUtils.isBlank(subject)) {
                             subject = request.getAuthorizedUser().getAuthenticatedSubjectIdentifier();
                         }
-                        if (serviceProvider.getLocalAndOutBoundAuthenticationConfig().isUseTenantDomainInLocalSubjectIdentifier()) {
-                            subject = subject + UserCoreConstants.TENANT_DOMAIN_COMBINER + tenantDomain;
+                        boolean useUserstoreDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                                .isUseUserstoreDomainInLocalSubjectIdentifier();
+                        boolean useTenantDomainInLocalSubjectIdentifier = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
+                                .isUseTenantDomainInLocalSubjectIdentifier();
+                        if (useTenantDomainInLocalSubjectIdentifier) {
+                            subject = UserCoreUtil.addTenantDomainToEntry(subject, tenantDomain);
+                        }
+                        if (useUserstoreDomainInLocalSubjectIdentifier) {
+                            subject = IdentityUtil.addDomainToName(subject, userStore);
                         }
                     } catch (IdentityException e) {
                         String error = "Error occurred while getting user claim for user " + request

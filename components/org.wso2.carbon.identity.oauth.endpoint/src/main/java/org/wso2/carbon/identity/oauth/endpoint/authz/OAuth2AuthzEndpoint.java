@@ -1114,10 +1114,6 @@ public class OAuth2AuthzEndpoint {
                     String msg = "Error while getting clientId from the IdTokenHint.";
                     log.error(msg, e);
                     return errorResponse;
-                } catch (IdentityOAuth2Exception | InvalidOAuthClientException e) {
-                    String msg = "Error occurred while getting application information. Client id not found";
-                    log.error(msg, e);
-                    return errorResponse;
                 }
             } else {
                 sessionState.setAddSessionState(true);

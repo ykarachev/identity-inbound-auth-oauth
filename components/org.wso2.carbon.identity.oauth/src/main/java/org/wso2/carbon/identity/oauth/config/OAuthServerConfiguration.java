@@ -139,6 +139,7 @@ public class OAuthServerConfiguration {
     private List<ClientAuthenticationHandler> supportedClientAuthHandlers;
     private String saml2TokenCallbackHandlerName = null;
     private String saml2BearerTokenUserType;
+    private boolean mapFederatedUsersToLocal = false;
     private SAML2TokenCallbackHandler saml2TokenCallbackHandler = null;
     private Map<String, String> tokenValidatorClassNames = new HashMap();
     private boolean isAuthContextTokGenEnabled = false;
@@ -147,6 +148,7 @@ public class OAuthServerConfiguration {
     private String consumerDialectURI = "http://wso2.org/claims";
     private String signatureAlgorithm = "SHA256withRSA";
     private String idTokenSignatureAlgorithm = "SHA256withRSA";
+    private String userInfoJWTSignatureAlgorithm = "SHA256withRSA";
     private String authContextTTL = "15L";
     // property added to fix IDENTITY-4551 in backward compatible manner
     private boolean useMultiValueSeparatorForAuthContextToken = true;
@@ -379,6 +381,7 @@ public class OAuthServerConfiguration {
 
     /**
      * Get the instance of the token value generator according to the identity xml configuration value.
+     *
      * @return ValueGenerator object instance.
      */
     public ValueGenerator getTokenValueGenerator() {
@@ -751,6 +754,10 @@ public class OAuthServerConfiguration {
         return idTokenSignatureAlgorithm;
     }
 
+    public String getUserInfoJWTSignatureAlgorithm() {
+        return userInfoJWTSignatureAlgorithm;
+    }
+
     public String getConsumerDialectURI() {
         return consumerDialectURI;
     }
@@ -911,6 +918,7 @@ public class OAuthServerConfiguration {
     /**
      * Return the value of whether the refresh token is allowed for this grant type. Null will be returned if there is
      * no tag or empty tag.
+     *
      * @param grantType Name of the Grant type.
      * @return True or False if there is a value. Null otherwise.
      */
@@ -925,6 +933,7 @@ public class OAuthServerConfiguration {
     /**
      * Get the value of the property "UseSPTenantDomain". This property is used to decide whether to use SP tenant
      * domain or user tenant domain.
+     *
      * @return value of the "UseSPTenantDomain".
      */
     public boolean getUseSPTenantDomainValue() {
@@ -934,6 +943,10 @@ public class OAuthServerConfiguration {
 
     public String getSaml2BearerTokenUserType() {
         return saml2BearerTokenUserType;
+    }
+
+    public boolean isMapFederatedUsersToLocal() {
+        return mapFederatedUsersToLocal;
     }
 
     private void parseOAuthCallbackHandlers(OMElement callbackHandlersElem) {
@@ -1368,6 +1381,18 @@ public class OAuthServerConfiguration {
         }
         if (log.isDebugEnabled()) {
             log.debug("RenewRefreshTokenForRefreshGrant was set to : " + isRefreshTokenRenewalEnabled);
+        }
+    }
+
+    private void parseMapFederatedUsersToLocalConfiguration(OMElement oauthConfigElem) {
+
+        OMElement mapFederatedUsersToLocalConfigElem = oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(
+                ConfigElements.MAP_FED_USERS_TO_LOCAL));
+        if (mapFederatedUsersToLocalConfigElem != null) {
+            mapFederatedUsersToLocal = Boolean.parseBoolean(mapFederatedUsersToLocalConfigElem.getText());
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("MapFederatedUsersToLocal was set to : " + mapFederatedUsersToLocal);
         }
     }
 
@@ -1849,6 +1874,11 @@ public class OAuthServerConfiguration {
                         openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_USERINFO_ENDPOINT_RESPONSE_BUILDER))
                                 .getText().trim();
             }
+            if (openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_USERINFO_JWT_SIGNATURE_ALGORITHM)) != null) {
+                userInfoJWTSignatureAlgorithm =
+                        openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_USERINFO_JWT_SIGNATURE_ALGORITHM))
+                                .getText().trim();
+            }
             if (openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_SIGN_JWT_WITH_SP_KEY)) != null) {
                 isJWTSignedWithSPKey =
                         Boolean.parseBoolean(openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_SIGN_JWT_WITH_SP_KEY))
@@ -1952,6 +1982,7 @@ public class OAuthServerConfiguration {
         public static final String OPENID_CONNECT_USERINFO_ENDPOINT_REQUEST_VALIDATOR = "UserInfoEndpointRequestValidator";
         public static final String OPENID_CONNECT_USERINFO_ENDPOINT_ACCESS_TOKEN_VALIDATOR = "UserInfoEndpointAccessTokenValidator";
         public static final String OPENID_CONNECT_USERINFO_ENDPOINT_RESPONSE_BUILDER = "UserInfoEndpointResponseBuilder";
+        public static final String OPENID_CONNECT_USERINFO_JWT_SIGNATURE_ALGORITHM = "UserInfoJWTSignatureAlgorithm";
         public static final String OPENID_CONNECT_SIGN_JWT_WITH_SP_KEY = "SignJWTWithSPKey";
         public static final String OPENID_CONNECT_IDTOKEN_CUSTOM_CLAIM_CALLBACK_HANDLER = "IDTokenCustomClaimsCallBackHandler";
         public static final String SUPPORTED_CLAIMS = "OpenIDConnectClaims";
@@ -2033,6 +2064,7 @@ public class OAuthServerConfiguration {
 
         // Property to decide whether to pick the user tenant domain or SP tenant domain.
         private static final String OAUTH_USE_SP_TENANT_DOMAIN = "UseSPTenantDomain";
+        private static final String MAP_FED_USERS_TO_LOCAL = "MapFederatedUsersToLocal";
     }
 
 }

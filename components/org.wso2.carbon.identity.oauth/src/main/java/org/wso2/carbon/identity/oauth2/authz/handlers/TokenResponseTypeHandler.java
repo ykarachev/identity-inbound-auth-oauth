@@ -33,6 +33,7 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
+import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
@@ -125,7 +126,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
             // check if valid access token exists in cache
             if (cacheEnabled) {
-                AccessTokenDO accessTokenDO = (AccessTokenDO) oauthCache.getValueFromCache(cacheKey);
+                AccessTokenDO accessTokenDO = (AccessTokenDO) OAuthCache.getInstance().getValueFromCache(cacheKey);
                 if (accessTokenDO != null) {
                     if (log.isDebugEnabled()) {
                         log.debug("Retrieved active Access Token" +
@@ -177,7 +178,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                         }
 
                         // Token is expired. Clear it from cache
-                        oauthCache.clearCacheEntry(cacheKey);
+                        OAuthCache.getInstance().clearCacheEntry(cacheKey);
 
                         if (log.isDebugEnabled()) {
                             log.debug("Access Token is expired. Therefore cleared it from cache and marked it" +
@@ -221,7 +222,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                     }
 
                     if (cacheEnabled) {
-                        oauthCache.addToCache(cacheKey, existingAccessTokenDO);
+                        OAuthCache.getInstance().addToCache(cacheKey, existingAccessTokenDO);
                         if (log.isDebugEnabled()) {
                             log.debug("Access Token was added to cache for cache key : "
                                     + cacheKey.getCacheKeyString());
@@ -399,10 +400,10 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
             // Add the access token to the cache.
             if (cacheEnabled) {
-                oauthCache.addToCache(cacheKey, newAccessTokenDO);
+                OAuthCache.getInstance().addToCache(cacheKey, newAccessTokenDO);
                 // Adding AccessTokenDO to improve validation performance
                 OAuthCacheKey accessTokenCacheKey = new OAuthCacheKey(accessToken);
-                oauthCache.addToCache(accessTokenCacheKey, newAccessTokenDO);
+                OAuthCache.getInstance().addToCache(accessTokenCacheKey, newAccessTokenDO);
                 if (log.isDebugEnabled()) {
                     log.debug("Access Token was added to OAuthCache for cache key : " + cacheKey.getCacheKeyString());
                     log.debug("Access Token was added to OAuthCache for cache key : " + accessTokenCacheKey

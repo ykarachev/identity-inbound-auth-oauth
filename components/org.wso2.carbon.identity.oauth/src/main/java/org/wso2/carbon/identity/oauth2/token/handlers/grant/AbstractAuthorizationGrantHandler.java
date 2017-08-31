@@ -67,11 +67,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     public void init() throws IdentityOAuth2Exception {
         tokenMgtDAO = new TokenMgtDAO();
         callbackManager = new OAuthCallbackManager();
-        // Set the cache instance if caching is enabled.
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            if (log.isDebugEnabled()) {
-                log.debug("Initializing Oauth Cache.");
-            }
+        // Check whether OAuth caching is enabled.
+        if (OAuthCache.getInstance().isEnabled()) {
             cacheEnabled = true;
             oauthCache = OAuthCache.getInstance();
         }

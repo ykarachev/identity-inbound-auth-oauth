@@ -36,6 +36,7 @@ import org.apache.oltu.oauth2.as.validator.TokenValidator;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.apache.oltu.oauth2.common.validators.OAuthValidator;
+import org.wso2.carbon.identity.application.common.cache.BaseCache;
 import org.wso2.carbon.identity.core.util.IdentityConfigParser;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -116,7 +117,7 @@ public class OAuthServerConfiguration {
     private OAuthIssuer oauthTokenGenerator;
     private String oauthIdentityTokenGeneratorClassName;
     private OauthTokenIssuer oauthIdentityTokenGenerator;
-    private boolean cacheEnabled = true;
+    private boolean cacheEnabled = false;
     private boolean isRefreshTokenRenewalEnabled = true;
     private boolean assertionsUserNameEnabled = false;
     private boolean accessTokenPartitioningEnabled = false;
@@ -246,9 +247,6 @@ public class OAuthServerConfiguration {
 
         // read OAuth URLs
         parseOAuthURLs(oauthElem);
-
-        // read caching configurations
-        parseCachingConfiguration(oauthElem);
 
         // read refresh token renewal config
         parseRefreshTokenRenewalConfiguration(oauthElem);
@@ -474,6 +472,10 @@ public class OAuthServerConfiguration {
         return timeStampSkewInSeconds;
     }
 
+    /**
+     * @deprecated  From v5.1.3 use @{@link BaseCache#isEnabled()} to check whether a cache is enabled or not instead
+     * of relying on <EnableOAuthCache> global Cache config
+     */
     public boolean isCacheEnabled() {
         return cacheEnabled;
     }
@@ -1357,18 +1359,6 @@ public class OAuthServerConfiguration {
             if (StringUtils.isNotBlank(elem.getText())) {
                 oauth2ErrorPageUrl = IdentityUtil.fillURLPlaceholders(elem.getText());
             }
-        }
-    }
-
-    private void parseCachingConfiguration(OMElement oauthConfigElem) {
-        OMElement enableCacheElem =
-                oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.ENABLE_CACHE));
-        if (enableCacheElem != null) {
-            cacheEnabled = Boolean.parseBoolean(enableCacheElem.getText());
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("Enable OAuth Cache was set to : " + cacheEnabled);
         }
     }
 

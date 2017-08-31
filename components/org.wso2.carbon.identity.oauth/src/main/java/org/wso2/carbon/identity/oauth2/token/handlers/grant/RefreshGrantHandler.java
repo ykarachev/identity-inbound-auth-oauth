@@ -26,6 +26,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
@@ -312,18 +313,18 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             }
 
             OAuthCacheKey oauthCacheKey = new OAuthCacheKey(cacheKeyString);
-            oauthCache.clearCacheEntry(oauthCacheKey);
+            OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
 
             // Remove the old access token from the AccessTokenCache
             OAuthCacheKey accessTokenCacheKey = new OAuthCacheKey(oldAccessToken.getAccessToken());
-            oauthCache.clearCacheEntry(accessTokenCacheKey);
+            OAuthCache.getInstance().clearCacheEntry(accessTokenCacheKey);
 
             // Add new access token to the OAuthCache
-            oauthCache.addToCache(oauthCacheKey, accessTokenDO);
+            OAuthCache.getInstance().addToCache(oauthCacheKey, accessTokenDO);
 
             // Add new access token to the AccessTokenCache
             accessTokenCacheKey = new OAuthCacheKey(accessToken);
-            oauthCache.addToCache(accessTokenCacheKey, accessTokenDO);
+            OAuthCache.getInstance().addToCache(accessTokenCacheKey, accessTokenDO);
 
             if (log.isDebugEnabled()) {
                 log.debug("Access Token info for the refresh token was added to the cache for " +
@@ -354,7 +355,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         }
         tokenRespDTO.setAuthorizedScopes(scope);
 
-        ArrayList<ResponseHeader> respHeaders = new ArrayList<ResponseHeader>();
+        ArrayList<ResponseHeader> respHeaders = new ArrayList<>();
         ResponseHeader header = new ResponseHeader();
         header.setKey("DeactivatedAccessToken");
         header.setValue(oldAccessToken.getAccessToken());
@@ -370,11 +371,11 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     public boolean validateScope(OAuthTokenReqMessageContext tokReqMsgCtx)
             throws IdentityOAuth2Exception {
 
-        /**
-         * The requested scope MUST NOT include any scope
-         * not originally granted by the resource owner, and if omitted is
-         * treated as equal to the scope originally granted by the
-         * resource owner
+        /*
+          The requested scope MUST NOT include any scope
+          not originally granted by the resource owner, and if omitted is
+          treated as equal to the scope originally granted by the
+          resource owner
          */
         String[] requestedScopes = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getScope();
         String[] grantedScopes = tokReqMsgCtx.getScope();
@@ -421,10 +422,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
 
         // Remove the old access token from the OAuthCache
         OAuthCacheKey oauthCacheKey = new OAuthCacheKey(cacheKeyString);
-        oauthCache.clearCacheEntry(oauthCacheKey);
+        OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
 
         // Remove the old access token from the AccessTokenCache
         OAuthCacheKey accessTokenCacheKey = new OAuthCacheKey(accessToken);
-        oauthCache.clearCacheEntry(accessTokenCacheKey);
+        OAuthCache.getInstance().clearCacheEntry(accessTokenCacheKey);
     }
 }

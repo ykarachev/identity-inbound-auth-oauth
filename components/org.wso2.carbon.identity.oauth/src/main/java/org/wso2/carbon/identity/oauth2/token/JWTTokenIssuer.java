@@ -36,9 +36,9 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
-import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.openidconnect.CustomClaimsCallbackHandler;
 
@@ -134,7 +134,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
         // Set claims to jwt token.
         JWTClaimsSet jwtClaimsSet = createJWTClaimSet(null, request, request.getOauth2AccessTokenReqDTO()
-                .getClientId());
+                    .getClientId());
 
         if (Arrays.asList((request.getScope())).contains(AUDIENCE)) {
             jwtClaimsSet.setAudience(Arrays.asList(request.getScope()));
@@ -154,8 +154,7 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
      * @return Signed jwt string.
      * @throws IdentityOAuth2Exception
      */
-    protected String buildJWTToken(OAuthAuthzReqMessageContext request)
-            throws IdentityOAuth2Exception {
+    protected String buildJWTToken(OAuthAuthzReqMessageContext request) throws IdentityOAuth2Exception {
 
         // Set claims to jwt token.
         JWTClaimsSet jwtClaimsSet = createJWTClaimSet(request, null, request.getAuthorizationReqDTO().getConsumerKey());
@@ -338,13 +337,20 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
 
         String issuer = OAuth2Util.getIDTokenIssuer();
         int tenantId = OAuth2Util.getTenantId(user.getTenantDomain());
-        SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util.getSpTokenExpiryTimeConfig(consumerKey, tenantId);
+        // loading the stored application data
+        OAuthAppDO oAuthAppDO = null;
+        try {
+            oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception("Error while retrieving app information for clientId: "
+                    + consumerKey, e);
+        }
 
         long lifetimeInMillis = OAuthServerConfiguration.getInstance()
                 .getApplicationAccessTokenValidityPeriodInSeconds() * 1000;
 
-        if (spTimeConfigObj.getApplicationAccessTokenExpiryTime() != null) {
-            lifetimeInMillis = spTimeConfigObj.getApplicationAccessTokenExpiryTime();
+        if (oAuthAppDO.getApplicationAccessTokenExpiryTime() != 0) {
+            lifetimeInMillis = oAuthAppDO.getApplicationAccessTokenExpiryTime() * 1000;
         }
 
         long curTimeInMillis = Calendar.getInstance().getTimeInMillis();

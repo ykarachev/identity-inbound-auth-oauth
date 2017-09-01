@@ -209,7 +209,6 @@ public class OAuth2Util {
 
     private static Map<Integer, Certificate> publicCerts = new ConcurrentHashMap<Integer, Certificate>();
     private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<Integer, Key>();
-    private static final String kid = "d0ec514a32b6f88c0abd12a2840699bdd3deba9d";
 
     // Supported Signature Algorithms
     private static final String NONE = "NONE";
@@ -1510,7 +1509,7 @@ public class OAuth2Util {
             Key privateKey = getPrivateKey(tenantDomain, tenantId);
             JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
             JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
-            header.setKeyID(kid);
+            header.setKeyID(getThumbPrint(tenantDomain, tenantId));
             header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
             SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
             signedJWT.sign(signer);
@@ -1565,7 +1564,7 @@ public class OAuth2Util {
      * @param tenantId
      * @throws IdentityOAuth2Exception
      */
-    private static String getThumbPrint(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
+    public static String getThumbPrint(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
 
         try {
 

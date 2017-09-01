@@ -229,7 +229,7 @@ paths:
       description: |
          This API is used to update a scope by scope name.
       x-wso2-request: |
-        curl -X PUT -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "Content-Type: application/json" -d '{"name": "profile", "description": "get all profile information", "bindings": ["role3", "role4"]}' "https://localhost:9443/api/identity/oauth2/v1.0/scopes/name/profile"
+        curl -X PUT -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "Content-Type: application/json" -d '{"description": "get all profile information", "bindings": ["role3", "role4"]}' "https://localhost:9443/api/identity/oauth2/v1.0/scopes/name/profile"
 
       x-wso2-response: |
         "HTTP/1.1 200 OK"

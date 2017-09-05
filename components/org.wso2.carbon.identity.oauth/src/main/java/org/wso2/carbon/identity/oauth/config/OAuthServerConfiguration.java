@@ -127,7 +127,7 @@ public class OAuthServerConfiguration {
     private Map<String, String> supportedGrantTypeClassNames = new HashMap<>();
     private Map<String, Boolean> refreshTokenAllowedGrantTypes = new HashMap<>();
     private Map<String, String> idTokenAllowedForGrantTypesMap = new HashMap<>();
-    private Set<String> idTokenAllowedGrantTypesSet = new HashSet<>();
+    private Set<String> idTokenNotAllowedGrantTypesSet = new HashSet<>();
     private Map<String, AuthorizationGrantHandler> supportedGrantTypes;
     private Map<String, String> supportedGrantTypeValidatorNames = new HashMap<>();
     private Map<String, Class<? extends OAuthValidator<HttpServletRequest>>> supportedGrantTypeValidators;
@@ -724,8 +724,8 @@ public class OAuthServerConfiguration {
         return idTokenAllowedForGrantTypesMap;
     }
 
-    public Set<String> getIdTokenAllowedGrantTypesSet() {
-        return idTokenAllowedGrantTypesSet;
+    public Set<String> getIdTokenNotAllowedGrantTypesSet() {
+        return idTokenNotAllowedGrantTypesSet;
     }
 
     public boolean isUserNameAssertionEnabled() {
@@ -1515,8 +1515,8 @@ public class OAuthServerConfiguration {
                 if (StringUtils.isNotEmpty(grantTypeName) && StringUtils.isNotEmpty(idTokenAllowed)) {
                     idTokenAllowedForGrantTypesMap.put(grantTypeName, idTokenAllowed);
 
-                    if (Boolean.parseBoolean(idTokenAllowed)) {
-                        idTokenAllowedGrantTypesSet.add(grantTypeName);
+                    if (!Boolean.parseBoolean(idTokenAllowed)) {
+                        idTokenNotAllowedGrantTypesSet.add(grantTypeName);
                     }
                 }
 

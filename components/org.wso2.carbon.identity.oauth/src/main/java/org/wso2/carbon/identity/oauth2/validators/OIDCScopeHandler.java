@@ -38,14 +38,14 @@ public class OIDCScopeHandler extends OAuth2ScopeHandler {
     @Override
     public boolean validateScope(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
 
-        Set<String> idTokenAllowedGrantTypesSet = OAuthServerConfiguration.getInstance()
-                .getIdTokenAllowedGrantTypesSet();
+        Set<String> idTokenNotAllowedGrantTypesSet = OAuthServerConfiguration.getInstance()
+                .getIdTokenNotAllowedGrantTypesSet();
         String grantType = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType();
         // validating the authorization_code grant type with openid scope ignoring the IdTokenAllowed element defined
         // in the identity.xml
         if (GrantType.AUTHORIZATION_CODE.toString().equals(grantType)) {
             return true;
-        } else if (idTokenAllowedGrantTypesSet.contains(grantType)) {
+        } else if (!idTokenNotAllowedGrantTypesSet.contains(grantType)) {
             // if id_token is allowed for requested grant type.
             return true;
         } else {

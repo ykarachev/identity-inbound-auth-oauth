@@ -17,9 +17,6 @@
  */
 package org.wso2.carbon.identity.oauth.endpoint.authz;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSVerifier;
-import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.SignedJWT;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections.CollectionUtils;
@@ -36,7 +33,6 @@ import org.apache.oltu.oauth2.common.message.OAuthResponse;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
-import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.CommonAuthenticationHandler;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationResultCacheEntry;
@@ -49,7 +45,7 @@ import org.wso2.carbon.identity.application.authentication.framework.util.Framew
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.Claim;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
-import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
@@ -59,10 +55,7 @@ import org.wso2.carbon.identity.oauth.cache.SessionDataCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.SessionDataCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
-import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
-import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.endpoint.OAuthRequestWrapper;
 import org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil;
 import org.wso2.carbon.identity.oauth.endpoint.util.OpenIDConnectUserRPStore;
@@ -78,7 +71,6 @@ import org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtil;
 import org.wso2.carbon.registry.core.utils.UUIDGenerator;
 import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
-import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -88,7 +80,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -123,7 +114,7 @@ public class OAuth2AuthzEndpoint {
     private static final String REDIRECT_URI = "redirect_uri";
     private static final String RESPONSE_MODE_FORM_POST = "form_post";
     private static final String RESPONSE_MODE = "response_mode";
-    private static final String AUTHENTICATION_RESULT_ERROR_PARAM_KEY = "AuthenticationError";
+
     private static final String formPostRedirectPage = getFormPostRedirectPage();
 
     private static String getFormPostRedirectPage() {
@@ -350,15 +341,7 @@ public class OAuth2AuthzEndpoint {
 
                     } else {
 
-                        OAuthProblemException oauthException;
-                        Object authError =
-                                authnResult.getProperty(AUTHENTICATION_RESULT_ERROR_PARAM_KEY);
-                        if (authError != null && authError instanceof OAuthProblemException) {
-                            oauthException = (OAuthProblemException) authError;
-                        } else {
-                            oauthException = OAuthProblemException.error(OAuth2ErrorCodes.LOGIN_REQUIRED,
-                                                                         "Authentication required");
-                        }
+                        OAuthProblemException oauthException = buildOAuthProblemException(authnResult);
                         redirectURL = EndpointUtil.getErrorRedirectURL(oauthException, oauth2Params);
                         if (isOIDCRequest) {
                             Cookie opBrowserStateCookie = OIDCSessionManagementUtil.getOPBrowserStateCookie(request);
@@ -1402,5 +1385,38 @@ public class OAuth2AuthzEndpoint {
             }
         }
         return authTime;
+    }
+
+
+    /**
+     * Build OAuthProblem exception based on error details sent by the Framework as properties in the
+     * AuthenticationResult object.
+     *
+     * @param authenticationResult
+     * @return
+     */
+    private OAuthProblemException buildOAuthProblemException (AuthenticationResult authenticationResult) {
+
+        final String DEFAULT_ERROR_MSG = "Authentication required";
+        String errorCode = String.valueOf(authenticationResult.getProperty(FrameworkConstants.AUTH_ERROR_CODE));
+        String errorMessage = String.valueOf(authenticationResult.getProperty(FrameworkConstants.AUTH_ERROR_MSG));
+        String errorUri = String.valueOf(authenticationResult.getProperty(FrameworkConstants.AUTH_ERROR_URI));
+
+        if (IdentityUtil.isBlank(errorCode)) {
+            // if there is no custom error code sent from framework we set our default error code
+            errorCode = OAuth2ErrorCodes.LOGIN_REQUIRED;
+        }
+
+        if (IdentityUtil.isBlank(errorMessage)) {
+            // if there is no custom error message sent from framework we set our default error message
+            errorMessage = DEFAULT_ERROR_MSG;
+        }
+
+        if (IdentityUtil.isNotBlank(errorUri)) {
+            // if there is a error uri sent in the authentication result we add that to the exception
+            return OAuthProblemException.error(errorCode, errorMessage).uri(errorUri);
+        } else {
+            return OAuthProblemException.error(errorCode, errorMessage);
+        }
     }
 }

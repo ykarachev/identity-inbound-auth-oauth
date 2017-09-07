@@ -89,6 +89,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
     private static final String EMAIL_VERIFIED = "email_verified";
     private static final String ADDRESS_PREFIX = "address.";
+    private static final String ADDRESS = "address";
 
     private static String userAttributeSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
 
@@ -593,7 +594,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                                                        Map<String, Object> claims) {
         Resource oidcScopesResource = null;
         String requestedScopeClaims = null;
-        String addressValues = null;
+        String addressScopeClaims = null;
         String[] arrRequestedScopeClaims = null;
         Map<String, Object> returnClaims = new HashMap<>();
         Map<String, Object> claimsforAddressScope = new HashMap<>();
@@ -611,7 +612,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             PrivilegedCarbonContext.endTenantFlow();
         }
         if (oidcScopesResource != null && oidcScopesResource.getProperties() != null) {
-            addressValues = oidcScopesResource.getProperty("address");
+            addressScopeClaims = oidcScopesResource.getProperty(ADDRESS);
         }
 
         for (String requestedScope : requestedScopes) {
@@ -628,13 +629,13 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                             arrRequestedScopeClaims[0] = requestedScopeClaims;
                         }
                         for (Map.Entry<String, Object> entry : claims.entrySet()) {
-                            String requestedClaims = entry.getKey();
-                            if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaims)) {
+                            String requestedClaim = entry.getKey();
+                            if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaim)) {
                                 // Address claim is handled for both ways, where address claims are sent as "address."
                                 // prefix or in address scope.
-                                if (requestedClaims.contains(ADDRESS_PREFIX)) {
+                                if (requestedClaim.contains(ADDRESS_PREFIX)) {
                                     claimsforAddressScope.put(entry.getKey().substring(ADDRESS_PREFIX.length()), claims.get(entry.getKey()));
-                                } else if (addressValues.contains(requestedClaims)) {
+                                } else if (addressScopeClaims != null && addressScopeClaims.contains(requestedClaim)) {
                                     claimsforAddressScope.put(entry.getKey(), claims.get(entry.getKey()));
                                 } else {
                                     returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
@@ -651,7 +652,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             for (Map.Entry<String, Object> entry : claimsforAddressScope.entrySet()) {
                 jsonObject.put(entry.getKey(), entry.getValue());
             }
-            returnClaims.put("address", jsonObject);
+            returnClaims.put(ADDRESS, jsonObject);
         }
         if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
             if (returnClaims.get(UPDATED_AT) instanceof String) {

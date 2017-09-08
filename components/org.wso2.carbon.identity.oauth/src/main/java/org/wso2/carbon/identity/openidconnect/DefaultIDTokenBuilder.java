@@ -221,7 +221,8 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             if (authorizationGrantCacheEntry != null) {
                 nonceValue = authorizationGrantCacheEntry.getNonceValue();
                 acrValue = authorizationGrantCacheEntry.getAcrValue();
-                if (getEssentialClaimList(authorizationGrantCacheEntry.getEssentialClaims()).contains(OAuthConstants.OAuth20Params.AUTH_TIME)) {
+                if (OAuth2Util.getEssentialClaims(authorizationGrantCacheEntry.getEssentialClaims()
+                        , OAuthConstants.ID_TOKEN).contains(OAuthConstants.OAuth20Params.AUTH_TIME)) {
                     authTime = authorizationGrantCacheEntry.getAuthTime();
                 }
             }
@@ -650,29 +651,5 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
         return isValidIdToken;
     }
-
-    private ArrayList<String> getEssentialClaimList(String essentialClaims){
-        ArrayList<String> essentialClaimList = new ArrayList<>();
-        if (essentialClaims != null && essentialClaims.contains(OAuthConstants.ID_TOKEN)) {
-            JSONObject jsonObjectClaims = (new JSONObject(essentialClaims)).getJSONObject(OAuthConstants.ID_TOKEN);
-            if (jsonObjectClaims != null) {
-                Iterator<?> keys = jsonObjectClaims.keys();
-                while(keys.hasNext()){
-                    String claim = keys.next().toString();
-                    if(!jsonObjectClaims.get(claim).equals(null)) {
-                        JSONObject values = jsonObjectClaims.getJSONObject(claim);
-                        if(values != null && values.has(OAuthConstants.OAuth20Params.ESSENTIAL)) {
-                            Boolean isEssential = values.getBoolean(OAuthConstants.OAuth20Params.ESSENTIAL);
-                            if (isEssential == true) {
-                                essentialClaimList.add(claim);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return  essentialClaimList;
-    }
-
 }
 

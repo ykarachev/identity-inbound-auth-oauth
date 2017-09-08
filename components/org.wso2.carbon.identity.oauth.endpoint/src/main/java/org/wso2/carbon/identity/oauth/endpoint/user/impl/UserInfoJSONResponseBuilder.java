@@ -197,41 +197,12 @@ public class UserInfoJSONResponseBuilder implements UserInfoResponseBuilder {
         }
 
         if (StringUtils.isNotEmpty(cacheEntry.getEssentialClaims())) {
-            essentialClaims = getEssentialClaims(cacheEntry.getEssentialClaims());
+            essentialClaims = OAuth2Util.getEssentialClaims(cacheEntry.getEssentialClaims(),
+                    OAuthConstants.OAuth20Params.USERINFO);
         } else {
             essentialClaims = new ArrayList<>();
         }
         return cacheEntry.getUserAttributes();
-    }
-
-    private ArrayList<String> getEssentialClaims(String essentialClaims) {
-        JSONObject jsonObjectClaims = new JSONObject(essentialClaims);
-        String key;
-        ArrayList essentailClaimslist = new ArrayList();
-        if ((jsonObjectClaims != null) && jsonObjectClaims.toString().contains("userinfo")) {
-            JSONObject newJSON = jsonObjectClaims.getJSONObject("userinfo");
-            if (newJSON != null) {
-                Iterator<?> keys = newJSON.keys();
-                while (keys.hasNext()) {
-                    key = (String) keys.next();
-                    String value;
-                    value = newJSON.get(key).toString();
-                    JSONObject jsonObjectValues = new JSONObject(value);
-                    if (jsonObjectValues != null) {
-                        Iterator<?> claimKeyValues = jsonObjectValues.keys();
-                        while (claimKeyValues.hasNext()) {
-                            String claimKeys = (String) claimKeyValues.next();
-                            String claimValues = jsonObjectValues.get(claimKeys).toString();
-                            if (claimValues.equals("true") && claimKeys.equals("essential")) {
-                                essentailClaimslist.add(key);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return essentailClaimslist;
     }
 
     /**

@@ -166,6 +166,7 @@ public final class OAuthConstants {
         public static final String LOGIN_HINT = "login_hint";
         public static final String AUTH_TIME = "auth_time";
         public static final String ESSENTIAL = "essential";
+        public static final String USERINFO = "userinfo";
 
         private OAuth20Params() {
 

@@ -298,7 +298,7 @@ public class OAuthApplicationMgtListener extends AbstractApplicationMgtListener 
     private void storeSaaSPropertyValue(ServiceProvider serviceProvider, String tenantDomain) throws IdentityApplicationManagementException {
 
         ServiceProvider sp = OAuth2ServiceComponentHolder.getApplicationMgtService()
-                .getServiceProvider(serviceProvider.getApplicationName(), tenantDomain);
+                .getServiceProvider(serviceProvider.getApplicationID());
         IdentityUtil.threadLocalProperties.get().put(SAAS_PROPERTY, sp.isSaasApp());
     }
 

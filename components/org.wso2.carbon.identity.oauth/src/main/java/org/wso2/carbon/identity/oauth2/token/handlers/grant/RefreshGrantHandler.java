@@ -20,17 +20,20 @@ package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 
 import org.apache.axiom.util.base64.Base64Utils;
 import org.apache.commons.io.Charsets;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.ResponseHeader;
-import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -40,6 +43,7 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -56,7 +60,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
             throws IdentityOAuth2Exception {
 
-        if (!super.validateGrant(tokReqMsgCtx)) {
+        if(!super.validateGrant(tokReqMsgCtx)){
             return false;
         }
 
@@ -78,7 +82,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                         validationDataDO.getRefreshTokenState()) &&
                 !OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(
                         validationDataDO.getRefreshTokenState())) {
-            if (log.isDebugEnabled()) {
+            if(log.isDebugEnabled()) {
                 log.debug("Access Token is not in 'ACTIVE' or 'EXPIRED' state for Client with " +
                         "Client Id : " + tokenReqDTO.getClientId());
             }
@@ -107,7 +111,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                 }
                 if (cacheEnabled) {
                     clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(),
-                            validationDataDO.getScope(), validationDataDO.getAccessToken());
+                               validationDataDO.getScope(), validationDataDO.getAccessToken());
                 }
                 return false;
             } else {
@@ -132,8 +136,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
 
             if (log.isDebugEnabled()) {
                 log.debug("Refresh token validation successful for Client id : " + tokenReqDTO.getClientId() +
-                        ", Authorized User : " + validationDataDO.getAuthorizedUser() +
-                        ", Token Scope : " + OAuth2Util.buildScopeString(validationDataDO.getScope()));
+                          ", Authorized User : " + validationDataDO.getAuthorizedUser() +
+                          ", Token Scope : " + OAuth2Util.buildScopeString(validationDataDO.getScope()));
             }
         }
 
@@ -152,14 +156,21 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         OAuth2AccessTokenRespDTO tokenRespDTO = new OAuth2AccessTokenRespDTO();
         OAuth2AccessTokenReqDTO oauth2AccessTokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
         String scope = OAuth2Util.buildScopeString(tokReqMsgCtx.getScope());
-        SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util
-                .getSpTokenExpiryTimeConfig(oauth2AccessTokenReqDTO.getClientId(), OAuth2Util
-                        .getTenantId(oauth2AccessTokenReqDTO.getTenantDomain()));
+        // loading the stored application data
+        OAuthAppDO oAuthAppDO = null;
+        try {
+            oAuthAppDO = OAuth2Util.getAppInformationByClientId(oauth2AccessTokenReqDTO.getClientId());
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception("Error while retrieving app information for clientId: "
+                    + oauth2AccessTokenReqDTO.getClientId(), e);
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("Service Provider specific expiry time enabled for application : " +
-                    oauth2AccessTokenReqDTO.getClientId() + ". Application access token expiry time : " + spTimeConfigObj.getApplicationAccessTokenExpiryTime() +
-                    ", User access token expiry time : " + spTimeConfigObj.getUserAccessTokenExpiryTime() + ", Refresh token expiry time : " +
-                    spTimeConfigObj.getRefreshTokenExpiryTime());
+                    oauth2AccessTokenReqDTO.getClientId() + ". Application access token expiry time : " +
+                    oAuthAppDO.getApplicationAccessTokenExpiryTime() + ", User access token expiry time : " +
+                    oAuthAppDO.getUserAccessTokenExpiryTime() + ", Refresh token expiry time : "
+                    + oAuthAppDO.getRefreshTokenExpiryTime());
         }
 
         String tokenId;
@@ -211,8 +222,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
 
         // Default Validity Period (in seconds)
         long validityPeriodInMillis = 0;
-        if (spTimeConfigObj.getUserAccessTokenExpiryTime() != null) {
-            validityPeriodInMillis = spTimeConfigObj.getUserAccessTokenExpiryTime();
+        if (oAuthAppDO.getUserAccessTokenExpiryTime() != 0) {
+            validityPeriodInMillis = oAuthAppDO.getUserAccessTokenExpiryTime() * 1000;
         } else {
             validityPeriodInMillis = OAuthServerConfiguration.getInstance()
                     .getUserAccessTokenValidityPeriodInSeconds() * 1000;
@@ -227,8 +238,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         // If issuing new refresh token, use default refresh token validity Period
         // otherwise use existing refresh token's validity period
         if (refreshTokenValidityPeriodInMillis == 0) {
-            if (spTimeConfigObj.getRefreshTokenExpiryTime() != null) {
-                refreshTokenValidityPeriodInMillis = spTimeConfigObj.getRefreshTokenExpiryTime();
+            if (oAuthAppDO.getRefreshTokenExpiryTime() != 0) {
+                refreshTokenValidityPeriodInMillis = oAuthAppDO.getRefreshTokenExpiryTime() * 1000;
             } else {
                 refreshTokenValidityPeriodInMillis = OAuthServerConfiguration.getInstance()
                         .getRefreshTokenValidityPeriodInSeconds() * 1000;
@@ -287,10 +298,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                 (RefreshTokenValidationDataDO) tokReqMsgCtx.getProperty(PREV_ACCESS_TOKEN);
 
         String authorizedUser = tokReqMsgCtx.getAuthorizedUser().toString();
-        // set the previous access token state to "INACTIVE" and store new access token in single db connection
-        tokenMgtDAO.invalidateAndCreateNewToken(oldAccessToken.getTokenId(), OAuthConstants.TokenStates.TOKEN_STATE_INACTIVE, clientId,
-                UUID.randomUUID().toString(), accessTokenDO,
-                userStoreDomain);
+	    // set the previous access token state to "INACTIVE" and store new access token in single db connection
+	    tokenMgtDAO.invalidateAndCreateNewToken(oldAccessToken.getTokenId(), OAuthConstants.TokenStates.TOKEN_STATE_INACTIVE, clientId,
+	                                            UUID.randomUUID().toString(), accessTokenDO,
+	                                            userStoreDomain);
         if (!accessToken.equals(accessTokenDO.getAccessToken())) {
             // Using latest active token.
             accessToken = accessTokenDO.getAccessToken();
@@ -309,18 +320,18 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             }
 
             OAuthCacheKey oauthCacheKey = new OAuthCacheKey(cacheKeyString);
-            oauthCache.clearCacheEntry(oauthCacheKey);
+            OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
 
             // Remove the old access token from the AccessTokenCache
             OAuthCacheKey accessTokenCacheKey = new OAuthCacheKey(oldAccessToken.getAccessToken());
-            oauthCache.clearCacheEntry(accessTokenCacheKey);
+            OAuthCache.getInstance().clearCacheEntry(accessTokenCacheKey);
 
             // Add new access token to the OAuthCache
-            oauthCache.addToCache(oauthCacheKey, accessTokenDO);
+            OAuthCache.getInstance().addToCache(oauthCacheKey, accessTokenDO);
 
             // Add new access token to the AccessTokenCache
             accessTokenCacheKey = new OAuthCacheKey(accessToken);
-            oauthCache.addToCache(accessTokenCacheKey, accessTokenDO);
+            OAuthCache.getInstance().addToCache(accessTokenCacheKey, accessTokenDO);
 
             if (log.isDebugEnabled()) {
                 log.debug("Access Token info for the refresh token was added to the cache for " +
@@ -351,25 +362,52 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         }
         tokenRespDTO.setAuthorizedScopes(scope);
 
-        ArrayList<ResponseHeader> respHeaders = new ArrayList<ResponseHeader>();
+        ArrayList<ResponseHeader> respHeaders = new ArrayList<>();
         ResponseHeader header = new ResponseHeader();
         header.setKey("DeactivatedAccessToken");
         header.setValue(oldAccessToken.getAccessToken());
         respHeaders.add(header);
 
-        tokReqMsgCtx.addProperty("RESPONSE_HEADERS", respHeaders.toArray(
+        tokReqMsgCtx.addProperty(OAuthConstants.RESPONSE_HEADERS_PROPERTY, respHeaders.toArray(
                 new ResponseHeader[respHeaders.size()]));
 
         return tokenRespDTO;
     }
 
+    @Override
+    public boolean validateScope(OAuthTokenReqMessageContext tokReqMsgCtx)
+            throws IdentityOAuth2Exception {
+
+        /*
+          The requested scope MUST NOT include any scope
+          not originally granted by the resource owner, and if omitted is
+          treated as equal to the scope originally granted by the
+          resource owner
+         */
+        String[] requestedScopes = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getScope();
+        String[] grantedScopes = tokReqMsgCtx.getScope();
+        if (ArrayUtils.isNotEmpty(requestedScopes)) {
+            if (ArrayUtils.isEmpty(grantedScopes)) {
+                return false;
+            }
+            List<String> grantedScopeList = Arrays.asList(grantedScopes);
+            for (String scope : requestedScopes) {
+                if (!grantedScopeList.contains(scope)) {
+                    return false;
+                }
+            }
+            tokReqMsgCtx.setScope(requestedScopes);
+        }
+        return super.validateScope(tokReqMsgCtx);
+    }
+
     private OAuth2AccessTokenRespDTO handleError(String errorCode, String errorMsg,
-                                                 OAuth2AccessTokenReqDTO tokenReqDTO) {
+            OAuth2AccessTokenReqDTO tokenReqDTO) {
         if (log.isDebugEnabled()) {
             log.debug("OAuth-Error-Code=" + errorCode + " client-id=" + tokenReqDTO.getClientId()
-                    + " grant-type=" + tokenReqDTO.getGrantType()
-                    + " scope=" + OAuth2Util.buildScopeString(tokenReqDTO.getScope()));
-        }
+                + " grant-type=" + tokenReqDTO.getGrantType()
+                + " scope=" + OAuth2Util.buildScopeString(tokenReqDTO.getScope()));
+    	}
         OAuth2AccessTokenRespDTO tokenRespDTO;
         tokenRespDTO = new OAuth2AccessTokenRespDTO();
         tokenRespDTO.setError(true);
@@ -391,10 +429,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
 
         // Remove the old access token from the OAuthCache
         OAuthCacheKey oauthCacheKey = new OAuthCacheKey(cacheKeyString);
-        oauthCache.clearCacheEntry(oauthCacheKey);
+        OAuthCache.getInstance().clearCacheEntry(oauthCacheKey);
 
         // Remove the old access token from the AccessTokenCache
         OAuthCacheKey accessTokenCacheKey = new OAuthCacheKey(accessToken);
-        oauthCache.clearCacheEntry(accessTokenCacheKey);
+        OAuthCache.getInstance().clearCacheEntry(accessTokenCacheKey);
     }
 }

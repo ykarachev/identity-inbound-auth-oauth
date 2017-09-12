@@ -33,14 +33,16 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
+import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
-import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -83,6 +85,14 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         String responseType = oauthAuthzMsgCtx.getAuthorizationReqDTO().getResponseType();
         String grantType;
 
+        // Loading the stored application data.
+        OAuthAppDO oAuthAppDO = null;
+        try {
+            oAuthAppDO = OAuth2Util.getAppInformationByClientId(consumerKey);
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception("Error while retrieving app information for clientId: " + consumerKey, e);
+        }
+
         if (StringUtils.contains(responseType, OAuthConstants.GrantTypes.TOKEN)) {
             grantType = OAuthConstants.GrantTypes.IMPLICIT;
         } else {
@@ -105,13 +115,11 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                 OAuth2Util.checkUserNameAssertionEnabled()) {
             userStoreDomain = OAuth2Util.getUserStoreDomainFromUserId(authorizedUser);
         }
-        SpOAuth2ExpiryTimeConfiguration spTimeConfigObj = OAuth2Util
-                .getSpTokenExpiryTimeConfig(consumerKey, OAuth2Util
-                        .getTenantId(authorizationReqDTO.getUser().getTenantDomain()));
         if (log.isDebugEnabled()) {
-            log.debug("Service Provider specific expiry time enabled for application : " + consumerKey + ". Application access token expiry time : " + spTimeConfigObj.getApplicationAccessTokenExpiryTime() +
-                    ", User access token expiry time : " + spTimeConfigObj.getUserAccessTokenExpiryTime() + ", Refresh token expiry time : " +
-                    spTimeConfigObj.getRefreshTokenExpiryTime());
+            log.debug("Service Provider specific expiry time enabled for application : " + consumerKey +
+                    ". Application access token expiry time : " + oAuthAppDO.getApplicationAccessTokenExpiryTime()
+                    + ", User access token expiry time : " + oAuthAppDO.getUserAccessTokenExpiryTime() +
+                    ", Refresh token expiry time : " + oAuthAppDO.getRefreshTokenExpiryTime());
         }
 
         String refreshToken = null;
@@ -124,7 +132,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
             // check if valid access token exists in cache
             if (cacheEnabled) {
-                AccessTokenDO accessTokenDO = (AccessTokenDO) oauthCache.getValueFromCache(cacheKey);
+                AccessTokenDO accessTokenDO = (AccessTokenDO) OAuthCache.getInstance().getValueFromCache(cacheKey);
                 if (accessTokenDO != null) {
                     if (log.isDebugEnabled()) {
                         log.debug("Retrieved active Access Token" +
@@ -152,7 +160,12 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                         }
                         respDTO.setScope(oauthAuthzMsgCtx.getApprovedScope());
                         respDTO.setTokenType(accessTokenDO.getTokenType());
-                        buildIdToken(oauthAuthzMsgCtx, respDTO);
+
+                        // we only need to deal with id_token and user attributes if the request is OIDC
+                        if (isOIDCRequest(oauthAuthzMsgCtx)) {
+                            buildIdToken(oauthAuthzMsgCtx, respDTO);
+                        }
+
                         triggerPostListeners(oauthAuthzMsgCtx, accessTokenDO, respDTO);
                         return respDTO;
                     } else {
@@ -171,7 +184,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                         }
 
                         // Token is expired. Clear it from cache
-                        oauthCache.clearCacheEntry(cacheKey);
+                        OAuthCache.getInstance().clearCacheEntry(cacheKey);
 
                         if (log.isDebugEnabled()) {
                             log.debug("Access Token is expired. Therefore cleared it from cache and marked it" +
@@ -215,7 +228,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                     }
 
                     if (cacheEnabled) {
-                        oauthCache.addToCache(cacheKey, existingAccessTokenDO);
+                        OAuthCache.getInstance().addToCache(cacheKey, existingAccessTokenDO);
                         if (log.isDebugEnabled()) {
                             log.debug("Access Token was added to cache for cache key : "
                                     + cacheKey.getCacheKeyString());
@@ -233,7 +246,11 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
                     respDTO.setScope(oauthAuthzMsgCtx.getApprovedScope());
                     respDTO.setTokenType(existingAccessTokenDO.getTokenType());
 
-                    buildIdToken(oauthAuthzMsgCtx, respDTO);
+                    // we only need to deal with id_token and user attributes if the request is OIDC
+                    if (isOIDCRequest(oauthAuthzMsgCtx)) {
+                        buildIdToken(oauthAuthzMsgCtx, respDTO);
+                    }
+
                     triggerPostListeners(oauthAuthzMsgCtx, existingAccessTokenDO, respDTO);
                     return respDTO;
 
@@ -286,8 +303,8 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             // Default token validity Period
             long validityPeriodInMillis = OAuthServerConfiguration.getInstance().
                     getUserAccessTokenValidityPeriodInSeconds() * 1000;
-            if (spTimeConfigObj.getUserAccessTokenExpiryTime() != null) {
-                validityPeriodInMillis = spTimeConfigObj.getUserAccessTokenExpiryTime();
+            if (oAuthAppDO.getUserAccessTokenExpiryTime() != 0) {
+                validityPeriodInMillis = oAuthAppDO.getUserAccessTokenExpiryTime() * 1000;
             }
 
             // if a VALID validity period is set through the callback, then use it
@@ -299,8 +316,8 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             // If issuing new refresh token, use default refresh token validity Period
             // otherwise use existing refresh token's validity period
             if (refreshTokenValidityPeriodInMillis == 0) {
-                if (spTimeConfigObj.getRefreshTokenExpiryTime() != null) {
-                    refreshTokenValidityPeriodInMillis = spTimeConfigObj.getRefreshTokenExpiryTime();
+                if (oAuthAppDO.getRefreshTokenExpiryTime() != 0) {
+                    refreshTokenValidityPeriodInMillis = oAuthAppDO.getRefreshTokenExpiryTime() * 1000;
                 } else {
                     refreshTokenValidityPeriodInMillis = OAuthServerConfiguration.getInstance()
                             .getRefreshTokenValidityPeriodInSeconds() * 1000;
@@ -389,10 +406,10 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
 
             // Add the access token to the cache.
             if (cacheEnabled) {
-                oauthCache.addToCache(cacheKey, newAccessTokenDO);
+                OAuthCache.getInstance().addToCache(cacheKey, newAccessTokenDO);
                 // Adding AccessTokenDO to improve validation performance
                 OAuthCacheKey accessTokenCacheKey = new OAuthCacheKey(accessToken);
-                oauthCache.addToCache(accessTokenCacheKey, newAccessTokenDO);
+                OAuthCache.getInstance().addToCache(accessTokenCacheKey, newAccessTokenDO);
                 if (log.isDebugEnabled()) {
                     log.debug("Access Token was added to OAuthCache for cache key : " + cacheKey.getCacheKeyString());
                     log.debug("Access Token was added to OAuthCache for cache key : " + accessTokenCacheKey
@@ -414,7 +431,11 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             }
         }
 
-        buildIdToken(oauthAuthzMsgCtx, respDTO);
+        // we only need to deal with id_token and user attributes if the request is OIDC
+        if (isOIDCRequest(oauthAuthzMsgCtx)) {
+            buildIdToken(oauthAuthzMsgCtx, respDTO);
+        }
+
         triggerPostListeners(oauthAuthzMsgCtx, tokenDO, respDTO);
         return respDTO;
     }
@@ -435,6 +456,18 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         }
     }
 
+    private boolean isOIDCRequest (OAuthAuthzReqMessageContext msgCtx) {
+
+        return msgCtx.getApprovedScope() != null && OAuth2Util.isOIDCAuthzRequest(msgCtx.getApprovedScope());
+    }
+
+    /**
+     * Handles caching user attributes and building the id_token for the OIDC implicit authz request.
+     *
+     * @param msgCtx
+     * @param authzRespDTO
+     * @throws IdentityOAuth2Exception
+     */
     private void buildIdToken(OAuthAuthzReqMessageContext msgCtx, OAuth2AuthorizeRespDTO authzRespDTO)
             throws IdentityOAuth2Exception {
 
@@ -442,8 +475,7 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             addUserAttributesToCache(authzRespDTO.getAccessToken(), msgCtx);
         }
 
-        if (StringUtils.contains(msgCtx.getAuthorizationReqDTO().getResponseType(), "id_token") &&
-                msgCtx.getApprovedScope() != null && OAuth2Util.isOIDCAuthzRequest(msgCtx.getApprovedScope())) {
+        if (StringUtils.contains(msgCtx.getAuthorizationReqDTO().getResponseType(), "id_token")) {
             IDTokenBuilder builder = OAuthServerConfiguration.getInstance().getOpenIDConnectIDTokenBuilder();
             authzRespDTO.setIdToken(builder.buildIDToken(msgCtx, authzRespDTO));
         }
@@ -459,28 +491,26 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             authorizationGrantCacheEntry.setEssentialClaims(authorizeReqDTO.getEssentialClaims());
         }
 
-        String sub = userAttributes.get(OAuth2Util.SUB);
+        ClaimMapping key = new ClaimMapping();
+        Claim claimOfKey = new Claim();
+        claimOfKey.setClaimUri(OAuth2Util.SUB);
+        key.setRemoteClaim(claimOfKey);
+        String sub = userAttributes.get(key);
 
-        AccessTokenDO accessTokenDO = (AccessTokenDO) msgCtx.getProperty(OAuth2Util.ACCESS_TOKEN_DO);
+        AccessTokenDO accessTokenDO = (AccessTokenDO)msgCtx.getProperty(OAuth2Util.ACCESS_TOKEN_DO);
         if (accessTokenDO != null && StringUtils.isNotBlank(accessTokenDO.getTokenId())) {
             authorizationGrantCacheEntry.setTokenId(accessTokenDO.getTokenId());
         }
 
         if (StringUtils.isBlank(sub)) {
-
             sub = authorizeReqDTO.getUser().getAuthenticatedSubjectIdentifier();
         }
 
         if (StringUtils.isNotBlank(sub)) {
-
-            ClaimMapping claimMapping = new ClaimMapping();
-            Claim claim = new Claim();
-            claim.setClaimUri(OAuth2Util.SUB);
-            claimMapping.setRemoteClaim(claim);
-            userAttributes.put(claimMapping, sub);
+            userAttributes.put(key, sub);
         }
 
         AuthorizationGrantCache.getInstance().addToCacheByToken(authorizationGrantCacheKey,
-                authorizationGrantCacheEntry);
+                                                                authorizationGrantCacheEntry);
     }
 }

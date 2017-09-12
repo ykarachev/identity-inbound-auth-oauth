@@ -18,7 +18,18 @@
 
 package org.wso2.carbon.identity.oauth2.util;
 
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSVerifier;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jose.Algorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.util.Base64URL;
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.impl.builder.StAXOMBuilder;
 import org.apache.commons.codec.binary.Base64;
@@ -29,7 +40,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
 import org.json.JSONObject;
-import org.wso2.carbon.base.CarbonBaseConstants;
+import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.base.IdentityException;
@@ -38,6 +49,7 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
+import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
@@ -50,7 +62,6 @@ import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
-import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -66,6 +77,10 @@ import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
+import javax.xml.namespace.QName;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -74,9 +89,15 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.security.Key;
+import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPublicKey;
+import java.security.cert.Certificate;
+import java.security.interfaces.RSAPrivateKey;
 import java.sql.Timestamp;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -87,12 +108,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.xml.namespace.QName;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
 
 /**
  * Utility methods for OAuth 2.0 implementation
@@ -182,14 +200,30 @@ public class OAuth2Util {
     public static final String APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS = "applicationAccessTokenExpireTime";
 
     private static Log log = LogFactory.getLog(OAuth2Util.class);
-    private static boolean cacheEnabled = OAuthServerConfiguration.getInstance().isCacheEnabled();
-    private static OAuthCache cache = OAuthCache.getInstance();
     private static long timestampSkew = OAuthServerConfiguration.getInstance().getTimeStampSkewInSeconds() * 1000;
     private static ThreadLocal<Integer> clientTenatId = new ThreadLocal<>();
-    private static ThreadLocal<OAuthTokenReqMessageContext> tokenRequestContext = new ThreadLocal<OAuthTokenReqMessageContext>();
-    private static ThreadLocal<OAuthAuthzReqMessageContext> authzRequestContext = new ThreadLocal<OAuthAuthzReqMessageContext>();
+    private static ThreadLocal<OAuthTokenReqMessageContext> tokenRequestContext = new ThreadLocal<>();
+    private static ThreadLocal<OAuthAuthzReqMessageContext> authzRequestContext = new ThreadLocal<>();
     //Precompile PKCE Regex pattern for performance improvement
     private static Pattern pkceCodeVerifierPattern = Pattern.compile("[\\w\\-\\._~]+");
+
+    private static Map<Integer, Certificate> publicCerts = new ConcurrentHashMap<Integer, Certificate>();
+    private static Map<Integer, Key> privateKeys = new ConcurrentHashMap<Integer, Key>();
+
+    // Supported Signature Algorithms
+    private static final String NONE = "NONE";
+    private static final String SHA256_WITH_RSA = "SHA256withRSA";
+    private static final String SHA384_WITH_RSA = "SHA384withRSA";
+    private static final String SHA512_WITH_RSA = "SHA512withRSA";
+    private static final String SHA256_WITH_HMAC = "SHA256withHMAC";
+    private static final String SHA384_WITH_HMAC = "SHA384withHMAC";
+    private static final String SHA512_WITH_HMAC = "SHA512withHMAC";
+    private static final String SHA256_WITH_EC = "SHA256withEC";
+    private static final String SHA384_WITH_EC = "SHA384withEC";
+    private static final String SHA512_WITH_EC = "SHA512withEC";
+    private static final String SHA256 = "SHA-256";
+    private static final String SHA384 = "SHA-384";
+    private static final String SHA512 = "SHA-512";
 
     private OAuth2Util(){
 
@@ -273,7 +307,7 @@ public class OAuth2Util {
      * @param tenantId
      */
     public static void setClientTenatId(int tenantId) {
-        Integer id = new Integer(tenantId);
+        Integer id = Integer.valueOf(tenantId);
         clientTenatId.set(id);
     }
 
@@ -332,16 +366,14 @@ public class OAuth2Util {
         String clientSecret = null;
 
         // Check the cache first.
-        if (cacheEnabled) {
-            CacheEntry cacheResult = cache.getValueFromCache(new OAuthCacheKey(clientId));
-            if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
-                ClientCredentialDO clientCredentialDO = (ClientCredentialDO) cacheResult;
-                clientSecret = clientCredentialDO.getClientSecret();
-                cacheHit = true;
-                if (log.isDebugEnabled()) {
-                    log.debug("Client credentials were available in the cache for client id : " +
-                            clientId);
-                }
+        CacheEntry cacheResult = OAuthCache.getInstance().getValueFromCache(new OAuthCacheKey(clientId));
+        if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
+            ClientCredentialDO clientCredentialDO = (ClientCredentialDO) cacheResult;
+            clientSecret = clientCredentialDO.getClientSecret();
+            cacheHit = true;
+            if (log.isDebugEnabled()) {
+                log.debug("Client credentials were available in the cache for client id : " +
+                        clientId);
             }
         }
 
@@ -375,9 +407,9 @@ public class OAuth2Util {
             log.debug("Successfully authenticated the client with client id : " + clientId);
         }
 
-        if (cacheEnabled && !cacheHit) {
+        if (!cacheHit) {
 
-            cache.addToCache(new OAuthCacheKey(clientId), new ClientCredentialDO(clientSecret));
+            OAuthCache.getInstance().addToCache(new OAuthCacheKey(clientId), new ClientCredentialDO(clientSecret));
             if (log.isDebugEnabled()) {
                 log.debug("Client credentials were added to the cache for client id : " + clientId);
             }
@@ -387,6 +419,8 @@ public class OAuth2Util {
     }
 
     /**
+     * @deprecated
+     *
      * Authenticate the OAuth consumer and return the username of user which own the provided client id and client
      * secret.
      *
@@ -404,19 +438,18 @@ public class OAuth2Util {
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(username);
 
         if (OAuth2Util.authenticateClient(clientId, clientSecretProvided)) {
-            // check cache
-            if (cacheEnabled) {
-                CacheEntry cacheResult = cache.getValueFromCache(new OAuthCacheKey(clientId + ":" + username));
-                if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
-                    // Ugh. This is fugly. Have to have a generic way of caching a key:value pair
-                    username = ((ClientCredentialDO) cacheResult).getClientSecret();
-                    cacheHit = true;
-                    if (log.isDebugEnabled()) {
-                        log.debug("Username was available in the cache : " +
-                                username);
-                    }
+
+            CacheEntry cacheResult =
+                    OAuthCache.getInstance().getValueFromCache(new OAuthCacheKey(clientId + ":" + username));
+            if (cacheResult != null && cacheResult instanceof ClientCredentialDO) {
+                // Ugh. This is fugly. Have to have a generic way of caching a key:value pair
+                username = ((ClientCredentialDO) cacheResult).getClientSecret();
+                cacheHit = true;
+                if (log.isDebugEnabled()) {
+                    log.debug("Username was available in the cache : " + username);
                 }
             }
+
 
             if (username == null) {
                 // Cache miss
@@ -427,17 +460,18 @@ public class OAuth2Util {
                 }
             }
 
-            if (username != null && cacheEnabled && !cacheHit) {
-                /**
-                 * Using the same ClientCredentialDO to host username. Semantically wrong since ClientCredentialDo
-                 * accept a client secret and we're storing a username in the secret variable. Do we have to make our
-                 * own cache key and cache entry class every time we need to put something to it? Ideal solution is
-                 * to have a generalized way of caching a key:value pair
+            if (username != null && !cacheHit) {
+                /*
+                  Using the same ClientCredentialDO to host username. Semantically wrong since ClientCredentialDo
+                  accept a client secret and we're storing a username in the secret variable. Do we have to make our
+                  own cache key and cache entry class every time we need to put something to it? Ideal solution is
+                  to have a generalized way of caching a key:value pair
                  */
                 if (isUsernameCaseSensitive) {
-                    cache.addToCache(new OAuthCacheKey(clientId + ":" + username), new ClientCredentialDO(username));
+                    OAuthCache.getInstance()
+                            .addToCache(new OAuthCacheKey(clientId + ":" + username), new ClientCredentialDO(username));
                 } else {
-                    cache.addToCache(new OAuthCacheKey(clientId + ":" + username.toLowerCase()),
+                    OAuthCache.getInstance().addToCache(new OAuthCacheKey(clientId + ":" + username.toLowerCase()),
                             new ClientCredentialDO(username));
                 }
                 if (log.isDebugEnabled()) {
@@ -588,16 +622,10 @@ public class OAuth2Util {
             throw new IllegalArgumentException("accessTokenDO is " + "\'NULL\'");
         }
 
-        long validityPeriodMillis = accessTokenDO.getValidityPeriodInMillis();
-        if(validityPeriodMillis < 0 && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)){
-            log.debug("Access Token : " + accessTokenDO.getAccessToken() + " has infinite lifetime");
-            return -1;
-        }
-
         long accessTokenValidity = getAccessTokenExpireMillis(accessTokenDO);
         long refreshTokenValidity = getRefreshTokenExpireTimeMillis(accessTokenDO);
 
-        if(accessTokenValidity > 1000 && refreshTokenValidity > 1000){
+        if (accessTokenValidity > 1000 && refreshTokenValidity > 1000) {
             return accessTokenValidity;
         }
         return 0;
@@ -612,13 +640,15 @@ public class OAuth2Util {
         long refreshTokenValidityPeriodMillis = accessTokenDO.getRefreshTokenValidityPeriodInMillis();
 
         if (refreshTokenValidityPeriodMillis < 0) {
-            log.debug("Refresh Token has infinite lifetime");
+            if (log.isDebugEnabled()) {
+                log.debug("Refresh Token has infinite lifetime");
+            }
             return -1;
         }
 
         long refreshTokenIssuedTime = accessTokenDO.getRefreshTokenIssuedTime().getTime();
         long refreshTokenValidity = calculateValidityInMillis(refreshTokenIssuedTime, refreshTokenValidityPeriodMillis);
-        if(refreshTokenValidity > 1000){
+        if (refreshTokenValidity > 1000) {
             return refreshTokenValidity;
         }
         return 0;
@@ -626,13 +656,20 @@ public class OAuth2Util {
 
     public static long getAccessTokenExpireMillis(AccessTokenDO accessTokenDO) {
 
-        if(accessTokenDO == null){
+        if (accessTokenDO == null) {
             throw new IllegalArgumentException("accessTokenDO is " + "\'NULL\'");
         }
         long validityPeriodMillis = accessTokenDO.getValidityPeriodInMillis();
 
         if (validityPeriodMillis < 0) {
-            log.debug("Access Token has infinite lifetime");
+            if (log.isDebugEnabled()) {
+                if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                    log.debug("Access Token(hashed) : " + DigestUtils.sha256Hex(accessTokenDO.getAccessToken()) +
+                            " has infinite lifetime");
+                } else {
+                    log.debug("Access Token has infinite lifetime");
+                }
+            }
             return -1;
         }
 
@@ -1024,17 +1061,16 @@ public class OAuth2Util {
             IdentityOAuth2Exception {
         boolean cacheHit = false;
         AccessTokenDO accessTokenDO = null;
+
         // check the cache, if caching is enabled.
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled()) {
-            OAuthCache oauthCache = OAuthCache.getInstance();
-            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
-            CacheEntry result = oauthCache.getValueFromCache(cacheKey);
-            // cache hit, do the type check.
-            if (result instanceof AccessTokenDO) {
-                accessTokenDO = (AccessTokenDO) result;
-                cacheHit = true;
-            }
+        OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+        CacheEntry result = OAuthCache.getInstance().getValueFromCache(cacheKey);
+        // cache hit, do the type check.
+        if (result != null && result instanceof AccessTokenDO) {
+            accessTokenDO = (AccessTokenDO) result;
+            cacheHit = true;
         }
+
         // cache miss, load the access token info from the database.
         if (accessTokenDO == null) {
             accessTokenDO = new TokenMgtDAO().retrieveAccessToken(accessTokenIdentifier, false);
@@ -1045,10 +1081,9 @@ public class OAuth2Util {
         }
 
         // add the token back to the cache in the case of a cache miss
-        if (OAuthServerConfiguration.getInstance().isCacheEnabled() && !cacheHit) {
-            OAuthCache oauthCache = OAuthCache.getInstance();
-            OAuthCacheKey cacheKey = new OAuthCacheKey(accessTokenIdentifier);
-            oauthCache.addToCache(cacheKey, accessTokenDO);
+        if (!cacheHit) {
+            cacheKey = new OAuthCacheKey(accessTokenIdentifier);
+            OAuthCache.getInstance().addToCache(cacheKey, accessTokenDO);
             if (log.isDebugEnabled()) {
                 log.debug("Access Token Info object was added back to the cache.");
             }
@@ -1066,7 +1101,9 @@ public class OAuth2Util {
     /***
      * Read the configuration file at server start up.
      * @param tenantId
+     * @deprecated due to UI implementation.
      */
+    @Deprecated
     public static void initTokenExpiryTimesOfSps(int tenantId) {
         try{
             Registry registry = OAuth2ServiceComponentHolder.getRegistryService().getConfigSystemRegistry(tenantId);
@@ -1084,7 +1121,9 @@ public class OAuth2Util {
      * @param consumerKey
      * @param tenantId
      * @return A SpOAuth2ExpiryTimeConfiguration Object
+     * @deprecated due to UI implementation
      */
+    @Deprecated
     public static SpOAuth2ExpiryTimeConfiguration getSpTokenExpiryTimeConfig(String consumerKey, int tenantId) {
         SpOAuth2ExpiryTimeConfiguration spTokenTimeObject = new SpOAuth2ExpiryTimeConfiguration();
         try {
@@ -1112,7 +1151,8 @@ public class OAuth2Util {
                                     .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
                             if (log.isDebugEnabled()) {
                                 log.debug("The user access token expiry time :" + spTimeObject
-                                        .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString());
+                                        .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        "  for application id : " + consumerKey);
                             }
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as user access token expiry time for consumer key %s," +
@@ -1132,7 +1172,8 @@ public class OAuth2Util {
                                     .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
                             if (log.isDebugEnabled()) {
                                 log.debug("The application access token expiry time :" + spTimeObject
-                                        .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString());
+                                        .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        "  for application id : " + consumerKey);
                             }
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as application access token expiry time for " +
@@ -1152,7 +1193,8 @@ public class OAuth2Util {
                                     .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString()));
                             if (log.isDebugEnabled()) {
                                 log.debug("The refresh token expiry time :" + spTimeObject
-                                        .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString());
+                                        .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        " for application id : " + consumerKey);
                             }
 
                         } catch (NumberFormatException e) {
@@ -1174,6 +1216,7 @@ public class OAuth2Util {
         }
         return spTokenTimeObject;
     }
+
 
     private static Map<String, String> loadScopeConfigFile() {
         Map<String, String> scopes = new HashMap<>();
@@ -1276,35 +1319,329 @@ public class OAuth2Util {
      * This method map signature algorithm define in identity.xml to nimbus
      * signature algorithm
      *
-     * @param signatureAlgorithm
-     * @return
+     * @param signatureAlgorithm name of the signature algorithm
+     * @return mapped JWSAlgorithm name
      * @throws IdentityOAuth2Exception
      */
-    public static String mapSignatureAlgorithm(String signatureAlgorithm)
-            throws IdentityOAuth2Exception {
-        if ("SHA256withRSA".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS256.getName();
-        } else if ("SHA384withRSA".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS384.getName();
-        } else if ("SHA512withRSA".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.RS512.getName();
-        } else if ("SHA256withHMAC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS256.getName();
-        } else if ("SHA384withHMAC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS384.getName();
-        } else if ("SHA512withHMAC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.HS512.getName();
-        } else if ("SHA256withEC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES256.getName();
-        } else if ("SHA384withEC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES384.getName();
-        } else if ("SHA512withEC".equals(signatureAlgorithm)) {
-            return JWSAlgorithm.ES512.getName();
-        } else if (ALGORITHM_NONE.equals(signatureAlgorithm)) {
-            return JWSAlgorithm.NONE.getName();
+    @Deprecated
+    public static String mapSignatureAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
+        return mapSignatureAlgorithmForJWSAlgorithm(signatureAlgorithm).getName();
+    }
+
+    /**
+     * This method map signature algorithm define in identity.xml to nimbus
+     * signature algorithm
+     *
+     * @param signatureAlgorithm name of the signature algorithm
+     * @return mapped JWSAlgorithm
+     * @throws IdentityOAuth2Exception
+     */
+    public static JWSAlgorithm mapSignatureAlgorithmForJWSAlgorithm(String signatureAlgorithm) throws IdentityOAuth2Exception {
+
+        if (NONE.equalsIgnoreCase(signatureAlgorithm)) {
+            return new JWSAlgorithm(JWSAlgorithm.NONE.getName());
+        } else if (SHA256_WITH_RSA.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.RS256;
+        } else if (SHA384_WITH_RSA.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.RS384;
+        } else if (SHA512_WITH_RSA.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.RS512;
+        } else if (SHA256_WITH_HMAC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.HS256;
+        } else if (SHA384_WITH_HMAC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.HS384;
+        } else if (SHA512_WITH_HMAC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.HS512;
+        } else if (SHA256_WITH_EC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.ES256;
+        } else if (SHA384_WITH_EC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.ES384;
+        } else if (SHA512_WITH_EC.equals(signatureAlgorithm)) {
+            return JWSAlgorithm.ES512;
+        } else {
+            log.error("Unsupported Signature Algorithm in identity.xml");
+            throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
         }
-        log.error("Unsupported Signature Algorithm in identity.xml");
-        throw new IdentityOAuth2Exception("Unsupported Signature Algorithm in identity.xml");
+    }
+
+
+    /**
+     * Generate the unique user domain value in the format of "FEDERATED:idp_name".
+     *
+     * @param authenticatedIDP : Name of the IDP, which authenticated the user.
+     * @return
+     */
+    public static String getFederatedUserDomain(String authenticatedIDP) {
+        if (IdentityUtil.isNotBlank(authenticatedIDP)) {
+            return OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX + OAuthConstants.UserType.FEDERATED_USER_DOMAIN_SEPARATOR +
+                    authenticatedIDP;
+        } else {
+            return OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX;
+        }
+    }
+
+
+    /**
+     * Validate Id token signature
+     *
+     * @param idToken Id token
+     * @return validation state
+     */
+    public static boolean validateIdToken(String idToken) {
+
+        boolean isJWTSignedWithSPKey = OAuthServerConfiguration.getInstance().isJWTSignedWithSPKey();
+        String tenantDomain;
+        try {
+            String clientId = SignedJWT.parse(idToken).getJWTClaimsSet().getAudience().get(0);
+            if (isJWTSignedWithSPKey) {
+                OAuthAppDO oAuthAppDO = OAuth2Util.getAppInformationByClientId(clientId);
+                tenantDomain = OAuth2Util.getTenantDomainOfOauthApp(oAuthAppDO);
+            } else {
+                //It is not sending tenant domain with the subject in id_token by default, So to work this as
+                //expected, need to enable the option "Use tenant domain in local subject identifier" in SP config
+                tenantDomain = MultitenantUtils.getTenantDomain(SignedJWT.parse(idToken).getJWTClaimsSet().getSubject());
+            }
+            if (StringUtils.isEmpty(tenantDomain)) {
+                return false;
+            }
+            int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
+            RSAPublicKey publicKey;
+            KeyStoreManager keyStoreManager = KeyStoreManager.getInstance(tenantId);
+
+            if (!tenantDomain.equals(org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
+                String ksName = tenantDomain.trim().replace(".", "-");
+                String jksName = ksName + ".jks";
+                publicKey = (RSAPublicKey) keyStoreManager.getKeyStore(jksName).getCertificate(tenantDomain)
+                        .getPublicKey();
+            } else {
+                publicKey = (RSAPublicKey) keyStoreManager.getDefaultPublicKey();
+            }
+            SignedJWT signedJWT = SignedJWT.parse(idToken);
+            JWSVerifier verifier = new RSASSAVerifier(publicKey);
+
+            return signedJWT.verify(verifier);
+        } catch (JOSEException | ParseException e) {
+            log.error("Error occurred while validating id token signature.");
+            return false;
+        } catch (Exception e) {
+            log.error("Error occurred while validating id token signature.");
+            return false;
+        }
+    }
+
+    /**
+     * This method maps signature algorithm define in identity.xml to digest algorithms to generate the at_hash
+     *
+     * @param signatureAlgorithm
+     * @return the mapped digest algorithm
+     * @throws IdentityOAuth2Exception
+     */
+    public static String mapDigestAlgorithm(Algorithm signatureAlgorithm) throws IdentityOAuth2Exception {
+
+        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.HS256.equals(signatureAlgorithm) ||
+                JWSAlgorithm.ES256.equals(signatureAlgorithm)) {
+            return SHA256;
+        } else if (JWSAlgorithm.RS384.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.ES384.equals(signatureAlgorithm)) {
+            return SHA384;
+        } else if (JWSAlgorithm.RS512.equals(signatureAlgorithm) || JWSAlgorithm.HS512.equals(signatureAlgorithm) ||
+                JWSAlgorithm.ES512.equals(signatureAlgorithm)) {
+            return SHA512;
+        } else {
+            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
+                    " is not supported");
+        }
+    }
+
+    /**
+     * Generic Signing function
+     *
+     * @param jwtClaimsSet contains JWT body
+     * @param signatureAlgorithm JWT signing algorithm
+     * @param tenantDomain tenant domain
+     * @return signed JWT token
+     * @throws IdentityOAuth2Exception
+     */
+    public static JWT signJWT(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
+            throws IdentityOAuth2Exception {
+
+        if (JWSAlgorithm.RS256.equals(signatureAlgorithm) || JWSAlgorithm.RS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.RS512.equals(signatureAlgorithm)) {
+            return signJWTWithRSA(jwtClaimsSet, signatureAlgorithm, tenantDomain);
+        } else if (JWSAlgorithm.HS256.equals(signatureAlgorithm) || JWSAlgorithm.HS384.equals(signatureAlgorithm) ||
+                JWSAlgorithm.HS512.equals(signatureAlgorithm)) {
+            // return signWithHMAC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
+            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
+                    " is not supported");
+        } else {
+            // return signWithEC(jwtClaimsSet,jwsAlgorithm,request); implementation need to be done
+            throw new RuntimeException("Provided signature algorithm: " + signatureAlgorithm +
+                    " is not supported");
+        }
+    }
+
+    /**
+     * sign JWT token from RSA algorithm
+     *
+     * @param jwtClaimsSet contains JWT body
+     * @param signatureAlgorithm JWT signing algorithm
+     * @param tenantDomain tenant domain
+     * @return signed JWT token
+     * @throws IdentityOAuth2Exception
+     */
+    //TODO: Can make this private after removing deprecated "signJWTWithRSA" methods in DefaultIDTokenBuilder
+    public static JWT signJWTWithRSA(JWTClaimsSet jwtClaimsSet, JWSAlgorithm signatureAlgorithm, String tenantDomain)
+            throws IdentityOAuth2Exception {
+        try {
+            if (StringUtils.isBlank(tenantDomain)) {
+                tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+                if (log.isDebugEnabled()) {
+                    log.debug("Assign super tenant domain as signing domain.");
+                }
+            }
+
+            if (log.isDebugEnabled()) {
+                log.debug("Signing JWT using the algorithm: " + signatureAlgorithm + " & key of the tenant: " +
+                        tenantDomain);
+            }
+
+            int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
+            Key privateKey = getPrivateKey(tenantDomain, tenantId);
+            JWSSigner signer = new RSASSASigner((RSAPrivateKey) privateKey);
+            JWSHeader header = new JWSHeader((JWSAlgorithm) signatureAlgorithm);
+            header.setKeyID(getThumbPrint(tenantDomain, tenantId));
+            header.setX509CertThumbprint(new Base64URL(getThumbPrint(tenantDomain, tenantId)));
+            SignedJWT signedJWT = new SignedJWT(header, jwtClaimsSet);
+            signedJWT.sign(signer);
+            return signedJWT;
+        } catch (JOSEException e) {
+            throw new IdentityOAuth2Exception("Error occurred while signing JWT", e);
+        }
+    }
+
+    private static Key getPrivateKey(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
+        Key privateKey;
+        if (!(privateKeys.containsKey(tenantId))) {
+
+            try {
+                IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
+            } catch (IdentityException e) {
+                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain,
+                        e);
+            }
+
+            // get tenant's key store manager
+            KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
+
+            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
+                // derive key store name
+                String ksName = tenantDomain.trim().replace(".", "-");
+                String jksName = ksName + ".jks";
+                // obtain private key
+                privateKey = tenantKSM.getPrivateKey(jksName, tenantDomain);
+
+            } else {
+                try {
+                    privateKey = tenantKSM.getDefaultPrivateKey();
+                } catch (Exception e) {
+                    throw new IdentityOAuth2Exception("Error while obtaining private key for super tenant", e);
+                }
+            }
+            //privateKey will not be null always
+            privateKeys.put(tenantId, privateKey);
+        } else {
+            //privateKey will not be null because containsKey() true says given key is exist and ConcurrentHashMap
+            // does not allow to store null values
+            privateKey = privateKeys.get(tenantId);
+        }
+        return privateKey;
+    }
+
+    /**
+     * Helper method to add public certificate to JWT_HEADER to signature verification.
+     *
+     * @param tenantDomain
+     * @param tenantId
+     * @throws IdentityOAuth2Exception
+     */
+    public static String getThumbPrint(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
+
+        try {
+
+            Certificate certificate = getCertificate(tenantDomain, tenantId);
+
+            // TODO: maintain a hashmap with tenants' pubkey thumbprints after first initialization
+
+            //generate the SHA-1 thumbprint of the certificate
+            MessageDigest digestValue = MessageDigest.getInstance("SHA-1");
+            byte[] der = certificate.getEncoded();
+            digestValue.update(der);
+            byte[] digestInBytes = digestValue.digest();
+
+            String publicCertThumbprint = hexify(digestInBytes);
+            String base64EncodedThumbPrint = new String(new Base64(0, null, true).encode(
+                    publicCertThumbprint.getBytes(Charsets.UTF_8)), Charsets.UTF_8);
+            return base64EncodedThumbPrint;
+
+        } catch (Exception e) {
+            String error = "Error in obtaining certificate for tenant " + tenantDomain;
+            throw new IdentityOAuth2Exception(error, e);
+        }
+    }
+
+    private static Certificate getCertificate(String tenantDomain, int tenantId) throws Exception {
+        Certificate publicCert = null;
+
+        if (!(publicCerts.containsKey(tenantId))) {
+
+            try {
+                IdentityTenantUtil.initializeRegistry(tenantId, tenantDomain);
+            } catch (IdentityException e) {
+                throw new IdentityOAuth2Exception("Error occurred while loading registry for tenant " + tenantDomain, e);
+            }
+
+            // get tenant's key store manager
+            KeyStoreManager tenantKSM = KeyStoreManager.getInstance(tenantId);
+
+            KeyStore keyStore = null;
+            if (!tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
+                // derive key store name
+                String ksName = tenantDomain.trim().replace(".", "-");
+                String jksName = ksName + ".jks";
+                keyStore = tenantKSM.getKeyStore(jksName);
+                publicCert = keyStore.getCertificate(tenantDomain);
+            } else {
+                publicCert = tenantKSM.getDefaultPrimaryCertificate();
+            }
+            if (publicCert != null) {
+                publicCerts.put(tenantId, publicCert);
+            }
+        } else {
+            publicCert = publicCerts.get(tenantId);
+        }
+        return publicCert;
+    }
+
+    /**
+     * Helper method to hexify a byte array.
+     * TODO:need to verify the logic
+     *
+     * @param bytes
+     * @return hexadecimal representation
+     */
+    private static String hexify(byte bytes[]) {
+
+        char[] hexDigits = {'0', '1', '2', '3', '4', '5', '6', '7',
+                +'8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+        StringBuilder buf = new StringBuilder(bytes.length * 2);
+
+        for (int i = 0; i < bytes.length; ++i) {
+            buf.append(hexDigits[(bytes[i] & 0xf0) >> 4]);
+            buf.append(hexDigits[bytes[i] & 0x0f]);
+        }
+
+        return buf.toString();
     }
 
 }

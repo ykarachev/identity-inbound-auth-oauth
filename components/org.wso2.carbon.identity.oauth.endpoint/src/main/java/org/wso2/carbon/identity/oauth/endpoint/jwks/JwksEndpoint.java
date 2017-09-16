@@ -72,6 +72,7 @@ public class JwksEndpoint {
         JSONObject jwksJson = new JSONObject();
         FileInputStream file = null;
         try {
+            tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
             if (tenantDomain.equals(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME)) {
                 file = new FileInputStream(CarbonUtils.getServerConfiguration().getFirstProperty
                         ("Security.KeyStore.Location"));
@@ -87,7 +88,6 @@ public class JwksEndpoint {
                 publicKey = (RSAPublicKey) cert.getPublicKey();
             } else {
 
-                tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
                 if (tenantId < 1 && tenantId != -1234) {
                     String errorMesage = "The tenant is not existing";
                     log.error(errorMesage);
@@ -114,8 +114,8 @@ public class JwksEndpoint {
             jwksKeyArray.put(jwksKeys);
             jwksJson.put("keys", jwksKeyArray);
         } catch (Exception e) {
-            String errorMesage = "Error while generating the keyset";
-            log.error(errorMesage);
+            String errorMesage = "Error while generating the keyset for " + tenantDomain + " tenant domain.";
+            log.error(errorMesage, e);
             return errorMesage;
         } finally {
             IdentityIOStreamUtils.closeInputStream(file);

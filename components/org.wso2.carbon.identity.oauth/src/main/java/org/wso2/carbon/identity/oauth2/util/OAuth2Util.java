@@ -1644,4 +1644,37 @@ public class OAuth2Util {
         return buf.toString();
     }
 
+    public static ArrayList<String> getEssentialClaims(String essentialClaims, String claimType) {
+        JSONObject jsonObjectClaims = new JSONObject(essentialClaims);
+        String key;
+        ArrayList essentailClaimslist = new ArrayList();
+        if ((jsonObjectClaims != null) && jsonObjectClaims.toString().contains(claimType)) {
+            JSONObject newJSON = jsonObjectClaims.getJSONObject(claimType);
+            if (newJSON != null) {
+                Iterator<?> keys = newJSON.keys();
+                while (keys.hasNext()) {
+                    key = (String) keys.next();
+                    if (!newJSON.isNull(key)) {
+                        String value;
+                        value = newJSON.get(key).toString();
+                        JSONObject jsonObjectValues = new JSONObject(value);
+                        if (jsonObjectValues != null) {
+                            Iterator<?> claimKeyValues = jsonObjectValues.keys();
+                            while (claimKeyValues.hasNext()) {
+                                String claimKey = (String) claimKeyValues.next();
+                                String claimValue = jsonObjectValues.get(claimKey).toString();
+                                if (claimValue.equals("true") &&
+                                        claimKey.equals(OAuthConstants.OAuth20Params.ESSENTIAL)) {
+                                    essentailClaimslist.add(key);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return essentailClaimslist;
+    }
+
 }

@@ -29,6 +29,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
+import org.json.JSONObject;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.ClaimConfig;
@@ -220,7 +221,10 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             if (authorizationGrantCacheEntry != null) {
                 nonceValue = authorizationGrantCacheEntry.getNonceValue();
                 acrValue = authorizationGrantCacheEntry.getAcrValue();
-                authTime = authorizationGrantCacheEntry.getAuthTime();
+                if (OAuth2Util.getEssentialClaims(authorizationGrantCacheEntry.getEssentialClaims()
+                        , OAuthConstants.ID_TOKEN).contains(OAuthConstants.OAuth20Params.AUTH_TIME)) {
+                    authTime = authorizationGrantCacheEntry.getAuthTime();
+                }
             }
         }
 
@@ -647,6 +651,5 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
         return isValidIdToken;
     }
-
 }
 

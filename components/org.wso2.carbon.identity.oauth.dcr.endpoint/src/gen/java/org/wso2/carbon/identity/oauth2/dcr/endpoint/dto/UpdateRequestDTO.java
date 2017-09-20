@@ -68,9 +68,9 @@ public class UpdateRequestDTO  {
     StringBuilder sb = new StringBuilder();
     sb.append("class UpdateRequestDTO {\n");
     
-    sb.append("  redirectUris: ").append(redirectUris).append("\n");
-    sb.append("  clientName: ").append(clientName).append("\n");
-    sb.append("  grantTypes: ").append(grantTypes).append("\n");
+    sb.append("  redirect_uris: ").append(redirectUris).append("\n");
+    sb.append("  client_name: ").append(clientName).append("\n");
+    sb.append("  grant_types: ").append(grantTypes).append("\n");
     sb.append("}\n");
     return sb.toString();
   }

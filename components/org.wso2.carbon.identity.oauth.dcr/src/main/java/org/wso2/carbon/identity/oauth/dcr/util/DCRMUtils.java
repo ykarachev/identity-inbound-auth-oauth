@@ -48,8 +48,10 @@ public class DCRMUtils {
             //Trying to parse the URI, just to verify the URI syntax is correct.
             new URI(redirectUri);
         } catch (URISyntaxException e) {
-            String errorMessage = "The redirection URI: " + redirectUri + ", is not a valid URI.";
-            log.error(errorMessage, e);
+            if (log.isDebugEnabled()) {
+                String errorMessage = "The redirection URI: " + redirectUri + ", is not a valid URI.";
+                log.debug(errorMessage, e);
+            }
             return false;
         }
         return true;
@@ -66,8 +68,7 @@ public class DCRMUtils {
             errorDescription = error.getMessage();
         }
 
-        return IdentityException.error(
-                DCRMServerException.class, error.getCode(), errorDescription, e);
+        return IdentityException.error(DCRMServerException.class, error.toString(), errorDescription, e);
     }
 
     public static DCRMServerException generateServerException(DCRMConstants.ErrorMessages error, String data)
@@ -80,8 +81,7 @@ public class DCRMUtils {
             errorDescription = error.getMessage();
         }
 
-        return IdentityException.error(
-                DCRMServerException.class, error.getCode(), errorDescription);
+        return IdentityException.error(DCRMServerException.class, error.toString(), errorDescription);
     }
 
     public static DCRMClientException generateClientException(DCRMConstants.ErrorMessages error,
@@ -96,7 +96,7 @@ public class DCRMUtils {
             errorDescription = error.getMessage();
         }
 
-        return IdentityException.error(DCRMClientException.class, error.getCode(), errorDescription, e);
+        return IdentityException.error(DCRMClientException.class, error.toString(), errorDescription, e);
     }
 
     public static DCRMClientException generateClientException(DCRMConstants.ErrorMessages error,
@@ -110,6 +110,6 @@ public class DCRMUtils {
             errorDescription = error.getMessage();
         }
 
-        return IdentityException.error(DCRMClientException.class, error.getCode(), errorDescription);
+        return IdentityException.error(DCRMClientException.class, error.toString(), errorDescription);
     }
 }

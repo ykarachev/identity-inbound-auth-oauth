@@ -26,7 +26,7 @@ public class Application implements Serializable {
     private static final long serialVersionUID = -4515815791420125411L;
 
     private String client_name = null;
-    private String client_key = null;
+    private String client_id = null;
     private String client_secret = null;
     private List<String> redirect_uris = null;
 
@@ -38,12 +38,12 @@ public class Application implements Serializable {
         this.client_name = clientName;
     }
 
-    public String getClient_key() {
-        return client_key;
+    public String getClient_id() {
+        return client_id;
     }
 
-    public void setClient_key(String client_key) {
-        this.client_key = client_key;
+    public void setClient_id(String client_id) {
+        this.client_id = client_id;
     }
 
     public String getClient_secret() {
@@ -68,7 +68,7 @@ public class Application implements Serializable {
         StringBuilder sb = new StringBuilder();
         sb.append("Application {\n");
         sb.append("  client_name: ").append(this.client_name).append("\n");
-        sb.append("  client_id: ").append(this.client_key).append("\n");
+        sb.append("  client_id: ").append(this.client_id).append("\n");
         sb.append("  client_secret: ").append(this.client_secret).append("\n");
         sb.append("  redirect_uris: ").append(this.redirect_uris).append("\n");
         sb.append("}\n");

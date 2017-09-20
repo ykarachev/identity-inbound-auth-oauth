@@ -66,19 +66,22 @@ public class DCRMUtils {
 
     }
 
-    public static void handleErrorResponse(Throwable throwable, Log log) throws DCRMEndpointException {
-        String errorCode = ((DCRMException) throwable).getErrorCode();
+    public static void handleErrorResponse(DCRMException dcrmException, Log log) throws DCRMEndpointException {
+        String errorCode = dcrmException.getErrorCode();
         Response.Status status = Response.Status.INTERNAL_SERVER_ERROR;
+        boolean isStatusOnly = true;
         if (errorCode != null) {
             if (errorCode.startsWith(CONFLICT_STATUS)) {
-                status = Response.Status.CONFLICT;
-            } else if (errorCode.startsWith(BAD_REQUEST_STATUS)) {
                 status = Response.Status.BAD_REQUEST;
-            } else if (errorCode.startsWith(NOT_FOUND_STATUS)){
-                status = Response.Status.NOT_FOUND;
+                isStatusOnly = false;
+            } else if (errorCode.equals(DCRMConstants.ErrorMessages.BAD_REQUEST_INVALID_REDIRECT_URI.toString())) {
+                status = Response.Status.BAD_REQUEST;
+                isStatusOnly = false;
+            } else if (errorCode.startsWith(NOT_FOUND_STATUS)) {
+                status = Response.Status.UNAUTHORIZED;
             }
         }
-        handleErrorResponse(status, throwable, false, log);
+        throw buildDCRMEndpointException(status, errorCode, dcrmException.getMessage(), isStatusOnly);
     }
 
     /**
@@ -96,7 +99,7 @@ public class DCRMUtils {
         if (throwable instanceof DCRMException) {
             errorCode = ((DCRMException) throwable).getErrorCode();
         } else {
-            errorCode = DCRMConstants.ErrorMessages.ERROR_CODE_UNEXPECTED.getCode();
+            errorCode = DCRMConstants.ErrorMessages.ERROR_CODE_UNEXPECTED.toString();
         }
 
         if (isServerException) {
@@ -112,15 +115,19 @@ public class DCRMUtils {
 
     private static DCRMEndpointException buildDCRMEndpointException(Response.Status status,
                                                                     String code, String description,
-                                                                    boolean isServerException) {
-        ErrorDTO errorDTO = new ErrorDTO();
-        errorDTO.setCode(code);
-        errorDTO.setMessage(status.getReasonPhrase());
-        errorDTO.setDescription(description);
+                                                                    boolean isStatusOnly) {
 
-        if (isServerException) {
+        if (isStatusOnly) {
             return new DCRMEndpointException(status);
         } else {
+            String error = DCRMConstants.ErrorCodes.INVALID_CLIENT_METADATA;
+            if (code.equals(DCRMConstants.ErrorMessages.BAD_REQUEST_INVALID_REDIRECT_URI.toString())) {
+                error = DCRMConstants.ErrorCodes.INVALID_REDIRECT_URI;
+            }
+
+            ErrorDTO errorDTO = new ErrorDTO();
+            errorDTO.setError(error);
+            errorDTO.setErrorDescription(description);
             return new DCRMEndpointException(status, errorDTO);
         }
     }

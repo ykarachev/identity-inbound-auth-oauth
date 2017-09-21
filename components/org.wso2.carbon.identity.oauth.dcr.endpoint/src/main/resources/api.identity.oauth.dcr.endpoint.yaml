@@ -214,7 +214,28 @@ definitions:
         type: array
         items:
           type: string
-
+      application_type:
+        type: string
+      jwks_uri:
+        type: string
+      url:
+        type: string
+      contacts:
+        type: array
+        items:
+          type: string
+      post_logout_redirect_uris:
+        type: array
+        items:
+          type: string
+      request_uris:
+        type: array
+        items:
+          type: string
+      response_types:
+        type: array
+        items:
+          type: string
 #-----------------------------------------------------
 # The Application Update Request Object
 #-----------------------------------------------------
@@ -255,9 +276,7 @@ definitions:
   error:
     type: object
     properties:
-      code:
+      error:
         type: string
-      message:
-        type: string
-      description:
+      error_description:
         type: string

@@ -31,6 +31,7 @@ import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.OAuthAdminService;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.dcr.DCRMConstants;
 import org.wso2.carbon.identity.oauth.dcr.bean.Application;
 import org.wso2.carbon.identity.oauth.dcr.bean.ApplicationRegistrationRequest;
@@ -145,6 +146,9 @@ public class DCRMService {
             }
             return dto;
         } catch (IdentityOAuthAdminException e) {
+            if (e.getCause() instanceof InvalidOAuthClientException) {
+                throw DCRMUtils.generateClientException(DCRMConstants.ErrorMessages.NOT_FOUND_APPLICATION_WITH_ID, clientId);
+            }
             throw DCRMUtils.generateServerException(
                     DCRMConstants.ErrorMessages.FAILED_TO_GET_APPLICATION_BY_ID, clientId, e);
         }
@@ -325,9 +329,9 @@ public class DCRMService {
 
         Application application = new Application();
         application.setClient_name(appDTO.getApplicationName());
-        application.setClient_key(appDTO.getOauthConsumerKey());
+        application.setClient_id(appDTO.getOauthConsumerKey());
         application.setClient_secret(appDTO.getOauthConsumerSecret());
-        List<String> redirectUrisList = new ArrayList<String>();
+        List<String> redirectUrisList = new ArrayList<>();
         redirectUrisList.add(appDTO.getCallbackUrl());
         application.setRedirect_uris(redirectUrisList);
 

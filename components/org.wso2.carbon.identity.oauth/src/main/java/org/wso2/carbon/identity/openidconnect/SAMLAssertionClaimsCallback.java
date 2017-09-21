@@ -71,7 +71,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -273,7 +272,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
      * @return Users claim map
      * @throws Exception
      */
-    private static Map<String, Object> getClaimsFromUserStore(OAuthTokenReqMessageContext requestMsgCtx)
+    private Map<String, Object> getClaimsFromUserStore(OAuthTokenReqMessageContext requestMsgCtx)
             throws UserStoreException, IdentityApplicationManagementException, IdentityException {
 
         Map<String, Object> mappedAppClaims = new HashMap<>();
@@ -328,7 +327,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             claimSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
         }
 
-        Map<String, String> spToLocalClaimMappings = ClaimMetadataHandler.getInstance()
+        Map<String, String> oidcToLocalClaimMappings = ClaimMetadataHandler.getInstance()
                 .getMappingsMapFromOtherDialectToCarbon(SP_DIALECT, null, spTenantDomain, false);
         Map<String, String> userClaims = null;
         try {
@@ -358,28 +357,17 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         }
 
         if (MapUtils.isEmpty(userClaims)) {
-	     if (log.isDebugEnabled()) {
-	         log.debug("Number of user claims retrieved from user store: none (userClaims is null");
-	    }
-            return new HashMap<>();
-        }
-        
-        if (log.isDebugEnabled()) {
-            log.debug("Number of user claims retrieved from user store: " + userClaims.size());
-        }
-
-
-        for (Iterator<Map.Entry<String, String>> iterator = spToLocalClaimMappings.entrySet().iterator(); iterator
-                .hasNext(); ) {
-            Map.Entry<String, String> entry = iterator.next();
-            String value = userClaims.get(entry.getValue());
-            if (value != null) {
-                mappedAppClaims.put(entry.getKey(), value);
-                if (log.isDebugEnabled() &&
-                        IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_CLAIMS)) {
-                    log.debug("Mapped claim: key -  " + entry.getKey() + " value -" + value);
-                }
+            // User claims can be empty if user does not exist in user stores. Probably a federated user.
+            if (log.isDebugEnabled()) {
+                log.debug("No claims found for " + username + " from user store.");
             }
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("Number of user claims retrieved for " + username + " from user store: " + userClaims.size());
+            }
+
+            // get user claims in OIDC dialect
+            mappedAppClaims.putAll(getUserClaimsInOidcDialect(oidcToLocalClaimMappings, userClaims));
         }
 
         if (StringUtils.isNotBlank(claimSeparator)) {
@@ -418,7 +406,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         return StringUtils.join(locallyMappedUserRoles, claimSeparator);
     }
 
-    private static Map<String, Object> getClaimsFromUserStore(OAuthAuthzReqMessageContext requestMsgCtx)
+    private Map<String, Object> getClaimsFromUserStore(OAuthAuthzReqMessageContext requestMsgCtx)
             throws IdentityApplicationManagementException, IdentityException, UserStoreException {
 
         Map<String, Object> mappedAppClaims = new HashMap<>();
@@ -481,28 +469,19 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 throw e;
             }
         }
+
         if (MapUtils.isEmpty(userClaims)) {
- 	    if (log.isDebugEnabled()) {
-	        log.debug("Number of user claims retrieved from user store: none (userClaims is null");
-	    }
-            return new HashMap<>();
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("Number of user claims retrieved from user store: " + userClaims.size());
-        }
-
-
-        for (Iterator<Map.Entry<String, String>> iterator = spToLocalClaimMappings.entrySet().iterator(); iterator
-                .hasNext(); ) {
-            Map.Entry<String, String> entry = iterator.next();
-            String value = userClaims.get(entry.getValue());
-            if (value != null) {
-                mappedAppClaims.put(entry.getKey(), value);
-                if (log.isDebugEnabled() &&
-                        IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_CLAIMS)) {
-                    log.debug("Mapped claim: key -  " + entry.getKey() + " value -" + value);
-                }
+            // User claims can be empty if user does not exist in user stores. Probably a federated user.
+            if (log.isDebugEnabled()) {
+                log.debug("No claims found for " + username + " from user store.");
             }
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("Number of user claims retrieved from user store: " + userClaims.size());
+            }
+
+            // get user claims in OIDC dialect
+            mappedAppClaims.putAll(getUserClaimsInOidcDialect(spToLocalClaimMappings, userClaims));
         }
 
         String domain = user.getUserStoreDomain();
@@ -515,6 +494,33 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         }
 
         return mappedAppClaims;
+    }
+
+    /**
+     * Get user claims in OIDC claim dialect
+     *
+     * @param oidcToLocalClaimMappings OIDC dialect to Local dialect claim mappings
+     * @param userClaims             User claims in local dialect
+     * @return Map of user claim values in OIDC dialect.
+     */
+    private Map<String, Object> getUserClaimsInOidcDialect(Map<String, String> oidcToLocalClaimMappings,
+                                                           Map<String, String> userClaims) {
+
+        Map<String, Object> userClaimsInOidcDialect = new HashMap<>();
+        if (MapUtils.isNotEmpty(userClaims)) {
+            for (Map.Entry<String, String> claimMapping : oidcToLocalClaimMappings.entrySet()) {
+                String value = userClaims.get(claimMapping.getValue());
+                if (value != null) {
+                    userClaimsInOidcDialect.put(claimMapping.getKey(), value);
+                    if (log.isDebugEnabled() &&
+                            IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_CLAIMS)) {
+                        log.debug("Mapped claim: key - " + claimMapping.getKey() + " value - " + value);
+                    }
+                }
+            }
+        }
+
+        return userClaimsInOidcDialect;
     }
 
     /**

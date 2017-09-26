@@ -19,6 +19,7 @@ package org.wso2.carbon.identity.openidconnect;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import net.minidev.json.JSONArray;
+import net.minidev.json.JSONObject;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -26,7 +27,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
-import org.json.JSONObject;
 import org.opensaml.saml2.core.Assertion;
 import org.opensaml.saml2.core.Attribute;
 import org.opensaml.saml2.core.AttributeStatement;
@@ -583,7 +583,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 }
                 jwtClaimsSet.setClaim(entry.getKey(), values);
             } else {
-                jwtClaimsSet.setClaim(entry.getKey(), value);
+                jwtClaimsSet.setClaim(entry.getKey(), entry.getValue());
             }
         }
     }

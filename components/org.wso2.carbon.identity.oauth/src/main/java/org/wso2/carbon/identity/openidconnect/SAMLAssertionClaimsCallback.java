@@ -185,13 +185,19 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private Map<String, Object> getResponse(OAuthTokenReqMessageContext requestMsgCtx)
             throws OAuthSystemException {
 
-        Map<ClaimMapping, String> userAttributes =
-                getUserAttributesFromCache(requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN).toString());
+        Map<ClaimMapping, String> userAttributes = Collections.emptyMap();
         Map<String, Object> claims = Collections.emptyMap();
 
+        if (requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN) != null) {
+            // get the user claims cached against the access token if any
+            userAttributes = getUserAttributesFromCacheUsingToken(requestMsgCtx.getProperty(OAuthConstants
+                    .ACCESS_TOKEN).toString());
+        }
+
         if (MapUtils.isEmpty(userAttributes) && requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE) != null) {
-            userAttributes = getUserAttributesFromCache(
-                    requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE).toString());
+            // get the cached user claims against the authorization code if any
+            userAttributes =
+                    getUserAttributesFromCacheUsingCode(requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE).toString());
         }
 
         if (MapUtils.isEmpty(userAttributes) && !requestMsgCtx.getAuthorizedUser().isFederatedUser()) {
@@ -214,9 +220,14 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     private Map<String, Object> getResponse(OAuthAuthzReqMessageContext requestMsgCtx)
             throws OAuthSystemException {
 
-        Map<ClaimMapping, String> userAttributes =
-                getUserAttributesFromCache(requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN).toString());
+        Map<ClaimMapping, String> userAttributes = Collections.emptyMap();
         Map<String, Object> claims = Collections.emptyMap();
+
+        if (requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN) != null) {
+            // get the user claims cached against the access token if any
+            userAttributes = getUserAttributesFromCacheUsingToken(requestMsgCtx.getProperty(OAuthConstants
+                    .ACCESS_TOKEN).toString());
+        }
 
         if (MapUtils.isEmpty(userAttributes) && !(requestMsgCtx.getAuthorizationReqDTO().getUser().isFederatedUser())) {
             if (log.isDebugEnabled()) {
@@ -266,6 +277,12 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         Map<String, Object> mappedAppClaims = new HashMap<>();
 
         String spTenantDomain = (String) requestMsgCtx.getProperty(MultitenantConstants.TENANT_DOMAIN);
+
+        // There are certain flows where tenant domain is not added as a message context property.
+        if (spTenantDomain == null) {
+            spTenantDomain = requestMsgCtx.getOauth2AccessTokenReqDTO().getTenantDomain();
+        }
+
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
         String spName = applicationMgtService
                 .getServiceProviderNameByClientId(requestMsgCtx.getOauth2AccessTokenReqDTO().getClientId(),
@@ -305,6 +322,9 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 .getUserStoreManager()).getSecondaryUserStoreManager(domain).getRealmConfiguration();
         String claimSeparator = realmConfiguration.getUserStoreProperty(
                 IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);
+        if (StringUtils.isBlank(claimSeparator)) {
+            claimSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
+        }
 
         Map<String, String> spToLocalClaimMappings = ClaimMetadataHandler.getInstance()
                 .getMappingsMapFromOtherDialectToCarbon(SP_DIALECT, null, spTenantDomain, false);
@@ -373,33 +393,27 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
      * @return
      */
     private static String getServiceProviderMappedUserRoles(ServiceProvider serviceProvider,
-            List<String> locallyMappedUserRoles, String claimSeparator) throws FrameworkException {
-        if (CollectionUtils.isNotEmpty(locallyMappedUserRoles)) {
+                                                            List<String> locallyMappedUserRoles,
+                                                            String claimSeparator) throws FrameworkException {
 
+        if (CollectionUtils.isNotEmpty(locallyMappedUserRoles)) {
+            // Get Local Role to Service Provider Role mappings
             RoleMapping[] localToSpRoleMapping = serviceProvider.getPermissionAndRoleConfig().getRoleMappings();
 
-            if (ArrayUtils.isEmpty(localToSpRoleMapping)) {
-                return null;
-            }
-
-            StringBuilder spMappedUserRoles = new StringBuilder();
-            for (RoleMapping roleMapping : localToSpRoleMapping) {
-                if (locallyMappedUserRoles.contains(roleMapping.getLocalRole().getLocalRoleName())) {
-                    spMappedUserRoles.append(roleMapping.getRemoteRole()).append(claimSeparator);
-                    locallyMappedUserRoles.remove(roleMapping.getLocalRole().getLocalRoleName());
+            if (ArrayUtils.isNotEmpty(localToSpRoleMapping)) {
+                for (RoleMapping roleMapping : localToSpRoleMapping) {
+                    // check whether a local role is mapped to service provider role
+                    if (locallyMappedUserRoles.contains(roleMapping.getLocalRole().getLocalRoleName())) {
+                        // remove the local role from the list of user roles
+                        locallyMappedUserRoles.remove(roleMapping.getLocalRole().getLocalRoleName());
+                        // add the service provider mapped role
+                        locallyMappedUserRoles.add(roleMapping.getRemoteRole());
+                    }
                 }
             }
-
-            for (String remainingRole : locallyMappedUserRoles) {
-                spMappedUserRoles.append(remainingRole).append(claimSeparator);
-            }
-
-            return spMappedUserRoles.length() > 0 ?
-                    spMappedUserRoles.toString().substring(0, spMappedUserRoles.length() - 1) :
-                    null;
         }
 
-        return null;
+        return StringUtils.join(locallyMappedUserRoles, claimSeparator);
     }
 
     private static Map<String, Object> getClaimsFromUserStore(OAuthAuthzReqMessageContext requestMsgCtx)
@@ -408,6 +422,12 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         Map<String, Object> mappedAppClaims = new HashMap<>();
 
         String spTenantDomain = (String) requestMsgCtx.getProperty(MultitenantConstants.TENANT_DOMAIN);
+
+        // There are certain flows where tenant domain is not added as a message context property.
+        if (spTenantDomain == null) {
+            spTenantDomain = requestMsgCtx.getAuthorizationReqDTO().getTenantDomain();
+        }
+
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
         String spName = applicationMgtService
                 .getServiceProviderNameByClientId(requestMsgCtx.getAuthorizationReqDTO().getConsumerKey(),
@@ -496,20 +516,34 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
     }
 
     /**
-     * Get user attribute from cache
+     * Get user attribute cached against the access token
      *
      * @param accessToken Access token
-     * @return User attributes
+     * @return User attributes cached against the access token
      */
-    private Map<ClaimMapping, String> getUserAttributesFromCache(String accessToken) {
+    private Map<ClaimMapping, String> getUserAttributesFromCacheUsingToken(String accessToken) {
 
         AuthorizationGrantCacheKey cacheKey = new AuthorizationGrantCacheKey(accessToken);
-        AuthorizationGrantCacheEntry cacheEntry = (AuthorizationGrantCacheEntry) AuthorizationGrantCache.
-                getInstance().getValueFromCacheByToken(cacheKey);
-        if (cacheEntry == null) {
-            return new HashMap<ClaimMapping, String>();
-        }
-        return cacheEntry.getUserAttributes();
+        AuthorizationGrantCacheEntry cacheEntry = AuthorizationGrantCache.getInstance()
+                .getValueFromCacheByToken(cacheKey);
+
+        return cacheEntry == null ? new HashMap<ClaimMapping, String>() : cacheEntry.getUserAttributes();
+
+    }
+
+    /**
+     * Get user attributes cached against the authorization code
+     *
+     * @param authorizationCode Authorization Code
+     * @return User attributes cached against the authorization code
+     */
+    private Map<ClaimMapping, String> getUserAttributesFromCacheUsingCode(String authorizationCode) {
+
+        AuthorizationGrantCacheKey cacheKey = new AuthorizationGrantCacheKey(authorizationCode);
+        AuthorizationGrantCacheEntry cacheEntry = AuthorizationGrantCache.getInstance()
+                .getValueFromCacheByCode(cacheKey);
+
+        return cacheEntry == null ? new HashMap<ClaimMapping, String>() : cacheEntry.getUserAttributes();
     }
 
     /**

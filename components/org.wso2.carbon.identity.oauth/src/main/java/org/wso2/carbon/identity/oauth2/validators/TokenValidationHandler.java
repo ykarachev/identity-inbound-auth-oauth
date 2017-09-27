@@ -21,6 +21,7 @@ package org.wso2.carbon.identity.oauth2.validators;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.common.model.User;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
@@ -46,6 +47,7 @@ public class TokenValidationHandler {
     AuthorizationContextTokenGenerator tokenGenerator = null;
     private Log log = LogFactory.getLog(TokenValidationHandler.class);
     private Map<String, OAuth2TokenValidator> tokenValidators = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    private static final String FEDERATED_USER_DOMAIN_PREFIX = "FEDERATED";
 
     private TokenValidationHandler() {
         tokenValidators.put(DefaultOAuth2TokenValidator.TOKEN_TYPE, new DefaultOAuth2TokenValidator());
@@ -337,7 +339,9 @@ public class TokenValidationHandler {
      */
     private String getAuthzUser(AccessTokenDO accessTokenDO) {
         User user = accessTokenDO.getAuthzUser();
-        String authzUser = UserCoreUtil.addDomainToName(user.getUserName(), user.getUserStoreDomain());
+        String userStore = user.getUserStoreDomain();
+        String authzUser = IdentityUtil.addDomainToName(user.getUserName(),
+                userStore.startsWith(FEDERATED_USER_DOMAIN_PREFIX) ? null : userStore);
         return UserCoreUtil.addTenantDomainToEntry(authzUser, user.getTenantDomain());
     }
 

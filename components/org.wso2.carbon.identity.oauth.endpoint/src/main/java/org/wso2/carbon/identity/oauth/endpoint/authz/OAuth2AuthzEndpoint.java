@@ -697,21 +697,23 @@ public class OAuth2AuthzEndpoint {
             return EndpointUtil.getErrorRedirectURL(oauthProblemException, oauth2Params);
         }
 
-        //When responseType equal to "id_token" the resulting token is passed back as a query parameter
-        //According to the specification it should pass as URL Fragment
-        if (OAuthConstants.ID_TOKEN.equalsIgnoreCase(responseType)) {
-            if (RESPONSE_MODE_FORM_POST.equals(oauth2Params.getResponseMode()) && oauthResponse.getBody() != null) {
-                //When response_mode equal to form_post, body parameter is passed back.
-                return  oauthResponse.getBody();
-            } else if (authzRespDTO.getCallbackURI().contains("?")) {
-                return authzRespDTO.getCallbackURI() + "#" + oauthResponse.getLocationUri().substring(
-                        authzRespDTO.getCallbackURI().length() + 1, oauthResponse.getLocationUri().length());
-            } else {
-                return oauthResponse.getLocationUri().replace("?", "#");
-            }
+        //When response_mode equals to form_post, body parameter is passed back.
+        if (RESPONSE_MODE_FORM_POST.equals(oauth2Params.getResponseMode())
+                && StringUtils.isNotEmpty(oauthResponse.getBody())) {
+            return oauthResponse.getBody();
         } else {
-            return oauthResponse.getBody() == null ? appendAuthenticatedIDPs(sessionDataCacheEntry, oauthResponse
-                    .getLocationUri()) : oauthResponse.getBody();
+            //When responseType equal to "id_token" the resulting token is passed back as a query parameter
+            //According to the specification it should pass as URL Fragment
+            if (OAuthConstants.ID_TOKEN.equalsIgnoreCase(responseType)) {
+                if (authzRespDTO.getCallbackURI().contains("?")) {
+                    return authzRespDTO.getCallbackURI() + "#" + StringUtils.substring(oauthResponse.getLocationUri()
+                            , authzRespDTO.getCallbackURI().length() + 1);
+                } else {
+                    return oauthResponse.getLocationUri().replace("?", "#");
+                }
+            } else {
+                return appendAuthenticatedIDPs(sessionDataCacheEntry, oauthResponse.getLocationUri());
+            }
         }
     }
 

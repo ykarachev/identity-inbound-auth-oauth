@@ -560,7 +560,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
      * @param jwtClaimsSet JWTClaimsSet object
      */
     private void setClaimsToJwtClaimSet(Map<String, Object> claims, JWTClaimsSet jwtClaimsSet) {
-        JSONArray values;
+        JSONArray claimValues;
         Object claimSeparator = claims.get(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);
         if (claimSeparator != null) {
             String claimSeparatorString = (String) claimSeparator;
@@ -572,16 +572,16 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
 
         for (Map.Entry<String, Object> entry : claims.entrySet()) {
             String value = entry.getValue().toString();
-            values = new JSONArray();
+            claimValues = new JSONArray();
             if (userAttributeSeparator != null && value.contains(userAttributeSeparator)) {
                 StringTokenizer st = new StringTokenizer(value, userAttributeSeparator);
                 while (st.hasMoreElements()) {
                     String attributeValue = st.nextElement().toString();
                     if (StringUtils.isNotBlank(attributeValue)) {
-                        values.add(attributeValue);
+                        claimValues.add(attributeValue);
                     }
                 }
-                jwtClaimsSet.setClaim(entry.getKey(), values);
+                jwtClaimsSet.setClaim(entry.getKey(), claimValues);
             } else {
                 jwtClaimsSet.setClaim(entry.getKey(), entry.getValue());
             }

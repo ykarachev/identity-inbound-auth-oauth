@@ -19,6 +19,7 @@ package org.wso2.carbon.identity.openidconnect;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import net.minidev.json.JSONArray;
+import net.minidev.json.JSONObject;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -26,7 +27,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
-import org.json.JSONObject;
 import org.opensaml.saml2.core.Assertion;
 import org.opensaml.saml2.core.Attribute;
 import org.opensaml.saml2.core.AttributeStatement;
@@ -560,7 +560,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
      * @param jwtClaimsSet JWTClaimsSet object
      */
     private void setClaimsToJwtClaimSet(Map<String, Object> claims, JWTClaimsSet jwtClaimsSet) {
-        JSONArray values;
+        JSONArray claimValues;
         Object claimSeparator = claims.get(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);
         if (claimSeparator != null) {
             String claimSeparatorString = (String) claimSeparator;
@@ -572,18 +572,18 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
 
         for (Map.Entry<String, Object> entry : claims.entrySet()) {
             String value = entry.getValue().toString();
-            values = new JSONArray();
+            claimValues = new JSONArray();
             if (userAttributeSeparator != null && value.contains(userAttributeSeparator)) {
                 StringTokenizer st = new StringTokenizer(value, userAttributeSeparator);
                 while (st.hasMoreElements()) {
                     String attributeValue = st.nextElement().toString();
                     if (StringUtils.isNotBlank(attributeValue)) {
-                        values.add(attributeValue);
+                        claimValues.add(attributeValue);
                     }
                 }
-                jwtClaimsSet.setClaim(entry.getKey(), values);
+                jwtClaimsSet.setClaim(entry.getKey(), claimValues);
             } else {
-                jwtClaimsSet.setClaim(entry.getKey(), value);
+                jwtClaimsSet.setClaim(entry.getKey(), entry.getValue());
             }
         }
     }

@@ -96,7 +96,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         OAuth2AccessTokenReqDTO oAuth2AccessTokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
         String scope = OAuth2Util.buildScopeString(tokReqMsgCtx.getScope());
 
-        String consumerKey = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getClientId();
+        String consumerKey = oAuth2AccessTokenReqDTO.getClientId();
         String authorizedUser = tokReqMsgCtx.getAuthorizedUser().toString();
 
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);

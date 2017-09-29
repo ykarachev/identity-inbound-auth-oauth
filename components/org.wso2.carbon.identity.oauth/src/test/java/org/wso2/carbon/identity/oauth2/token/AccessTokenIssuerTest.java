@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.identity.oauth2.token;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.Assert;
@@ -47,9 +49,11 @@ import static org.powermock.api.mockito.PowerMockito.doNothing;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 
-@PrepareForTest({OAuthServerConfiguration.class, OAuth2Util.class})
+@PrepareForTest({OAuthServerConfiguration.class, OAuth2Util.class, LogFactory.class})
 public class AccessTokenIssuerTest {
 
+    @Mock
+    private Log log;
     @Mock
     private OAuthServerConfiguration oAuthServerConfiguration;
     @Mock
@@ -66,20 +70,32 @@ public class AccessTokenIssuerTest {
     @DataProvider(name = "AccessTokenIssue")
     public Object[][] accessTokenIssue() {
         return new Object[][]{
-                {"carbon.super", true, true, true, true, true, true, true, true},
-                {"carbon.super", true, true, false, true, true, true, true, false},
-                {"carbon.super", true, true, true, false, true, true, true, false},
-                {"carbon.super", true, true, true, true, false, true, true, false},
-                {"carbon.super", true, true, true, true, true, false, true, false}
+                {"carbon.super", true, true, true, true, true, true, true, true, false},
+                {"carbon.super", true, true, false, true, true, true, true, false, false},
+                {"carbon.super", true, true, true, false, true, true, true, false, false},
+                {"carbon.super", true, true, true, true, false, true, true, false, false},
+                {"carbon.super", true, true, true, true, true, false, true, false, false},
+                {"carbon.super", true, true, true, true, true, true, true, true, true},
+                {"carbon.super", true, true, false, true, true, true, true, false, true},
+                {"carbon.super", true, true, true, false, true, true, true, false, true},
+                {"carbon.super", true, true, true, true, false, true, true, false, true},
+                {"carbon.super", true, true, true, true, true, false, true, false, true}
         };
     }
 
     @Test(dataProvider = "AccessTokenIssue")
     public void testIssue(String tenant, boolean isOfTypeApplicationUser, boolean isAuthorizedClient, boolean
             validateGrant, boolean authorizeAccessDelegation, boolean validateScope, boolean authenticateClient,
-                          boolean canAuthenticate, boolean success) throws IdentityException {
+                          boolean canAuthenticate, boolean success, boolean debugEnabled) throws IdentityException {
 
         when(oAuthServerConfiguration.getTimeStampSkewInSeconds()).thenReturn(3600L);
+
+        mockStatic(LogFactory.class);
+        when(LogFactory.getLog(any(Class.class))).thenReturn(log);
+
+        when(log.isDebugEnabled()).thenReturn(debugEnabled);
+        doNothing().when(log).debug(any());
+        doNothing().when(log).debug(any(), any(Throwable.class));
 
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);

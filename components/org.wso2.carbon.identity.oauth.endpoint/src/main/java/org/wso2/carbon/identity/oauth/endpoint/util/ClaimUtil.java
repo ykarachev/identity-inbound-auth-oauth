@@ -127,8 +127,8 @@ public class ClaimUtil {
             }
             ClaimMapping[] requestedLocalClaimMap = serviceProvider.getClaimConfig().getClaimMappings();
             String subjectClaimURI = serviceProvider.getLocalAndOutBoundAuthenticationConfig().getSubjectClaimUri();
-            if (serviceProvider.getClaimConfig().getClaimMappings() != null) {
-                for (ClaimMapping claimMapping : serviceProvider.getClaimConfig().getClaimMappings()) {
+            if (requestedLocalClaimMap != null) {
+                for (ClaimMapping claimMapping : requestedLocalClaimMap) {
                     if (claimMapping.getRemoteClaim().getClaimUri().equals(subjectClaimURI)) {
                         subjectClaimURI = claimMapping.getLocalClaim().getClaimUri();
                         break;
@@ -142,11 +142,14 @@ public class ClaimUtil {
 
             boolean isSubjectClaimInRequested = false;
             if (subjectClaimURI != null || requestedLocalClaimMap != null && requestedLocalClaimMap.length > 0) {
-                for (ClaimMapping claimMapping : requestedLocalClaimMap) {
-                    if (claimMapping.isRequested()) {
-                        claimURIList.add(claimMapping.getLocalClaim().getClaimUri());
-                        if (claimMapping.getLocalClaim().getClaimUri().equals(subjectClaimURI)) {
-                            isSubjectClaimInRequested = true;
+
+                if (requestedLocalClaimMap != null) {
+                    for (ClaimMapping claimMapping : requestedLocalClaimMap) {
+                        if (claimMapping.isRequested()) {
+                            claimURIList.add(claimMapping.getLocalClaim().getClaimUri());
+                            if (claimMapping.getLocalClaim().getClaimUri().equals(subjectClaimURI)) {
+                                isSubjectClaimInRequested = true;
+                            }
                         }
                     }
                 }
@@ -158,7 +161,7 @@ public class ClaimUtil {
                         (SP_DIALECT, null, userTenantDomain, true);
 
                 Map<String, String> userClaims = userstore.getUserClaimValues(MultitenantUtils.getTenantAwareUsername
-                        (username), claimURIList.toArray(new    String[claimURIList.size()]), null);
+                        (username), claimURIList.toArray(new String[claimURIList.size()]), null);
                 if (log.isDebugEnabled()) {
                     log.debug("User claims retrieved from user store: " + userClaims.size());
                 }
@@ -238,7 +241,9 @@ public class ClaimUtil {
             }
 
             for (String remainingRole : locallyMappedUserRoles) {
-                spMappedUserRoles.append(remainingRole).append(claimSeparator);
+                if (StringUtils.isNotEmpty(remainingRole)) {
+                    spMappedUserRoles.append(remainingRole).append(claimSeparator);
+                }
             }
 
             return spMappedUserRoles.length() > 0 ?

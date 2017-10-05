@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
@@ -121,7 +122,16 @@ public class ClaimUtilTest extends PowerMockTestCase {
 
     private Field claimUtilLogField;
     private Object claimUtilObject;
+
     private RoleMapping[] roleMappings;
+
+    private ClaimMapping[] requestedClaimMappings;
+
+    private Map<String, String> userClaimsMap;
+
+    private Map<Object, Object> spToLocalClaimMappings;
+
+    private Map userClaimsMapWithSubject;
 
     private static final String AUTHORIZED_USER = "authUser";
     private static final String CLIENT_ID = "myClientID12345";
@@ -130,12 +140,11 @@ public class ClaimUtilTest extends PowerMockTestCase {
     private static final String EMAIL_CLAIM_URI = "http://wso2.org/claims/emailaddress";
     private static final String ROLE_CLAIM_URI = "http://wso2.org/claims/role";
 
-
-    @DataProvider(name = "provideDataForGetClaimsFromUser")
-    public Object[][] provideDataForGetClaimsFromUser() {
+    @BeforeClass
+    public void setup() {
 
         //Setting requested claims in SP
-        ClaimMapping[] requestedClaimMappings = new ClaimMapping[3];
+        requestedClaimMappings = new ClaimMapping[3];
 
         ClaimMapping claimMapping1 = new ClaimMapping();
         ClaimMapping claimMapping2 = new ClaimMapping();
@@ -161,16 +170,16 @@ public class ClaimUtilTest extends PowerMockTestCase {
         requestedClaimMappings[2] = claimMapping3;
 
         //Setting returning claims from user store
-        Map<String, String> userClaimsMap = new HashedMap();
+        userClaimsMap = new HashMap<>();
         userClaimsMap.put(USERNAME_CLAIM_URI, AUTHORIZED_USER);
         userClaimsMap.put(EMAIL_CLAIM_URI, "test@wso2.com");
         userClaimsMap.put(ROLE_CLAIM_URI, "role1");
 
-        Map<String, String> userClaimsMapWithSubject = new HashedMap();
+        userClaimsMapWithSubject = new HashedMap();
         userClaimsMap.put(USERNAME_CLAIM_URI, AUTHORIZED_USER);
 
         //Setting SP to local claim mapping
-        Map<String, String> spToLocalClaimMappings = new HashedMap();
+        spToLocalClaimMappings = new HashMap<>();
         spToLocalClaimMappings.put(USERNAME_CLAIM_URI, USERNAME_CLAIM_URI);
         spToLocalClaimMappings.put(ROLE_CLAIM_URI, ROLE_CLAIM_URI);
         spToLocalClaimMappings.put(EMAIL_CLAIM_URI, EMAIL_CLAIM_URI);
@@ -185,7 +194,10 @@ public class ClaimUtilTest extends PowerMockTestCase {
 
         roleMappings[0] = mapping1;
         roleMappings[1] = mapping2;
+    }
 
+    @DataProvider(name = "provideDataForGetClaimsFromUser")
+    public Object[][] provideDataForGetClaimsFromUser() {
         return new Object[][] {
                 { false, true, true, requestedClaimMappings, spToLocalClaimMappings, userClaimsMap, CLIENT_ID,
                         USERNAME_CLAIM_URI, "PRIMARY", CLAIM_SEPARATOR, false, false, true, 0},
@@ -321,30 +333,33 @@ public class ClaimUtilTest extends PowerMockTestCase {
     public Object[][] provideRoleMappingData() {
 
         return new Object[][] {
-                {new ArrayList<String>(), roleMappings, null},
-                {new ArrayList<String>(){{add(""); }}, roleMappings, null},
-                {new ArrayList<String>(){{add("role1"); add("role2");}}, roleMappings, "remoteRole1,remoteRole2"},
-                {new ArrayList<String>(){{add("role1"); }}, new RoleMapping[0], null}
+                {new ArrayList<String>(), roleMappings,  ",", null},
+                {null, null,  ",", null},
+                {new ArrayList<String>(){{add("role1"); add("role2"); }}, null,  ",,,", "role1,,,role2"},
+                {new ArrayList<String>(){{add("role1"); add("role2");}}, roleMappings, "#", "remoteRole1#remoteRole2"},
+                {new ArrayList<String>(){{add("role1"); }}, new RoleMapping[0], "," , "role1"}
         };
     }
 
     @Test (dataProvider = "provideRoleMappingData")
     public void testGetServiceProviderMappedUserRoles(List<String> locallyMappedUserRoles,
-                                                      Object roleMappingObject, String expected)  throws Exception {
+                                                      Object roleMappingObject,
+                                                      String claimSeparator,
+                                                      String expected)  throws Exception {
 
         RoleMapping[] roleMappings = (RoleMapping[]) roleMappingObject;
         when(mockedServiceProvider.getPermissionAndRoleConfig()).thenReturn(mockedPermissionAndRoleConfig);
         when(mockedPermissionAndRoleConfig.getRoleMappings()).thenReturn(roleMappings);
         String returned = ClaimUtil.getServiceProviderMappedUserRoles(mockedServiceProvider,
-                locallyMappedUserRoles, ",");
+                locallyMappedUserRoles, claimSeparator);
         Assert.assertEquals(returned, expected, "Invalid returned value");
     }
 
     private void setMockedLog(boolean isDebugEnabled) throws Exception {
 
-        Constructor<ClaimUtil> constructor = ClaimUtil.class.getDeclaredConstructor(new Class[0]);
+        Constructor<ClaimUtil> constructor = ClaimUtil.class.getDeclaredConstructor();
         constructor.setAccessible(true);
-        Object claimUtilObject = constructor.newInstance(new Object[0]);
+        Object claimUtilObject = constructor.newInstance();
         Field logField = claimUtilObject.getClass().getDeclaredField("log");
 
         Field modifiersField = Field.class.getDeclaredField("modifiers");

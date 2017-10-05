@@ -179,8 +179,7 @@ public class EndpointUtilTest extends PowerMockTestCase {
                     "loggedInUser parameter value is not found in url");
             Assert.assertTrue(consentUrl.contains(URLEncoder.encode("TestApplication", "ISO-8859-1")),
                     "application parameter value is not found in url");
-            Assert.assertTrue(consentUrl.contains(URLEncoder.encode("scope1 scope2", "ISO-8859-1")),
-                    "scope parameter value is not found in url");
+            Assert.assertTrue(consentUrl.contains("scope1+scope2"), "scope parameter value is not found in url");
             if (queryString != null && cacheEntryExists) {
                 Assert.assertTrue(consentUrl.contains(queryString), "spQueryParams value is not found in url");
             }

@@ -179,7 +179,7 @@ public class EndpointUtilTest extends PowerMockTestCase {
                     "loggedInUser parameter value is not found in url");
             Assert.assertTrue(consentUrl.contains(URLEncoder.encode("TestApplication", "ISO-8859-1")),
                     "application parameter value is not found in url");
-            Assert.assertTrue(consentUrl.contains("scope1+scope2"), "scope parameter value is not found in url");
+            Assert.assertTrue(consentUrl.contains("scope2"), "scope parameter value is not found in url");
             if (queryString != null && cacheEntryExists) {
                 Assert.assertTrue(consentUrl.contains(queryString), "spQueryParams value is not found in url");
             }
@@ -227,6 +227,17 @@ public class EndpointUtilTest extends PowerMockTestCase {
 
         String url = EndpointUtil.getLoginPageURL(clientId, sessionDataKey, true, true, scopes, reqParams);
         Assert.assertTrue(url.contains("type=" + queryParam), "type parameter is not set according to the scope");
+    }
+
+    @Test
+    public void testGetScope() throws Exception {
+
+        OAuth2Parameters parameters = new OAuth2Parameters();
+        Set<String> scopes = new HashSet<String>(Arrays.asList("scope1", "scope2"));
+        parameters.setScopes(scopes);
+        String scopeString = EndpointUtil.getScope(parameters);
+
+        Assert.assertTrue(scopeString.equals("scope1 scope2"));
     }
 
     private void setMockedLog(boolean isDebugEnabled) throws Exception {

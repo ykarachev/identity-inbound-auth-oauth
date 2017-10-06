@@ -43,15 +43,10 @@ import javax.servlet.Servlet;
 
 public class WebFingerServiceComponent {
     private static Log log = LogFactory.getLog(WebFingerServiceComponent.class);
-    private static BundleContext bundleContext = null;
-
-    public static BundleContext getBundleContext() {
-        return bundleContext;
-    }
 
     protected void activate(ComponentContext context) {
         try {
-            bundleContext = context.getBundleContext();
+            BundleContext bundleContext = context.getBundleContext();
             WebFingerProcessor webFingerProcessor = DefaultWebFingerProcessor.getInstance();
             bundleContext.registerService(WebFingerProcessor.class.getName(), webFingerProcessor, null);
             WebFingerServiceComponentHolder.setWebFingerProcessor(webFingerProcessor);

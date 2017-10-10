@@ -20,7 +20,10 @@ package org.wso2.carbon.identity.oauth.endpoint.util;
 import org.apache.axiom.util.base64.Base64Utils;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.logging.Log;
+import org.apache.oltu.oauth2.as.response.OAuthASResponse;
+import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
+import org.apache.oltu.oauth2.common.message.OAuthResponse;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -52,13 +55,15 @@ import java.util.Set;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.powermock.api.mockito.PowerMockito.doAnswer;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
+import static org.powermock.api.mockito.PowerMockito.whenNew;
 
 @PrepareForTest ( {SessionDataCache.class, OAuthServerConfiguration.class, OAuth2Util.class, IdentityUtil.class,
-        FrameworkUtils.class})
+        FrameworkUtils.class, OAuthASResponse.class, OAuthResponse.class})
 public class EndpointUtilTest extends PowerMockTestCase {
 
     @Mock
@@ -76,11 +81,25 @@ public class EndpointUtilTest extends PowerMockTestCase {
     @Mock
     OAuth2Util.OAuthURL mockedOAuthUrl;
 
+    @Mock
+    OAuthASResponse mockedOAuthResponse;
+
+    @Mock
+    OAuthResponse.OAuthErrorResponseBuilder mockedOAuthErrorResponseBuilder;
+
+    @Mock
+    OAuthResponse.OAuthResponseBuilder mockedOAuthResponseBuilder;
+
     private static final String COMMONAUTH_URL = "https://localhost:9443/commonauth";
     private static final String OIDC_CONSENT_PAGE_URL =
             "https://localhost:9443/authenticationendpoint/oauth2_consent.do";
     private static final String OAUTH2_CONSENT_PAGE_URL =
             "https://localhost:9443/authenticationendpoint/oauth2_authz.do";
+    private static final String ERROR_PAGE_URL = "https://localhost:9443/authenticationendpoint/oauth2_error.do";
+    private static final String ERROR_PAGE_URL_WITH_APP =
+            "https://localhost:9443/authenticationendpoint/oauth2_error.do?oauthErrorCode=3002&oauthErrorMsg=errorMessage&application=myApp";
+    private static final String ERROR_PAGE_URL_WITHOUT_APP =
+            "https://localhost:9443/authenticationendpoint/oauth2_error.do?oauthErrorCode=3002&oauthErrorMsg=errorMessage";
 
     private String username;
     private String password;
@@ -237,7 +256,98 @@ public class EndpointUtilTest extends PowerMockTestCase {
         parameters.setScopes(scopes);
         String scopeString = EndpointUtil.getScope(parameters);
 
-        Assert.assertTrue(scopeString.equals("scope1 scope2"));
+        Assert.assertTrue(scopeString.contains("scope1 scope2"));
+    }
+
+    @DataProvider (name = "provideErrorData")
+    public Object[][] provideErrorData() {
+
+        return new Object[][] {
+                { "myApp", ERROR_PAGE_URL_WITH_APP },
+                { null, ERROR_PAGE_URL_WITHOUT_APP }
+        };
+    }
+
+    @Test (dataProvider = "provideErrorData")
+    public void testGetErrorPageURL(String applicationName, String expected) throws Exception {
+
+        mockStatic(OAuth2Util.OAuthURL.class);
+        when(OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl()).thenReturn(ERROR_PAGE_URL);
+
+        String url = EndpointUtil.getErrorPageURL("3002", "errorMessage", applicationName);
+        Assert.assertEquals(url, expected, "Incorrect error page url");
+    }
+
+    @DataProvider(name = "provideErrorRedirectData")
+    public Object[][] provideErrorRedirectData() {
+
+        OAuth2Parameters params1 = new OAuth2Parameters();
+        OAuth2Parameters params2 = new OAuth2Parameters();
+        String state = "active";
+        String responseType = "dummyResponceType";
+        String appName = "myApp";
+
+
+        params1.setState(state);
+        params1.setResponseType(responseType);
+        params1.setApplicationName(appName);
+        params1.setRedirectURI("http://localhost:8080/callback");
+
+        params2.setState(state);
+        params2.setResponseType(responseType);
+        params2.setApplicationName(appName);
+        params2.setRedirectURI(null);
+
+        return new Object[][] {
+                { true, true, params1, null, "http://localhost:8080/location", false},
+                { true, false, params1, null, "http://localhost:8080/location", false},
+                { false, true, params1, null, "http://localhost:8080/location", false},
+                { true, true, params2, null, ERROR_PAGE_URL, false},
+                { true, true, null, null, ERROR_PAGE_URL, false},
+                { true, true, params1, new OAuthSystemException(), ERROR_PAGE_URL, false},
+                { true, true, params1, new OAuthSystemException(), ERROR_PAGE_URL, true}
+        };
+    }
+
+    @Test (dataProvider = "provideErrorRedirectData")
+    public void testGetErrorRedirectURL(boolean isImplicitResponse, boolean isImplicitFragment,
+                                        Object oAuth2ParamObject, Object exeObject, String expected,boolean isDebugOn)
+            throws Exception {
+
+        setMockedLog(isDebugOn);
+        OAuth2Parameters parameters = (OAuth2Parameters) oAuth2ParamObject;
+        OAuthProblemException exception = OAuthProblemException.error("OAuthProblemExceptionErrorMessage");
+
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
+        when(mockedOAuthServerConfiguration.isImplicitErrorFragment()).thenReturn(isImplicitFragment);
+
+        mockStatic(OAuth2Util.class);
+        when(OAuth2Util.isImplicitResponseType(anyString())).thenReturn(isImplicitResponse);
+
+        mockStatic(OAuth2Util.OAuthURL.class);
+        when(OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl()).thenReturn(ERROR_PAGE_URL);
+
+        mockStatic(OAuthResponse.OAuthErrorResponseBuilder.class);
+        whenNew(OAuthResponse.OAuthErrorResponseBuilder.class).withArguments(anyInt()).
+                thenReturn(mockedOAuthErrorResponseBuilder);
+        when(mockedOAuthErrorResponseBuilder.error(any(OAuthProblemException.class))).
+                thenReturn(mockedOAuthErrorResponseBuilder);
+        when(mockedOAuthErrorResponseBuilder.location(anyString())).thenReturn(mockedOAuthErrorResponseBuilder);
+        when(mockedOAuthErrorResponseBuilder.setState(anyString())).thenReturn(mockedOAuthErrorResponseBuilder);
+        when(mockedOAuthErrorResponseBuilder.setParam(anyString(), anyString())).
+                thenReturn(mockedOAuthErrorResponseBuilder);
+        if (exeObject != null) {
+            OAuthSystemException oAuthSystemException = (OAuthSystemException) exeObject;
+            when(mockedOAuthErrorResponseBuilder.buildQueryMessage()).thenThrow(oAuthSystemException);
+        } else {
+            when(mockedOAuthErrorResponseBuilder.buildQueryMessage()).thenReturn(mockedOAuthResponse);
+        }
+
+        when(mockedOAuthResponse.getLocationUri()).thenReturn("http://localhost:8080/location");
+
+        String url = EndpointUtil.getErrorRedirectURL(exception, parameters);
+        Assert.assertTrue(url.contains(expected), "Expected error redirect url not returned");
     }
 
     private void setMockedLog(boolean isDebugEnabled) throws Exception {

@@ -227,7 +227,7 @@ public class EndpointUtil {
 
         if (appName != null) {
             try {
-                errorPageUrl += "application" + "=" + URLEncoder.encode(appName, "UTF-8");
+                errorPageUrl += "&application" + "=" + URLEncoder.encode(appName, "UTF-8");
             } catch (UnsupportedEncodingException e) {
                 //ignore
                 if (log.isDebugEnabled()){

@@ -135,6 +135,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-web-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -211,7 +217,7 @@
                                         <limit implementation="org.jacoco.report.check.Limit">
                                             <counter>COMPLEXITY</counter>
                                             <value>COVEREDRATIO</value>
-                                            <!--<minimum>0.60</minimum>-->
+                                            <minimum>0.10</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

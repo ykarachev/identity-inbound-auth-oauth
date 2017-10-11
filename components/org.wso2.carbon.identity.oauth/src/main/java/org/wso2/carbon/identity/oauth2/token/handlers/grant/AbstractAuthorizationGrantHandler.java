@@ -123,9 +123,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         String userStoreDomain = null;
 
         //select the user store domain when multiple user stores are configured.
-        if (OAuth2Util.checkAccessTokenPartitioningEnabled() &&
-                OAuth2Util.checkUserNameAssertionEnabled()) {
-            userStoreDomain = tokReqMsgCtx.getAuthorizedUser().getUserStoreDomain();
+        if (OAuth2Util.checkAccessTokenPartitioningEnabled() && OAuth2Util.checkUserNameAssertionEnabled()) {
+            userStoreDomain = OAuth2Util.getUserStoreForFederatedUser(tokReqMsgCtx.getAuthorizedUser());
         }
 
         String tokenType;
@@ -443,18 +442,14 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                 
                 newAccessToken = oauthIssuerImpl.accessToken(tokReqMsgCtx);
                 if (OAuth2Util.checkUserNameAssertionEnabled()) {
-                    //use ':' for token & userStoreDomain separation
-                    String accessTokenStrToEncode = newAccessToken + ":" + userName;
-                    newAccessToken = Base64Utils.encode(accessTokenStrToEncode.getBytes(Charsets.UTF_8));
+                    newAccessToken = OAuth2Util.addUsernameToToken(tokReqMsgCtx.getAuthorizedUser(), newAccessToken);
                 }
 
                 // regenerate only if refresh token is null
                 if (refreshToken == null) {
                     refreshToken = oauthIssuerImpl.refreshToken(tokReqMsgCtx);
                     if (OAuth2Util.checkUserNameAssertionEnabled()) {
-                        //use ':' for token & userStoreDomain separation
-                        String refreshTokenStrToEncode = refreshToken + ":" + userName;
-                        refreshToken = Base64Utils.encode(refreshTokenStrToEncode.getBytes(Charsets.UTF_8));
+                        refreshToken = OAuth2Util.addUsernameToToken(tokReqMsgCtx.getAuthorizedUser(), refreshToken);
                     }
                 }
 

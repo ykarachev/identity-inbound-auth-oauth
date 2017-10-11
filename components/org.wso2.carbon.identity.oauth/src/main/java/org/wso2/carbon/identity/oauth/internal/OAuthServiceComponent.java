@@ -57,20 +57,24 @@ public class OAuthServiceComponent {
     private ServiceRegistration serviceRegistration = null;
 
     protected void activate(ComponentContext context) {
-        // initialize the OAuth Server configuration
-        OAuthServerConfiguration oauthServerConfig = OAuthServerConfiguration.getInstance();
+        try {
+            // initialize the OAuth Server configuration
+            OAuthServerConfiguration oauthServerConfig = OAuthServerConfiguration.getInstance();
 
-        if (OAuthCache.getInstance().isEnabled()) {
-            log.debug("OAuth Caching is enabled. Initializing the cache.");
-        }
+            if (OAuthCache.getInstance().isEnabled()) {
+                log.debug("OAuth Caching is enabled. Initializing the cache.");
+            }
 
-        listener = new IdentityOathEventListener();
-        serviceRegistration = context.getBundleContext().registerService(UserOperationEventListener.class.getName(),
-                listener, null);
-        log.debug("Identity Oath Event Listener is enabled");
+            listener = new IdentityOathEventListener();
+            serviceRegistration = context.getBundleContext().registerService(UserOperationEventListener.class.getName(),
+                    listener, null);
+            log.debug("Identity Oath Event Listener is enabled");
 
-        if (log.isDebugEnabled()) {
-            log.debug("Identity OAuth bundle is activated");
+            if (log.isDebugEnabled()) {
+                log.debug("Identity OAuth bundle is activated");
+            }
+        } catch (Throwable e) {
+            log.error("Error occurred while activating OAuth Service Component", e);
         }
     }
 

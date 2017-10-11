@@ -552,26 +552,6 @@ public class OAuth2Util {
     }
 
     /**
-     * Returns the mapped user store if a mapping is defined for this user store in AccessTokenPartitioningDomains
-     * element in identity.xml, or the original userstore domain if the mapping is not available.
-     *
-     * @param userStoreDomain
-     * @return
-     * @throws IdentityOAuth2Exception
-     */
-    public static String getMappedUserStoreDomain(String userStoreDomain) throws IdentityOAuth2Exception {
-
-        String mappedUserStoreDomain = userStoreDomain;
-
-        Map<String, String> availableDomainMappings = OAuth2Util.getAvailableUserStoreDomainMappings();
-        if (userStoreDomain != null && availableDomainMappings.containsKey(userStoreDomain)) {
-            mappedUserStoreDomain = availableDomainMappings.get(userStoreDomain);
-        }
-
-        return mappedUserStoreDomain;
-    }
-
-    /**
      * Returns the updated table name using user store domain if a mapping is defined for this users store in
      * AccessTokenPartitioningDomains element in identity.xml,
      * or the original table name if the mapping is not available.
@@ -585,11 +565,14 @@ public class OAuth2Util {
     public static String getPartitionedTableByUserStore(String tableName, String userStoreDomain)
             throws IdentityOAuth2Exception {
 
-        if (StringUtils.isNotBlank(userStoreDomain) &&
+        if (StringUtils.isNotBlank(tableName) && StringUtils.isNotBlank(userStoreDomain) &&
                 !IdentityUtil.getPrimaryDomainName().equalsIgnoreCase(userStoreDomain)) {
 
-            String mappedUserStoreDomain = OAuth2Util.getMappedUserStoreDomain(userStoreDomain);
-            tableName = tableName + "_" + mappedUserStoreDomain;
+            Map<String, String> availableDomainMappings = OAuth2Util.getAvailableUserStoreDomainMappings();
+            if (userStoreDomain != null && availableDomainMappings.containsKey(userStoreDomain)) {
+                String mappedUserStoreDomain = availableDomainMappings.get(userStoreDomain);
+                tableName = tableName + "_" + mappedUserStoreDomain;
+            }
         }
 
         return tableName;
@@ -711,10 +694,16 @@ public class OAuth2Util {
     public static String getUserStoreDomainFromUserId(String userId)
             throws IdentityOAuth2Exception {
         String userStoreDomain = null;
+
         if (userId != null) {
             String[] strArr = userId.split(UserCoreConstants.DOMAIN_SEPARATOR);
             if (strArr != null && strArr.length > 1) {
-                userStoreDomain = getMappedUserStoreDomain(strArr[0]);
+                userStoreDomain = strArr[0];
+                Map<String, String> availableDomainMappings = OAuth2Util.getAvailableUserStoreDomainMappings();
+
+                if (userStoreDomain != null && availableDomainMappings.containsKey(userStoreDomain)) {
+                    userStoreDomain = availableDomainMappings.get(userStoreDomain);
+                }
             }
         }
         return userStoreDomain;

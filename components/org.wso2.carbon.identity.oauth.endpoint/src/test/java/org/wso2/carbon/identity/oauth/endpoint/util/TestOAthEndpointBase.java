@@ -43,7 +43,8 @@ public class TestOAthEndpointBase extends PowerMockTestCase {
         connection.createStatement().executeUpdate("RUNSCRIPT FROM 'src/test/resources/dbscripts/h2.sql'");
     }
 
-    protected void createOAuthApp(String clientId, String secret, String username, String appName, String appState) throws Exception {
+    protected void createOAuthApp(String clientId, String secret, String username, String appName, String appState)
+            throws Exception {
 
         PreparedStatement statement = null;
         try {

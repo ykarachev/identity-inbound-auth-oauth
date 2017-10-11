@@ -22,11 +22,11 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.handler.request.RequestCoordinator;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
@@ -41,7 +41,8 @@ import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
 import org.wso2.carbon.identity.oauth2.OAuth2Service;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
-import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +60,8 @@ import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.doAnswer;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.AssertJUnit.assertTrue;
 
 @PrepareForTest({ OAuth2Util.class, SessionDataCache.class, OAuthServerConfiguration.class, IdentityDatabaseUtil.class,
         EndpointUtil.class, FrameworkUtils.class})
@@ -105,8 +108,8 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
 
     @BeforeTest
     public void setUp() throws Exception {
-
-        System.setProperty("carbon.home", new File("src/test/resources/carbon_home").getAbsolutePath());
+        Path path = Paths.get("src", "test", "resources", "carbon_home");
+        System.setProperty(CarbonBaseConstants.CARBON_HOME, path.toString());
 
         oAuth2AuthzEndpoint = new OAuth2AuthzEndpoint();
         sessionDataKeyConsent = "savedSessionDataKeyForConsent";
@@ -131,7 +134,6 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
 
     @DataProvider(name = "providePostParams")
     public Object[][] providePostParams() {
-
         MultivaluedMap<String, String> paramMap1 = new MultivaluedHashMap<String, String>();
         List<String> list1 = new ArrayList<>();
         list1.add("value1");
@@ -156,8 +158,8 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
     }
 
     @Test (dataProvider = "providePostParams")
-    public void testAuthorizePost(Object paramObject, Map<String, String[]> requestParams, int expected) throws Exception {
-
+    public void testAuthorizePost(Object paramObject, Map<String, String[]> requestParams, int expected)
+            throws Exception {
         MultivaluedMap<String, String> paramMap = (MultivaluedMap<String, String>) paramObject;
         when(httpServletRequest.getParameterMap()).thenReturn(requestParams);
         when(httpServletRequest.getParameterNames()).thenReturn(new Vector(requestParams.keySet()).elements());
@@ -166,12 +168,11 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         when(OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl()).thenReturn(ERROR_PAGE_URL);
 
         Response response = oAuth2AuthzEndpoint.authorizePost(httpServletRequest, httpServletResponse, paramMap);
-        Assert.assertEquals(response.getStatus(), expected);
+        assertEquals(response.getStatus(), expected);
     }
 
     @DataProvider(name = "provideParams")
     public Object[][] provideParams() {
-
         initMocks(this);
 
         return new Object[][] {
@@ -189,8 +190,6 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
                         "invalidConsentCacheKey", "true", "scope1", sessionDataKey, null, 401, null },
                 { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{inactiveClientId},
                         "invalidConsentCacheKey", "true", "scope1", sessionDataKey, null, 401, null },
-//                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{inactiveClientId},
-//                        "invalidConsentCacheKey", "true", "scope1", sessionDataKey, new SQLException(), 404, null },
         };
     }
 
@@ -198,7 +197,6 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
     public void testAuthorize(Object flowStatusObject, String[] clientId,
                               String sessionDataKayConsent, String toCommonAuth, String scope, String sessionDataKey,
                               Exception e, int expectedStatus, String expectedError) throws Exception {
-
         AuthenticatorFlowStatus flowStatus = (AuthenticatorFlowStatus) flowStatusObject;
         setMockHttpRequest(flowStatus, clientId, sessionDataKayConsent, toCommonAuth, scope, sessionDataKey);
 
@@ -229,19 +227,18 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
         Response response = oAuth2AuthzEndpoint.authorize(httpServletRequest, httpServletResponse);
-        Assert.assertEquals(response.getStatus(), expectedStatus);
+        assertEquals(response.getStatus(), expectedStatus);
 
         MultivaluedMap<String, Object> responseMetadata = response.getMetadata();
 
         if (expectedError != null) {
             String location = (String) responseMetadata.get("Location").get(0);
-            Assert.assertTrue(location.contains(expectedError));
+            assertTrue(location.contains(expectedError));
         }
     }
 
     private void setMockHttpRequest(AuthenticatorFlowStatus flowStatus, String[] clientId, String sessionDataKayConsent,
                                     String toCommonAuth, String scope, String sessionDataKey) {
-
         final Map<String, String[]> requestParams = new HashedMap();
         if (clientId != null) {
             requestParams.put("client_id", clientId);

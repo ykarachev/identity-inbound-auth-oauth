@@ -1227,7 +1227,8 @@ public class TokenMgtDAO {
         PreparedStatement prepStmt = null;
         try {
             if (log.isDebugEnabled()) {
-                log.debug("Changing status of access token with id: " + tokenId + " to: " + tokenState);
+                log.debug("Changing status of access token with id: " + tokenId + " to: " + tokenState +
+                        " userStoreDomain: " + userStoreDomain);
             }
 
             String sql = SQLQueries.UPDATE_TOKE_STATE;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * WSO2 Inc. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -22,7 +22,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.IObjectFactory;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
@@ -64,13 +63,8 @@ public class DefaultOIDCProcessorTest {
     }
 
     @BeforeClass
-//    @PrepareForTest(OAuth2Util.class)
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-    }
-
-    @AfterMethod
-    public void tearDown() throws Exception {
     }
 
     @Test

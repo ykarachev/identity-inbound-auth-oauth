@@ -25,6 +25,7 @@
             <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest" />
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandlerTest" />
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest" />
+            <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest" />
         </classes>
     </test>
 </suite>

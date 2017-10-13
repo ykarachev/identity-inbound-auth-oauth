@@ -20,6 +20,7 @@ package org.wso2.carbon.identity.oauth.scope.endpoint.util;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.junit.Assert;
 import org.mockito.Mock;
 import org.osgi.framework.BundleContext;
 import org.osgi.util.tracker.ServiceTracker;
@@ -42,8 +43,7 @@ import java.util.HashSet;
 import java.util.Set;
 import javax.ws.rs.core.Response;
 
-import static org.mockito.Mockito.mock;
-import static org.powermock.api.mockito.PowerMockito.when;
+
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
@@ -97,7 +97,7 @@ public class ScopeUtilsTest extends PowerMockTestCase {
 
         Scope scope1 = ScopeUtils.getScope(scopeDTO);
         assertEquals(scope1.getName(), CLIENT_NAME, "Actual name is not match for expected name");
-        assertEquals(scope1.getDescription(),DESCRIPTION, "Actual description is not match for expected description");
+        assertEquals(scope1.getDescription(), DESCRIPTION, "Actual description is not match for expected description");
         assertEquals(scope1.getBindings(), binding, "Actual binding is not match for expected binding");
     }
 
@@ -108,7 +108,7 @@ public class ScopeUtilsTest extends PowerMockTestCase {
         Scope scope = new Scope(CLIENT_NAME, DESCRIPTION, bindings);
 
         ScopeDTO scopeDTO1 = ScopeUtils.getScopeDTO(scope);
-        assertEquals(scopeDTO1.getBindings(), bindings,"Actual binding is not match for expected binding");
+        assertEquals(scopeDTO1.getBindings(), bindings, "Actual binding is not match for expected binding");
         assertTrue(scopeDTO1.getBindings().get(0).contains("binding1"));
         assertEquals(scopeDTO1.getDescription(), DESCRIPTION, "Actual description is not match for expected description");
         assertEquals(scopeDTO1.getName(), CLIENT_NAME, "Actual name is not match for expected name");
@@ -122,9 +122,8 @@ public class ScopeUtilsTest extends PowerMockTestCase {
         sc.setDescription("Error occurred while changing lifecycle state");
 
         Scope scope1 = ScopeUtils.getUpdatedScope(sc, "Actual name is not match for expected name");
-        assertEquals(scope1.getBindings(), bindings,"Actual binding is not match for expected binding");
+        assertEquals(scope1.getBindings(), bindings, "Actual binding is not match for expected binding");
         assertEquals(scope1.getDescription(), DESCRIPTION, "Actual description is not match for expected description");
-
     }
 
     @Test(description = "Testing getScopeDTO")
@@ -139,7 +138,7 @@ public class ScopeUtilsTest extends PowerMockTestCase {
         }
         Set<ScopeDTO> scopeDTOs = ScopeUtils.getScopeDTOs(scopes);
         assertNotNull(scopeDTOs);
-        assertEquals(scopeDTOs.size(), scopeSize, "Scopes can't be found");
+        assertEquals(scopeDTOs.size(), scopeSize, "Invalid Scopes size");
     }
 
     @DataProvider(name = "BuildScopeEndpointException")
@@ -148,18 +147,24 @@ public class ScopeUtilsTest extends PowerMockTestCase {
         Throwable throwable1 = new ScopeEndpointException(status);
         Throwable throwable2 = new RuntimeException("BAD_REQUEST_INVALID_REDIRECT_URI");
         return new Object[][]{
-                {status,throwable1, true},
-                {status,throwable1, false},
-                {status,throwable2, true},
-                {status,throwable2, false},
-                {status,throwable1, true}
+                {status, throwable1, true},
+                {status, throwable1, false},
+                {status, throwable2, true},
+                {status, throwable2, false},
+                {status, throwable1, true}
         };
     }
 
-    @Test(dataProvider = "BuildScopeEndpointException", expectedExceptions = ScopeEndpointException.class)
-    public void testHandleErrorResponse(Response.Status status,Throwable throwable, boolean isServerException) throws Exception {
+    @Test(dataProvider = "BuildScopeEndpointException")
+    public void testHandleErrorResponse(Response.Status status, Throwable throwable, boolean isServerException) throws Exception {
         String message = "Scope";
-        ScopeUtils.handleErrorResponse(status, message, throwable, isServerException,log);
+        // To check whether exception generated correctly.
+        try {
+            ScopeUtils.handleErrorResponse(status, message, throwable, isServerException, log);
+            Assert.fail();
+        } catch (ScopeEndpointException e) {
+            assertEquals(e.getResponse().getStatus(), status.getStatusCode());
+        }
     }
 }
 

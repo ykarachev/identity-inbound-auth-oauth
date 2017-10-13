@@ -17,7 +17,8 @@
  */
 package org.wso2.carbon.identity.oauth.endpoint.authz;
 
-import org.apache.commons.collections.map.HashedMap;
+import org.apache.axis2.transport.http.HTTPConstants;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
 import org.mockito.Matchers;
@@ -44,6 +45,8 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.cache.SessionDataCache;
 import org.wso2.carbon.identity.oauth.cache.SessionDataCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.SessionDataCacheKey;
+import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil;
 import org.wso2.carbon.identity.oauth.endpoint.util.OpenIDConnectUserRPStore;
@@ -60,6 +63,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -87,7 +91,7 @@ import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.testng.Assert.assertTrue;
 
 @PrepareForTest({ OAuth2Util.class, SessionDataCache.class, OAuthServerConfiguration.class, IdentityDatabaseUtil.class,
         EndpointUtil.class, FrameworkUtils.class, EndpointUtil.class, OpenIDConnectUserRPStore.class,
@@ -130,25 +134,21 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
     private static final String ERROR_PAGE_URL = "https://localhost:9443/authenticationendpoint/oauth2_error.do";
     private static final String USER_CONSENT_URL =
             "https://localhost:9443/authenticationendpoint/oauth2_authz.do";
-    private static final String CONSENT_CACHE_KEY = "sessionDataKeyConsent";
-    private static final String TO_COMMONAUTH = "tocommonauth";
-    private static final String SCOPE = "scope";
-    private static final String AUTH_FLOW_STATUS = "authenticatorFlowStatus";
-    private static final String SESSION_DATA_KEY = "sessionDataKey";
-    private static final String AUTH_RESULT = "authResult";
-    private static final String CONSENT = "consent";
     private static final String CLIENT_ID = "client_id";
     private static final String REDIRECT_URI = "redirect_uri";
+    private static final String RESPONSE_MODE_FORM_POST = "form_post";
+    private static final String SESSION_DATA_KEY_CONSENT_VALUE = "savedSessionDataKeyForConsent";
+    private static final String SESSION_DATA_KEY_VALUE = "savedSessionDataKey";
+    private static final String CLIENT_ID_VALUE = "ca19a540f544777860e44e75f605d927";
+    private static final String APP_NAME = "myApp";
+    private static final String INACTIVE_CLIENT_ID_VALUE = "inactiveId";
+    private static final String SECRET = "87n9a540f544777860e44e75f605d435";
+    private static final String INACTIVE_APP_NAME = "inactiveApp";
+    private static final String USERNAME = "user1";
+    private static final String APP_REDIRECT_URL = "http://localhost:8080/redirect";
+    private static final String APP_REDIRECT_URL_JSON = "{\"url\":\"http://localhost:8080/redirect\"}";
 
     private OAuth2AuthzEndpoint oAuth2AuthzEndpoint;
-    private String clientId;
-    private String sessionDataKeyConsent;
-    private String sessionDataKey;
-    private String secret;
-    private String appName;
-    private String username;
-    private String inactiveClientId;
-    private String inactiveAppName;
 
     @BeforeTest
     public void setUp() throws Exception {
@@ -156,20 +156,10 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         System.setProperty(CarbonBaseConstants.CARBON_HOME, path.toString());
 
         oAuth2AuthzEndpoint = new OAuth2AuthzEndpoint();
-        sessionDataKeyConsent = "savedSessionDataKeyForConsent";
-        sessionDataKey = "savedSessionDataKey";
-
-        clientId = "ca19a540f544777860e44e75f605d927";
-        secret = "87n9a540f544777860e44e75f605d435";
-        appName = "myApp";
-        inactiveClientId = "inactiveId";
-        secret = "87n9a540f544777860e44e75f605d435";
-        inactiveAppName = "inactiveApp";
-        username = "user1";
 
         initiateInMemoryH2();
-        createOAuthApp(clientId, secret, username, appName, "ACTIVE");
-        createOAuthApp(inactiveClientId, "dummySecret", username, inactiveAppName, "INACTIVE");
+        createOAuthApp(CLIENT_ID_VALUE, SECRET, USERNAME, APP_NAME, "ACTIVE");
+        createOAuthApp(INACTIVE_CLIENT_ID_VALUE, "dummySecret", USERNAME, INACTIVE_APP_NAME, "INACTIVE");
     }
 
     @AfterTest
@@ -185,7 +175,7 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         list1.add("value2");
         paramMap1.put("paramName1", list1);
 
-        Map<String, String[]> requestParams1 = new HashedMap();
+        Map<String, String[]> requestParams1 = new HashMap();
         requestParams1.put("reqParam1", new String[]{"val1", "val2"});
 
         MultivaluedMap<String, String> paramMap2 = new MultivaluedHashMap<String, String>();
@@ -193,12 +183,12 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         list2.add("value1");
         paramMap2.put("paramName1", list2);
 
-        Map<String, String[]> requestParams2 = new HashedMap();
+        Map<String, String[]> requestParams2 = new HashMap();
         requestParams2.put("reqParam1", new String[]{"val1"});
 
         return new Object[][] {
-                {paramMap2, requestParams2, 302},
-                {paramMap1, requestParams2, 400},
+                {paramMap2, requestParams2, HttpServletResponse.SC_FOUND},
+                {paramMap1, requestParams2, HttpServletResponse.SC_BAD_REQUEST},
         };
     }
 
@@ -213,7 +203,7 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         when(OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl()).thenReturn(ERROR_PAGE_URL);
 
         Response response = oAuth2AuthzEndpoint.authorizePost(httpServletRequest, httpServletResponse, paramMap);
-        assertEquals(response.getStatus(), expected);
+        assertEquals(response.getStatus(), expected, "Unexpected HTTP response status");
     }
 
     @DataProvider(name = "provideParams")
@@ -222,61 +212,86 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
 
         return new Object[][] {
                 { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{"val1", "val2"},
-                        sessionDataKeyConsent, "true", "scope1", sessionDataKey, null, 400, "invalid_request" },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{clientId},
-                        sessionDataKeyConsent, "true", "scope1", sessionDataKey, null, 302, "invalid_request" },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, null,
-                        null, "true", "scope1", null, null, 302, "invalid_request" },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{clientId},
-                        sessionDataKeyConsent, "true", "scope1", "invalidSession", null, 302, "access_denied" },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{clientId},
-                        "invalidConsentCacheKey", "true", "scope1", null, null, 302, "access_denied" },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{"invalidId"},
-                        "invalidConsentCacheKey", "true", "scope1", sessionDataKey, null, 401, null },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{inactiveClientId},
-                        "invalidConsentCacheKey", "true", "scope1", sessionDataKey, null, 401, null },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{clientId},
-                        "invalidConsentCacheKey", "true", "scope1", sessionDataKey, null, 302, "invalid_request" },
-                { null, new String[]{clientId}, sessionDataKeyConsent, "true", "scope1", sessionDataKey,
-                        null, 302, "invalid_request" },
-                { null, new String[]{clientId}, sessionDataKeyConsent, "true", "scope1", sessionDataKey,
-                        new IOException(), 500, null },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{clientId},
-                        null, "true", "scope1", null, null, 302, "invalid_request" },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{clientId},
-                        null, "true", "scope1", null, OAuthProblemException.error("error"), 302, "invalid_request" },
-                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{clientId},
-                        null, "true", "scope1", null, new IOException(), 500, null },
-                { null, new String[]{clientId}, null, "false", null, null, null, 302, "invalid_request" },
-                { AuthenticatorFlowStatus.INCOMPLETE, new String[]{clientId},
-                        null, "false", "openid", null, null, 302, "invalid_request" },
-                { AuthenticatorFlowStatus.INCOMPLETE, null, null, "false", "openid", null, null, 302, "invalid_request" },
+                        SESSION_DATA_KEY_CONSENT_VALUE, "true", "scope1", SESSION_DATA_KEY_VALUE, null,
+                        HttpServletResponse.SC_BAD_REQUEST, OAuth2ErrorCodes.INVALID_REQUEST },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{CLIENT_ID_VALUE},
+                        SESSION_DATA_KEY_CONSENT_VALUE, "true", "scope1", SESSION_DATA_KEY_VALUE, null,
+                        HttpServletResponse.SC_FOUND, OAuth2ErrorCodes.INVALID_REQUEST },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, null, null, "true", "scope1", null, null,
+                        HttpServletResponse.SC_FOUND, OAuth2ErrorCodes.INVALID_REQUEST },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{CLIENT_ID_VALUE},
+                        SESSION_DATA_KEY_CONSENT_VALUE, "true", "scope1", "invalidSession", null,
+                        HttpServletResponse.SC_FOUND, OAuth2ErrorCodes.ACCESS_DENIED },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{CLIENT_ID_VALUE}, "invalidConsentCacheKey",
+                        "true", "scope1", null, null, HttpServletResponse.SC_FOUND, OAuth2ErrorCodes.ACCESS_DENIED },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{"invalidId"}, "invalidConsentCacheKey",
+                        "true", "scope1", SESSION_DATA_KEY_VALUE, null, HttpServletResponse.SC_UNAUTHORIZED,
+                        OAuth2ErrorCodes.INVALID_CLIENT },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{INACTIVE_CLIENT_ID_VALUE}, "invalidConsentCacheKey",
+                        "true", "scope1", SESSION_DATA_KEY_VALUE, null, HttpServletResponse.SC_UNAUTHORIZED,
+                        OAuth2ErrorCodes.INVALID_CLIENT },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{CLIENT_ID_VALUE}, "invalidConsentCacheKey",
+                        "true", "scope1", SESSION_DATA_KEY_VALUE, null, HttpServletResponse.SC_FOUND,
+                        OAuth2ErrorCodes.INVALID_REQUEST },
+
+                { null, new String[]{CLIENT_ID_VALUE}, SESSION_DATA_KEY_CONSENT_VALUE, "true", "scope1",
+                        SESSION_DATA_KEY_VALUE, null, HttpServletResponse.SC_FOUND, OAuth2ErrorCodes.INVALID_REQUEST },
+
+                { null, new String[]{CLIENT_ID_VALUE}, SESSION_DATA_KEY_CONSENT_VALUE, "true", "scope1",
+                        SESSION_DATA_KEY_VALUE, new IOException(), HttpServletResponse.SC_INTERNAL_SERVER_ERROR, null },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{CLIENT_ID_VALUE}, null, "true", "scope1",
+                        null, null, HttpServletResponse.SC_FOUND, OAuth2ErrorCodes.INVALID_REQUEST },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{CLIENT_ID_VALUE}, null, "true", "scope1",
+                        null, OAuthProblemException.error("error"), HttpServletResponse.SC_FOUND,
+                        OAuth2ErrorCodes.INVALID_REQUEST },
+
+                { AuthenticatorFlowStatus.SUCCESS_COMPLETED, new String[]{CLIENT_ID_VALUE}, null, "true", "scope1",
+                        null, new IOException(), HttpServletResponse.SC_INTERNAL_SERVER_ERROR, null },
+
+                { null, new String[]{CLIENT_ID_VALUE}, null, "false", null, null, null, HttpServletResponse.SC_FOUND,
+                        OAuth2ErrorCodes.INVALID_REQUEST },
+
+                { AuthenticatorFlowStatus.INCOMPLETE, new String[]{CLIENT_ID_VALUE}, null, "false",
+                        OAuthConstants.Scope.OPENID, null, null, HttpServletResponse.SC_FOUND,
+                        OAuth2ErrorCodes.INVALID_REQUEST },
+
+                { AuthenticatorFlowStatus.INCOMPLETE, null, null, "false", OAuthConstants.Scope.OPENID, null, null,
+                        HttpServletResponse.SC_FOUND, OAuth2ErrorCodes.INVALID_REQUEST },
         };
     }
 
     @Test (dataProvider = "provideParams")
-    public void testAuthorize(Object flowStatusObject, String[] clientId,
-                              String sessionDataKayConsent, String toCommonAuth, String scope, String sessionDataKey,
-                              Exception e, int expectedStatus, String expectedError) throws Exception {
+    public void testAuthorize(Object flowStatusObject, String[] clientId, String sessionDataKayConsent,
+                              String toCommonAuth, String scope, String sessionDataKey, Exception e, int expectedStatus,
+                              String expectedError) throws Exception {
         AuthenticatorFlowStatus flowStatus = (AuthenticatorFlowStatus) flowStatusObject;
 
-        Map<String, String[]> requestParams = new HashedMap();
-        Map<String, Object> requestAttributes = new HashedMap();
+        Map<String, String[]> requestParams = new HashMap();
+        Map<String, Object> requestAttributes = new HashMap();
 
         if (clientId != null) {
-            requestParams.put("client_id", clientId);
+            requestParams.put(CLIENT_ID, clientId);
         }
-        requestParams.put(CONSENT_CACHE_KEY, new String[]{sessionDataKayConsent});
-        requestParams.put(TO_COMMONAUTH, new String[]{toCommonAuth});
-        requestParams.put(SCOPE, new String[]{scope});
+        requestParams.put(OAuthConstants.SESSION_DATA_KEY_CONSENT, new String[]{sessionDataKayConsent});
+        requestParams.put(FrameworkConstants.RequestParams.TO_COMMONAUTH, new String[]{toCommonAuth});
+        requestParams.put(OAuthConstants.OAuth20Params.SCOPE, new String[]{scope});
 
-        requestAttributes.put(AUTH_FLOW_STATUS, flowStatus);
-        requestAttributes.put(SESSION_DATA_KEY, sessionDataKey);
+        requestAttributes.put(FrameworkConstants.RequestParams.FLOW_STATUS, flowStatus);
+        requestAttributes.put(FrameworkConstants.SESSION_DATA_KEY, sessionDataKey);
 
         if (e instanceof OAuthProblemException) {
             mockStatic(CarbonOAuthAuthzRequest.class);
             whenNew(CarbonOAuthAuthzRequest.class).withAnyArguments().thenThrow(e);
-            requestParams.put(REDIRECT_URI, new String[]{"http;//localhost:8080/redirect"});
+            requestParams.put(REDIRECT_URI, new String[]{APP_REDIRECT_URL});
         }
 
         mockHttpRequest(requestParams, requestAttributes);
@@ -289,12 +304,12 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
 
         mockStatic(SessionDataCache.class);
         when(SessionDataCache.getInstance()).thenReturn(sessionDataCache);
-        SessionDataCacheKey loginDataCacheKey = new SessionDataCacheKey(this.sessionDataKey);
-        SessionDataCacheKey consentDataCacheKey = new SessionDataCacheKey(this.sessionDataKeyConsent);
+        SessionDataCacheKey loginDataCacheKey = new SessionDataCacheKey(SESSION_DATA_KEY_VALUE);
+        SessionDataCacheKey consentDataCacheKey = new SessionDataCacheKey(SESSION_DATA_KEY_CONSENT_VALUE);
         when(sessionDataCache.getValueFromCache(loginDataCacheKey)).thenReturn(loginCacheEntry);
         when(sessionDataCache.getValueFromCache(consentDataCacheKey)).thenReturn(consentCacheEntry);
         when(loginCacheEntry.getoAuth2Parameters()).thenReturn(setOAuth2Parameters(
-                new HashSet<>(Arrays.asList("openid")), appName, null, null));
+                new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)), APP_NAME, null, null));
 
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
@@ -329,12 +344,22 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
 
         Response response = oAuth2AuthzEndpoint.authorize(httpServletRequest, httpServletResponse);
         if (response != null) {
-            assertEquals(response.getStatus(), expectedStatus);
+            assertEquals(response.getStatus(), expectedStatus, "Unexpected HTTP response status");
             MultivaluedMap<String, Object> responseMetadata = response.getMetadata();
 
+            assertNotNull(responseMetadata, "HTTP response metadata is null");
+
             if (expectedError != null) {
-                String location = (String) responseMetadata.get("Location").get(0);
-                assertTrue(location.contains(expectedError));
+                List<Object> redirectPath = responseMetadata.get(HTTPConstants.HEADER_LOCATION);
+                if (CollectionUtils.isNotEmpty(redirectPath)) {
+                    String location = (String) redirectPath.get(0);
+                    assertTrue(location.contains(expectedError), "Expected error code not found in URL");
+                } else {
+                    assertNotNull(response.getEntity(), "Response entity is null");
+                    assertTrue(response.getEntity().toString().contains(expectedError),
+                            "Expected error code not found response entity");
+                }
+
             }
         } else {
             assertNotNull(redirectUrl[0]);
@@ -344,22 +369,30 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
     @DataProvider(name = "provideAuthenticatedData")
     public Object[][] provideAuthenticatedData() {
         return new Object[][] {
-                {true, true, new HashedMap(), null, null, null, new HashSet<>(Arrays.asList("openid"))," form_post",
-                        "http://localhost:8080/redirect", 302},
-                {false, true, null, null, null, null, new HashSet<>(Arrays.asList("openid"))," form_post",
-                        "http://localhost:8080/redirect", 302},
-                {true, true, new HashedMap(), null, null, null, new HashSet<>(Arrays.asList("scope1")), "not_form_post",
-                        "http://localhost:8080/redirect", 302},
-                {true, true, new HashedMap(), null, null, null, new HashSet<>(Arrays.asList("openid")), "form_post",
-                        "{\"url\":\"http://localhost:8080/redirect\"}", 200},
-                {true, true, new HashedMap(), null, null, null, new HashSet<>(Arrays.asList("scope1")), "form_post",
-                        "{\"url\":\"http://localhost:8080/redirect\"}", 200},
-                {true, false, null, "invalid_request", null, null, new HashSet<>(Arrays.asList("scope1")), "form_post",
-                        "http://localhost:8080/redirect", 302},
-                {true, false, null, null, "Error!", null, new HashSet<>(Arrays.asList("openid")), "form_post",
-                        "http://localhost:8080/redirect", 302},
-                {true, false, null, null, null, "http://localhost:8080/error", new HashSet<>(Arrays.asList("openid")),
-                        "form_post", "http://localhost:8080/redirect", 302}
+                {true, true, new HashMap(), null, null, null, new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)),
+                        RESPONSE_MODE_FORM_POST, APP_REDIRECT_URL, HttpServletResponse.SC_FOUND},
+
+                {false, true, null, null, null, null, new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)),
+                        RESPONSE_MODE_FORM_POST, APP_REDIRECT_URL, HttpServletResponse.SC_FOUND},
+
+                {true, true, new HashMap(), null, null, null, new HashSet<>(Arrays.asList("scope1")), "not_form_post",
+                        APP_REDIRECT_URL, HttpServletResponse.SC_FOUND},
+
+                {true, true, new HashMap(), null, null, null, new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)),
+                        RESPONSE_MODE_FORM_POST, APP_REDIRECT_URL_JSON, HttpServletResponse.SC_OK},
+
+                {true, true, new HashMap(), null, null, null, new HashSet<>(Arrays.asList("scope1")),
+                        RESPONSE_MODE_FORM_POST, APP_REDIRECT_URL_JSON, HttpServletResponse.SC_OK},
+
+                {true, false, null, OAuth2ErrorCodes.INVALID_REQUEST, null, null, new HashSet<>(Arrays.asList("scope1")),
+                        RESPONSE_MODE_FORM_POST, APP_REDIRECT_URL, HttpServletResponse.SC_FOUND},
+
+                {true, false, null, null, "Error!", null, new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)),
+                        RESPONSE_MODE_FORM_POST, APP_REDIRECT_URL, HttpServletResponse.SC_FOUND},
+
+                {true, false, null, null, null, "http://localhost:8080/error",
+                        new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)), RESPONSE_MODE_FORM_POST,
+                        APP_REDIRECT_URL, HttpServletResponse.SC_FOUND}
         };
     }
 
@@ -371,7 +404,7 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
             throws Exception {
         mockStatic(SessionDataCache.class);
         when(SessionDataCache.getInstance()).thenReturn(sessionDataCache);
-        SessionDataCacheKey loginDataCacheKey = new SessionDataCacheKey(this.sessionDataKey);
+        SessionDataCacheKey loginDataCacheKey = new SessionDataCacheKey(this.SESSION_DATA_KEY_VALUE);
         when(sessionDataCache.getValueFromCache(loginDataCacheKey)).thenReturn(loginCacheEntry);
 
         AuthenticationResult result =
@@ -386,23 +419,23 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
             authResultCacheEntry.setResult(result);
         }
 
-        Map<String, String[]> requestParams = new HashedMap();
-        Map<String, Object> requestAttributes = new HashedMap();
+        Map<String, String[]> requestParams = new HashMap();
+        Map<String, Object> requestAttributes = new HashMap();
 
-        requestParams.put(CLIENT_ID, new String[]{clientId});
-        requestParams.put(TO_COMMONAUTH, new String[]{"false"});
-        requestParams.put(SCOPE, new String[]{"openid"});
+        requestParams.put(CLIENT_ID, new String[]{CLIENT_ID_VALUE});
+        requestParams.put(FrameworkConstants.RequestParams.TO_COMMONAUTH, new String[]{"false"});
+        requestParams.put(OAuthConstants.OAuth20Params.SCOPE, new String[]{OAuthConstants.Scope.OPENID});
 
-        requestAttributes.put(AUTH_FLOW_STATUS, AuthenticatorFlowStatus.INCOMPLETE);
-        requestAttributes.put(SESSION_DATA_KEY, sessionDataKey);
-        requestAttributes.put(AUTH_RESULT, resultInRequest);
+        requestAttributes.put(FrameworkConstants.RequestParams.FLOW_STATUS, AuthenticatorFlowStatus.INCOMPLETE);
+        requestAttributes.put(FrameworkConstants.SESSION_DATA_KEY, SESSION_DATA_KEY_VALUE);
+        requestAttributes.put(FrameworkConstants.RequestAttribute.AUTH_RESULT, resultInRequest);
 
         mockHttpRequest(requestParams, requestAttributes);
 
         mockStatic(FrameworkUtils.class);
         when(FrameworkUtils.getAuthenticationResultFromCache(anyString())).thenReturn(authResultCacheEntry);
 
-        OAuth2Parameters oAuth2Params = setOAuth2Parameters(scopes, appName, responseMode, redirectUri);
+        OAuth2Parameters oAuth2Params = setOAuth2Parameters(scopes, APP_NAME, responseMode, redirectUri);
         when(loginCacheEntry.getoAuth2Parameters()).thenReturn(oAuth2Params);
         when(loginCacheEntry.getLoggedInUser()).thenReturn(result.getSubject());
 
@@ -427,50 +460,56 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         mockEndpointUtil();
 
         Response response = oAuth2AuthzEndpoint.authorize(httpServletRequest, httpServletResponse);
-        assertEquals(response.getStatus(), expected);
+        assertEquals(response.getStatus(), expected, "Unexpected HTTP response status");
     }
 
     @DataProvider(name = "provideConsentData")
     public Object[][] provideConsentData() {
         return new Object[][] {
-                {null, "form_post", "http://localhost:8080/redirect", new HashSet<>(Arrays.asList("openid")),
-                        302, "invalid_request"},
-                {"deny", "form_post", "http://localhost:8080/redirect", new HashSet<>(Arrays.asList("openid")),
-                        302, "access_denied"},
-                {"deny", "form_post", "http://localhost:8080/redirect", new HashSet<>(Arrays.asList("scope1")),
-                        302, "access_denied"},
-                {"approve", "form_post", "http://localhost:8080/redirect", new HashSet<>(Arrays.asList("openid")),
-                        302, null},
-                {"approve", "form_post", "http://localhost:8080/redirect", new HashSet<>(Arrays.asList("scope1")),
-                        302, null},
-                {"approve", "form_post", "{\"url\":\"http://localhost:8080/redirect\"}",
-                        new HashSet<>(Arrays.asList("openid")), 200, null},
-                {"approve", "form_post", "{\"url\":\"http://localhost:8080/redirect\"}",
-                        new HashSet<>(Arrays.asList("scope1")), 200, null},
+                {null, APP_REDIRECT_URL, new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)),
+                        HttpServletResponse.SC_FOUND, OAuth2ErrorCodes.INVALID_REQUEST},
+
+                {"deny", APP_REDIRECT_URL, new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)),
+                        HttpServletResponse.SC_FOUND, OAuth2ErrorCodes.ACCESS_DENIED},
+
+                {"deny", APP_REDIRECT_URL, new HashSet<>(Arrays.asList("scope1")), HttpServletResponse.SC_FOUND,
+                        OAuth2ErrorCodes.ACCESS_DENIED},
+
+                {"approve", APP_REDIRECT_URL, new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)),
+                        HttpServletResponse.SC_FOUND, null},
+
+                {"approve", APP_REDIRECT_URL, new HashSet<>(Arrays.asList("scope1")),
+                        HttpServletResponse.SC_FOUND, null},
+
+                {"approve", APP_REDIRECT_URL_JSON, new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)),
+                        HttpServletResponse.SC_OK, null},
+
+                {"approve", APP_REDIRECT_URL_JSON, new HashSet<>(Arrays.asList("scope1")),
+                        HttpServletResponse.SC_OK, null},
         };
     }
 
     @Test(dataProvider = "provideConsentData")
-    public void testUserConsentResponse(String consent, String responseMode, String redirectUrl, Set<String> scopes,
+    public void testUserConsentResponse(String consent, String redirectUrl, Set<String> scopes,
                                         int expectedStatus, String expectedError) throws Exception {
         mockStatic(SessionDataCache.class);
         when(SessionDataCache.getInstance()).thenReturn(sessionDataCache);
-        SessionDataCacheKey consentDataCacheKey = new SessionDataCacheKey(this.sessionDataKeyConsent);
+        SessionDataCacheKey consentDataCacheKey = new SessionDataCacheKey(this.SESSION_DATA_KEY_CONSENT_VALUE);
         when(sessionDataCache.getValueFromCache(consentDataCacheKey)).thenReturn(consentCacheEntry);
 
-        Map<String, String[]> requestParams = new HashedMap();
-        Map<String, Object> requestAttributes = new HashedMap();
+        Map<String, String[]> requestParams = new HashMap();
+        Map<String, Object> requestAttributes = new HashMap();
 
-        requestParams.put(CONSENT_CACHE_KEY, new String[]{sessionDataKeyConsent});
-        requestParams.put(TO_COMMONAUTH, new String[]{"false"});
-        requestParams.put(SCOPE, new String[]{"openid"});
-        requestParams.put(CONSENT, new String[]{consent});
+        requestParams.put(OAuthConstants.SESSION_DATA_KEY_CONSENT, new String[]{SESSION_DATA_KEY_CONSENT_VALUE});
+        requestParams.put(FrameworkConstants.RequestParams.TO_COMMONAUTH, new String[]{"false"});
+        requestParams.put(OAuthConstants.OAuth20Params.SCOPE, new String[]{OAuthConstants.Scope.OPENID});
+        requestParams.put(OAuthConstants.Prompt.CONSENT, new String[]{consent});
 
-        requestAttributes.put(AUTH_FLOW_STATUS, AuthenticatorFlowStatus.INCOMPLETE);
+        requestAttributes.put(FrameworkConstants.RequestParams.FLOW_STATUS, AuthenticatorFlowStatus.INCOMPLETE);
 
         mockHttpRequest(requestParams, requestAttributes);
 
-        OAuth2Parameters oAuth2Params = setOAuth2Parameters(scopes, appName, responseMode, redirectUrl);
+        OAuth2Parameters oAuth2Params = setOAuth2Parameters(scopes, APP_NAME, RESPONSE_MODE_FORM_POST, redirectUrl);
 
         when(consentCacheEntry.getoAuth2Parameters()).thenReturn(oAuth2Params);
         when(consentCacheEntry.getLoggedInUser()).thenReturn(new AuthenticatedUser());
@@ -500,12 +539,17 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
 
         Response response = oAuth2AuthzEndpoint.authorize(httpServletRequest, httpServletResponse);
         if (response != null) {
-            assertEquals(response.getStatus(), expectedStatus);
+            assertEquals(response.getStatus(), expectedStatus, "Unexpected HTTP response status");
+
             MultivaluedMap<String, Object> responseMetadata = response.getMetadata();
+            assertNotNull(responseMetadata);
 
             if (expectedError != null) {
-                String location = (String) responseMetadata.get("Location").get(0);
-                assertTrue(location.contains(expectedError));
+                CollectionUtils.isNotEmpty(responseMetadata.get(HTTPConstants.HEADER_LOCATION));
+                assertTrue(CollectionUtils.isNotEmpty(responseMetadata.get(HTTPConstants.HEADER_LOCATION)),
+                        "Location header not found in the response");
+                String location = (String) responseMetadata.get(HTTPConstants.HEADER_LOCATION).get(0);
+                assertTrue(location.contains(expectedError), "Expected error code not found in URL");
             }
         }
     }
@@ -564,8 +608,8 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         }
 
         AuthenticatedUser subject = new AuthenticatedUser();
-        subject.setAuthenticatedSubjectIdentifier(username);
-        subject.setUserName(username);
+        subject.setAuthenticatedSubjectIdentifier(USERNAME);
+        subject.setUserName(USERNAME);
         subject.setUserAttributes(attributes);
         authResult.setSubject(subject);
 

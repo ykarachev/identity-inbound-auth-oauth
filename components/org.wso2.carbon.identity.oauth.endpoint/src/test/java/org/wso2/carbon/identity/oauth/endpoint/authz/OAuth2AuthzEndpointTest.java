@@ -19,8 +19,14 @@ package org.wso2.carbon.identity.oauth.endpoint.authz;
 
 import org.apache.axis2.transport.http.HTTPConstants;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.oltu.oauth2.as.request.OAuthAuthzRequest;
+import org.apache.oltu.oauth2.as.validator.CodeValidator;
+import org.apache.oltu.oauth2.as.validator.TokenValidator;
+import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
+import org.apache.oltu.oauth2.common.message.types.ResponseType;
+import org.apache.oltu.oauth2.common.validators.OAuthValidator;
 import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
@@ -52,6 +58,7 @@ import org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil;
 import org.wso2.carbon.identity.oauth.endpoint.util.OpenIDConnectUserRPStore;
 import org.wso2.carbon.identity.oauth.endpoint.util.TestOAthEndpointBase;
 import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
+import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.OAuth2Service;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2ClientValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.model.CarbonOAuthAuthzRequest;
@@ -65,6 +72,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,6 +80,7 @@ import java.util.Vector;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.MultivaluedHashMap;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
@@ -79,6 +88,8 @@ import javax.ws.rs.core.Response;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyMap;
+import static org.mockito.Matchers.anySet;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.doAnswer;
@@ -131,7 +142,14 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
     @Mock
     OAuth2ClientValidationResponseDTO oAuth2ClientValidationResponseDTO;
 
+    @Mock
+    CarbonOAuthAuthzRequest carbonOAuthAuthzRequest;
+
+    @Mock
+    OAuthAuthzRequest oAuthAuthzRequest;
+
     private static final String ERROR_PAGE_URL = "https://localhost:9443/authenticationendpoint/oauth2_error.do";
+    private static final String LOGIN_PAGE_URL = "https://localhost:9443/authenticationendpoint/login.do";
     private static final String USER_CONSENT_URL =
             "https://localhost:9443/authenticationendpoint/oauth2_authz.do";
     private static final String CLIENT_ID = "client_id";
@@ -294,7 +312,7 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
             requestParams.put(REDIRECT_URI, new String[]{APP_REDIRECT_URL});
         }
 
-        mockHttpRequest(requestParams, requestAttributes);
+        mockHttpRequest(requestParams, requestAttributes, HttpMethod.POST);
 
         mockStatic(OAuth2Util.OAuthURL.class);
         when(OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl()).thenReturn(ERROR_PAGE_URL);
@@ -311,15 +329,7 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         when(loginCacheEntry.getoAuth2Parameters()).thenReturn(setOAuth2Parameters(
                 new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)), APP_NAME, null, null));
 
-        mockStatic(OAuthServerConfiguration.class);
-        when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
-        when(oAuthServerConfiguration.getPersistenceProcessor()).thenReturn(tokenPersistenceProcessor);
-        when(tokenPersistenceProcessor.getProcessedClientId(anyString())).thenAnswer(new Answer<Object>(){
-            @Override
-            public Object answer(InvocationOnMock invocation) throws Throwable {
-                return (String) invocation.getArguments()[0];
-            }
-        });
+        mockOAuthServerConfiguration();
 
         mockStatic(IdentityDatabaseUtil.class);
         when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
@@ -430,7 +440,7 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         requestAttributes.put(FrameworkConstants.SESSION_DATA_KEY, SESSION_DATA_KEY_VALUE);
         requestAttributes.put(FrameworkConstants.RequestAttribute.AUTH_RESULT, resultInRequest);
 
-        mockHttpRequest(requestParams, requestAttributes);
+        mockHttpRequest(requestParams, requestAttributes, HttpMethod.POST);
 
         mockStatic(FrameworkUtils.class);
         when(FrameworkUtils.getAuthenticationResultFromCache(anyString())).thenReturn(authResultCacheEntry);
@@ -439,15 +449,7 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         when(loginCacheEntry.getoAuth2Parameters()).thenReturn(oAuth2Params);
         when(loginCacheEntry.getLoggedInUser()).thenReturn(result.getSubject());
 
-        mockStatic(OAuthServerConfiguration.class);
-        when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
-        when(oAuthServerConfiguration.getPersistenceProcessor()).thenReturn(tokenPersistenceProcessor);
-        when(tokenPersistenceProcessor.getProcessedClientId(anyString())).thenAnswer(new Answer<Object>(){
-            @Override
-            public Object answer(InvocationOnMock invocation) throws Throwable {
-                return (String) invocation.getArguments()[0];
-            }
-        });
+        mockOAuthServerConfiguration();
 
         mockStatic(IdentityDatabaseUtil.class);
         when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
@@ -507,7 +509,7 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
 
         requestAttributes.put(FrameworkConstants.RequestParams.FLOW_STATUS, AuthenticatorFlowStatus.INCOMPLETE);
 
-        mockHttpRequest(requestParams, requestAttributes);
+        mockHttpRequest(requestParams, requestAttributes, HttpMethod.POST);
 
         OAuth2Parameters oAuth2Params = setOAuth2Parameters(scopes, APP_NAME, RESPONSE_MODE_FORM_POST, redirectUrl);
 
@@ -519,18 +521,7 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         doNothing().when(openIDConnectUserRPStore).putUserRPToStore(any(AuthenticatedUser.class),
                 anyString(), anyBoolean(), anyString());
 
-        mockStatic(OAuthServerConfiguration.class);
-        when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
-        when(oAuthServerConfiguration.getPersistenceProcessor()).thenReturn(tokenPersistenceProcessor);
-        when(tokenPersistenceProcessor.getProcessedClientId(anyString())).thenAnswer(new Answer<Object>(){
-            @Override
-            public Object answer(InvocationOnMock invocation) throws Throwable {
-                return (String) invocation.getArguments()[0];
-            }
-        });
-
-        mockStatic(IdentityDatabaseUtil.class);
-        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+        mockOAuthServerConfiguration();
 
         mockStatic(OAuth2Util.OAuthURL.class);
         when(OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl()).thenReturn(ERROR_PAGE_URL);
@@ -554,8 +545,171 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         }
     }
 
+    @DataProvider(name = "provideAuthzRequestData")
+    public Object[][] provideAuthzRequestData() {
+        String validPKCEChallenge = "abcdef1234A46gfdhhjhnmvmu764745463565nnnvbnn6";
+        return new Object[][] {
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, null, true, false, true, LOGIN_PAGE_URL},
+
+                {"", APP_REDIRECT_URL, null, null, null, true, false, true, ERROR_PAGE_URL},
+
+                {CLIENT_ID_VALUE, null, null, null, null, true, false, true, LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, "null", null, null, null, true, false, true, LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, null, false, false, true, ERROR_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, null, true, true, true, ERROR_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, null, true, true, false, LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, validPKCEChallenge, OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE, null,
+                        true, true, true, LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, "dummmyPkceChallenge", OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE,
+                        null, true, true, true, ERROR_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, validPKCEChallenge, "invalidMethod", null, true, true, false,
+                        ERROR_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, validPKCEChallenge, OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE, null,
+                        true, true, false, ERROR_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, validPKCEChallenge, null, null, true, true, false, ERROR_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, validPKCEChallenge, OAuthConstants.OAUTH_PKCE_S256_CHALLENGE, null,
+                        true, true, false, ERROR_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, OAuthConstants.Prompt.NONE, true, false, true,
+                        LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, OAuthConstants.Prompt.CONSENT + " " + OAuthConstants.Prompt.LOGIN,
+                        true, false, true, LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, OAuthConstants.Prompt.SELECT_ACCOUNT + " " + OAuthConstants.Prompt.LOGIN,
+                        true, false, true, LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, OAuthConstants.Prompt.SELECT_ACCOUNT + " " + OAuthConstants.Prompt.CONSENT,
+                        true, false, true, LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, OAuthConstants.Prompt.NONE + " " + OAuthConstants.Prompt.LOGIN,
+                        true, false, true, APP_REDIRECT_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, "dummyPrompt", true, false, true, APP_REDIRECT_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, OAuthConstants.Prompt.LOGIN, true, false, true,
+                        LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, OAuthConstants.Prompt.CONSENT, true, false, true,
+                        LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, OAuthConstants.Prompt.SELECT_ACCOUNT, true, false, true,
+                        LOGIN_PAGE_URL},
+
+                {CLIENT_ID_VALUE, APP_REDIRECT_URL, null, null, OAuthConstants.Prompt.NONE, true, false, true,
+                        ERROR_PAGE_URL},
+        };
+    }
+
+    @Test(dataProvider = "provideAuthzRequestData")
+    public void testHandleOAuthAuthorizationRequest(String clientId, String redirectUri, String pkceChallengeCode,
+                                                     String pkceChallengeMethod, String prompt, boolean clientValid,
+                                                     boolean pkceEnabled, boolean supportPlainPkce,
+                                                     String expectedLocation) throws Exception {
+        Map<String, String[]> requestParams = new HashMap();
+        Map<String, Object> requestAttributes = new HashMap();
+
+        requestParams.put(CLIENT_ID, new String[] {clientId});
+        requestParams.put(OAuthConstants.SESSION_DATA_KEY_CONSENT, new String[]{null});
+        requestParams.put(FrameworkConstants.RequestParams.TO_COMMONAUTH, new String[]{"false"});
+        requestParams.put(REDIRECT_URI, new String[]{APP_REDIRECT_URL});
+        requestParams.put(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE, new String[]{pkceChallengeCode});
+        requestParams.put(OAuthConstants.OAUTH_PKCE_CODE_CHALLENGE_METHOD, new String[]{pkceChallengeMethod});
+        requestParams.put(OAuth.OAUTH_RESPONSE_TYPE, new String[]{ResponseType.TOKEN.toString()});
+        if (redirectUri != null) {
+            requestParams.put("acr_values", new String[]{redirectUri});
+            requestParams.put("claims", new String[]{"essentialClaims"});
+            requestParams.put(MultitenantConstants.TENANT_DOMAIN,
+                    new String[]{MultitenantConstants.SUPER_TENANT_DOMAIN_NAME});
+        }
+        requestAttributes.put(FrameworkConstants.RequestParams.FLOW_STATUS, AuthenticatorFlowStatus.INCOMPLETE);
+        requestAttributes.put(FrameworkConstants.SESSION_DATA_KEY, null);
+
+        if (prompt != null) {
+            requestParams.put(OAuthConstants.OAuth20Params.PROMPT, new String[]{prompt});
+        }
+
+        boolean checkErrorCode = ERROR_PAGE_URL.equals(expectedLocation);
+        mockHttpRequest(requestParams, requestAttributes, HttpMethod.POST);
+
+        mockOAuthServerConfiguration();
+
+        Map<String, Class<? extends OAuthValidator<HttpServletRequest>>> responseTypeValidators = new Hashtable<>();
+        responseTypeValidators.put(ResponseType.CODE.toString(), CodeValidator.class);
+        responseTypeValidators.put(ResponseType.TOKEN.toString(), TokenValidator.class);
+
+        when(oAuthServerConfiguration.getSupportedResponseTypeValidators()).thenReturn(responseTypeValidators);
+
+        mockStatic(IdentityDatabaseUtil.class);
+        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+        mockEndpointUtil();
+        when(oAuth2Service.isPKCESupportEnabled()).thenReturn(pkceEnabled);
+        if (ERROR_PAGE_URL.equals(expectedLocation) && OAuthConstants.Prompt.NONE.equals(prompt)) {
+            doThrow(new IdentityOAuth2Exception("error")).when(EndpointUtil.class, "getLoginPageURL", anyString(),
+                    anyString(), anyBoolean(), anyBoolean(), anySet(), anyMap());
+            checkErrorCode =false;
+        }
+
+        mockStatic(OAuth2Util.OAuthURL.class);
+        when(OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl()).thenReturn(ERROR_PAGE_URL);
+
+        OAuth2ClientValidationResponseDTO validationResponseDTO = new OAuth2ClientValidationResponseDTO();
+        validationResponseDTO.setValidClient(clientValid);
+        validationResponseDTO.setCallbackURL(APP_REDIRECT_URL);
+        if (!clientValid) {
+            validationResponseDTO.setErrorCode(OAuth2ErrorCodes.INVALID_REQUEST);
+            validationResponseDTO.setErrorMsg("client is invalid");
+        }
+        validationResponseDTO.setPkceMandatory(supportPlainPkce);
+        validationResponseDTO.setPkceSupportPlain(supportPlainPkce);
+        when(oAuth2Service.validateClientInfo(anyString(), anyString())).thenReturn(validationResponseDTO);
+
+        final String[] redirectUrl = new String[1];
+
+        doAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                String key = (String) invocation.getArguments()[0];
+                redirectUrl[0] = key;
+                return null;
+            }
+        }).when(httpServletResponse).sendRedirect(anyString());
+
+        Response response = oAuth2AuthzEndpoint.authorize(httpServletRequest, httpServletResponse);
+
+        if (response != null) {
+            assertEquals(response.getStatus(), HttpServletResponse.SC_FOUND, "Unexpected HTTP response status");
+
+            MultivaluedMap<String, Object> responseMetadata = response.getMetadata();
+            assertNotNull(responseMetadata);
+
+            assertTrue(CollectionUtils.isNotEmpty(responseMetadata.get(HTTPConstants.HEADER_LOCATION)),
+                    "Location header not found in the response");
+            String location = (String) responseMetadata.get(HTTPConstants.HEADER_LOCATION).get(0);
+            assertTrue(location.contains(expectedLocation), "Unexpected redirect url in the response");
+
+            if (checkErrorCode) {
+                assertTrue(location.contains(OAuth2ErrorCodes.INVALID_REQUEST), "Expected error code not found in URL");
+            }
+        } else {
+            assertNotNull(redirectUrl[0]);
+        }
+
+    }
+
     private void mockHttpRequest(final Map<String, String[]> requestParams,
-                                 final Map<String, Object> requestAttributes) {
+                                 final Map<String, Object> requestAttributes, String method) {
         doAnswer(new Answer<Object>(){
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
@@ -585,6 +739,11 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
 
         when(httpServletRequest.getParameterMap()).thenReturn(requestParams);
         when(httpServletRequest.getSession()).thenReturn(httpSession);
+        when(httpServletRequest.getMethod()).thenReturn(method);
+        when(httpServletRequest.getContentType()).thenReturn(OAuth.ContentType.URL_ENCODED);
+
+        String authHeader = "Basic Y2ExOWE1NDBmNTQ0Nzc3ODYwZTQ0ZTc1ZjYwNWQ5Mjc6ODduOWE1NDBmNTQ0Nzc3ODYwZTQ0ZTc1ZjYwNWQ0MzU=";
+        when(httpServletRequest.getHeader("Authorization")).thenReturn(authHeader);
     }
 
     private void mockEndpointUtil() throws Exception {
@@ -594,6 +753,8 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         doReturn(oAuthServerConfiguration).when(EndpointUtil.class, "getOAuthServerConfiguration");
         doReturn(USER_CONSENT_URL).when(EndpointUtil.class, "getUserConsentURL", any(OAuth2Parameters.class),
                 anyString(), anyString(), anyBoolean());
+        doReturn(LOGIN_PAGE_URL).when(EndpointUtil.class, "getLoginPageURL", anyString(), anyString(), anyBoolean(),
+                anyBoolean(), anySet(), anyMap());
     }
 
     private AuthenticationResult setAuthenticationResult(boolean isAuthenticated, Map<ClaimMapping, String> attributes,
@@ -624,5 +785,17 @@ public class OAuth2AuthzEndpointTest extends TestOAthEndpointBase {
         oAuth2Parameters.setRedirectURI(redirectUri);
         oAuth2Parameters.setApplicationName(appName);
         return oAuth2Parameters;
+    }
+
+    private void mockOAuthServerConfiguration() throws Exception {
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
+        when(oAuthServerConfiguration.getPersistenceProcessor()).thenReturn(tokenPersistenceProcessor);
+        when(tokenPersistenceProcessor.getProcessedClientId(anyString())).thenAnswer(new Answer<Object>(){
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                return (String) invocation.getArguments()[0];
+            }
+        });
     }
 }

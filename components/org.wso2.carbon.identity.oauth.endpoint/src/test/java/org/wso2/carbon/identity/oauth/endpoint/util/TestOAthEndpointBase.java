@@ -56,7 +56,7 @@ public class TestOAthEndpointBase extends PowerMockTestCase {
             statement.setString(5, "PRIMARY");
             statement.setString(6, appName);
             statement.setString(7, "OAuth-2.0");
-            statement.setString(8, null);
+            statement.setString(8, "http://localhost:8080/redirect");
             statement.setString(9, "password");
             statement.setString(10, appState);
             statement.execute();

@@ -112,7 +112,7 @@ public class OIDCSessionManagementComponent {
     protected void setRealmService(RealmService realmService) {
 
         if (log.isDebugEnabled()) {
-            log.debug("Setting the Realm Service");
+            log.debug("Setting the Realm Service.");
         }
         OIDCSessionManagementComponentServiceHolder.setRealmService(realmService);
     }
@@ -120,7 +120,7 @@ public class OIDCSessionManagementComponent {
     protected void unsetRealmService(RealmService realmService) {
 
         if (log.isDebugEnabled()) {
-            log.debug("Un setting the Realm Service");
+            log.debug("Unsetting the Realm Service.");
         }
         OIDCSessionManagementComponentServiceHolder.setRealmService(null);
     }

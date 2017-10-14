@@ -81,7 +81,7 @@ public class OIDCDCRServiceComponent {
     protected void setApplicationManagementService(ApplicationManagementService applicationManagementService) {
 
         if (log.isDebugEnabled()) {
-            log.debug("Setting ApplicationManagement Service");
+            log.debug("Setting ApplicationManagement Service.");
         }
         OIDCDCRDataHolder.getInstance().
                 setApplicationManagementService(applicationManagementService);
@@ -95,7 +95,7 @@ public class OIDCDCRServiceComponent {
     protected void unsetApplicationManagementService(ApplicationManagementService applicationManagementService) {
 
         if (log.isDebugEnabled()) {
-            log.debug("Un setting ApplicationManagement Service.");
+            log.debug("Unsetting ApplicationManagement Service.");
         }
         OIDCDCRDataHolder.getInstance().setApplicationManagementService(null);
     }

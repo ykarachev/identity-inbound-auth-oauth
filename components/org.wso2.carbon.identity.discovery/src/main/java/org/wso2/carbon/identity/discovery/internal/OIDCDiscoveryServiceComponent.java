@@ -61,7 +61,7 @@ public class OIDCDiscoveryServiceComponent {
     @Reference(
             name = "claim.manager.listener.service",
             service = ClaimMetadataManagementService.class,
-            cardinality = ReferenceCardinality.MULTIPLE,
+            cardinality = ReferenceCardinality.MANDATORY,
             policy = ReferencePolicy.DYNAMIC,
             unbind = "unsetClaimManagementService"
     )

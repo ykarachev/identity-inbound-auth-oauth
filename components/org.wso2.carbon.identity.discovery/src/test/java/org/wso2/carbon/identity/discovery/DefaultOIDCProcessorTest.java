@@ -27,6 +27,7 @@ import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.discovery.builders.DefaultOIDCProviderRequestBuilder;
 import org.wso2.carbon.identity.discovery.builders.ProviderConfigBuilder;
+import org.wso2.carbon.identity.testutil.IdentityBaseTest;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -38,9 +39,9 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 
 @PrepareForTest({DefaultOIDCProcessor.class})
-public class DefaultOIDCProcessorTest {
+public class DefaultOIDCProcessorTest extends IdentityBaseTest {
 
-    private static final String SUPER_TENANAT = "carbon.super";
+    private static final String SUPER_TENANT = "carbon.super";
 
     @Mock
     private HttpServletRequest httpServletRequest;
@@ -74,7 +75,6 @@ public class DefaultOIDCProcessorTest {
 
     @Test
     public void testGetResponse() throws Exception {
-
         when(mockOidcProviderRequestBuilder.buildRequest(any(HttpServletRequest.class), anyString()))
                 .thenReturn(mockOidProviderRequest);
         when(mockProviderConfigBuilder.buildOIDProviderConfig(any(OIDProviderRequest.class)))
@@ -84,8 +84,8 @@ public class DefaultOIDCProcessorTest {
         whenNew(ProviderConfigBuilder.class).withNoArguments().thenReturn(mockProviderConfigBuilder);
 
         OIDCProcessor oidcProcessor = DefaultOIDCProcessor.getInstance();
-        OIDProviderConfigResponse response = oidcProcessor.getResponse(httpServletRequest, SUPER_TENANAT);
-        assertNotNull(response);
+        OIDProviderConfigResponse response = oidcProcessor.getResponse(httpServletRequest, SUPER_TENANT);
+        assertNotNull(response, "Error while calling getResponse()");
     }
 
     @Test

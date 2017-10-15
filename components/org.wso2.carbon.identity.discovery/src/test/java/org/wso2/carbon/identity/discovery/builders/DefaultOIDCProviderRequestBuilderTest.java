@@ -20,9 +20,7 @@ package org.wso2.carbon.identity.discovery.builders;
 
 import org.mockito.Mock;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.identity.discovery.OIDProviderRequest;
 
 import javax.servlet.http.HttpServletRequest;
@@ -33,7 +31,7 @@ import static org.testng.Assert.assertEquals;
 
 public class DefaultOIDCProviderRequestBuilderTest {
 
-    private static final String SUPER_TENANAT = "carbon.super";
+    private static final String SUPER_TENANT = "carbon.super";
 
     @Mock
     private HttpServletRequest mockHttpServletRequest;
@@ -43,20 +41,21 @@ public class DefaultOIDCProviderRequestBuilderTest {
         initMocks(this);
     }
 
-    @DataProvider(name = "test1")
-    public static Object[][] tenant() {
-        return new Object[][]{
-                {null, MultitenantConstants.SUPER_TENANT_DOMAIN_NAME},
-                {"tenant", "tenant"}
-        };
-    }
+//    @DataProvider(name = "test1")
+//    public static Object[][] tenant() {
+//        return new Object[][]{
+//                {null, MultitenantConstants.SUPER_TENANT_DOMAIN_NAME},
+//                {"tenant", "tenant"}
+//        };
+//    }
 
     @Test(dataProvider = "test1")
-    public void testBuildRequest(String value, String output) throws Exception {
+    public void testBuildRequest() throws Exception {
         when(mockHttpServletRequest.getRequestURI()).thenReturn("https://test.com");
         DefaultOIDCProviderRequestBuilder d = new DefaultOIDCProviderRequestBuilder();
-        OIDProviderRequest providerRequest = d.buildRequest(mockHttpServletRequest, SUPER_TENANAT);
-        assertEquals(providerRequest.getUri(), "https://test.com");
+        OIDProviderRequest providerRequest = d.buildRequest(mockHttpServletRequest, SUPER_TENANT);
+        assertEquals(providerRequest.getUri(), "https://test.com", "Result URI is different from " +
+                "the expected URI");
     }
 
 }

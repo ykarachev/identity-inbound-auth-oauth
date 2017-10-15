@@ -19,8 +19,6 @@
 package org.wso2.carbon.identity.discovery.builders;
 
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.base.ServerConfigurationException;
 import org.wso2.carbon.identity.claim.metadata.mgt.exception.ClaimMetadataException;
 import org.wso2.carbon.identity.claim.metadata.mgt.model.ExternalClaim;
@@ -43,7 +41,6 @@ import java.util.Set;
  */
 public class ProviderConfigBuilder {
 
-    private static Log log = LogFactory.getLog(ProviderConfigBuilder.class);
     private static final String OIDC_CLAIM_DIALECT = "http://wso2.org/oidc/claim";
 
     public OIDProviderConfigResponse buildOIDProviderConfig(OIDProviderRequest request) throws

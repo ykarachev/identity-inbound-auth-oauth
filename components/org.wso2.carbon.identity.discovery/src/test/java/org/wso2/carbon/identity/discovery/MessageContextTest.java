@@ -18,8 +18,10 @@
 
 package org.wso2.carbon.identity.discovery;
 
-import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.fail;
 
 public class MessageContextTest {
 
@@ -31,30 +33,24 @@ public class MessageContextTest {
         try {
             messageContext = new MessageContext(oidProviderRequest);
         } catch (Exception e) {
-            Assert.assertTrue(false);
+            fail("Exception occurred while calling the constructor");
         }
     }
 
     @Test
     public void testSetandGetRequest() throws Exception {
-
         OIDProviderRequest oidProviderRequest = new OIDProviderRequest();
         messageContext = new MessageContext();
         messageContext.setRequest(oidProviderRequest);
-        OIDProviderRequest oidProviderRequest1;
-        oidProviderRequest1 = messageContext.getRequest();
-        Assert.assertEquals(oidProviderRequest, oidProviderRequest1);
+        assertEquals(messageContext.getRequest(), oidProviderRequest, "Error");
     }
 
     @Test
     public void testSetandGetConfigurations() throws Exception {
-
         OIDProviderConfigResponse oidProviderConfigResponse = new OIDProviderConfigResponse();
         messageContext = new MessageContext();
         messageContext.setConfigurations(oidProviderConfigResponse);
-        OIDProviderConfigResponse oidProviderConfigResponse1;
-        oidProviderConfigResponse1 = messageContext.getConfigurations();
-        Assert.assertEquals(oidProviderConfigResponse, oidProviderConfigResponse1);
+        assertEquals(messageContext.getConfigurations(), oidProviderConfigResponse, "Error");
     }
 
 }

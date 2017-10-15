@@ -20,9 +20,7 @@ package org.wso2.carbon.identity.discovery.builders;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import org.mockito.Mock;
-import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.testng.Assert;
 import org.testng.IObjectFactory;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.ObjectFactory;
@@ -43,9 +41,11 @@ import java.util.List;
 
 import static org.mockito.Matchers.anyString;
 import static org.mockito.MockitoAnnotations.initMocks;
+import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.spy;
 import static org.powermock.api.mockito.PowerMockito.when;
+import static org.testng.Assert.assertNotNull;
 
 @PrepareForTest({OAuth2Util.class, OAuthServerConfiguration.class, OIDCDiscoveryDataHolder.class,
         ClaimMetadataManagementService.class})
@@ -73,8 +73,7 @@ public class ProviderConfigBuilderTest {
 
     @Test
     public void testBuildOIDProviderConfig() throws Exception {
-
-        OAuthServerConfiguration mockOAuthServerConfiguration = PowerMockito.mock(OAuthServerConfiguration.class);
+        OAuthServerConfiguration mockOAuthServerConfiguration = mock(OAuthServerConfiguration.class);
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockOAuthServerConfiguration);
 
@@ -95,13 +94,12 @@ public class ProviderConfigBuilderTest {
         when(mockOAuthServerConfiguration.getIdTokenSignatureAlgorithm()).thenReturn(idTokenSignatureAlgorithm);
 
         when(OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(idTokenSignatureAlgorithm)).thenReturn(JWSAlgorithm.RS256);
-        Assert.assertNotNull(providerConfigBuilder.buildOIDProviderConfig(mockOidProviderRequest));
+        assertNotNull(providerConfigBuilder.buildOIDProviderConfig(mockOidProviderRequest));
     }
 
     @Test(expectedExceptions = ServerConfigurationException.class)
     public void testBuildOIDProviderConfig1() throws Exception {
-
-        OAuthServerConfiguration mockOAuthServerConfiguration = PowerMockito.mock(OAuthServerConfiguration.class);
+        OAuthServerConfiguration mockOAuthServerConfiguration = mock(OAuthServerConfiguration.class);
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockOAuthServerConfiguration);
 
@@ -114,8 +112,7 @@ public class ProviderConfigBuilderTest {
 
     @Test(expectedExceptions = ServerConfigurationException.class)
     public void testBuildOIDProviderConfig2() throws Exception {
-
-        OAuthServerConfiguration mockOAuthServerConfiguration = PowerMockito.mock(OAuthServerConfiguration.class);
+        OAuthServerConfiguration mockOAuthServerConfiguration = mock(OAuthServerConfiguration.class);
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockOAuthServerConfiguration);
 
@@ -135,8 +132,7 @@ public class ProviderConfigBuilderTest {
 
     @Test(expectedExceptions = ServerConfigurationException.class)
     public void testBuildOIDProviderConfig3() throws Exception {
-
-        OAuthServerConfiguration mockOAuthServerConfiguration = PowerMockito.mock(OAuthServerConfiguration.class);
+        OAuthServerConfiguration mockOAuthServerConfiguration = mock(OAuthServerConfiguration.class);
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockOAuthServerConfiguration);
 

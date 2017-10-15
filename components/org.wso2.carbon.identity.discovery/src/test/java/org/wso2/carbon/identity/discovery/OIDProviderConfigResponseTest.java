@@ -25,6 +25,8 @@ import org.testng.annotations.Test;
 
 import java.util.Map;
 
+import static org.testng.Assert.assertEquals;
+
 public class OIDProviderConfigResponseTest {
 
     private OIDProviderConfigResponse oidProviderConfigResponse = new OIDProviderConfigResponse();
@@ -42,7 +44,7 @@ public class OIDProviderConfigResponseTest {
         String issuer = "issuer";
         oidProviderConfigResponse.setIssuer("issuer");
         String issuer1 = oidProviderConfigResponse.getIssuer();
-        Assert.assertEquals(issuer1, issuer);
+        assertEquals(issuer1, issuer);
     }
 
     @Test
@@ -50,7 +52,7 @@ public class OIDProviderConfigResponseTest {
         String authorizationEndpoint = "authorizationEndpoint";
         oidProviderConfigResponse.setAuthorizationEndpoint("authorizationEndpoint");
         String authorizationEndpoint1 = oidProviderConfigResponse.getAuthorizationEndpoint();
-        Assert.assertEquals(authorizationEndpoint1, authorizationEndpoint);
+        assertEquals(authorizationEndpoint1, authorizationEndpoint);
 
     }
 
@@ -59,7 +61,7 @@ public class OIDProviderConfigResponseTest {
         String tokenEndpoint = "tokenEndpoint";
         oidProviderConfigResponse.setTokenEndpoint("tokenEndpoint");
         String tokenEndpoint1 = oidProviderConfigResponse.getTokenEndpoint();
-        Assert.assertEquals(tokenEndpoint1, tokenEndpoint);
+        assertEquals(tokenEndpoint1, tokenEndpoint);
     }
 
     @Test
@@ -67,7 +69,7 @@ public class OIDProviderConfigResponseTest {
         String userinfoEndpont = "userinfoEndpont";
         oidProviderConfigResponse.setUserinfoEndpoint("userinfoEndpont");
         String userinfoEndpoint1 = oidProviderConfigResponse.getUserinfoEndpoint();
-        Assert.assertEquals(userinfoEndpoint1, userinfoEndpont);
+        assertEquals(userinfoEndpoint1, userinfoEndpont);
     }
 
     @Test
@@ -75,7 +77,7 @@ public class OIDProviderConfigResponseTest {
         String jwksUri = "jwksUri";
         oidProviderConfigResponse.setJwksUri("jwksUri");
         String jwksUri1 = oidProviderConfigResponse.getJwksUri();
-        Assert.assertEquals(jwksUri1, jwksUri);
+        assertEquals(jwksUri1, jwksUri);
     }
 
     @Test
@@ -83,7 +85,7 @@ public class OIDProviderConfigResponseTest {
         String registrationEndpoint = "registrationEndpoint";
         oidProviderConfigResponse.setRegistrationEndpoint("registrationEndpoint");
         String registrationEndpoint1 = oidProviderConfigResponse.getRegistrationEndpoint();
-        Assert.assertEquals(registrationEndpoint1, registrationEndpoint);
+        assertEquals(registrationEndpoint1, registrationEndpoint);
     }
 
     @Test
@@ -91,7 +93,7 @@ public class OIDProviderConfigResponseTest {
         String scopesSupported[] = {"scope1", "scope2"};
         oidProviderConfigResponse.setScopesSupported(new String[]{"scope1", "scope2"});
         String scopesSupported1[] = oidProviderConfigResponse.getScopesSupported();
-        Assert.assertEquals(scopesSupported1, scopesSupported);
+        assertEquals(scopesSupported1, scopesSupported);
     }
 
     @Test
@@ -99,7 +101,7 @@ public class OIDProviderConfigResponseTest {
         String responseTypesSupported[] = {"type1", "type2"};
         oidProviderConfigResponse.setResponseTypesSupported(new String[]{"type1", "type2"});
         String responseTypesSupported1[] = oidProviderConfigResponse.getResponseTypesSupported();
-        Assert.assertEquals(responseTypesSupported1, responseTypesSupported);
+        assertEquals(responseTypesSupported1, responseTypesSupported);
     }
 
     @Test
@@ -107,7 +109,7 @@ public class OIDProviderConfigResponseTest {
         String responseModesSupported[] = {"mode1", "mode2"};
         oidProviderConfigResponse.setResponseModesSupported(new String[]{"mode1", "mode2"});
         String responseModesSupported1[] = oidProviderConfigResponse.getResponseModesSupported();
-        Assert.assertEquals(responseModesSupported1, responseModesSupported);
+        assertEquals(responseModesSupported1, responseModesSupported);
     }
 
     @Test
@@ -115,7 +117,7 @@ public class OIDProviderConfigResponseTest {
         String grantTypesSupported[] = {"type1", "type2"};
         oidProviderConfigResponse.setGrantTypesSupported(new String[]{"type1", "type2"});
         String grantTypesSupported1[] = oidProviderConfigResponse.getGrantTypesSupported();
-        Assert.assertEquals(grantTypesSupported1, grantTypesSupported);
+        assertEquals(grantTypesSupported1, grantTypesSupported);
     }
 
     @Test
@@ -123,7 +125,7 @@ public class OIDProviderConfigResponseTest {
         String acrValuesSupported[] = {"value1", "value2"};
         oidProviderConfigResponse.setAcrValuesSupported(new String[]{"value1", "value2"});
         String acrValuesSupported1[] = oidProviderConfigResponse.getAcrValuesSupported();
-        Assert.assertEquals(acrValuesSupported1, acrValuesSupported);
+        assertEquals(acrValuesSupported1, acrValuesSupported);
     }
 
     @Test
@@ -131,7 +133,7 @@ public class OIDProviderConfigResponseTest {
         String subjectTypesSupported[] = {"type1", "type2"};
         oidProviderConfigResponse.setSubjectTypesSupported(new String[]{"type1", "type2"});
         String subjectTypesSupported1[] = oidProviderConfigResponse.getSubjectTypesSupported();
-        Assert.assertEquals(subjectTypesSupported1, subjectTypesSupported);
+        assertEquals(subjectTypesSupported1, subjectTypesSupported);
     }
 
     @Test
@@ -139,7 +141,7 @@ public class OIDProviderConfigResponseTest {
         String idTokenSigningAlgValuesSupported[] = {"value1", "value2"};
         oidProviderConfigResponse.setIdTokenSigningAlgValuesSupported(new String[]{"value1", "value2"});
         String idTokenSigningAlgValuesSupported1[] = oidProviderConfigResponse.getIdTokenSigningAlgValuesSupported();
-        Assert.assertEquals(idTokenSigningAlgValuesSupported1, idTokenSigningAlgValuesSupported);
+        assertEquals(idTokenSigningAlgValuesSupported1, idTokenSigningAlgValuesSupported);
     }
 
     @Test
@@ -148,7 +150,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setIdTokenEncryptionAlgValuesSupported(new String[]{"value1", "value2"});
         String idTokenEncryptionAlgValuesSupported1[] = oidProviderConfigResponse.
                 getIdTokenEncryptionAlgValuesSupported();
-        Assert.assertEquals(idTokenEncryptionAlgValuesSupported1, idTokenEncryptionAlgValuesSupported);
+        assertEquals(idTokenEncryptionAlgValuesSupported1, idTokenEncryptionAlgValuesSupported);
     }
 
     @Test
@@ -157,7 +159,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setIdTokenEncryptionEncValuesSupported(new String[]{"value1", "value2"});
         String idTokenEncryptionEncValuesSupported1[] = oidProviderConfigResponse.
                 getIdTokenEncryptionEncValuesSupported();
-        Assert.assertEquals(idTokenEncryptionEncValuesSupported1, idTokenEncryptionEncValuesSupported);
+        assertEquals(idTokenEncryptionEncValuesSupported1, idTokenEncryptionEncValuesSupported);
     }
 
     @Test
@@ -165,7 +167,7 @@ public class OIDProviderConfigResponseTest {
         String userinfoSigningAlgValuesSupported[] = {"value1", "value2"};
         oidProviderConfigResponse.setUserinfoSigningAlgValuesSupported(new String[]{"value1", "value2"});
         String userinfoSigningAlgValuesSupported1[] = oidProviderConfigResponse.getUserinfoSigningAlgValuesSupported();
-        Assert.assertEquals(userinfoSigningAlgValuesSupported1, userinfoSigningAlgValuesSupported);
+        assertEquals(userinfoSigningAlgValuesSupported1, userinfoSigningAlgValuesSupported);
     }
 
     @Test
@@ -174,7 +176,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setUserinfoEncryptionAlgValuesSupported(new String[]{"value1", "value2"});
         String userinfoEncryptionAlgValuesSupported1[] = oidProviderConfigResponse.
                 getUserinfoEncryptionAlgValuesSupported();
-        Assert.assertEquals(userinfoEncryptionAlgValuesSupported1, userinfoEncryptionAlgValuesSupported);
+        assertEquals(userinfoEncryptionAlgValuesSupported1, userinfoEncryptionAlgValuesSupported);
     }
 
     @Test
@@ -183,7 +185,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setUserinfoEncryptionEncValuesSupported(new String[]{"value1", "value2"});
         String userinfoEncryptionEncValuesSupported1[] = oidProviderConfigResponse.
                 getUserinfoEncryptionEncValuesSupported();
-        Assert.assertEquals(userinfoEncryptionEncValuesSupported1, userinfoEncryptionEncValuesSupported);
+        assertEquals(userinfoEncryptionEncValuesSupported1, userinfoEncryptionEncValuesSupported);
     }
 
     @Test
@@ -192,7 +194,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setRequestObjectSigningAlgValuesSupported(new String[]{"value1", "value2"});
         String requestObjectSigningAlgValuesSupported1[] = oidProviderConfigResponse.
                 getRequestObjectSigningAlgValuesSupported();
-        Assert.assertEquals(requestObjectSigningAlgValuesSupported1, requestObjectSigningAlgValuesSupported);
+        assertEquals(requestObjectSigningAlgValuesSupported1, requestObjectSigningAlgValuesSupported);
     }
 
     @Test
@@ -201,7 +203,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setRequestObjectEncryptionAlgValuesSupported(new String[]{"value1", "value2"});
         String requestObjectEncryptionAlgValuesSupported1[] = oidProviderConfigResponse.
                 getRequestObjectEncryptionAlgValuesSupported();
-        Assert.assertEquals(requestObjectEncryptionAlgValuesSupported1, requestObjectEncryptionAlgValuesSupported);
+        assertEquals(requestObjectEncryptionAlgValuesSupported1, requestObjectEncryptionAlgValuesSupported);
     }
 
     @Test
@@ -210,7 +212,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setRequestObjectEncryptionEncValuesSupported(new String[]{"value1", "value2"});
         String requestObjectEncryptionEncValuesSupported1[] = oidProviderConfigResponse.
                 getRequestObjectEncryptionEncValuesSupported();
-        Assert.assertEquals(requestObjectEncryptionEncValuesSupported1, requestObjectEncryptionEncValuesSupported);
+        assertEquals(requestObjectEncryptionEncValuesSupported1, requestObjectEncryptionEncValuesSupported);
     }
 
     @Test
@@ -219,7 +221,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setTokenEndpointAuthMethodsSupported(new String[]{"method1", "method2"});
         String tokenEndpointAuthMethodsSupported1[] = oidProviderConfigResponse.
                 getTokenEndpointAuthMethodsSupported();
-        Assert.assertEquals(tokenEndpointAuthMethodsSupported1, tokenEndpointAuthMethodsSupported);
+        assertEquals(tokenEndpointAuthMethodsSupported1, tokenEndpointAuthMethodsSupported);
     }
 
     @Test
@@ -228,7 +230,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setTokenEndpointAuthSigningAlgValuesSupported(new String[]{"value1", "value2"});
         String tokenEndpointAuthSigningAlgValuesSupported1[] = oidProviderConfigResponse.
                 getTokenEndpointAuthSigningAlgValuesSupported();
-        Assert.assertEquals(tokenEndpointAuthSigningAlgValuesSupported1, tokenEndpointAuthSigningAlgValuesSupported);
+        assertEquals(tokenEndpointAuthSigningAlgValuesSupported1, tokenEndpointAuthSigningAlgValuesSupported);
     }
 
     @Test
@@ -237,7 +239,7 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setDisplayValuesSupported(new String[]{"value1", "value2"});
         String displayValuesSupported1[] = oidProviderConfigResponse.
                 getDisplayValuesSupported();
-        Assert.assertEquals(displayValuesSupported1, displayValuesSupported);
+        assertEquals(displayValuesSupported1, displayValuesSupported);
     }
 
     @Test
@@ -245,7 +247,7 @@ public class OIDProviderConfigResponseTest {
         String claimTypesSupported[] = {"type1", "type2"};
         oidProviderConfigResponse.setClaimTypesSupported(new String[]{"type1", "type2"});
         String claimTypesSupported1[] = oidProviderConfigResponse.getClaimTypesSupported();
-        Assert.assertEquals(claimTypesSupported1, claimTypesSupported);
+        assertEquals(claimTypesSupported1, claimTypesSupported);
     }
 
     @Test
@@ -253,7 +255,7 @@ public class OIDProviderConfigResponseTest {
         String claimsSupported[] = {"claim1", "claim2"};
         oidProviderConfigResponse.setClaimsSupported(new String[]{"claim1", "claim2"});
         String claimsSupported1[] = oidProviderConfigResponse.getClaimsSupported();
-        Assert.assertEquals(claimsSupported1, claimsSupported);
+        assertEquals(claimsSupported1, claimsSupported);
     }
 
     @Test
@@ -261,7 +263,7 @@ public class OIDProviderConfigResponseTest {
         String serviceDocumentation = "serviceDocumentation";
         oidProviderConfigResponse.setServiceDocumentation("serviceDocumentation");
         String serviceDocumentation1 = oidProviderConfigResponse.getServiceDocumentation();
-        Assert.assertEquals(serviceDocumentation1, serviceDocumentation);
+        assertEquals(serviceDocumentation1, serviceDocumentation);
     }
 
     @Test
@@ -269,7 +271,7 @@ public class OIDProviderConfigResponseTest {
         String claimsLocalesSupported[] = {"claim1", "claim2"};
         oidProviderConfigResponse.setClaimsLocalesSupported(new String[]{"claim1", "claim2"});
         String claimsLocalesSupported1[] = oidProviderConfigResponse.getClaimsLocalesSupported();
-        Assert.assertEquals(claimsLocalesSupported1, claimsLocalesSupported);
+        assertEquals(claimsLocalesSupported1, claimsLocalesSupported);
     }
 
     @Test
@@ -277,7 +279,7 @@ public class OIDProviderConfigResponseTest {
         String uiLocalesSupported[] = {"ui1", "ui2"};
         oidProviderConfigResponse.setUiLocalesSupported(new String[]{"ui1", "ui2"});
         String uiLocalesSupported1[] = oidProviderConfigResponse.getUiLocalesSupported();
-        Assert.assertEquals(uiLocalesSupported1, uiLocalesSupported);
+        assertEquals(uiLocalesSupported1, uiLocalesSupported);
     }
 
     @Test
@@ -285,7 +287,7 @@ public class OIDProviderConfigResponseTest {
         String claimsParameterSupported = "parameter";
         oidProviderConfigResponse.setClaimsParameterSupported("parameter");
         String claimsParameterSupported1 = oidProviderConfigResponse.getClaimsParameterSupported();
-        Assert.assertEquals(claimsParameterSupported1, claimsParameterSupported);
+        assertEquals(claimsParameterSupported1, claimsParameterSupported);
     }
 
     @Test
@@ -293,7 +295,7 @@ public class OIDProviderConfigResponseTest {
         String requestParameterSupported = "parameter";
         oidProviderConfigResponse.setRequestParameterSupported("parameter");
         String requestParameterSupported1 = oidProviderConfigResponse.getRequestParameterSupported();
-        Assert.assertEquals(requestParameterSupported1, requestParameterSupported);
+        assertEquals(requestParameterSupported1, requestParameterSupported);
     }
 
     @Test
@@ -301,7 +303,7 @@ public class OIDProviderConfigResponseTest {
         String requestUriParameterSupported = "parameter";
         oidProviderConfigResponse.setRequestUriParameterSupported("parameter");
         String requestUriParameterSupported1 = oidProviderConfigResponse.getRequestUriParameterSupported();
-        Assert.assertEquals(requestUriParameterSupported1, requestUriParameterSupported);
+        assertEquals(requestUriParameterSupported1, requestUriParameterSupported);
     }
 
     @Test
@@ -309,7 +311,7 @@ public class OIDProviderConfigResponseTest {
         String requireRequestUriRegistration = "uri";
         oidProviderConfigResponse.setRequireRequestUriRegistration("uri");
         String requireRequestUriRegistration1 = oidProviderConfigResponse.getRequireRequestUriRegistration();
-        Assert.assertEquals(requireRequestUriRegistration1, requireRequestUriRegistration);
+        assertEquals(requireRequestUriRegistration1, requireRequestUriRegistration);
     }
 
     @Test
@@ -317,7 +319,7 @@ public class OIDProviderConfigResponseTest {
         String opPolicyUri = "uri";
         oidProviderConfigResponse.setOpPolicyUri("uri");
         String opPolicyUri1 = oidProviderConfigResponse.getOpPolicyUri();
-        Assert.assertEquals(opPolicyUri1, opPolicyUri);
+        assertEquals(opPolicyUri1, opPolicyUri);
     }
 
     @Test
@@ -325,7 +327,7 @@ public class OIDProviderConfigResponseTest {
         String opTosUri = "uri";
         oidProviderConfigResponse.setOpTosUri("uri");
         String opTosUri1 = oidProviderConfigResponse.getOpTosUri();
-        Assert.assertEquals(opTosUri1, opTosUri);
+        assertEquals(opTosUri1, opTosUri);
     }
 
     @Test

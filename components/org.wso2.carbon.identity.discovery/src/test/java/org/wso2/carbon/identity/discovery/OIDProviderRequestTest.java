@@ -18,8 +18,9 @@
 
 package org.wso2.carbon.identity.discovery;
 
-import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import static org.testng.Assert.assertEquals;
 
 public class OIDProviderRequestTest {
 
@@ -30,7 +31,7 @@ public class OIDProviderRequestTest {
         OIDProviderRequest oidProviderRequest = new OIDProviderRequest();
         oidProviderRequest.setTenantDomain("tenantDomain");
         String tenantDomain1 = oidProviderRequest.getTenantDomain();
-        Assert.assertEquals(tenantDomain1, tenantDomain);
+        assertEquals(tenantDomain1, tenantDomain);
     }
 
 }

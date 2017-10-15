@@ -53,7 +53,6 @@ public class OIDProviderConfigResponseTest {
         oidProviderConfigResponse.setAuthorizationEndpoint("authorizationEndpoint");
         String authorizationEndpoint1 = oidProviderConfigResponse.getAuthorizationEndpoint();
         assertEquals(authorizationEndpoint1, authorizationEndpoint);
-
     }
 
     @Test

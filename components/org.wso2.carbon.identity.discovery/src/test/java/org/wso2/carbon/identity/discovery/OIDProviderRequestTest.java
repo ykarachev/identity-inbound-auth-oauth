@@ -24,14 +24,23 @@ import static org.testng.Assert.assertEquals;
 
 public class OIDProviderRequestTest {
 
+    private OIDProviderRequest oidProviderRequest = new OIDProviderRequest();
+
     @Test
     public void testGetandSetTenantDomain() throws Exception {
-
         String tenantDomain = "tenantDomain";
-        OIDProviderRequest oidProviderRequest = new OIDProviderRequest();
         oidProviderRequest.setTenantDomain("tenantDomain");
         String tenantDomain1 = oidProviderRequest.getTenantDomain();
-        assertEquals(tenantDomain1, tenantDomain);
+        assertEquals(tenantDomain1, tenantDomain, "Error while retrieving tenant domain.");
+    }
+
+    @Test
+    public void testGetandSetUri() throws Exception {
+        String uri = "uri";
+        OIDProviderRequest oidProviderRequest = new OIDProviderRequest();
+        oidProviderRequest.setUri("uri");
+        String uri1 = oidProviderRequest.getUri();
+        assertEquals(uri1, uri, "Error while retrieving uri");
     }
 
 }

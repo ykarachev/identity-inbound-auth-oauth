@@ -17,9 +17,8 @@
   ~ under the License.
   -->
 
-<suite name="Suite1" verbose="1" >
-
-    <test name="Regression1">
+<suite name="Suite1"  >
+    <test name="oauth-tests" preserve-order="true" parallel="false">
         <classes>
             <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest" />
             <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest" />
@@ -28,6 +27,7 @@
             <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackManagerTest"/>
             <class name="org.wso2.carbon.identity.oauth.callback.DefaultCallbackHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackHandlerRegistryTest"/>
+            <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest" />
         </classes>
     </test>
 </suite>

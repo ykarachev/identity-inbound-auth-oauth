@@ -38,17 +38,17 @@ import static org.testng.Assert.*;
 @PrepareForTest({IdentityUtil.class})
 public class AbstractOAuthEventInterceptorTest extends PowerMockTestCase {
 
-    AbstractOAuthEventInterceptor testclass =new AbstractOAuthEventInterceptor();
+    AbstractOAuthEventInterceptor testclass = new AbstractOAuthEventInterceptor();
 
     @Test
     public void testIsEnabled() throws Exception {
 
         mockStatic(IdentityUtil.class);
         IdentityEventListenerConfig identityEventListenerConfig =
-                new IdentityEventListenerConfig("true",1,new IdentityEventListenerConfigKey(),new Properties());
-        when(IdentityUtil.readEventListenerProperty(anyString(),anyString())).thenReturn(identityEventListenerConfig);
+                new IdentityEventListenerConfig("true", 1, new IdentityEventListenerConfigKey(), new Properties());
+        when(IdentityUtil.readEventListenerProperty(anyString(), anyString())).thenReturn(identityEventListenerConfig);
         assertTrue(testclass.isEnabled());
-        when(IdentityUtil.readEventListenerProperty(anyString(),anyString())).thenReturn(null);
+        when(IdentityUtil.readEventListenerProperty(anyString(), anyString())).thenReturn(null);
         assertFalse(testclass.isEnabled());
     }
 

@@ -26,6 +26,7 @@
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandlerTest" />
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest" />
             <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackManagerTest"/>
+            <class name="org.wso2.carbon.identity.oauth.callback.DefaultCallbackHandlerTest"/>
         </classes>
     </test>
 </suite>

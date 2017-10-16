@@ -17,15 +17,23 @@
   ~ under the License.
   -->
 
-<suite name="Suite1" verbose="1" >
+<suite name="Suite1" verbose="1">
 
     <test name="Regression1">
         <classes>
-            <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest" />
-            <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest" />
-            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandlerTest" />
-            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest" />
-            <class name="org.wso2.carbon.identity.oauth.event.AbstractOAuthEventInterceptorTest" />
+            <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth.event.AbstractOAuthEventInterceptorTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.clientauth.BasicAuthClientAuthHandlerTest"/>
+        </classes>
+    </test>
+    <test name="Regression2">
+        <parameter name="log-level" value="debug"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth.event.AbstractOAuthEventInterceptorTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.clientauth.BasicAuthClientAuthHandlerTest"/>
         </classes>
     </test>
 </suite>

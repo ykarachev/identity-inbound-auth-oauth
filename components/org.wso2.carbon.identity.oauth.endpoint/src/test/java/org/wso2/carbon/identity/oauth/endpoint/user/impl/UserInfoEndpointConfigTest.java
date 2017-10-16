@@ -80,7 +80,6 @@ public class UserInfoEndpointConfigTest extends PowerMockTestCase {
     @Test(dataProvider = "getUserInfoRequestValidator")
     public void testGetUserInfoRequestValidator(String validatorClass, Class validatorClassType, boolean
             isClassExisting) throws Exception {
-
         mockStatic(EndpointUtil.class);
         when(EndpointUtil.getUserInfoRequestValidator()).thenReturn(validatorClass);
         UserInfoRequestValidator userInfoRequestValidator = UserInfoEndpointConfig.getInstance()
@@ -112,7 +111,6 @@ public class UserInfoEndpointConfigTest extends PowerMockTestCase {
     @Test(dataProvider = "getAccessTokenValidators")
     public void testGetUserUserInfoAccessTokenValidator(String validatorClass, Class validatorClassType, boolean
             isClassExisting) throws Exception {
-
         mockStatic(EndpointUtil.class);
         when(EndpointUtil.getAccessTokenValidator()).thenReturn(validatorClass);
         UserInfoAccessTokenValidator userInfoAccessTokenValidator = UserInfoEndpointConfig.getInstance()
@@ -206,7 +204,6 @@ public class UserInfoEndpointConfigTest extends PowerMockTestCase {
      * This is just a sample extension class which will cause InstantiationException while instantiating
      */
     public class TesUserInfoResponseBuilder implements UserInfoResponseBuilder {
-
         @Override
         public String getResponseString(OAuth2TokenValidationResponseDTO tokenResponse) throws
                 UserInfoEndpointException, OAuthSystemException {
@@ -219,7 +216,6 @@ public class UserInfoEndpointConfigTest extends PowerMockTestCase {
      * This is just a sample extension class which will cause InstantiationException while instantiating
      */
     public class TestUserInfoClaimRetriever implements UserInfoClaimRetriever {
-
         @Override
         public Map<String, Object> getClaimsMap(Map<ClaimMapping, String> userAttributes) {
             // Do Nothing.
@@ -231,7 +227,6 @@ public class UserInfoEndpointConfigTest extends PowerMockTestCase {
      * This is just a sample extension class which will cause InstantiationException while instantiating
      */
     public class TestUserInfoRequestValidator implements UserInfoRequestValidator {
-
         @Override
         public String validateRequest(HttpServletRequest request) throws UserInfoEndpointException {
             // Do Nothing

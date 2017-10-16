@@ -17,6 +17,8 @@
  */
 package org.wso2.carbon.identity.oauth.endpoint.authz;
 
+import com.nimbusds.jwt.ReadOnlyJWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import org.apache.axis2.transport.http.HTTPConstants;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.oltu.oauth2.as.request.OAuthAuthzRequest;
@@ -69,6 +71,7 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -108,7 +111,7 @@ import static org.testng.Assert.assertTrue;
 
 @PrepareForTest({ OAuth2Util.class, SessionDataCache.class, OAuthServerConfiguration.class, IdentityDatabaseUtil.class,
         EndpointUtil.class, FrameworkUtils.class, EndpointUtil.class, OpenIDConnectUserRPStore.class,
-        CarbonOAuthAuthzRequest.class, IdentityTenantUtil.class, OAuthResponse.class})
+        CarbonOAuthAuthzRequest.class, IdentityTenantUtil.class, OAuthResponse.class, SignedJWT.class})
 public class OAuth2AuthzEndpointTest extends TestOAuthEndpointBase {
 
     @Mock
@@ -149,6 +152,12 @@ public class OAuth2AuthzEndpointTest extends TestOAuthEndpointBase {
 
     @Mock
     OAuthAuthzRequest oAuthAuthzRequest;
+
+    @Mock
+    SignedJWT signedJWT;
+
+    @Mock
+    ReadOnlyJWTClaimsSet readOnlyJWTClaimsSet;
 
     private static final String ERROR_PAGE_URL = "https://localhost:9443/authenticationendpoint/oauth2_error.do";
     private static final String LOGIN_PAGE_URL = "https://localhost:9443/authenticationendpoint/login.do";
@@ -864,6 +873,106 @@ public class OAuth2AuthzEndpointTest extends TestOAuthEndpointBase {
             if (errorCode != null) {
                 assertTrue(location.contains(errorCode), "Expected error code not found in URL");
             }
+        }
+    }
+
+    @DataProvider(name = "provideDataForUserAuthz")
+    public Object[][] provideDataForUserAuthz() {
+        String idTokenHint = "tokenHintString";
+
+        // This object provides data to cover all branches in doUserAuthz() private method
+        return new Object[][] {
+                { OAuthConstants.Prompt.CONSENT, null, true, false, false, USERNAME, USERNAME, null},
+                { OAuthConstants.Prompt.NONE, null, true, true, false, USERNAME, USERNAME, null},
+                { OAuthConstants.Prompt.NONE, null, false, false, false, USERNAME, USERNAME,
+                        OAuth2ErrorCodes.CONSENT_REQUIRED},
+                { OAuthConstants.Prompt.NONE, null, false, true, false, USERNAME, USERNAME, null},
+                { OAuthConstants.Prompt.NONE, idTokenHint, true, false, true, USERNAME, USERNAME, null},
+                { OAuthConstants.Prompt.NONE, idTokenHint, true, false, false, USERNAME, USERNAME, null},
+                { OAuthConstants.Prompt.NONE, idTokenHint, false, false, true, USERNAME, USERNAME,
+                        OAuth2ErrorCodes.CONSENT_REQUIRED},
+                { OAuthConstants.Prompt.NONE, "invalid", false, false, true, USERNAME, USERNAME, null},
+                { OAuthConstants.Prompt.NONE, idTokenHint, false, false, true, "", USERNAME,
+                        OAuth2ErrorCodes.LOGIN_REQUIRED},
+                { OAuthConstants.Prompt.NONE, idTokenHint, true, false, true, USERNAME, "user2",
+                        OAuth2ErrorCodes.LOGIN_REQUIRED},
+                { OAuthConstants.Prompt.LOGIN, null, true, false, false, USERNAME, USERNAME, null},
+                { OAuthConstants.Prompt.LOGIN, null, false, false, false, USERNAME, USERNAME, null},
+                { "", null, false, true, false, USERNAME, USERNAME, null},
+                { OAuthConstants.Prompt.SELECT_ACCOUNT, null, false, false, false, USERNAME, USERNAME, null},
+        };
+    }
+
+    @Test(dataProvider = "provideDataForUserAuthz")
+    public void testDoUserAuthz(String prompt, String idTokenHint, boolean hasUserApproved, boolean skipConsent,
+                                boolean idTokenHintValid, String loggedInUser, String idTokenHintSubject,
+                                String errorCode) throws Exception {
+        AuthenticationResult result = setAuthenticationResult(true, null, null, null, null);
+
+        result.getSubject().setAuthenticatedSubjectIdentifier(loggedInUser);
+        Map<String, String[]> requestParams = new HashMap<>();
+        Map<String, Object> requestAttributes = new HashMap<>();
+
+        requestParams.put(CLIENT_ID, new String[]{CLIENT_ID_VALUE});
+        requestParams.put(FrameworkConstants.RequestParams.TO_COMMONAUTH, new String[]{"false"});
+        requestParams.put(OAuthConstants.OAuth20Params.SCOPE, new String[]{OAuthConstants.Scope.OPENID});
+
+        requestAttributes.put(FrameworkConstants.RequestParams.FLOW_STATUS, AuthenticatorFlowStatus.INCOMPLETE);
+        requestAttributes.put(FrameworkConstants.SESSION_DATA_KEY, SESSION_DATA_KEY_VALUE);
+        requestAttributes.put(FrameworkConstants.RequestAttribute.AUTH_RESULT, result);
+
+        mockHttpRequest(requestParams, requestAttributes, HttpMethod.POST);
+
+        OAuth2Parameters oAuth2Params = setOAuth2Parameters(new HashSet<String>(), APP_NAME, null, APP_REDIRECT_URL);
+        oAuth2Params.setClientId(CLIENT_ID_VALUE);
+        oAuth2Params.setPrompt(prompt);
+        oAuth2Params.setIDTokenHint(idTokenHint);
+
+        mockStatic(SessionDataCache.class);
+        when(SessionDataCache.getInstance()).thenReturn(sessionDataCache);
+        SessionDataCacheKey loginDataCacheKey = new SessionDataCacheKey(this.SESSION_DATA_KEY_VALUE);
+        when(sessionDataCache.getValueFromCache(loginDataCacheKey)).thenReturn(loginCacheEntry);
+        when(loginCacheEntry.getLoggedInUser()).thenReturn(result.getSubject());
+        when(loginCacheEntry.getoAuth2Parameters()).thenReturn(oAuth2Params);
+
+        mockEndpointUtil();
+
+        mockOAuthServerConfiguration();
+
+        mockStatic(IdentityDatabaseUtil.class);
+        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+        mockStatic(OpenIDConnectUserRPStore.class);
+        when(OpenIDConnectUserRPStore.getInstance()).thenReturn(openIDConnectUserRPStore);
+        when(openIDConnectUserRPStore.hasUserApproved(any(AuthenticatedUser.class), anyString(), anyString())).
+                thenReturn(hasUserApproved);
+
+        spy(OAuth2Util.class);
+        doReturn(idTokenHintValid).when(OAuth2Util.class, "validateIdToken", anyString());
+
+        mockStatic(SignedJWT.class);
+        if ("invalid".equals(idTokenHint)) {
+            when(SignedJWT.parse(anyString())).thenThrow(new ParseException("error",1));
+        } else {
+            when(SignedJWT.parse(anyString())).thenReturn(signedJWT);
+        }
+        when(signedJWT.getJWTClaimsSet()).thenReturn(readOnlyJWTClaimsSet);
+        when(readOnlyJWTClaimsSet.getSubject()).thenReturn(idTokenHintSubject);
+
+        Response response = oAuth2AuthzEndpoint.authorize(httpServletRequest, httpServletResponse);
+
+        assertNotNull(response, "Authorization response is null");
+        assertEquals(response.getStatus(), HttpServletResponse.SC_FOUND, "Unexpected HTTP response status");
+
+        if (errorCode != null) {
+            MultivaluedMap<String, Object> responseMetadata = response.getMetadata();
+            assertNotNull(responseMetadata, "Response metadata is null");
+
+            assertTrue(CollectionUtils.isNotEmpty(responseMetadata.get(HTTPConstants.HEADER_LOCATION)),
+                    "Location header not found in the response");
+            String location = (String) responseMetadata.get(HTTPConstants.HEADER_LOCATION).get(0);
+
+            assertTrue(location.contains(errorCode), "Expected error code not found in URL");
         }
 
     }

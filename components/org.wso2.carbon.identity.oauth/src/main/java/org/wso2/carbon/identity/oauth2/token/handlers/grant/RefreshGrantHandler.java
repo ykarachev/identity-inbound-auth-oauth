@@ -73,8 +73,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                 tokenReqDTO.getClientId(), refreshToken);
 
         if (validationDataDO.getAccessToken() == null) {
-            log.debug("Invalid Refresh Token provided for Client with " +
-                    "Client Id : " + tokenReqDTO.getClientId());
+            if (log.isDebugEnabled()) {
+                log.debug("Invalid Refresh Token provided for Client with " +
+                        "Client Id : " + tokenReqDTO.getClientId());
+            }
             return false;
         }
 

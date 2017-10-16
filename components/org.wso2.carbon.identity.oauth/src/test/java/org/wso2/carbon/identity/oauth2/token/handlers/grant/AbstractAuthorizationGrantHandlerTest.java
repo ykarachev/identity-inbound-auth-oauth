@@ -142,9 +142,9 @@ public class AbstractAuthorizationGrantHandlerTest {
                           boolean dbEntryAvailable, String dbTokenState, boolean tokenLoggable)
             throws Exception {
 
-        when(log.isDebugEnabled()).thenReturn(debugEnabled);
-        doNothing().when(log).debug(any());
-        doNothing().when(log).debug(any(), any(Throwable.class));
+//        when(log.isDebugEnabled()).thenReturn(debugEnabled);
+//        doNothing().when(log).debug(any());
+//        doNothing().when(log).debug(any(), any(Throwable.class));
 
         Field field = AbstractAuthorizationGrantHandler.class.getDeclaredField("tokenMgtDAO");
         field.setAccessible(true);
@@ -171,10 +171,10 @@ public class AbstractAuthorizationGrantHandlerTest {
         field.set(handler, oauthIssuer);
         field.setAccessible(false);
 
-        field = AbstractAuthorizationGrantHandler.class.getDeclaredField("log");
-        field.setAccessible(true);
-        field.set(handler, log);
-        field.setAccessible(false);
+//        field = AbstractAuthorizationGrantHandler.class.getDeclaredField("log");
+//        field.setAccessible(true);
+//        field.set(handler, log);
+//        field.setAccessible(false);
 
         mockStatic(OAuthCache.class);
         when(OAuthCache.getInstance()).thenReturn(oAuthCache);

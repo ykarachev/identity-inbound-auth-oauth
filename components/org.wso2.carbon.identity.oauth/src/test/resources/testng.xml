@@ -29,6 +29,7 @@
             <class name="org.wso2.carbon.identity.oauth.callback.DefaultCallbackHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackHandlerRegistryTest"/>
             <class name="org.wso2.carbon.identity.oauth.tokenvaluegenerator.SHA256GeneratorTest"/>
+            <class name="org.wso2.carbon.identity.oauth.OAuthUtilTest"/>
         </classes>
     </test>
 </suite>

@@ -36,7 +36,10 @@ import java.nio.file.Paths;
 import static org.mockito.Matchers.anyString;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertTrue;
 
 /**
  * Unit tests for OAuthUtil class.
@@ -76,7 +79,7 @@ public class OAuthUtilTest extends PowerMockTestCase {
         OAuthUtil.clearOAuthCache(cacheKey);
         assertNull(oAuthCache.getValueFromCache(oAuthCacheKey), "Should clear the cached value against the cache key.");
 
-        // After that clear all the cached values to make sure no side effect on other tests.
+        // Clear all the cached values to make sure no side effect on other tests.
         oAuthCache.clear();
     }
 
@@ -95,7 +98,7 @@ public class OAuthUtilTest extends PowerMockTestCase {
         OAuthUtil.clearOAuthCache(consumerKey, authorizedUser);
         assertNull(oAuthCache.getValueFromCache(oAuthCacheKey), "Should clear the cached value against the cache key.");
 
-        // After that clear all the cached values to make sure no side effect on other tests.
+        // Clear all the cached values to make sure no side effect on other tests.
         oAuthCache.clear();
     }
 
@@ -118,7 +121,7 @@ public class OAuthUtilTest extends PowerMockTestCase {
         OAuthUtil.clearOAuthCache(consumerKey, authorizedUser);
         assertNull(oAuthCache.getValueFromCache(oAuthCacheKey), "Should clear the cached value against the cache key.");
 
-        // After that clear all the cached values to make sure no side effect on other tests.
+        // Clear all the cached values to make sure no side effect on other tests.
         oAuthCache.clear();
     }
 
@@ -138,7 +141,7 @@ public class OAuthUtilTest extends PowerMockTestCase {
         OAuthUtil.clearOAuthCache(consumerKey, authorizedUser, scope);
         assertNull(oAuthCache.getValueFromCache(oAuthCacheKey), "Should clear the cached value against the cache key.");
 
-        // After that clear all the cached values to make sure no side effect on other tests.
+        // Clear all the cached values to make sure no side effect on other tests.
         oAuthCache.clear();
     }
 
@@ -161,7 +164,7 @@ public class OAuthUtilTest extends PowerMockTestCase {
         OAuthUtil.clearOAuthCache(consumerKey, authorizedUser, scope);
         assertNull(oAuthCache.getValueFromCache(oAuthCacheKey), "Should clear the cached value against the cache key.");
 
-        // After that clear all the cached values to make sure no side effect on other tests.
+        // Clear all the cached values to make sure no side effect on other tests.
         oAuthCache.clear();
     }
 

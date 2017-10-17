@@ -1061,7 +1061,7 @@ public class OAuth2AuthzEndpoint {
             prompts = oauth2Params.getPrompt().trim().split("\\s");
         }
 
-        //Skip the consent page if User has provided approve always or skip consent from file
+        // Return the consent page if prompts contain "consent"
         if (prompts != null && Arrays.asList(prompts).contains(OAuthConstants.Prompt.CONSENT)) {
             return consentUrl;
 

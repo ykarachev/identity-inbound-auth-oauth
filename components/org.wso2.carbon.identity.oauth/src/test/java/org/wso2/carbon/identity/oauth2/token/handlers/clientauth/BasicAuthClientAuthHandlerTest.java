@@ -42,7 +42,7 @@ import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
 
 /**
- * Test Class for the AbstractClientAuthHandler & BasicAuthClientAuthHandler
+ * Test Class for the AbstractClientAuthHandler & BasicAuthClientAuthHandler.
  */
 @PrepareForTest({
 		OAuth2Util.class,

@@ -34,7 +34,7 @@ import static org.testng.AssertJUnit.assertFalse;
 import static org.testng.AssertJUnit.assertTrue;
 
 /**
- * Test Class for the AbstractOauthEventInterceptor
+ * Test Class for the AbstractOauthEventInterceptor.
  */
 @PrepareForTest({IdentityUtil.class})
 public class AbstractOAuthEventInterceptorTest extends PowerMockTestCase {

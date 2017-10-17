@@ -31,18 +31,4 @@
             <class name="org.wso2.carbon.identity.discovery.OIDProviderConfigResponseTest"/>
         </classes>
     </test>
-
-    <!--<test name="Discovery-Tests-with-debug-logs" preserve-order="true" parallel="false">-->
-        <!--<parameter name="log-level" value="debug"/>-->
-        <!--<classes>-->
-            <!--<class name="org.wso2.carbon.identity.discovery.DefaultOIDCProcessorTest" />-->
-        <!--</classes>-->
-    <!--</test>-->
-
-    <!--<test name="Discovery-Tests-with-info-logs" preserve-order="true" parallel="false">-->
-        <!--<parameter name="log-level" value="info"/>-->
-        <!--<classes>-->
-            <!--<class name="org.wso2.carbon.identity.discovery.DefaultOIDCProcessorTest" />-->
-        <!--</classes>-->
-    <!--</test>-->
 </suite>

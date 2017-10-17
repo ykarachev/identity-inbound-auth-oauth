@@ -23,11 +23,11 @@ import org.mockito.MockitoAnnotations;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.IObjectFactory;
 import org.testng.annotations.BeforeClass;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.discovery.builders.DefaultOIDCProviderRequestBuilder;
 import org.wso2.carbon.identity.discovery.builders.ProviderConfigBuilder;
-import org.wso2.carbon.identity.testutil.IdentityBaseTest;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -39,9 +39,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 
 @PrepareForTest({DefaultOIDCProcessor.class})
-public class DefaultOIDCProcessorTest extends IdentityBaseTest {
-
-    private static final String SUPER_TENANT = "carbon.super";
+public class DefaultOIDCProcessorTest {
 
     @Mock
     private HttpServletRequest httpServletRequest;
@@ -84,14 +82,29 @@ public class DefaultOIDCProcessorTest extends IdentityBaseTest {
         whenNew(ProviderConfigBuilder.class).withNoArguments().thenReturn(mockProviderConfigBuilder);
 
         OIDCProcessor oidcProcessor = DefaultOIDCProcessor.getInstance();
-        OIDProviderConfigResponse response = oidcProcessor.getResponse(httpServletRequest, SUPER_TENANT);
+        OIDProviderConfigResponse response = oidcProcessor.getResponse(httpServletRequest, "tenantDomain");
         assertNotNull(response, "Error while calling getResponse()");
     }
 
-    @Test
-    public void testHandleError() throws Exception {
+    @DataProvider(name = "errorData")
+    public static Object[][] tenant() {
+        return new Object[][]{
+                {OIDCDiscoveryEndPointException.ERROR_CODE_NO_OPENID_PROVIDER_FOUND,
+                        OIDCDiscoveryEndPointException.ERROR_MESSAGE_NO_OPENID_PROVIDER_FOUND},
+                {OIDCDiscoveryEndPointException.ERROR_CODE_INVALID_REQUEST,
+                        OIDCDiscoveryEndPointException.ERROR_MESSAGE_INVALID_REQUEST},
+                {OIDCDiscoveryEndPointException.ERROR_CODE_INVALID_TENANT,
+                        OIDCDiscoveryEndPointException.ERROR_MESSAGE_INVALID_TENANT},
+                {OIDCDiscoveryEndPointException.ERROR_CODE_JSON_EXCEPTION,
+                        OIDCDiscoveryEndPointException.ERROR_MESSAGE_JSON_EXCEPTION},
+                {"", "Internal server error occurred. "}
+        };
+    }
+
+    @Test(dataProvider = "errorData")
+    public void testHandleError(String errorCode, String errorMessage) throws Exception {
         OIDCDiscoveryEndPointException oidcDiscoveryEndPointException =
-                new OIDCDiscoveryEndPointException("500", "server_error");
+                new OIDCDiscoveryEndPointException(errorCode, errorMessage);
         assertEquals(DefaultOIDCProcessor.getInstance().handleError(oidcDiscoveryEndPointException), 500);
     }
 }

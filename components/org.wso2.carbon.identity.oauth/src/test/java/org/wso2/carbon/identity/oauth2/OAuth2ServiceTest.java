@@ -170,10 +170,5 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
         assertEquals(oAuth2ClientValidationResponseDTO.getErrorCode(), "server_error");
         assertFalse(oAuth2ClientValidationResponseDTO.isValidClient());
     }
-    
-    @ObjectFactory
-    public IObjectFactory getObjectFactory() {
-        return new org.powermock.modules.testng.PowerMockObjectFactory();
-    }
 
 }

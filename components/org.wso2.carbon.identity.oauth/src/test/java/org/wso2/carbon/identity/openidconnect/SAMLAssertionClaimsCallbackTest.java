@@ -21,31 +21,60 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.opensaml.saml2.core.Assertion;
+import org.opensaml.saml2.core.Attribute;
+import org.opensaml.saml2.core.AttributeStatement;
 import org.opensaml.xml.XMLObject;
-import org.powermock.modules.testng.PowerMockTestCase;
+import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.IObjectFactory;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
+import org.w3c.dom.Element;
 import org.wso2.carbon.base.MultitenantConstants;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
+import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
+import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
+import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
+import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.registry.core.Resource;
+import org.wso2.carbon.registry.core.service.RegistryService;
+import org.wso2.carbon.registry.core.session.UserRegistry;
 import org.wso2.carbon.user.api.RealmConfiguration;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.core.UserStoreManager;
 import org.wso2.carbon.user.core.service.RealmService;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.testng.Assert.assertTrue;
 
 /**
  * Class which tests SAMLAssertionClaimsCallback.
  */
+@PrepareForTest({
+        AuthorizationGrantCache.class,
+        PrivilegedCarbonContext.class,
+        IdentityTenantUtil.class,
+        OAuth2ServiceComponentHolder.class
+})
+public class SAMLAssertionClaimsCallbackTest {
 
-public class SAMLAssertionClaimsCallbackTest extends PowerMockTestCase {
+    private String SAMPLE_ACCESS_TOKEN = "4952b467-86b2-31df-b63c-0bf25cec4f86";
+    private int SAMPLE_TENANT_ID = 1234;
 
     @ObjectFactory
     public IObjectFactory getObjectFactory() {
@@ -57,8 +86,17 @@ public class SAMLAssertionClaimsCallbackTest extends PowerMockTestCase {
 
     OAuthComponentServiceHolder oAuthComponentServiceHolder;
 
+    @Spy
+    AuthorizationGrantCache authorizationGrantCache;
+
     @Mock
     OAuthTokenReqMessageContext requestMsgCtx;
+
+    @Mock
+    OAuthAuthzReqMessageContext oAuthAuthzReqMessageContext;
+
+    @Spy
+    PrivilegedCarbonContext context;
 
     @Mock
     private UserRealm userRealm;
@@ -103,5 +141,74 @@ public class SAMLAssertionClaimsCallbackTest extends PowerMockTestCase {
         when(requestMsgCtx.getProperty(OAuthConstants.OAUTH_SAML2_ASSERTION)).thenReturn(assertion);
         samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, requestMsgCtx);
         assertTrue(jwtClaimsSet.getAllClaims().isEmpty());
+    }
+
+    @Test
+    public void testCustomClaimForOAuthTokenReqMessageContext() throws Exception {
+        jwtClaimsSet = mock(JWTClaimsSet.class);
+        requestMsgCtx = mock(OAuthTokenReqMessageContext.class);
+        Assertion assertion = mock(Assertion.class);
+
+        AttributeStatement statement = mock(AttributeStatement.class);
+        List<AttributeStatement> attributeStatementList = new ArrayList<>();
+        attributeStatementList.add(statement);
+        when(assertion.getAttributeStatements()).thenReturn(attributeStatementList);
+
+        List<Attribute> attributesList = new ArrayList<>();
+        Attribute attribute = mock(Attribute.class);
+        attributesList.add(attribute);
+        when(statement.getAttributes()).thenReturn(attributesList);
+
+        List<XMLObject> values = new ArrayList<>();
+        XMLObject obj = mock(XMLObject.class);
+        values.add(obj);
+
+        Element ele = mock(Element.class);
+        when(attribute.getAttributeValues()).thenReturn(values);
+        when(values.get(0).getDOM()).thenReturn(ele);
+        when(requestMsgCtx.getProperty(OAuthConstants.OAUTH_SAML2_ASSERTION)).thenReturn(assertion);
+        samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, requestMsgCtx);
+        assertTrue(jwtClaimsSet.getAllClaims().isEmpty());
+    }
+
+    @Test
+    public void testHandleClaimsForOAuthAuthzReqMessageContext() throws Exception {
+        jwtClaimsSet = mock(JWTClaimsSet.class);
+        oAuthAuthzReqMessageContext = mock(OAuthAuthzReqMessageContext.class);
+        String[] approvedScopes = {"openid", "testScope1", "testScope2"};
+        when(oAuthAuthzReqMessageContext.getApprovedScope()).thenReturn(approvedScopes);
+        when(oAuthAuthzReqMessageContext.getProperty(OAuthConstants.ACCESS_TOKEN))
+                .thenReturn(SAMPLE_ACCESS_TOKEN);
+        mockStatic(AuthorizationGrantCache.class);
+        authorizationGrantCache = mock(AuthorizationGrantCache.class);
+        AuthorizationGrantCacheEntry authorizationGrantCacheEntry = mock(AuthorizationGrantCacheEntry.class);
+        when(AuthorizationGrantCache.getInstance()).thenReturn(authorizationGrantCache);
+        when(authorizationGrantCache.getValueFromCache(any(AuthorizationGrantCacheKey.class))).
+                thenReturn(authorizationGrantCacheEntry);
+        OAuth2AuthorizeReqDTO oAuth2AuthorizeReqDTO = mock(OAuth2AuthorizeReqDTO.class);
+        when(oAuthAuthzReqMessageContext.getAuthorizationReqDTO()).thenReturn(oAuth2AuthorizeReqDTO);
+        AuthenticatedUser authenticatedUser = mock(AuthenticatedUser.class);
+        when(oAuth2AuthorizeReqDTO.getUser()).thenReturn(authenticatedUser);
+        when(authenticatedUser.isFederatedUser()).thenReturn(true);
+
+        mockStatic(PrivilegedCarbonContext.class);
+        mockStatic(IdentityTenantUtil.class);
+        when(IdentityTenantUtil.getTenantId(anyString())).thenReturn(SAMPLE_TENANT_ID);
+
+        context = mock(PrivilegedCarbonContext.class);
+        when(PrivilegedCarbonContext.getThreadLocalCarbonContext()).thenReturn(context);
+
+        RegistryService registry = mock(RegistryService.class);
+        mockStatic(OAuth2ServiceComponentHolder.class);
+        when(OAuth2ServiceComponentHolder.getRegistryService()).thenReturn(registry);
+
+        UserRegistry userRegistry = mock(UserRegistry.class);
+        when(registry.getConfigSystemRegistry(SAMPLE_TENANT_ID)).thenReturn(userRegistry);
+
+        Resource resource = mock(Resource.class);
+        when(userRegistry.get(OAuthConstants.SCOPE_RESOURCE_PATH)).thenReturn(resource);
+
+        samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, oAuthAuthzReqMessageContext);
+
     }
 }

@@ -21,10 +21,7 @@ package org.wso2.carbon.identity.oauth.config;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-
 import java.util.Properties;
-
-import static org.testng.Assert.*;
 
 public class OAuthCallbackHandlerMetaDataTest {
     OAuthCallbackHandlerMetaData oAuthCallbackHandlerMetaData;
@@ -42,7 +39,7 @@ public class OAuthCallbackHandlerMetaDataTest {
 
     @Test
     public void testGetClassName() throws Exception {
-        assertEquals(oAuthCallbackHandlerMetaData.getClassName(), "testClass");
+        Assert.assertEquals(oAuthCallbackHandlerMetaData.getClassName(), "testClass");
     }
 
     @BeforeTest

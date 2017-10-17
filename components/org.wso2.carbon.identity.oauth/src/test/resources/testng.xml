@@ -27,4 +27,10 @@
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest" />
         </classes>
     </test>
+    <test name="oauth.config">
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth.config.OAuthCallbackHandlerMetaDataTest" />
+            <class name="org.wso2.carbon.identity.oauth.config.OAuthServerConfigurationTest"/>
+        </classes>
+    </test>
 </suite>

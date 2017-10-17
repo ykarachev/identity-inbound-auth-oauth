@@ -35,13 +35,13 @@
             <class name="org.wso2.carbon.identity.oauth2.dao.AuthContextTokenDOTest" />
             <class name="org.wso2.carbon.identity.oauth2.dao.ScopeMgtDAOTest" />
             <class name="org.wso2.carbon.identity.oauth2.dao.TokenMgtDAOTest" />
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML2BearerGrantHandlerTest" />
         </classes>
     </test>
     <test name="oauth.config">
         <classes>
             <class name="org.wso2.carbon.identity.oauth.config.OAuthCallbackHandlerMetaDataTest" />
             <class name="org.wso2.carbon.identity.oauth.config.OAuthServerConfigurationTest"/>
-            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML2BearerGrantHandlerTest" />
         </classes>
     </test>
 </suite>

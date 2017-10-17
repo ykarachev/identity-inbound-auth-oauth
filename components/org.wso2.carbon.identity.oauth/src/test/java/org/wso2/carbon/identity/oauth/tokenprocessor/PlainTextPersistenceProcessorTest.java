@@ -28,69 +28,69 @@ import static org.testng.Assert.assertEquals;
  */
 public class PlainTextPersistenceProcessorTest {
 
-	PlainTextPersistenceProcessor testclass = new PlainTextPersistenceProcessor();
+    PlainTextPersistenceProcessor testclass = new PlainTextPersistenceProcessor();
 
-	@Test
-	public void testGetProcessedClientId() throws IdentityOAuth2Exception {
+    @Test
+    public void testGetProcessedClientId() throws IdentityOAuth2Exception {
 
-		assertEquals(testclass.getProcessedClientId("testClientId"), "testClientId");
-	}
+        assertEquals(testclass.getProcessedClientId("testClientId"), "testClientId");
+    }
 
-	@Test
-	public void testGetPreprocessedClientId() throws IdentityOAuth2Exception {
+    @Test
+    public void testGetPreprocessedClientId() throws IdentityOAuth2Exception {
 
-		assertEquals(testclass.getPreprocessedClientId("testPreClientId"), "testPreClientId");
-	}
+        assertEquals(testclass.getPreprocessedClientId("testPreClientId"), "testPreClientId");
+    }
 
-	@Test
-	public void testGetProcessedClientSecret() throws IdentityOAuth2Exception {
+    @Test
+    public void testGetProcessedClientSecret() throws IdentityOAuth2Exception {
 
-		assertEquals(testclass.getProcessedClientSecret("testClientSecret"), "testClientSecret");
-	}
+        assertEquals(testclass.getProcessedClientSecret("testClientSecret"), "testClientSecret");
+    }
 
-	@Test
-	public void testGetPreprocessedClientSecret() throws IdentityOAuth2Exception {
+    @Test
+    public void testGetPreprocessedClientSecret() throws IdentityOAuth2Exception {
 
-		assertEquals(testclass.getPreprocessedClientSecret("testClientPreSecret"), "testClientPreSecret");
-	}
+        assertEquals(testclass.getPreprocessedClientSecret("testClientPreSecret"), "testClientPreSecret");
+    }
 
-	@Test
-	public void testGetProcessedAuthzCode() throws IdentityOAuth2Exception {
+    @Test
+    public void testGetProcessedAuthzCode() throws IdentityOAuth2Exception {
 
-		assertEquals(testclass.getProcessedAuthzCode("testAuthzCode"), "testAuthzCode");
-	}
+        assertEquals(testclass.getProcessedAuthzCode("testAuthzCode"), "testAuthzCode");
+    }
 
-	@Test
-	public void testGetPreprocessedAuthzCode() throws IdentityOAuth2Exception {
+    @Test
+    public void testGetPreprocessedAuthzCode() throws IdentityOAuth2Exception {
 
-		assertEquals(testclass.getPreprocessedAuthzCode("testPreAuthzCode"), "testPreAuthzCode");
-	}
+        assertEquals(testclass.getPreprocessedAuthzCode("testPreAuthzCode"), "testPreAuthzCode");
+    }
 
-	@Test
-	public void testGetProcessedAccessTokenIdentifier() throws IdentityOAuth2Exception {
+    @Test
+    public void testGetProcessedAccessTokenIdentifier() throws IdentityOAuth2Exception {
 
-		assertEquals(testclass.getProcessedAccessTokenIdentifier("testAccessTokenIdentifier"),
-				"testAccessTokenIdentifier");
-	}
+        assertEquals(testclass.getProcessedAccessTokenIdentifier("testAccessTokenIdentifier"),
+                "testAccessTokenIdentifier");
+    }
 
-	@Test
-	public void testGetPreprocessedAccessTokenIdentifier() throws IdentityOAuth2Exception {
+    @Test
+    public void testGetPreprocessedAccessTokenIdentifier() throws IdentityOAuth2Exception {
 
-		assertEquals(testclass.getPreprocessedAccessTokenIdentifier("testPreAccessTokenIdentifier"),
-				"testPreAccessTokenIdentifier");
-	}
+        assertEquals(testclass.getPreprocessedAccessTokenIdentifier("testPreAccessTokenIdentifier"),
+                "testPreAccessTokenIdentifier");
+    }
 
-	@Test
-	public void testGetProcessedRefreshToken() throws IdentityOAuth2Exception {
+    @Test
+    public void testGetProcessedRefreshToken() throws IdentityOAuth2Exception {
 
-		assertEquals(testclass.getProcessedRefreshToken("testRefreshToken"), "testRefreshToken");
-	}
+        assertEquals(testclass.getProcessedRefreshToken("testRefreshToken"), "testRefreshToken");
+    }
 
-	@Test
-	public void testGetPreprocessedRefreshToken() throws Exception {
+    @Test
+    public void testGetPreprocessedRefreshToken() throws Exception {
 
-		assertEquals(testclass.getPreprocessedRefreshToken("testPreRefreshToken"),
-				"testPreRefreshToken");
-	}
+        assertEquals(testclass.getPreprocessedRefreshToken("testPreRefreshToken"),
+                "testPreRefreshToken");
+    }
 
 }

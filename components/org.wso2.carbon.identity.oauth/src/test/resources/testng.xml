@@ -36,11 +36,4 @@
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.clientauth.BasicAuthClientAuthHandlerTest"/>
         </classes>
     </test>
-    <test name="Regression2">
-        <parameter name="log-level" value="debug"/>
-        <classes>
-            <class name="org.wso2.carbon.identity.oauth.event.AbstractOAuthEventInterceptorTest"/>
-            <class name="org.wso2.carbon.identity.oauth2.token.handlers.clientauth.BasicAuthClientAuthHandlerTest"/>
-        </classes>
-    </test>
 </suite>

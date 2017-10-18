@@ -32,17 +32,27 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.wso2.carbon.base.ServerConfiguration;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationRequestCacheEntry;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.discovery.DefaultOIDCProcessor;
+import org.wso2.carbon.identity.discovery.OIDCProcessor;
+import org.wso2.carbon.identity.discovery.builders.DefaultOIDCProviderRequestBuilder;
+import org.wso2.carbon.identity.discovery.builders.OIDCProviderRequestBuilder;
 import org.wso2.carbon.identity.oauth.cache.SessionDataCache;
 import org.wso2.carbon.identity.oauth.cache.SessionDataCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.SessionDataCacheKey;
 import org.wso2.carbon.identity.oauth.common.exception.OAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth2.OAuth2Service;
+import org.wso2.carbon.identity.oauth2.OAuth2TokenValidationService;
 import org.wso2.carbon.identity.oauth2.model.OAuth2Parameters;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
+import org.wso2.carbon.identity.webfinger.DefaultWebFingerProcessor;
+import org.wso2.carbon.identity.webfinger.WebFingerProcessor;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -67,9 +77,12 @@ import static org.powermock.api.mockito.PowerMockito.doAnswer;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 @PrepareForTest ( {SessionDataCache.class, OAuthServerConfiguration.class, OAuth2Util.class, IdentityUtil.class,
-        FrameworkUtils.class, OAuthASResponse.class, OAuthResponse.class})
+        FrameworkUtils.class, OAuthASResponse.class, OAuthResponse.class, PrivilegedCarbonContext.class,
+        ServerConfiguration.class})
 public class EndpointUtilTest extends PowerMockIdentityBaseTest {
 
     @Mock
@@ -102,6 +115,12 @@ public class EndpointUtilTest extends PowerMockIdentityBaseTest {
     @Mock
     HttpServletResponse mockedHttpServletResponse;
 
+    @Mock
+    PrivilegedCarbonContext mockedPrivilegedCarbonContext;
+
+    @Mock
+    ServerConfiguration mockedServerConfiguration;
+
     private static final String COMMONAUTH_URL = "https://localhost:9443/commonauth";
     private static final String OIDC_CONSENT_PAGE_URL =
             "https://localhost:9443/authenticationendpoint/oauth2_consent.do";
@@ -112,6 +131,16 @@ public class EndpointUtilTest extends PowerMockIdentityBaseTest {
             "https://localhost:9443/authenticationendpoint/oauth2_error.do?oauthErrorCode=3002&oauthErrorMsg=errorMessage&application=myApp";
     private static final String ERROR_PAGE_URL_WITHOUT_APP =
             "https://localhost:9443/authenticationendpoint/oauth2_error.do?oauthErrorCode=3002&oauthErrorMsg=errorMessage";
+
+    private static final String USER_INFO_CLAIM_DIALECT = "http://wso2.org/claims";
+    private static final String USER_INFO_CLAIM_RETRIEVER =
+            "org.wso2.carbon.identity.oauth.endpoint.user.impl.UserInfoUserStoreClaimRetriever";
+    private static final String USER_INFO_REQUEST_VALIDATOR =
+            "org.wso2.carbon.identity.oauth.endpoint.user.impl.UserInforRequestDefaultValidator";
+    private static final String USER_INFO_TOKEN_VALIDATOR =
+            "org.wso2.carbon.identity.oauth.endpoint.user.impl.UserInfoISAccessTokenValidator";
+    private static final String USER_INFO_RESPONSE_BUILDER =
+            "org.wso2.carbon.identity.oauth.endpoint.user.impl.UserInfoJSONResponseBuilder";
 
     private String username;
     private String password;
@@ -444,6 +473,44 @@ public class EndpointUtilTest extends PowerMockIdentityBaseTest {
         Assert.assertEquals(url, "https://localhost:9443/commonauth?sessionDataKey=1234567890&type=oidc");
     }
 
+    @Test
+    public void testGetServices() {
+        mockPrivilegedCarbonContext();
+        assertTrue(EndpointUtil.getWebFingerService() instanceof DefaultWebFingerProcessor,
+                "Retrieved incorrect WebFingerService");
+        assertTrue(EndpointUtil.getOIDProviderRequestValidator() instanceof DefaultOIDCProviderRequestBuilder,
+                "Retrieved incorrect OIDProviderRequestValidator");
+        assertTrue(EndpointUtil.getOIDCService() instanceof DefaultOIDCProcessor,
+                "Retrieved incorrect OIDCService");
+        assertTrue(EndpointUtil.getOAuth2Service() instanceof OAuth2Service,
+                "Retrieved incorrect OAuth2Service");
+        assertTrue(EndpointUtil.getOAuthServerConfiguration() instanceof OAuthServerConfiguration,
+                "Retrieved incorrect OAuthServerConfiguration");
+        assertTrue(EndpointUtil.getOAuth2TokenValidationService() instanceof OAuth2TokenValidationService,
+                "Retrieved incorrect OAuth2TokenValidationService");
+    }
+
+    @Test
+    public void testGetRealmInfo() {
+        String expectedRealm = "Basic realm=is.com";
+        mockStatic(ServerConfiguration.class);
+        when(ServerConfiguration.getInstance()).thenReturn(mockedServerConfiguration);
+        when(mockedServerConfiguration.getFirstProperty("HostName")).thenReturn("is.com");
+        assertEquals(EndpointUtil.getRealmInfo(), expectedRealm);
+    }
+
+    @Test
+    public void testGetOAuthServerConfigProperties() throws Exception {
+        mockPrivilegedCarbonContext();
+        setMockedOAuthServerConfiguration();
+
+        assertEquals(EndpointUtil.getUserInfoRequestValidator(), USER_INFO_REQUEST_VALIDATOR);
+        assertEquals(EndpointUtil.getAccessTokenValidator(), USER_INFO_TOKEN_VALIDATOR);
+        assertEquals(EndpointUtil.getUserInfoResponseBuilder(), USER_INFO_RESPONSE_BUILDER);
+        assertEquals(EndpointUtil.getUserInfoClaimRetriever(), USER_INFO_CLAIM_RETRIEVER);
+        assertEquals(EndpointUtil.getUserInfoClaimDialect(), USER_INFO_CLAIM_DIALECT);
+    }
+
     private void setMockedLog(boolean isDebugEnabled) throws Exception {
 
         Constructor<EndpointUtil> constructor = EndpointUtil.class.getDeclaredConstructor(new Class[0]);
@@ -458,5 +525,34 @@ public class EndpointUtilTest extends PowerMockIdentityBaseTest {
         logField.setAccessible(true);
         logField.set(claimUtilObject, mockedLog);
         when(mockedLog.isDebugEnabled()).thenReturn(isDebugEnabled);
+    }
+
+    private void mockPrivilegedCarbonContext() {
+        mockStatic(PrivilegedCarbonContext.class);
+        when(PrivilegedCarbonContext.getThreadLocalCarbonContext()).thenReturn(mockedPrivilegedCarbonContext);
+        when(mockedPrivilegedCarbonContext.getOSGiService(OAuthServerConfiguration.class)).
+                thenReturn(mockedOAuthServerConfiguration);
+        when(mockedPrivilegedCarbonContext.getOSGiService(WebFingerProcessor.class)).
+                thenReturn(DefaultWebFingerProcessor.getInstance());
+        when(mockedPrivilegedCarbonContext.getOSGiService(OIDCProviderRequestBuilder.class)).
+                thenReturn(new DefaultOIDCProviderRequestBuilder());
+        when(mockedPrivilegedCarbonContext.getOSGiService(OIDCProcessor.class)).
+                thenReturn(DefaultOIDCProcessor.getInstance());
+        when(mockedPrivilegedCarbonContext.getOSGiService(OAuth2Service.class)).thenReturn(new OAuth2Service());
+        when(mockedPrivilegedCarbonContext.getOSGiService(OAuth2TokenValidationService.class)).
+                thenReturn(new OAuth2TokenValidationService());
+    }
+
+    private void setMockedOAuthServerConfiguration() {
+        when(mockedOAuthServerConfiguration.getOpenIDConnectUserInfoEndpointRequestValidator()).
+                thenReturn(USER_INFO_REQUEST_VALIDATOR);
+        when(mockedOAuthServerConfiguration.getOpenIDConnectUserInfoEndpointAccessTokenValidator()).
+                thenReturn(USER_INFO_TOKEN_VALIDATOR);
+        when(mockedOAuthServerConfiguration.getOpenIDConnectUserInfoEndpointResponseBuilder()).
+                thenReturn(USER_INFO_RESPONSE_BUILDER);
+        when(mockedOAuthServerConfiguration.getOpenIDConnectUserInfoEndpointClaimRetriever()).
+                thenReturn(USER_INFO_CLAIM_RETRIEVER);
+        when(mockedOAuthServerConfiguration.getOpenIDConnectUserInfoEndpointClaimDialect()).
+                thenReturn(USER_INFO_CLAIM_DIALECT);
     }
 }

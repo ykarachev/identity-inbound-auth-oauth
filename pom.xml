@@ -27,7 +27,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.carbon.identity.inbound.auth.oauth2</groupId>
     <artifactId>identity-inbound-auth-oauth</artifactId>
-    <version>5.5.22-SNAPSHOT</version>
+    <version>5.5.37-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>WSO2 Carbon OAuth module</name>
     <url>http://wso2.org</url>
@@ -432,6 +432,7 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>org.jacoco.agent</artifactId>
                 <classifier>runtime</classifier>
+                <scope>test</scope>
                 <version>${jacoco.version}</version>
             </dependency>
             <!-- https://mvnrepository.com/artifact/org.powermock/powermock-module-testng -->
@@ -467,6 +468,22 @@
                 <scope>test</scope>
             </dependency>
 
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>${commons-codec.test.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!--
+                See https://github.com/wso2-extensions/identity-inbound-auth-oauth/issues/543 for the requirement to
+                 have this dependency
+            -->
+            <dependency>
+                <groupId>org.apache.tomcat</groupId>
+                <artifactId>tomcat-coyote</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -700,6 +717,7 @@
         <joda.wso2.version>2.8.2.wso2v1</joda.wso2.version>
         <joda.wso2.osgi.version.range>[2.8.2,3.0.0)</joda.wso2.osgi.version.range>
 
+        <tomcat.version>7.0.69</tomcat.version>
         <tomcat-util.version>3.3.2</tomcat-util.version>
         <tomcat.wso2.imp.pkg.version.range>[1.7.0,2.0)</tomcat.wso2.imp.pkg.version.range>
 
@@ -733,6 +751,8 @@
         <maven.surefire.plugin.version>2.18.1</maven.surefire.plugin.version>
         <javaee.web.api.version>7.0</javaee.web.api.version>
         <h2database.version>1.0.60</h2database.version>
+        <commons-codec.test.version>1.4</commons-codec.test.version>
+        <org.wso2.carbon.identity.testutil.version>5.10.0</org.wso2.carbon.identity.testutil.version>
     </properties>
 
 </project>

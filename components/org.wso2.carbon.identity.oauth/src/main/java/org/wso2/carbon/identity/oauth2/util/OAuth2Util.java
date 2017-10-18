@@ -328,15 +328,8 @@ public class OAuth2Util {
      */
     public static String buildScopeString(String[] scopes) {
         if (scopes != null) {
-            StringBuilder scopeString = new StringBuilder("");
             Arrays.sort(scopes);
-            for (int i = 0; i < scopes.length; i++) {
-                scopeString.append(scopes[i].trim());
-                if (i != scopes.length - 1) {
-                    scopeString.append(" ");
-                }
-            }
-            return scopeString.toString();
+            return StringUtils.join(scopes, " ");
         }
         return null;
     }

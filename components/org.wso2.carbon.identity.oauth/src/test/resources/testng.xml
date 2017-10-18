@@ -54,6 +54,7 @@
             <class name="org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheTest"/>
             <class name="org.wso2.carbon.identity.oauth.util.UserClaimsTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.clientauth.BasicAuthClientAuthHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.RefreshGrantHandlerTest"/>
         </classes>
     </test>
 </suite>

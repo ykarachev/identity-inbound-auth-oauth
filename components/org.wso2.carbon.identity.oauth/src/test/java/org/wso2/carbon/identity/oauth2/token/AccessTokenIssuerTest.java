@@ -107,7 +107,7 @@ public class AccessTokenIssuerTest {
     private static final String DUMMY_GRANT_TYPE = "dummy_grant_type";
     private static final String ID_TOKEN = "dummyIDToken";
     private static final String[] SCOPES_WITHOUT_OPENID = new String[]{"scope1", "scope2"};
-    private static final String[] SCOPES_WITH_OPENID = new String[]{"scope1", "openid"};
+    private static final String[] SCOPES_WITH_OPENID = new String[]{"scope1", OAuthConstants.Scope.OPENID};
 
     @BeforeMethod
     public void setUp() throws Exception {

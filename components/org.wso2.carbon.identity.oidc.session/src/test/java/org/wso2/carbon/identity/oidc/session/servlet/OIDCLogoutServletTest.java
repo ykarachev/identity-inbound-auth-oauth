@@ -24,7 +24,6 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.testng.PowerMockObjectFactory;
-import org.testng.Assert;
 import org.testng.IObjectFactory;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -39,7 +38,9 @@ import org.wso2.carbon.identity.core.util.IdentityConfigParser;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.oidc.session.OIDCSessionManager;
 import org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtil;
 
@@ -48,6 +49,8 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.security.KeyStore;
 import java.util.Collections;
 
 import static org.mockito.Matchers.any;
@@ -61,7 +64,7 @@ import static org.testng.Assert.assertTrue;
 
 @PrepareForTest({OIDCSessionManagementUtil.class, OIDCSessionManager.class, FrameworkUtils.class,
         IdentityConfigParser.class, OAuthServerConfiguration.class, IdentityTenantUtil.class, KeyStoreManager.class,
-        CarbonCoreDataHolder.class, IdentityDatabaseUtil.class})
+        CarbonCoreDataHolder.class, IdentityDatabaseUtil.class, OAuth2Util.class})
 /**
  * Unit test coverage for OIDCLogoutServlet class
  */
@@ -94,12 +97,20 @@ public class OIDCLogoutServletTest extends TestOIDCSessionBase {
     @Mock
     TokenPersistenceProcessor tokenPersistenceProcessor;
 
+    @Mock
+    OAuthAppDO oAuthAppDO;
+
+    @Mock
+    KeyStore keyStore;
+
     private static final String CLIENT_ID_VALUE = "3T9l2uUf8AzNOfmGS9lPEIsdrR8a";
     private static final String APP_NAME = "myApp";
     private static final String SECRET = "87n9a540f544777860e44e75f605d435";
     private static final String USERNAME = "user1";
+    private static final String CALLBACK_URL="http://localhost:8080/playground2/oauth2client";
     private static final String OPBROWSER_STATE = "090907ce-eab0-40d2-a46d-acd4bb33f0d0";
     private static final int TENANT_ID = -1234;
+    private static final String INVALID_CALLBACK_URL="http://localhost:8080/playground2/auth";
 
     private OIDCLogoutServlet logoutServlet;
 
@@ -108,7 +119,7 @@ public class OIDCLogoutServletTest extends TestOIDCSessionBase {
         logoutServlet = new OIDCLogoutServlet();
 
         initiateInMemoryH2();
-        createOAuthApp(CLIENT_ID_VALUE, SECRET, USERNAME, APP_NAME, "ACTIVE");
+        createOAuthApp(CLIENT_ID_VALUE, SECRET, USERNAME, APP_NAME, "ACTIVE", CALLBACK_URL);
 
     }
 
@@ -133,47 +144,69 @@ public class OIDCLogoutServletTest extends TestOIDCSessionBase {
                 "?oauthErrorCode=server_error&oauthErrorMsg=User+logout+failed",
                 "?oauthErrorCode=access_denied&oauthErrorMsg=End+User+denied+the+logout+request",
                 "https://localhost:8080/playground/oauth2client",
-                "https://localhost:9443/authenticationendpoint/oauth2_logout_consent.do"
+                "https://localhost:9443/authenticationendpoint/oauth2_logout_consent.do",
+                "?oauthErrorCode=access_denied&oauthErrorMsg=ID+token+signature+validation+failed.",
+                "?oauthErrorCode=access_denied&oauthErrorMsg==Post+logout+URI+does+not+match+with+registered+callback+URI."
         };
 
         return new Object[][]{
                 // opbs cookie is null.
-                {null, true, redirectUrl[0], "cookie", "", null, false, "", false},
+                {null, true, redirectUrl[0], "cookie", "", null, false, "", false, ""},
                 // opbs cookie is existing and there is no any existing sessions.
-                {opbsCookie, false, redirectUrl[1], "valid", "", null, false, "", false},
+                {opbsCookie, false, redirectUrl[1], "valid", "", null, false, "", false, ""},
                 // opbs cookie and a previous session are existing and userConsent="Approve".
-                {opbsCookie, true, redirectUrl[2], "failed", "approve", null, false, "", false},
+                {opbsCookie, true, redirectUrl[2], "failed", "approve", null, false, "", false, ""},
                 // opbs cookie and previous session are existing, but the userConsent!="Approve".
-                {opbsCookie, true, redirectUrl[3], "denied", "no", null, false, "", false},
+                {opbsCookie, true, redirectUrl[3], "denied", "no", null, false, "", false, ""},
                 // opbs cookie and previous session are existing, but user consent is empty and sessionDataKey is
                 // empty.
-                {opbsCookie, true, redirectUrl[4], "oauth2client", " ", null, true, "", false},
+                {opbsCookie, true, redirectUrl[4], "oauth2client", " ", null, true, "", false, ""},
                 // opbs cookie and previous session are existing, user consent is empty and there is a value for
                 // sessionDataKey and skipUserConsent=false.
-                {opbsCookie, true, redirectUrl[2], "failed", " ", "090907ce-eab0-40d2-a46d", false, "", false},
+                {opbsCookie, true, redirectUrl[2], "failed", " ", "090907ce-eab0-40d2-a46d", false, "", false, ""},
                 // opbs cookie and previous session are existing, user consent is empty, there is a value for
                 // sessionDataKey, skipUserConsent=true and an invalid idTokenHint.
                 {opbsCookie, true, redirectUrl[2], "failed", " ", "090907ce-eab0-40d2-a46d", true,
-                        "7893-090907ce-eab0-40d2", false},
+                        "7893-090907ce-eab0-40d2", false, ""},
                 // opbs cookie and previous session are existing, user consent is empty,sessionDataKey = null,
                 // skipUserConsent=true and an invalid idTokenHint.
                 {opbsCookie, true, redirectUrl[2], "failed", " ", null, true,
-                        "7893-090907ce-eab0-40d2", false},
+                        "7893-090907ce-eab0-40d2", false, ""},
                 // opbs cookie and previous session are existing, user consent is empty,sessionDataKey = null,
                 // skipUserConsent=false and a valid idTokenHint.
                 {opbsCookie, true, redirectUrl[5], "oauth2_logout_consent.do", " ", null, false,
-                        idTokenHint, false},
+                        idTokenHint, false, ""},
                 // opbs cookie and previous session are existing, user consent is empty,sessionDataKey = null,
                 // skipUserConsent=true and a valid idTokenHint.
+                {opbsCookie, true, redirectUrl[5], "", " ", null, true,
+                        idTokenHint, false, ""},
+                // opbs cookie and previous sessions are existing, userConsent is empty, sessionDataKey = null,
+                // skipUserConsent=true, a valid idTokenHint, and an invalid postLogoutUri.
                 {opbsCookie, true, redirectUrl[5], "oauth2_logout_consent.do", " ", null, true,
-                        idTokenHint, false},
+                        idTokenHint, false, INVALID_CALLBACK_URL},
+                // opbs cookie and previous sessions are existing, userConsent is empty, sessionDataKey = null,
+                // skipUserConsent=true, a valid idTokenHint, and valid postLogoutUri.
+                {opbsCookie, true, redirectUrl[5], CALLBACK_URL, " ", null, true,
+                        idTokenHint, false, CALLBACK_URL},
+                // opbs cookie and previous sessions are existing, userConsent is empty, sessionDataKey = null,
+                // skipUserConsent=true, a valid idTokenHint, isJWTSignedWithSPKey= true.
+                {opbsCookie, true, redirectUrl[6], "signature", " ", null, true,
+                        idTokenHint, true, ""},
+                // opbs cookie and previous sessions are existing, userConsent is empty, sessionDataKey = null,
+                // skipUserConsent=false,idTokenHint=null, isJWTSignedWithSPKey= true.
+                {opbsCookie, true, redirectUrl[4], "oauth2client", " ", null, false,
+                        null, true, ""},
+                // opbs cookie and previous sessions are existing, userConsent is empty, sessionDataKey = null,
+                // skipUserConsent=false,a valid idTokenHint, isJWTSignedWithSPKey=false, postLogoutUri is invalid.
+                {opbsCookie, true, redirectUrl[7], "Post", " ", null, false,
+                        idTokenHint, false, INVALID_CALLBACK_URL},
         };
     }
 
     @Test(dataProvider = "provideDataForTestDoGet")
     public void testDoGet(Object cookie, boolean sessionExists, String redirectUrl, String expected, String consent,
                           String sessionDataKey, boolean skipUserConsent, String idTokenHint,
-                          boolean isJWTSignedWithSPKey) throws Exception {
+                          boolean isJWTSignedWithSPKey, String postLogoutUrl ) throws Exception {
         TestUtil.startTenantFlow("carbon.super");
 
         mockStatic(OIDCSessionManagementUtil.class);
@@ -212,7 +245,7 @@ public class OIDCLogoutServletTest extends TestOIDCSessionBase {
         when(OIDCSessionManagementUtil.getOIDCLogoutURL()).thenReturn(redirectUrl);
 
         mockStatic(IdentityTenantUtil.class);
-        when(IdentityTenantUtil.getTenantId(anyString())).thenReturn(-1234);
+        when(IdentityTenantUtil.getTenantId(anyString())).thenReturn(TENANT_ID);
 
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
@@ -237,10 +270,19 @@ public class OIDCLogoutServletTest extends TestOIDCSessionBase {
         mockStatic(IdentityDatabaseUtil.class);
         when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
+        when(request.getParameter("post_logout_redirect_uri")).thenReturn(postLogoutUrl);
+
+        mockStatic(OAuth2Util.class);
+        when(OAuth2Util.getAppInformationByClientId(anyString())).thenReturn(oAuthAppDO);
+        when(OAuth2Util.getTenantDomainOfOauthApp(any(oAuthAppDO.getClass()))).thenReturn("wso2.com");
+        when(keyStoreManager.getKeyStore(anyString())).thenReturn(TestUtil.loadKeyStoreFromFileSystem(TestUtil
+                .getFilePath("wso2carbon.jks"), "wso2carbon", "JKS"));
+
         ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
         logoutServlet.doGet(request, response);
         verify(response).sendRedirect(captor.capture());
         assertTrue(captor.getValue().contains(expected));
+
     }
 
     @ObjectFactory

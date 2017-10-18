@@ -18,10 +18,12 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
 
 <suite name="Identity-Oidc-Session">
-    <test name="Util-Tests" preserve-order="true" parallel="false">
-        <classes>
-            <class name="org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtilTest" />
-            <class name="org.wso2.carbon.identity.oidc.session.servlet.OIDCLogoutServletTest" />
-        </classes>
-    </test>
+<test name="OIDCSessionMgt-Tests-with-debug-logs" preserve-order="true" parallel="false">
+    <classes>
+        <class name="org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtilTest" />
+        <class name="org.wso2.carbon.identity.oidc.session.servlet.OIDCLogoutServletTest" />
+        <class name="org.wso2.carbon.identity.oidc.session.servlet.OIDCSessionIFrameServletTest" />
+        <class name="org.wso2.carbon.identity.oidc.session.OIDCSessionManagerTest"/>
+    </classes>
+</test>
 </suite>

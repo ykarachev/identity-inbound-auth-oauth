@@ -22,9 +22,9 @@ import org.powermock.modules.testng.PowerMockTestCase;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
 
 public class TestOIDCSessionBase extends PowerMockTestCase {
+
     private static final String ADD_OAUTH_APP_SQL = "INSERT INTO IDN_OAUTH_CONSUMER_APPS " +
             "(CONSUMER_KEY, CONSUMER_SECRET, USERNAME, TENANT_ID, USER_DOMAIN, APP_NAME, OAUTH_VERSION," +
             " CALLBACK_URL, GRANT_TYPES, APP_STATE) VALUES (?,?,?,?,?,?,?,?,?,?) ";
@@ -43,7 +43,8 @@ public class TestOIDCSessionBase extends PowerMockTestCase {
         connection.createStatement().executeUpdate("RUNSCRIPT FROM 'src/test/resources/dbScripts/h2.sql'");
     }
 
-    protected void createOAuthApp(String clientId, String secret, String username, String appName, String appState)
+    protected void createOAuthApp(String clientId, String secret, String username, String appName, String appState,
+                                  String callBackUrl)
             throws Exception {
 
         PreparedStatement statement = null;
@@ -56,7 +57,7 @@ public class TestOIDCSessionBase extends PowerMockTestCase {
             statement.setString(5, "PRIMARY");
             statement.setString(6, appName);
             statement.setString(7, "OAuth-2.0");
-            statement.setString(8, null);
+            statement.setString(8, callBackUrl);
             statement.setString(9, "password");
             statement.setString(10, appState);
             statement.execute();

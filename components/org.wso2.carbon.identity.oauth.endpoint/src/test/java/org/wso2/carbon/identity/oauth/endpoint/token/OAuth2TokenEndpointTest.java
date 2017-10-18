@@ -20,7 +20,10 @@ package org.wso2.carbon.identity.oauth.endpoint.token;
 
 import org.apache.axiom.util.base64.Base64Utils;
 import org.apache.commons.collections.iterators.IteratorEnumeration;
+import org.apache.oltu.oauth2.as.validator.AuthorizationCodeValidator;
+import org.apache.oltu.oauth2.as.validator.ClientCredentialValidator;
 import org.apache.oltu.oauth2.as.validator.PasswordValidator;
+import org.apache.oltu.oauth2.as.validator.RefreshTokenValidator;
 import org.apache.oltu.oauth2.common.OAuth;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.apache.oltu.oauth2.common.validators.OAuthValidator;
@@ -35,8 +38,10 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
+import org.wso2.carbon.identity.oauth.common.NTLMAuthenticationValidator;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.SAML2GrantValidator;
 import org.wso2.carbon.identity.oauth.common.exception.OAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil;
@@ -48,6 +53,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.model.CarbonOAuthTokenRequest;
 
+import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -219,7 +225,7 @@ public class OAuth2TokenEndpointTest extends TestOAuthEndpointBase {
         };
     }
 
-    @Test(dataProvider = "testIssueAccessTokenDataProvider")
+    @Test(dataProvider = "testIssueAccessTokenDataProvider", groups = "testWithConnection")
     public void testIssueAccessToken(String clientId, String authzHeader, Object paramMapObj, String grantType,
                                      String idToken, Object headerObj, Exception e, int expectedStatus,
                                      String expectedErrorCode) throws Exception {
@@ -309,7 +315,7 @@ public class OAuth2TokenEndpointTest extends TestOAuthEndpointBase {
         };
     }
 
-    @Test(dataProvider = "testTokenErrorResponseDataProvider")
+    @Test(dataProvider = "testTokenErrorResponseDataProvider", groups = "testWithConnection")
     public void testTokenErrorResponse(String errorCode, Object headerObj, int expectedStatus,
                                        String expectedErrorCode) throws Exception {
         ResponseHeader[] responseHeaders = (ResponseHeader[]) headerObj;
@@ -348,6 +354,118 @@ public class OAuth2TokenEndpointTest extends TestOAuthEndpointBase {
         assertEquals(response.getStatus(), expectedStatus, "Unexpected HTTP response status");
         assertNotNull(response.getEntity(), "Response entity is null");
         assertTrue(response.getEntity().toString().contains(expectedErrorCode), "Expected error code not found");
+    }
+
+    @DataProvider(name = "testGetAccessTokenDataProvider")
+    public Object[][] testGetAccessTokenDataProvider() {
+        return new Object[][] {
+                {GrantType.AUTHORIZATION_CODE.toString(), OAuth.OAUTH_CODE},
+                {GrantType.PASSWORD.toString(), OAuth.OAUTH_USERNAME + "," + OAuth.OAUTH_PASSWORD},
+                {GrantType.REFRESH_TOKEN.toString(), OAuth.OAUTH_REFRESH_TOKEN},
+                {org.wso2.carbon.identity.oauth.common.GrantType.SAML20_BEARER.toString(), OAuth.OAUTH_ASSERTION},
+                {org.wso2.carbon.identity.oauth.common.GrantType.IWA_NTLM.toString(), OAuthConstants.WINDOWS_TOKEN},
+                {GrantType.CLIENT_CREDENTIALS.toString(), OAuth.OAUTH_GRANT_TYPE},
+        };
+    }
+
+    @Test(dataProvider = "testGetAccessTokenDataProvider")
+    public void testGetAccessToken(String grantType, String additionalParameters) throws Exception {
+        Map<String, String[]> requestParams = new HashMap<>();
+        requestParams.put(OAuth.OAUTH_CLIENT_ID, new String[] {CLIENT_ID_VALUE});
+        requestParams.put(OAuth.OAUTH_GRANT_TYPE, new String[]{grantType});
+        requestParams.put(OAuth.OAUTH_SCOPE, new String[]{"scope1"});
+
+        // Required params for authorization_code grant type
+        requestParams.put(OAuth.OAUTH_REDIRECT_URI, new String[]{APP_REDIRECT_URL});
+        requestParams.put(OAuth.OAUTH_CODE, new String[]{"auth_code"});
+
+        // Required params for password grant type
+        requestParams.put(OAuth.OAUTH_USERNAME, new String[]{USERNAME});
+        requestParams.put(OAuth.OAUTH_PASSWORD, new String[]{"password"});
+
+        // Required params for refresh token grant type
+        requestParams.put(OAuth.OAUTH_REFRESH_TOKEN, new String[]{REFRESH_TOKEN});
+
+        // Required params for saml2 bearer grant type
+        requestParams.put(OAuth.OAUTH_ASSERTION, new String[]{"dummyAssertion"});
+
+        // Required params for IWA_NLTM grant type
+        requestParams.put(OAuthConstants.WINDOWS_TOKEN, new String[]{"dummyWindowsToken"});
+
+        HttpServletRequest request = mockHttpRequest(requestParams, new HashMap<String, Object>());
+        when(request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ)).thenReturn(AUTHORIZATION_HEADER);
+        when(request.getHeaderNames()).thenReturn(
+                Collections.enumeration(new ArrayList<String>(){{ add(OAuthConstants.HTTP_REQ_HEADER_AUTHZ);}}));
+
+        Map<String, Class<? extends OAuthValidator<HttpServletRequest>>> grantTypeValidators = new Hashtable<>();
+        grantTypeValidators.put(GrantType.PASSWORD.toString(), PasswordValidator.class);
+        grantTypeValidators.put(GrantType.CLIENT_CREDENTIALS.toString(), ClientCredentialValidator.class);
+        grantTypeValidators.put(GrantType.AUTHORIZATION_CODE.toString(), AuthorizationCodeValidator.class);
+        grantTypeValidators.put(GrantType.REFRESH_TOKEN.toString(), RefreshTokenValidator.class);
+        grantTypeValidators.put(org.wso2.carbon.identity.oauth.common.GrantType.IWA_NTLM.toString(),
+                NTLMAuthenticationValidator.class);
+        grantTypeValidators.put(org.wso2.carbon.identity.oauth.common.GrantType.SAML20_BEARER.toString(),
+                SAML2GrantValidator.class);
+
+        mockOAuthServerConfiguration();
+        when(oAuthServerConfiguration.getSupportedGrantTypeValidators()).thenReturn(grantTypeValidators);
+
+        spy(EndpointUtil.class);
+        doReturn(oAuth2Service).when(EndpointUtil.class, "getOAuth2Service");
+        final Map<String, String> parametersSetToRequest = new HashMap<>();
+        doAnswer(new Answer<Object>(){
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                OAuth2AccessTokenReqDTO request = (OAuth2AccessTokenReqDTO) invocation.getArguments()[0];
+                parametersSetToRequest.put(OAuth.OAUTH_CODE, request.getAuthorizationCode());
+                parametersSetToRequest.put(OAuth.OAUTH_USERNAME, request.getResourceOwnerUsername());
+                parametersSetToRequest.put(OAuth.OAUTH_PASSWORD, request.getResourceOwnerPassword());
+                parametersSetToRequest.put(OAuth.OAUTH_REFRESH_TOKEN, request.getRefreshToken());
+                parametersSetToRequest.put(OAuth.OAUTH_ASSERTION, request.getAssertion());
+                parametersSetToRequest.put(OAuthConstants.WINDOWS_TOKEN, request.getWindowsToken());
+                parametersSetToRequest.put(OAuth.OAUTH_GRANT_TYPE, request.getGrantType());
+                OAuth2AccessTokenRespDTO tokenRespDTO = new OAuth2AccessTokenRespDTO();
+                return tokenRespDTO;
+            }
+        }).when(oAuth2Service).issueAccessToken(any(OAuth2AccessTokenReqDTO.class));
+
+        CarbonOAuthTokenRequest oauthRequest = new CarbonOAuthTokenRequest(request);
+
+        Class<?> clazz = OAuth2TokenEndpoint.class;
+        Object tokenEndpointObj = clazz.newInstance();
+        Method getAccessToken = tokenEndpointObj.getClass().
+                getDeclaredMethod("getAccessToken", CarbonOAuthTokenRequest.class);
+        getAccessToken.setAccessible(true);
+        OAuth2AccessTokenRespDTO tokenRespDTO = (OAuth2AccessTokenRespDTO)
+                getAccessToken.invoke(tokenEndpointObj, oauthRequest);
+
+        assertNotNull(tokenRespDTO, "ResponseDTO is null");
+        String[] paramsToCheck = additionalParameters.split(",");
+        for(String param : paramsToCheck) {
+            assertNotNull(parametersSetToRequest.get(param), "Required parameter " + param + " is not set for " +
+                    grantType + "grant type");
+        }
+    }
+
+    @Test(dependsOnGroups = "testWithConnection")
+    public void testExceptionFromOAuthAppDAO() throws Exception {
+        Map<String, String[]> requestParams = new HashMap<>();
+        requestParams.put(OAuth.OAUTH_CLIENT_ID, new String[]{CLIENT_ID_VALUE});
+        requestParams.put(OAuth.OAUTH_GRANT_TYPE, new String[]{GrantType.PASSWORD.toString()});
+
+        HttpServletRequest request = mockHttpRequest(requestParams, new HashMap<String, Object>());
+        when(request.getHeader(OAuthConstants.HTTP_REQ_HEADER_AUTHZ)).thenReturn(AUTHORIZATION_HEADER);
+
+        mockOAuthServerConfiguration();
+        mockStatic(IdentityDatabaseUtil.class);
+        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+        connection.close();
+        Response response = oAuth2TokenEndpoint.issueAccessToken(request, new MultivaluedHashMap<String, String>());
+        assertNotNull(response, "Token response is null");
+        assertEquals(response.getStatus(), HttpServletResponse.SC_NOT_FOUND,
+                "Incorrect response for IdentityOAuthAdminException");
+        assertTrue(response.getEntity().toString().contains(OAuth2ErrorCodes.SERVER_ERROR), "Error code not found");
     }
 
     private HttpServletRequest mockHttpRequest(final Map<String, String[]> requestParams,

@@ -28,7 +28,6 @@
             <class name="org.wso2.carbon.identity.oauth.dcr.service.DCRMServiceTest"/>
             <class name="org.wso2.carbon.identity.oauth.dcr.processor.DCRProcessorTest"/>
             <class name="org.wso2.carbon.identity.oauth.dcr.util.DCRMUtilsTest"/>
-            <class name="org.wso2.carbon.identity.oauth.dcr.util.HandlerManagerTest"/>
         </classes>
     </test>
 

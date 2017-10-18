@@ -31,6 +31,7 @@
             <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackHandlerRegistryTest"/>
             <class name="org.wso2.carbon.identity.oauth.tokenvaluegenerator.SHA256GeneratorTest"/>
             <class name="org.wso2.carbon.identity.oauth.OAuthUtilTest"/>
+            <class name="org.wso2.carbon.identity.oauth.OAuthServiceTest"/>
             <class name="org.wso2.carbon.identity.oauth2.dao.AccessContextTokenDOTest" />
             <class name="org.wso2.carbon.identity.oauth2.dao.AuthContextTokenDOTest" />
             <class name="org.wso2.carbon.identity.oauth2.dao.ScopeMgtDAOTest" />

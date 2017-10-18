@@ -76,7 +76,7 @@ public class UserInfoISAccessTokenValidatorTest extends PowerMockTestCase {
     }
 
     @DataProvider
-    public Object[][] getRequestBodies() {
+    public Object[][] requestBody() {
         return new Object[][]{
                 {CONTENT_TYPE_HEADER_VALUE, "", null},
                 {CONTENT_TYPE_HEADER_VALUE, null, null},
@@ -88,7 +88,7 @@ public class UserInfoISAccessTokenValidatorTest extends PowerMockTestCase {
         };
     }
 
-    @Test(dataProvider = "getRequestBodies")
+    @Test(dataProvider = "requestBody")
     public void testValidateTokenWithRequestBodySuccess(String contentType, String requestBody, String expected) throws
             Exception {
         String token = testValidateTokenWithRequestBody(contentType, requestBody, true);
@@ -96,7 +96,7 @@ public class UserInfoISAccessTokenValidatorTest extends PowerMockTestCase {
     }
 
     @DataProvider
-    public Object[][] getRequestBodiesWithNonASCII() {
+    public Object[][] requestBodyWithNonASCII() {
         return new Object[][]{
                 {CONTENT_TYPE_HEADER_VALUE, "access_token=" + "¥" + TOKEN, TOKEN},
                 {CONTENT_TYPE_HEADER_VALUE, "access_token=" + "§" + TOKEN +
@@ -106,7 +106,7 @@ public class UserInfoISAccessTokenValidatorTest extends PowerMockTestCase {
         };
     }
 
-    @Test(dataProvider = "getRequestBodiesWithNonASCII", expectedExceptions = UserInfoEndpointException.class)
+    @Test(dataProvider = "requestBodyWithNonASCII", expectedExceptions = UserInfoEndpointException.class)
     public void testValidateTokenWithRequestBodyNonASCII(String contentType, String requestBody, String expected) throws
             Exception {
         testValidateTokenWithRequestBody(contentType, requestBody, true);

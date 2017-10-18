@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.oauth.endpoint.user.impl;
 
-import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;

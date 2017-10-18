@@ -29,7 +29,8 @@ import static org.testng.Assert.assertNotNull;
 
 @PrepareForTest(StringBuilder.class)
 public class ScopeTest {
-    Scope scope;
+    Scope scope1;
+    Scope scope2;
     String name = "readClaims";
     String description = "Test cases to test scope";
 
@@ -37,79 +38,78 @@ public class ScopeTest {
 
     @BeforeTest
     public void setUp() throws IllegalAccessException, InstantiationException {
-        scope = new Scope(name, description);
-        scope = new Scope(name, description, bindings);
+        scope1 = new Scope(name, description);
+        scope2 = new Scope(name, description, bindings);
     }
 
 
     @Test
     public void testGetName() throws Exception {
-        assertEquals(scope.getName(),
+        assertEquals(scope1.getName(),
                 "readClaims", "Valid getName().");
-        assertNotEquals(scope.getName(),
+        assertNotEquals(scope1.getName(),
                 "ReadClaims", "Invalid getName().");
     }
 
     @Test
     public void testSetName() throws Exception {
-        scope.setName(name = "value");
-        assertEquals(scope.getName(),
+        scope1.setName(name = "value");
+        assertEquals(scope1.getName(),
                 "value", "Valid getName().");
-        assertNotEquals(scope.getName(),
+        assertNotEquals(scope1.getName(),
                 "readClaims", "Invalid getName().");
 
     }
 
     @Test
     public void testGetDescription() throws Exception {
-        assertEquals(scope.getDescription(),
+        assertEquals(scope1.getDescription(),
                 "Test cases to test scope", "Valid getDescription().");
-        assertNotEquals(scope.getDescription(),
+        assertNotEquals(scope1.getDescription(),
                 "Test cases to testscope", "Invalid getDescription().");
     }
 
     @Test
     public void testSetDescription() throws Exception {
-        scope.setDescription(name = "Testing authcontext oauth scope");
-        assertEquals(scope.getDescription(),
+        scope1.setDescription(name = "Testing authcontext oauth scope");
+        assertEquals(scope1.getDescription(),
                 "Testing authcontext oauth scope", "Valid getDescription().");
-        assertNotEquals(scope.getDescription(),
+        assertNotEquals(scope1.getDescription(),
                 "Testing authcontextoauth scope", "Invalid getDescription().");
     }
 
 
     @Test
     public void testAddBindings() throws Exception {
-        scope.addBinding("scope3");
-        assertTrue(scope.getBindings().contains("scope3"));
+        scope2.addBinding("scope3");
+        assertTrue(scope2.getBindings().contains("scope3"));
 
     }
 
     @Test
     public void testAddBinding() throws Exception {
-
-        scope.addBindings(Arrays.asList(new String[]{"scope3", "scope4"}));
-        assertTrue(scope.getBindings().containsAll(Arrays.asList(new String[]{"scope3", "scope4"})));
+        scope2.addBindings(Arrays.asList(new String[]{"scope3", "scope4"}));
+        assertTrue(scope2.getBindings().containsAll(Arrays.asList(new String[]{"scope3", "scope4"})));
     }
 
     @Test
     public void testGetBindings() throws Exception {
         assertNotNull(bindings);
         bindings.add("scope4");
-        assertEquals(scope.getBindings(), bindings, "Actual size is not match with expected one");
+        assertEquals(scope2.getBindings(), bindings, "Actual size does not match with expected one");
     }
 
     @Test
     public void testSetBindings() throws Exception {
         ArrayList<String> bindings2 = new ArrayList<>(Arrays.asList("scope1", "scope2", "scope3"));
-        scope.setBindings(bindings2);
-        int scopeSize = 3;
-        assertEquals(bindings2.size(), scopeSize, "Invalid Scopes size");
+        scope2.setBindings(bindings2);
+        int expectedScopeSize = 3;
+        assertEquals(bindings2.size(), expectedScopeSize, "Invalid Scopes size");
     }
 
     @Test
     public void testToString() throws Exception {
-        assertNotEquals(scope.toString(), "Scope {\n" +
+        assertNotEquals(scope2.toString(), "Scope {\n" +
                 "  name: readClaims\n" +
                 "  description: Test cases to test scope\n" +
                 "  bindings: [scope1, scope2]\n" +

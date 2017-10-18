@@ -23,7 +23,6 @@ import org.testng.IObjectFactory;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
-import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
@@ -39,20 +38,19 @@ import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.SortedMap;
 
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.powermock.api.mockito.PowerMockito.*;
-import static org.testng.Assert.*;
+import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import static org.powermock.api.mockito.PowerMockito.when;
+import static org.testng.Assert.assertNotNull;
 
-@PrepareForTest({OAuthServerConfiguration.class, OAuth2Util.class, MultitenantUtils.class, OAuthComponentServiceHolder.class, UserRealm.class})
+@PrepareForTest({OAuthServerConfiguration.class, OAuth2Util.class, MultitenantUtils.class,
+        OAuthComponentServiceHolder.class, UserRealm.class})
 public class DefaultClaimsRetrieverTest extends PowerMockTestCase {
 
     DefaultClaimsRetriever defaultClaimsRetriever;
-
-    public static final String DEFAULT_DIALECT_URI = "http://wso2.org/claims";
 
     @Mock
     private OAuthServerConfiguration mockedOAuthServerConfiguration;
@@ -118,29 +116,29 @@ public class DefaultClaimsRetrieverTest extends PowerMockTestCase {
         ClaimMapping cMap2 = new ClaimMapping(claim2, testMappedAttributesCore2);
         ClaimMapping cMap3 = new ClaimMapping(claim3, testMappedAttributesUser1);
         ClaimMapping cMap4 = new ClaimMapping(claim4, testMappedAttributesUser2);
-
         ClaimMapping[] coreClaims = new ClaimMapping[]{cMap1, cMap2, cMap3, cMap4};
-
-
         return coreClaims;
     }
 
     @Test
     public void testInit() throws Exception {
-        // Subject is null.
-        assertFalse(Boolean.parseBoolean(defaultClaimsRetriever.DEFAULT_DIALECT_URI));
 
         // Subject is not null.
+        String consumerDialectURI = "http://wso2.org/claims";
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
-        when(mockedOAuthServerConfiguration.getConsumerDialectURI()).thenReturn("consumerDialectURI");
-        assertFalse(Boolean.parseBoolean(mockedOAuthServerConfiguration.getConsumerDialectURI()));
+        when(mockedOAuthServerConfiguration.getConsumerDialectURI()).thenReturn(consumerDialectURI);
+        defaultClaimsRetriever.init();
+
+        // Subject is null.
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
+        when(mockedOAuthServerConfiguration.getConsumerDialectURI()).thenReturn(null);
+        defaultClaimsRetriever.init();
     }
 
     @Test
     public void testGetClaims() throws Exception {
-        SortedMap<String, String> claimValues;
-        int tenantId = MultitenantConstants.SUPER_TENANT_ID;
 
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
@@ -155,7 +153,8 @@ public class DefaultClaimsRetrieverTest extends PowerMockTestCase {
         when(mockedRealmService.getTenantUserRealm(anyInt())).thenReturn(mockedUserRealm);
         when(mockedUserRealm.getUserStoreManager()).thenReturn(mockedUserStoreManager);
         Map<String, String> expectedMappingTrue = new HashMap<>();
-        when(mockedUserStoreManager.getUserClaimValue("user", "[\"https://www.wso2.org/address\", \"https://www.wso2.org/email\"]", "read")).thenReturn(expectedMappingTrue.toString());
+        when(mockedUserStoreManager.getUserClaimValue("user", "[\"https://www.wso2.org/address\", " +
+                "\"https://www.wso2.org/email\"]", "read")).thenReturn(expectedMappingTrue.toString());
 
         String[] claims = {"https://www.wso2.org/address", "https://www.wso2.org/email"};
 
@@ -163,9 +162,7 @@ public class DefaultClaimsRetrieverTest extends PowerMockTestCase {
     }
 
     @Test(expectedExceptions = IdentityOAuth2Exception.class)
-    public void testGetClaims1() throws Exception {
-        SortedMap<String, String> claimValues;
-        int tenantId = MultitenantConstants.SUPER_TENANT_ID;
+    public void testGetClaimsWhenException() throws Exception {
 
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
@@ -180,7 +177,8 @@ public class DefaultClaimsRetrieverTest extends PowerMockTestCase {
         when(mockedRealmService.getTenantUserRealm(anyInt())).thenReturn(mockedUserRealm);
         when(mockedUserRealm.getUserStoreManager()).thenThrow(new UserStoreException("UserStoreException"));
         Map<String, String> expectedMappingTrue = new HashMap<>();
-        when(mockedUserStoreManager.getUserClaimValue(anyString(), anyString(), anyString())).thenThrow(new UserStoreException("UserStoreException"));
+        when(mockedUserStoreManager.getUserClaimValue(anyString(), anyString(), anyString())).
+                thenThrow(new UserStoreException("UserStoreException"));
 
         String[] claims = {"https://www.wso2.org/address", "https://www.wso2.org/email"};
 
@@ -211,7 +209,7 @@ public class DefaultClaimsRetrieverTest extends PowerMockTestCase {
     }
 
     @Test(expectedExceptions = IdentityOAuth2Exception.class)
-    public void testGetDefaultClaims1() throws Exception {
+    public void testGetDefaultClaimsWhenException() throws Exception {
 
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
@@ -229,14 +227,13 @@ public class DefaultClaimsRetrieverTest extends PowerMockTestCase {
         when(mockedUserRealm.getClaimManager()).thenReturn(mockedClaimManager);
         mockedClaimMapping = mock(ClaimMapping.class);
 
-        when(mockedClaimManager.getAllClaimMappings(anyString())).thenThrow(new UserStoreException("UserStoreException"));
+        when(mockedClaimManager.getAllClaimMappings(anyString())).
+                thenThrow(new UserStoreException("UserStoreException"));
         assertNotNull(defaultClaimsRetriever.getDefaultClaims("admin"));
-
     }
 
     @ObjectFactory
     public IObjectFactory getObjectFactory() {
         return new PowerMockObjectFactory();
-
     }
 }

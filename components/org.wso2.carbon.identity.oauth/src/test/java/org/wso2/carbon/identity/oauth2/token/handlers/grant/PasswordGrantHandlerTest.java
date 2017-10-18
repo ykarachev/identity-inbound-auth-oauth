@@ -59,8 +59,6 @@ import static org.testng.Assert.assertTrue;
 )
 public class PasswordGrantHandlerTest {
 
-    //    @Mock
-//    private Log log;
     @Mock
     private OAuthTokenReqMessageContext tokReqMsgCtx;
     @Mock
@@ -89,22 +87,20 @@ public class PasswordGrantHandlerTest {
     @DataProvider(name = "ValidateGrantDataProvider")
     public Object[][] buildScopeString() {
         return new Object[][]{
-                {"randomUser", "wso2.com", "wso2.com", 1, true, "randomPassword", true, "DOMAIN", true, true},
-                {"randomUser", "wso2.com", "wso2.com", 1, true, "randomPassword", true, "DOMAIN", true, false}
+                {"randomUser", "wso2.com", "wso2.com", 1, true, "randomPassword", true, "DOMAIN", true},
         };
     }
 
     @Test(dataProvider = "ValidateGrantDataProvider")
-    public void testValidateGrant(String username, String appTenant, String userTenant, int userTenantId, boolean
-            isSaas, String resourceOwnerPassword, boolean authenticate, String domain, boolean result, boolean
-                                          debugEnabled) throws Exception {
-
-//        mockStatic(LogFactory.class);
-//        when(LogFactory.getLog(any(Class.class))).thenReturn(log);
-//
-//        when(log.isDebugEnabled()).thenReturn(debugEnabled);
-//        doNothing().when(log).debug(any());
-//        doNothing().when(log).debug(any(), any(Throwable.class));
+    public void testValidateGrant(String username,
+                                  String appTenant,
+                                  String userTenant,
+                                  int userTenantId,
+                                  boolean isSaas,
+                                  String resourceOwnerPassword,
+                                  boolean authenticate,
+                                  String domain,
+                                  boolean result) throws Exception {
 
         when(tokReqMsgCtx.getOauth2AccessTokenReqDTO()).thenReturn(oAuth2AccessTokenReqDTO);
         when(oAuth2AccessTokenReqDTO.getResourceOwnerUsername()).thenReturn(username + userTenant);
@@ -139,8 +135,8 @@ public class PasswordGrantHandlerTest {
         when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
         when(userStoreManager.authenticate(anyString(), any())).thenReturn(authenticate);
 
-        when(applicationManagementService.getServiceProviderByClientId(anyString(), anyString(), anyString())).thenReturn
-                (serviceProvider);
+        when(applicationManagementService.getServiceProviderByClientId(anyString(), anyString(), anyString()))
+                .thenReturn(serviceProvider);
         when(serviceProvider.isSaasApp()).thenReturn(isSaas);
         when(serviceProvider.getLocalAndOutBoundAuthenticationConfig()).thenReturn(localAndOutboundAuthenticationConfig);
 

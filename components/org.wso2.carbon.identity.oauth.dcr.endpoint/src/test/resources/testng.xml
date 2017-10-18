@@ -23,6 +23,7 @@
         <classes>
             <class name="org.wso2.carbon.identity.oauth2.dcr.endpoint.util.DCRMUtilsTest"/>
             <class name="org.wso2.carbon.identity.oauth2.dcr.endpoint.impl.RegisterApiServiceImplTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.dcr.endpoint.impl.RegisterApiServiceImplExceptionTest"/>
         </classes>
     </test>
 </suite>

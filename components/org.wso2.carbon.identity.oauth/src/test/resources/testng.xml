@@ -55,6 +55,7 @@
             <class name="org.wso2.carbon.identity.oauth.util.UserClaimsTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.clientauth.BasicAuthClientAuthHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.RefreshGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.ClientCredentialsGrantHandlerTest"/>
         </classes>
     </test>
 </suite>

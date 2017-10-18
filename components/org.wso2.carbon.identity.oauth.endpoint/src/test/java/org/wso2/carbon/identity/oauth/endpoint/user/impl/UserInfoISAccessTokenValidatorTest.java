@@ -26,11 +26,13 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.oauth.user.UserInfoEndpointException;
 
+import java.io.IOException;
 import java.util.Scanner;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.HttpHeaders;
 
 import static org.powermock.api.mockito.PowerMockito.when;
+import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.testng.Assert.assertEquals;
 
 @PrepareForTest(UserInforRequestDefaultValidator.class)
@@ -41,7 +43,9 @@ public class UserInfoISAccessTokenValidatorTest extends PowerMockTestCase {
     @Mock
     private Scanner scanner;
     private UserInforRequestDefaultValidator userInforRequestDefaultValidator;
-    private final String BASIC_AUTH_HEADER = "Bearer ZWx1c3VhcmlvOnlsYWNsYXZl";
+    private final String TOKEN = "ZWx1c3VhcmlvOnlsYWNsYXZl";
+    private final String BASIC_AUTH_HEADER = "Bearer " + TOKEN;
+    private static String CONTENT_TYPE_HEADER_VALUE = "application/x-www-form-urlencoded";
 
     @BeforeClass
     public void setup() {
@@ -58,7 +62,7 @@ public class UserInfoISAccessTokenValidatorTest extends PowerMockTestCase {
     @DataProvider
     public Object[][] getInvalidAuthorizations() {
         return new Object[][]{
-                {"1234567890wertyuhjik", null},
+                {TOKEN, null},
                 {"Bearer", null},
                 {null, "application/text"},
                 {null, ""},
@@ -69,6 +73,63 @@ public class UserInfoISAccessTokenValidatorTest extends PowerMockTestCase {
     public void testValidateTokenInvalidAuthorization(String authorization, String contentType) throws Exception {
         prepareHttpServletRequest(authorization, contentType);
         userInforRequestDefaultValidator.validateRequest(httpServletRequest);
+    }
+
+    @DataProvider
+    public Object[][] requestBody() {
+        return new Object[][]{
+                {CONTENT_TYPE_HEADER_VALUE, "", null},
+                {CONTENT_TYPE_HEADER_VALUE, null, null},
+                {CONTENT_TYPE_HEADER_VALUE, "access_token=" + TOKEN, TOKEN},
+                {CONTENT_TYPE_HEADER_VALUE, "access_token=" + TOKEN +
+                        "&someOtherParam=value", TOKEN},
+                {CONTENT_TYPE_HEADER_VALUE, "otherParam=value2&access_token=" + TOKEN +
+                        "&someOtherParam=value", TOKEN},
+        };
+    }
+
+    @Test(dataProvider = "requestBody")
+    public void testValidateTokenWithRequestBodySuccess(String contentType, String requestBody, String expected) throws
+            Exception {
+        String token = testValidateTokenWithRequestBody(contentType, requestBody, true);
+        assertEquals(token, expected, "Expected token did not receive");
+    }
+
+    @DataProvider
+    public Object[][] requestBodyWithNonASCII() {
+        return new Object[][]{
+                {CONTENT_TYPE_HEADER_VALUE, "access_token=" + "¥" + TOKEN, TOKEN},
+                {CONTENT_TYPE_HEADER_VALUE, "access_token=" + "§" + TOKEN +
+                        "&someOtherParam=value", TOKEN},
+                {CONTENT_TYPE_HEADER_VALUE, "otherParam=value2©&access_token=" + TOKEN +
+                        "&someOtherParam=value", TOKEN},
+        };
+    }
+
+    @Test(dataProvider = "requestBodyWithNonASCII", expectedExceptions = UserInfoEndpointException.class)
+    public void testValidateTokenWithRequestBodyNonASCII(String contentType, String requestBody, String expected) throws
+            Exception {
+        testValidateTokenWithRequestBody(contentType, requestBody, true);
+    }
+
+    @Test(expectedExceptions = UserInfoEndpointException.class)
+    public void testValidateTokenWithWrongInputStream() throws Exception {
+        testValidateTokenWithRequestBody(CONTENT_TYPE_HEADER_VALUE, "access_token=" + TOKEN, false);
+    }
+
+    private String testValidateTokenWithRequestBody(String contentType, String requestBody, boolean mockScanner)
+            throws Exception {
+        prepareHttpServletRequest(null, contentType);
+        if (mockScanner) {
+            whenNew(Scanner.class).withAnyArguments().thenReturn(scanner);
+            when(scanner.hasNextLine()).thenReturn(true, false);
+            when(scanner.nextLine()).thenReturn(requestBody);
+        } else {
+            when(httpServletRequest.getInputStream()).thenThrow(new IOException());
+        }
+
+        String token = userInforRequestDefaultValidator.validateRequest(httpServletRequest);
+        return token;
     }
 
     private void prepareHttpServletRequest(String authorization, String contentType) {

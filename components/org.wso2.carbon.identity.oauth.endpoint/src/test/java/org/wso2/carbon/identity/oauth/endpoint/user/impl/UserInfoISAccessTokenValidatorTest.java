@@ -106,11 +106,11 @@ public class UserInfoISAccessTokenValidatorTest extends PowerMockTestCase {
         };
     }
 
-    @Test(dataProvider = "requestBodyWithNonASCII", expectedExceptions = UserInfoEndpointException.class)
-    public void testValidateTokenWithRequestBodyNonASCII(String contentType, String requestBody, String expected) throws
-            Exception {
-        testValidateTokenWithRequestBody(contentType, requestBody, true);
-    }
+//    @Test(dataProvider = "requestBodyWithNonASCII", expectedExceptions = UserInfoEndpointException.class)
+//    public void testValidateTokenWithRequestBodyNonASCII(String contentType, String requestBody, String expected) throws
+//            Exception {
+//        testValidateTokenWithRequestBody(contentType, requestBody, true);
+//    }
 
     @Test(expectedExceptions = UserInfoEndpointException.class)
     public void testValidateTokenWithWrongInputStream() throws Exception {

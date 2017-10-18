@@ -40,19 +40,24 @@ import javax.ws.rs.core.MediaType;
 
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
-import static org.powermock.api.mockito.PowerMockito.*;
+
+import static org.powermock.api.mockito.PowerMockito.when;
+import static org.powermock.api.mockito.PowerMockito.mock;
+import static org.powermock.api.mockito.PowerMockito.whenNew;
+import static org.powermock.api.mockito.PowerMockito.doAnswer;
+
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 
 @PrepareForTest(HttpRegistrationResponseFactory.class)
-public class HttpRegistrationResponseFactoryTest extends PowerMockIdentityBaseTest{
+public class HttpRegistrationResponseFactoryTest extends PowerMockIdentityBaseTest {
 
     private RegistrationResponse mockRegistrationResponse;
     private HttpIdentityResponse.HttpIdentityResponseBuilder mockHttpIdentityResponseBuilder;
     private HttpRegistrationResponseFactory httpRegistrationResponseFactory;
     private List<String> grantType = new ArrayList<>();
-    private List<java.lang.String> redirectUrl = new ArrayList<>();
+    private List<String> redirectUrl = new ArrayList<>();
     private String dummyDescription = "dummyDescription";
 
     @BeforeMethod
@@ -107,7 +112,8 @@ public class HttpRegistrationResponseFactoryTest extends PowerMockIdentityBaseTe
 
         assertEquals(jsonObject.get(RegistrationResponse.DCRegisterResponseConstants.CLIENT_ID), dummyClientId);
         assertEquals(jsonObject.get(RegistrationResponse.DCRegisterResponseConstants.CLIENT_NAME), dummyClientName);
-        assertEquals(jsonObject.get(RegistrationResponse.DCRegisterResponseConstants.CLIENT_SECRET_EXPIRES_AT), dummyTime);
+        assertEquals(jsonObject.get(RegistrationResponse.DCRegisterResponseConstants.CLIENT_SECRET_EXPIRES_AT),
+                dummyTime);
         assertEquals(jsonObject.get(RegistrationResponse.DCRegisterResponseConstants.CLIENT_SECRET), dummySecret);
         assertEquals(jsonObject.get(RegistrationResponse.DCRegisterResponseConstants.GRANT_TYPES), grantType);
         assertEquals(jsonObject.get(RegistrationResponse.DCRegisterResponseConstants.REDIRECT_URIS), redirectUrl);
@@ -130,19 +136,19 @@ public class HttpRegistrationResponseFactoryTest extends PowerMockIdentityBaseTe
             }
         }).when(mockHttpIdentityResponseBuilder).setStatusCode(anyInt());
 
-        final String[] header = new String[2];
+        final String[] header = new String[1];
         doAnswer(new Answer<Object>() {
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
 
-                header[1] = (String) invocation.getArguments()[1];
+                header[0] = (String) invocation.getArguments()[1];
                 return null;
             }
         }).when(mockHttpIdentityResponseBuilder).addHeader(anyString(), anyString());
 
         httpRegistrationResponseFactory.create(mockHttpIdentityResponseBuilder, mockRegistrationResponse);
         assertEquals((int) statusCode[0], HttpServletResponse.SC_CREATED);
-        assertEquals(header[1], MediaType.APPLICATION_JSON);
+        assertEquals(header[0], MediaType.APPLICATION_JSON);
     }
 
     @Test
@@ -172,12 +178,12 @@ public class HttpRegistrationResponseFactoryTest extends PowerMockIdentityBaseTe
             }
         }).when(mockHttpIdentityResponseBuilder).setStatusCode(anyInt());
 
-        final String[] header = new String[2];
+        final String[] header = new String[1];
         doAnswer(new Answer<Object>() {
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
 
-                header[1] = (String) invocation.getArguments()[1];
+                header[0] = (String) invocation.getArguments()[1];
                 return null;
             }
         }).when(mockHttpIdentityResponseBuilder).addHeader(anyString(), anyString());
@@ -186,7 +192,7 @@ public class HttpRegistrationResponseFactoryTest extends PowerMockIdentityBaseTe
         when(exception.getMessage()).thenReturn(dummyDescription);
         httpRegistrationResponseFactory.handleException(exception);
 
-        assertEquals(header[1], MediaType.APPLICATION_JSON);
+        assertEquals(header[0], MediaType.APPLICATION_JSON);
         assertEquals((int) statusCode[0], HttpServletResponse.SC_BAD_REQUEST);
     }
 

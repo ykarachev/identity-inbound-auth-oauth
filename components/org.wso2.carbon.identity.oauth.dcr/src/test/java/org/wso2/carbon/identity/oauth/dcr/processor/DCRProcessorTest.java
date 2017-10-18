@@ -95,13 +95,15 @@ public class DCRProcessorTest extends PowerMockIdentityBaseTest {
             RegistrationHandler registrationHandler = mock(RegistrationHandler.class);
             when(mockHandlerManager.getRegistrationHandler(dcrMessageContext)).thenReturn(registrationHandler);
 
-            when(registrationHandler.handle(dcrMessageContext)).thenReturn(new IdentityResponse.IdentityResponseBuilder());
+            when(registrationHandler.handle(dcrMessageContext)).thenReturn(new IdentityResponse.
+                    IdentityResponseBuilder());
             assertNotNull(dcrProcessor.process((RegistrationRequest) identityRequest));
         } else if (request.equals("UnregistrationRequest")) {
             UnRegistrationHandler unRegistrationHandler = mock(UnRegistrationHandler.class);
             when(mockHandlerManager.getUnRegistrationHandler(dcrMessageContext)).thenReturn(unRegistrationHandler);
 
-            when(unRegistrationHandler.handle(dcrMessageContext)).thenReturn(new IdentityResponse.IdentityResponseBuilder());
+            when(unRegistrationHandler.handle(dcrMessageContext)).thenReturn(new IdentityResponse.
+                    IdentityResponseBuilder());
             assertNotNull(dcrProcessor.process((UnregistrationRequest) identityRequest));
         }
     }
@@ -141,16 +143,14 @@ public class DCRProcessorTest extends PowerMockIdentityBaseTest {
             }
             try {
                 dcrProcessor.process((RegistrationRequest) identityRequest);
+                fail("Expected exception IdentityException not thrown by process method");
             } catch (IdentityException ex) {
                 if (errorCode.isEmpty()) {
                     assertEquals(ex.getErrorCode(), ErrorCodes.BAD_REQUEST.toString());
-                    return;
                 } else {
                     assertEquals(ex.getErrorCode(), errorCode);
-                    return;
                 }
             }
-            fail("Expected exception IdentityException not thrown by process method");
         } else if (request.equals("UnregistrationRequest")) {
             UnRegistrationHandler unRegistrationHandler = mock(UnRegistrationHandler.class);
             when(mockHandlerManager.getUnRegistrationHandler(dcrMessageContext)).thenReturn(unRegistrationHandler);
@@ -161,16 +161,14 @@ public class DCRProcessorTest extends PowerMockIdentityBaseTest {
             }
             try {
                 dcrProcessor.process((UnregistrationRequest) identityRequest);
+                fail("Expected exception IdentityException not thrown by registerOAuthApplication");
             } catch (IdentityException ex) {
                 if (errorCode.isEmpty()) {
                     assertEquals(ex.getMessage(), ErrorCodes.BAD_REQUEST.toString());
-                    return;
                 } else {
                     assertEquals(ex.getMessage(), errorCode);
-                    return;
                 }
             }
-            fail("Expected exception IdentityException not thrown by registerOAuthApplication");
         }
     }
 

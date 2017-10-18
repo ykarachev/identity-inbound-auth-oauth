@@ -86,10 +86,10 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
     private OauthTokenIssuer oauthIssuer;
 
     @Mock
-    public RealmService realmService;
+    private RealmService realmService;
 
     @Mock
-    public TenantManager tenantManager;
+    private TenantManager tenantManager;
 
     @Mock
     private IdentityProviderManager identityProviderManager;
@@ -124,23 +124,17 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
     }
 
     @Test
-    public void testInit() throws Exception {
-
-    }
-
-    @Test
     public void testValidateGrant() throws Exception {
 
         oAuth2AccessTokenReqDTO = new OAuth2AccessTokenReqDTO();
         saml2BearerGrantHandler = new SAML2BearerGrantHandler();
         tokReqMsgCtx = new OAuthTokenReqMessageContext(oAuth2AccessTokenReqDTO);
         tokReqMsgCtx.setTenantID(-1234);
-        String ass = SAMLSSOUtil.marshall(assertion);
-        ass = new String(Base64.encodeBase64(ass.getBytes(Charsets.UTF_8)));
-        oAuth2AccessTokenReqDTO.setAssertion(ass);
+        String assertionString = SAMLSSOUtil.marshall(assertion);
+        assertionString = new String(Base64.encodeBase64(assertionString.getBytes(Charsets.UTF_8)));
+        oAuth2AccessTokenReqDTO.setAssertion(assertionString);
         when(IdentityUtil.unmarshall(anyString())).thenReturn(assertion);
         Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
-
 
         mockStatic(IdentityProviderManager.class);
         mockStatic(IdentityProvider.class);
@@ -196,31 +190,30 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
 
     }
 
-    @Test
-    public void testIssueRefreshToken() throws Exception {
-
-    }
-
-    @Test
-    public void testSetUser() throws Exception {
-
-    }
-
-    @Test
-    public void testSetFederatedUser() throws Exception {
-
-    }
-
-    @Test
-    public void testSetLocalUser() throws Exception {
-
-    }
+//    @Test
+//    public void testIssueRefreshToken() throws Exception {
+//
+//    }
+//
+//    @Test
+//    public void testSetUser() throws Exception {
+//
+//    }
+//
+//    @Test
+//    public void testSetFederatedUser() throws Exception {
+//
+//    }
+//
+//    @Test
+//    public void testSetLocalUser() throws Exception {
+//
+//    }
 
     @Test
     public void testBuildLocalUser() throws Exception {
 
         tokReqMsgCtx = new OAuthTokenReqMessageContext(oAuth2AccessTokenReqDTO);
-//        Assertion assertion = buildAssertion();
         saml2BearerGrantHandler = new SAML2BearerGrantHandler();
         LocalAndOutboundAuthenticationConfig localAndOutboundAuthenticationConfig
                 = new LocalAndOutboundAuthenticationConfig();
@@ -239,7 +232,6 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
     @Test
     public void testCreateLegacyUser() throws Exception {
 
-//        Assertion assertion = buildAssertion();
         mockStatic(OAuth2Util.class);
         AuthenticatedUser authenticatedUser = new AuthenticatedUser();
         authenticatedUser.setAuthenticatedSubjectIdentifier(assertion.getSubject().getNameID().getValue());

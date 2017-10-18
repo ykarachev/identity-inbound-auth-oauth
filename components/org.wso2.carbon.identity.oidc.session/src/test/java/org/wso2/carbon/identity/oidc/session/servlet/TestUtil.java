@@ -18,6 +18,7 @@
 package org.wso2.carbon.identity.oidc.session.servlet;
 
 import org.apache.commons.lang.StringUtils;
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 
 import java.io.FileInputStream;
@@ -29,8 +30,8 @@ import java.security.PublicKey;
 public class TestUtil {
 
     public static void startTenantFlow(String tenantDomain) {
-        String carbonHome = TestUtil.class.getResource("/").getFile();
-        System.setProperty("carbon.home", carbonHome);
+        String carbonHome = Paths.get(System.getProperty("user.dir"), "src", "test", "resources").toString();
+        System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
         PrivilegedCarbonContext.startTenantFlow();
         PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain);
     }

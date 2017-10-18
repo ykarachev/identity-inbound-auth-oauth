@@ -120,8 +120,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             } else {
                 for (AccessTokenDO token : accessTokenDOs) {
                     if (refreshToken.equals(token.getRefreshToken())
-                            && OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(token.getTokenState())
-                            || OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(token.getTokenState())) {
+                            && (OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(token.getTokenState())
+                            || OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(token.getTokenState()))) {
                         isLatest = true;
                     }
                 }

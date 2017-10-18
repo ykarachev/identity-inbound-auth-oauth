@@ -40,6 +40,14 @@
         </classes>
     </test>
 
+    <test name="endpoint.jwts-tests" preserve-order="true" parallel="false">
+        <!-- there are no debug logs in the class -->
+        <parameter name="log-level" value="info"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth.endpoint.jwks.JwksEndpointTest" />
+        </classes>
+    </test>
+
     <test name="endpoint.user.impl-tests" preserve-order="true" parallel="false">
         <classes>
             <class name="org.wso2.carbon.identity.oauth.endpoint.user.impl.UserInfoEndpointConfigTest"/>

@@ -73,8 +73,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                 tokenReqDTO.getClientId(), refreshToken);
 
         if (validationDataDO.getAccessToken() == null) {
-            log.debug("Invalid Refresh Token provided for Client with " +
-                    "Client Id : " + tokenReqDTO.getClientId());
+            if (log.isDebugEnabled()) {
+                log.debug("Invalid Refresh Token provided for Client with " +
+                        "Client Id : " + tokenReqDTO.getClientId());
+            }
             return false;
         }
 
@@ -118,8 +120,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             } else {
                 for (AccessTokenDO token : accessTokenDOs) {
                     if (refreshToken.equals(token.getRefreshToken())
-                            && OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(token.getTokenState())
-                            || OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(token.getTokenState())) {
+                            && (OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(token.getTokenState())
+                            || OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(token.getTokenState()))) {
                         isLatest = true;
                     }
                 }

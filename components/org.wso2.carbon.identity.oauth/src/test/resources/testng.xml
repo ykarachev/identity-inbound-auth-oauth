@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
 <!--
   ~ Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
   ~
@@ -16,10 +16,10 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
-<suite name="org.wso2.carbon.identity.oauth.test.suite" verbose="1" >
-    <test name="OAuthTestsWithInfoEnabled" preserve-order="false" parallel="false">
-        <parameter name="log-level" value="info"/>
+
+<suite name="Suite1" verbose="1" >
+
+    <test name="Regression1">
         <classes>
             <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest" />
             <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest" />

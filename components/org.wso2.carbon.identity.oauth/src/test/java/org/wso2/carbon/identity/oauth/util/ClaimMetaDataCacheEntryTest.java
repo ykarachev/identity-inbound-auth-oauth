@@ -47,7 +47,6 @@ public class ClaimMetaDataCacheEntryTest {
             return "test";
         }
 
-
     }
 
 }

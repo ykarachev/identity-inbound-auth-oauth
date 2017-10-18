@@ -91,7 +91,6 @@ public class ClaimCacheKeyTest {
             return hashValue;
         }
 
-
     }
 
 }

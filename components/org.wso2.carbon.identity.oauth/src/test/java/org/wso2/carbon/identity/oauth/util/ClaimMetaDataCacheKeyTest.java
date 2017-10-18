@@ -38,6 +38,8 @@ public class ClaimMetaDataCacheKeyTest {
 
         dummy.setTenantDomain("test1Domain");
         testclass = new ClaimMetaDataCacheKey(dummy);
+        assertFalse(testclass.equals("test"));
+
         ClaimMetaDataCacheKey testclass2 = new ClaimMetaDataCacheKey(dummy);
         assertTrue(testclass.equals(testclass2));
 

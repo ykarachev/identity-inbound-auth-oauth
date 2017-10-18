@@ -48,6 +48,20 @@
         </classes>
     </test>
 
+    <test name="endpoint.token-tests-info" preserve-order="true" parallel="false">
+        <parameter name="log-level" value="info"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth.endpoint.token.OAuth2TokenEndpointTest" />
+        </classes>
+    </test>
+
+    <test name="endpoint.token-tests-debug" preserve-order="true" parallel="false">
+        <parameter name="log-level" value="debug"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth.endpoint.token.OAuth2TokenEndpointTest" />
+        </classes>
+    </test>
+
     <test name="endpoint.user.impl-tests" preserve-order="true" parallel="false">
         <classes>
             <class name="org.wso2.carbon.identity.oauth.endpoint.user.impl.UserInfoEndpointConfigTest"/>

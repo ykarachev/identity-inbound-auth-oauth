@@ -18,6 +18,7 @@ package org.wso2.carbon.identity.oauth2.token;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jwt.JWTClaimsSet;
+import org.joda.time.Duration;
 import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -155,13 +156,13 @@ public class JWTTokenIssuerTest extends PowerMockTestCase {
                         authzReqMessageContext,
                         null,
                         AUTHENTICATED_SUBJECT_IDENTIFIER,
-                        DEFAULT_USER_ACCESS_TOKEN_EXPIRY_TIME
+                        DEFAULT_USER_ACCESS_TOKEN_EXPIRY_TIME * 1000
                 },
                 {
                         null,
                         tokenReqMessageContext,
                         AUTHENTICATED_SUBJECT_IDENTIFIER,
-                        DEFAULT_APPLICATION_ACCESS_TOKEN_EXPIRY_TIME
+                        DEFAULT_APPLICATION_ACCESS_TOKEN_EXPIRY_TIME * 1000
                 }
         };
     }
@@ -192,7 +193,6 @@ public class JWTTokenIssuerTest extends PowerMockTestCase {
                 DUMMY_CLIENT_ID
         );
 
-        // Assert Stuff
         assertNotNull(jwtClaimSet);
         assertEquals(jwtClaimSet.getIssuer(), ID_TOKEN_ISSUER);
         assertEquals(jwtClaimSet.getSubject(), sub);
@@ -205,7 +205,13 @@ public class JWTTokenIssuerTest extends PowerMockTestCase {
         // Validate expiry
         assertNotNull(jwtClaimSet.getIssueTime());
         assertNotNull(jwtClaimSet.getExpirationTime());
-//        assertEquals(, expectedExpiry);
+        assertEquals(
+                new Duration(
+                        jwtClaimSet.getIssueTime().getTime(),
+                        jwtClaimSet.getExpirationTime().getTime()
+                ).getMillis(),
+                expectedExpiry
+        );
     }
 
     @Test

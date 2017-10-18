@@ -18,7 +18,6 @@
 
 package org.wso2.carbon.identity.oauth2.dcr.endpoint.impl;
 
-
 import org.mockito.Mock;
 import org.osgi.framework.BundleContext;
 import org.osgi.util.tracker.ServiceTracker;
@@ -49,7 +48,6 @@ import static org.mockito.Matchers.any;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
-
 
 @PrepareForTest({BundleContext.class, ServiceTracker.class, PrivilegedCarbonContext.class,  DCRDataHolder.class, ApplicationManagementService.class, ServiceProvider.class, OAuthAdminService.class})
 public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {

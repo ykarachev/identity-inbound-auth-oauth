@@ -20,7 +20,6 @@ package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.IObjectFactory;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.ObjectFactory;
@@ -40,6 +39,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreException;
 import org.wso2.carbon.user.core.UserStoreManager;
@@ -66,7 +66,7 @@ import static org.testng.Assert.fail;
                 OAuthServerConfiguration.class
         }
 )
-public class PasswordGrantHandlerTest extends PowerMockTestCase {
+public class PasswordGrantHandlerTest extends PowerMockIdentityBaseTest {
 
     @Mock
     private OAuthTokenReqMessageContext tokReqMsgCtx;

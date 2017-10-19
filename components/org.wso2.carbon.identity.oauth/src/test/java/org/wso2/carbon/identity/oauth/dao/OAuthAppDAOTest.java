@@ -21,9 +21,14 @@ import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessor;
+import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -37,59 +42,113 @@ import static org.testng.Assert.assertNull;
 /*
  * Unit tests for OAuthAppDAO
  */
-@PrepareForTest({IdentityDatabaseUtil.class, OAuthServerConfiguration.class, OAuthConsumerDAO.class})
+@PrepareForTest({IdentityDatabaseUtil.class, OAuthServerConfiguration.class, OAuthConsumerDAO.class,
+        OAuthUtil.class, OAuth2ServiceComponentHolder.class, IdentityTenantUtil.class, IdentityUtil.class})
 public class OAuthAppDAOTest extends TestOAuthDAOBase {
 
-    private static final String clientId = "ca19a540f544777860e44e75f605d927";
-    private static final String secret = "87n9a540f544777860e44e75f605d435";
-    private static final String appName = "myApp";
-    private static final String username = "user1";
-    private static final String appState = "ACTIVE";
-    private static final String callback = "http://localhost:8080/redirect";
-    private static final String DB_Name = "testDB";
+    private static final String CLIENT_ID = "ca19a540f544777860e44e75f605d927";
+    private static final String SECRET = "87n9a540f544777860e44e75f605d435";
+    private static final String APP_NAME = "myApp";
+    private static final String USER_NAME = "user1";
+    private static final String APP_STATE = "ACTIVE";
+    private static final String CALLBACK = "http://localhost:8080/redirect";
+    private static final String DB_NAME = "testDB";
+
+    @Mock
+    private OAuthAppDO mockedAppDo;
 
     @Mock
     private OAuthServerConfiguration mockedServerConfig;
 
+    @Mock
+    private AuthenticatedUser mockedUser;
+
     @BeforeClass
     public void setUp() throws Exception {
 
-        initiateH2Base(DB_Name, getFilePath("h2.sql"));
-        createBase(clientId, secret, username, appName, callback, appState);
+        initiateH2Base(DB_NAME, getFilePath("h2.sql"));
+        createBase(CLIENT_ID, SECRET, USER_NAME, APP_NAME, CALLBACK, APP_STATE);
     }
 
     @Test
-    public void testRemoveConsumerApplication() throws Exception {
-
-        String GET_SECRET = "SELECT CONSUMER_SECRET FROM IDN_OAUTH_CONSUMER_APPS WHERE CONSUMER_KEY=?";
-        String secret = null;
-
-        PreparedStatement statement = null;
-        ResultSet resultSet = null;
+    public void testAddOAuthApplication() throws Exception {
 
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockedServerConfig);
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection = getConnection(DB_Name)) {
+        when(mockedAppDo.getUser()).thenReturn(mockedUser);
+        when(mockedUser.getUserName()).thenReturn(USER_NAME);
+        when(mockedUser.getUserStoreDomain()).thenReturn("fakeUserStoreDomain");
+
+        mockStatic(IdentityTenantUtil.class);
+        when(IdentityTenantUtil.getTenantId("PRIMARY")).thenReturn(-12345);
+
+        try(Connection connection = getConnection(DB_NAME)) {
+            mockStatic(IdentityDatabaseUtil.class);
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+            mockStatic(IdentityUtil.class);
+            when(IdentityUtil.isUserStoreInUsernameCaseSensitive(USER_NAME, -12345)).thenReturn(true);
+
+            OAuthAppDAO AppDAO = new OAuthAppDAO();
+            AppDAO.addOAuthApplication(mockedAppDo);
+
+            mockStatic(OAuth2ServiceComponentHolder.class);
+            when(OAuth2ServiceComponentHolder.isPkceEnabled()).thenReturn(false);
+        }
+    }
+
+    @Test
+    public void testAddOAuthConsumer() throws Exception {
+
+        String newKey = "fakeKey";
+        String user = "fakeUser";
+        String secret = "fakeSecret";
+
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedServerConfig);
+        PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
+        when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
+
+        try(Connection connection = getConnection(DB_NAME)) {
+            mockStatic(IdentityDatabaseUtil.class);
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+            mockStatic(OAuthUtil.class);
+            when(OAuthUtil.getRandomNumber()).thenReturn(secret).thenReturn(newKey);
+
+            OAuthAppDAO AppDAO = new OAuthAppDAO();
+            assertEquals(AppDAO.addOAuthConsumer(user, -1234, "PRIMARY"),
+                    new String[] {newKey, secret});
+        }
+    }
+
+    @Test
+    public void testRemoveConsumerApplication() throws Exception {
+
+        String GET_SECRET = "SELECT CONSUMER_SECRET FROM IDN_OAUTH_CONSUMER_APPS WHERE CONSUMER_KEY=?";
+
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedServerConfig);
+        PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
+        when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
+
+        try(Connection connection = getConnection(DB_NAME)) {
+            PreparedStatement statement = connection.prepareStatement(GET_SECRET);
+
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
             OAuthAppDAO AppDAO = new OAuthAppDAO();
-            AppDAO.removeConsumerApplication(clientId);
+            AppDAO.removeConsumerApplication(CLIENT_ID);
+            statement.setString(1, CLIENT_ID);
 
-            try {
-                statement = connection.prepareStatement(GET_SECRET);
-                statement.setString(1, clientId);
-                resultSet = statement.executeQuery();
+            try (ResultSet resultSet = statement.executeQuery()) {
                 if(resultSet.next()) {
-                    secret = resultSet.getString(1);
+                    assertNull(resultSet.getString(1), "Checking whether the CONSUMER_SECRET is successfully deleted.");
                 }
-            } finally {
-                IdentityDatabaseUtil.closeAllConnections(connection, resultSet, statement);
             }
-            assertNull(secret, "Checking whether the CONSUMER_SECRET is successfully deleted.");
         }
     }
 
@@ -103,18 +162,19 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection1 = getConnection(DB_Name);
+        try(Connection connection1 = getConnection(DB_NAME);
             PreparedStatement statement = connection1.prepareStatement(GET_APP)) {
 
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection1);
 
             OAuthAppDAO AppDAO = new OAuthAppDAO();
-            AppDAO.updateOAuthConsumerApp(appName, clientId);
-            statement.setString(1, clientId);
+            AppDAO.updateOAuthConsumerApp(APP_NAME, CLIENT_ID);
+            statement.setString(1, CLIENT_ID);
+
             try(ResultSet resultSet = statement.executeQuery()) {
                 if(resultSet.next()) {
-                    assertEquals(resultSet.getString(1), appName, "Checking whether the table " +
+                    assertEquals(resultSet.getString(1), APP_NAME, "Checking whether the table " +
                             "is updated with the passed appName.");
                 }
             }
@@ -129,12 +189,12 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection = getConnection(DB_Name)) {
+        try(Connection connection = getConnection(DB_NAME)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
             OAuthAppDAO AppDAO = new OAuthAppDAO();
-            assertEquals(AppDAO.getConsumerAppState(clientId), appState, "Checking the APP_STATE for the " +
+            assertEquals(AppDAO.getConsumerAppState(CLIENT_ID), APP_STATE, "Checking the APP_STATE for the " +
                     "given CONSUMER_KEY.");
         }
     }

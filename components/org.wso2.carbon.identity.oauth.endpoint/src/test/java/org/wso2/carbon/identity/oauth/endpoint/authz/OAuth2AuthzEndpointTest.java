@@ -21,6 +21,7 @@ import com.nimbusds.jwt.ReadOnlyJWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import org.apache.axis2.transport.http.HTTPConstants;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.oltu.oauth2.as.request.OAuthAuthzRequest;
 import org.apache.oltu.oauth2.as.validator.CodeValidator;
 import org.apache.oltu.oauth2.as.validator.TokenValidator;
@@ -42,6 +43,7 @@ import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.identity.application.authentication.framework.AuthenticatorFlowStatus;
 import org.wso2.carbon.identity.application.authentication.framework.cache.AuthenticationResultCacheEntry;
+import org.wso2.carbon.identity.application.authentication.framework.context.SessionContext;
 import org.wso2.carbon.identity.application.authentication.framework.handler.request.RequestCoordinator;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticationResult;
@@ -68,8 +70,15 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2ClientValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.model.CarbonOAuthAuthzRequest;
 import org.wso2.carbon.identity.oauth2.model.OAuth2Parameters;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.identity.oidc.session.OIDCSessionManager;
+import org.wso2.carbon.identity.oidc.session.OIDCSessionState;
+import org.wso2.carbon.identity.oidc.session.util.OIDCSessionManagementUtil;
+import org.wso2.carbon.utils.CarbonUtils;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -82,6 +91,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -111,7 +121,8 @@ import static org.testng.Assert.assertTrue;
 
 @PrepareForTest({ OAuth2Util.class, SessionDataCache.class, OAuthServerConfiguration.class, IdentityDatabaseUtil.class,
         EndpointUtil.class, FrameworkUtils.class, EndpointUtil.class, OpenIDConnectUserRPStore.class,
-        CarbonOAuthAuthzRequest.class, IdentityTenantUtil.class, OAuthResponse.class, SignedJWT.class})
+        CarbonOAuthAuthzRequest.class, IdentityTenantUtil.class, OAuthResponse.class, SignedJWT.class,
+        OIDCSessionManagementUtil.class, CarbonUtils.class})
 public class OAuth2AuthzEndpointTest extends TestOAuthEndpointBase {
 
     @Mock
@@ -159,6 +170,9 @@ public class OAuth2AuthzEndpointTest extends TestOAuthEndpointBase {
     @Mock
     ReadOnlyJWTClaimsSet readOnlyJWTClaimsSet;
 
+    @Mock
+    OIDCSessionManager oidcSessionManager;
+
     private static final String ERROR_PAGE_URL = "https://localhost:9443/authenticationendpoint/oauth2_error.do";
     private static final String LOGIN_PAGE_URL = "https://localhost:9443/authenticationendpoint/login.do";
     private static final String USER_CONSENT_URL =
@@ -178,6 +192,7 @@ public class OAuth2AuthzEndpointTest extends TestOAuthEndpointBase {
     private static final String APP_REDIRECT_URL_JSON = "{\"url\":\"http://localhost:8080/redirect\"}";
 
     private OAuth2AuthzEndpoint oAuth2AuthzEndpoint;
+    private Object authzEndpointObject;
 
     @BeforeTest
     public void setUp() throws Exception {
@@ -190,6 +205,9 @@ public class OAuth2AuthzEndpointTest extends TestOAuthEndpointBase {
         initiateInMemoryH2();
         createOAuthApp(CLIENT_ID_VALUE, SECRET, USERNAME, APP_NAME, "ACTIVE");
         createOAuthApp(INACTIVE_CLIENT_ID_VALUE, "dummySecret", USERNAME, INACTIVE_APP_NAME, "INACTIVE");
+
+        Class<?> clazz = OAuth2AuthzEndpoint.class;
+        authzEndpointObject = clazz.newInstance();
     }
 
     @AfterTest
@@ -975,6 +993,246 @@ public class OAuth2AuthzEndpointTest extends TestOAuthEndpointBase {
             assertTrue(location.contains(errorCode), "Expected error code not found in URL");
         }
 
+    }
+
+    @DataProvider(name = "provideOidcSessionData")
+    public Object[][] provideOidcSessionData() {
+        Cookie opBrowserStateCookie = new Cookie("opbs", "2345678776gffdgdsfafa");
+        OIDCSessionState previousSessionState1 = new OIDCSessionState();
+        OIDCSessionState previousSessionState2 = new OIDCSessionState();
+
+        previousSessionState1.setSessionParticipants(new HashSet<>(Arrays.asList(CLIENT_ID_VALUE)));
+        previousSessionState2.setSessionParticipants(new HashSet<String>());
+
+        String[] returnValues = new String[] {
+                "http://localhost:8080/redirect?session_state=sessionStateValue",
+                "<form method=\"post\" action=\"http://localhost:8080/redirect\">"
+        };
+
+        // This object provides values to cover the branches in ManageOIDCSessionState() private method
+        return new Object[][] {
+                { opBrowserStateCookie, previousSessionState1, APP_REDIRECT_URL, null,
+                        HttpServletResponse.SC_FOUND, returnValues[0]},
+                { opBrowserStateCookie, previousSessionState2, APP_REDIRECT_URL, RESPONSE_MODE_FORM_POST,
+                        HttpServletResponse.SC_OK, returnValues[1]},
+                { null, previousSessionState1, APP_REDIRECT_URL, null, HttpServletResponse.SC_FOUND, returnValues[0]},
+                { null, previousSessionState1, APP_REDIRECT_URL, null, HttpServletResponse.SC_FOUND, returnValues[0]},
+                { opBrowserStateCookie, null, APP_REDIRECT_URL, null, HttpServletResponse.SC_FOUND, returnValues[0]},
+        };
+    }
+
+    @Test (dataProvider = "provideOidcSessionData")
+    public void testManageOIDCSessionState(Object cookieObject, Object sessionStateObject, String callbackUrl,
+                                           String responseMode, int expectedStatus, String expectedResult)
+            throws Exception {
+        Cookie opBrowserStateCookie = (Cookie) cookieObject;
+        Cookie newOpBrowserStateCookie = new Cookie("opbs", "f6454r678776gffdgdsfafa");
+        OIDCSessionState previousSessionState = (OIDCSessionState) sessionStateObject;
+        AuthenticationResult result = setAuthenticationResult(true, null, null, null, null);
+
+        Map<String, String[]> requestParams = new HashMap<>();
+        Map<String, Object> requestAttributes = new HashMap<>();
+
+        requestParams.put(CLIENT_ID, new String[]{CLIENT_ID_VALUE});
+        requestParams.put(FrameworkConstants.RequestParams.TO_COMMONAUTH, new String[]{"false"});
+        requestParams.put(OAuthConstants.OAuth20Params.SCOPE, new String[]{OAuthConstants.Scope.OPENID});
+        requestParams.put(OAuthConstants.OAuth20Params.PROMPT, new String[]{OAuthConstants.Prompt.LOGIN});
+
+        requestAttributes.put(FrameworkConstants.RequestParams.FLOW_STATUS, AuthenticatorFlowStatus.INCOMPLETE);
+        requestAttributes.put(FrameworkConstants.SESSION_DATA_KEY, SESSION_DATA_KEY_VALUE);
+        requestAttributes.put(FrameworkConstants.RequestAttribute.AUTH_RESULT, result);
+
+        mockHttpRequest(requestParams, requestAttributes, HttpMethod.POST);
+
+        OAuth2Parameters oAuth2Params = setOAuth2Parameters(new HashSet<>(Arrays.asList(OAuthConstants.Scope.OPENID)),
+                APP_NAME, responseMode, APP_REDIRECT_URL);
+        oAuth2Params.setClientId(CLIENT_ID_VALUE);
+        oAuth2Params.setPrompt(OAuthConstants.Prompt.LOGIN);
+
+        mockOAuthServerConfiguration();
+        mockEndpointUtil();
+
+        when(oAuthServerConfiguration.getOpenIDConnectSkipeUserConsentConfig()).thenReturn(true);
+
+        OAuth2AuthorizeRespDTO authzRespDTO = new OAuth2AuthorizeRespDTO();
+        authzRespDTO.setCallbackURI(callbackUrl);
+        when(oAuth2Service.authorize(any(OAuth2AuthorizeReqDTO.class))).thenReturn(authzRespDTO);
+
+        mockStatic(OAuth2Util.OAuthURL.class);
+        when(OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl()).thenReturn(ERROR_PAGE_URL);
+
+        mockStatic(OIDCSessionManagementUtil.class);
+        when(OIDCSessionManagementUtil.getOPBrowserStateCookie(any(HttpServletRequest.class))).thenReturn(opBrowserStateCookie);
+        when(OIDCSessionManagementUtil.addOPBrowserStateCookie(any(HttpServletResponse.class))).thenReturn(newOpBrowserStateCookie);
+        when(OIDCSessionManagementUtil.getSessionManager()).thenReturn(oidcSessionManager);
+        when(oidcSessionManager.getOIDCSessionState(anyString())).thenReturn(previousSessionState);
+        when(OIDCSessionManagementUtil.getSessionStateParam(anyString(), anyString(), anyString())).thenReturn("sessionStateValue");
+        when(OIDCSessionManagementUtil.addSessionStateToURL(anyString(), anyString(), anyString())).thenCallRealMethod();
+
+        mockStatic(SessionDataCache.class);
+        when(SessionDataCache.getInstance()).thenReturn(sessionDataCache);
+        SessionDataCacheKey loginDataCacheKey = new SessionDataCacheKey(this.SESSION_DATA_KEY_VALUE);
+        when(sessionDataCache.getValueFromCache(loginDataCacheKey)).thenReturn(loginCacheEntry);
+        when(loginCacheEntry.getoAuth2Parameters()).thenReturn(oAuth2Params);
+        when(loginCacheEntry.getLoggedInUser()).thenReturn(result.getSubject());
+
+        mockStatic(IdentityDatabaseUtil.class);
+        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+        mockStatic(OpenIDConnectUserRPStore.class);
+        when(OpenIDConnectUserRPStore.getInstance()).thenReturn(openIDConnectUserRPStore);
+        when(openIDConnectUserRPStore.hasUserApproved(any(AuthenticatedUser.class), anyString(), anyString())).
+                thenReturn(true);
+
+        Response response = oAuth2AuthzEndpoint.authorize(httpServletRequest, httpServletResponse);
+        assertNotNull(response, "Authorization response is null");
+        assertEquals(response.getStatus(), expectedStatus, "Unexpected HTTP response status");
+
+        MultivaluedMap<String, Object> responseMetadata = response.getMetadata();
+        assertNotNull(responseMetadata, "Response metadata is null");
+
+        if ( response.getStatus() != HttpServletResponse.SC_OK) {
+            assertTrue(CollectionUtils.isNotEmpty(responseMetadata.get(HTTPConstants.HEADER_LOCATION)),
+                    "Location header not found in the response");
+            String location = (String) responseMetadata.get(HTTPConstants.HEADER_LOCATION).get(0);
+
+            assertTrue(location.contains(expectedResult), "Expected redirect URL is not returned");
+        } else {
+            assertTrue(response.getEntity().toString().contains(expectedResult), "Expected redirect URL is not returned");
+        }
+    }
+
+    @DataProvider(name = "providePathExistsData")
+    public Object[][] providePathExistsData() {
+        return new Object[][] {
+                {System.getProperty(CarbonBaseConstants.CARBON_HOME), true},
+                {"carbon_home", false}
+        };
+    }
+
+    @Test(dataProvider = "providePathExistsData")
+    public void testGetFormPostRedirectPage(String carbonHome, boolean fileExists) throws Exception {
+        spy(CarbonUtils.class);
+        doReturn(carbonHome).when(CarbonUtils.class, "getCarbonHome");
+
+        Method getFormPostRedirectPage = authzEndpointObject.getClass().getDeclaredMethod("getFormPostRedirectPage");
+        getFormPostRedirectPage.setAccessible(true);
+        String value =  (String) getFormPostRedirectPage.invoke(authzEndpointObject);
+        assertEquals((value != null), fileExists, "FormPostRedirectPage value is incorrect");
+
+        Field formPostRedirectPage = authzEndpointObject.getClass().getDeclaredField("formPostRedirectPage");
+
+        Field modifiersField = Field.class.getDeclaredField("modifiers");
+        modifiersField.setAccessible(true);
+        modifiersField.setInt(formPostRedirectPage, formPostRedirectPage.getModifiers() & ~Modifier.FINAL);
+        formPostRedirectPage.setAccessible(true);
+        formPostRedirectPage.set(authzEndpointObject, value);
+
+        Method createFormPage = authzEndpointObject.getClass().getDeclaredMethod("createFormPage", String.class,
+                String.class, String.class, String.class);
+        createFormPage.setAccessible(true);
+        value =  (String) createFormPage.invoke(authzEndpointObject, APP_REDIRECT_URL_JSON, APP_REDIRECT_URL,
+                StringUtils.EMPTY, "sessionDataValue");
+        assertNotNull(value, "Form post page is null");
+    }
+
+    @DataProvider(name = "provideSendRequestToFrameworkData")
+    public Object[][] provideSendRequestToFrameworkData() {
+        return new Object[][] {
+                {null},
+                {AuthenticatorFlowStatus.SUCCESS_COMPLETED},
+                {AuthenticatorFlowStatus.INCOMPLETE}
+        };
+    }
+
+    @Test(dataProvider = "provideSendRequestToFrameworkData")
+    public void testSendRequestToFramework(Object flowStatusObject) throws Exception {
+        AuthenticatorFlowStatus flowStatus = (AuthenticatorFlowStatus) flowStatusObject;
+        Map<String, String[]> requestParams = new HashMap<>();
+        Map<String, Object> requestAttributes = new HashMap<>();
+
+        requestAttributes.put(FrameworkConstants.RequestParams.FLOW_STATUS, flowStatus);
+        mockHttpRequest(requestParams, requestAttributes, HttpMethod.POST);
+
+        final String[] redirectUrl = new String[1];
+        doAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                String key = (String) invocation.getArguments()[0];
+                redirectUrl[0] = key;
+                return null;
+            }
+        }).when(httpServletResponse).sendRedirect(anyString());
+
+        mockStatic(FrameworkUtils.class);
+        when(FrameworkUtils.getRequestCoordinator()).thenReturn(requestCoordinator);
+
+        doAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                return null;
+            }
+        }).when(requestCoordinator).handle(any(HttpServletRequest.class), any(HttpServletResponse.class));
+
+        mockOAuthServerConfiguration();
+        mockStatic(OAuth2Util.OAuthURL.class);
+        when(OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl()).thenReturn(ERROR_PAGE_URL);
+
+        Method sendRequestToFramework = authzEndpointObject.getClass().getDeclaredMethod("sendRequestToFramework",
+                HttpServletRequest.class, HttpServletResponse.class, String.class, String.class);
+        sendRequestToFramework.setAccessible(true);
+        Response resp =  (Response) sendRequestToFramework.invoke(authzEndpointObject, httpServletRequest,
+                httpServletResponse, "type", "sessionDataValue");
+        assertNotNull(resp, "Returned response is null");
+
+        requestAttributes.put(FrameworkConstants.RequestParams.FLOW_STATUS, flowStatus);
+        mockHttpRequest(requestParams, requestAttributes, HttpMethod.POST);
+
+        Method sendRequestToFramework2 = authzEndpointObject.getClass().getDeclaredMethod("sendRequestToFramework",
+                HttpServletRequest.class, HttpServletResponse.class);
+        sendRequestToFramework2.setAccessible(true);
+        resp =  (Response) sendRequestToFramework2.invoke(authzEndpointObject, httpServletRequest, httpServletResponse);
+        assertNotNull(resp, "Returned response is null");
+    }
+
+    @DataProvider(name = "provideAuthenticatedTimeFromCommonAuthData")
+    public Object[][] provideAuthenticatedTimeFromCommonAuthData() {
+
+        return new Object[][] {
+                { new SessionContext(), 1479249799770L, 1479249798770L },
+                { new SessionContext(), null, 1479249798770L },
+                { null, null, 1479249798770L }
+        };
+    }
+
+    @Test(dataProvider = "provideAuthenticatedTimeFromCommonAuthData")
+    public void testGetAuthenticatedTimeFromCommonAuthCookie(Object sessionContextObject, Object updatedTimestamp,
+                                                             Object createdTimeStamp) throws Exception {
+        SessionContext sessionContext = (SessionContext) sessionContextObject;
+        Cookie commonAuthCookie = new Cookie(FrameworkConstants.COMMONAUTH_COOKIE, "32414141346576");
+
+        if (sessionContext != null) {
+            sessionContext.addProperty(FrameworkConstants.UPDATED_TIMESTAMP, updatedTimestamp);
+            sessionContext.addProperty(FrameworkConstants.CREATED_TIMESTAMP, createdTimeStamp);
+        }
+
+        mockStatic(FrameworkUtils.class);
+        when(FrameworkUtils.getSessionContextFromCache(anyString())).thenReturn(sessionContext);
+
+        Method getAuthenticatedTimeFromCommonAuthCookie = authzEndpointObject.getClass().
+                getDeclaredMethod("getAuthenticatedTimeFromCommonAuthCookie", Cookie.class);
+        getAuthenticatedTimeFromCommonAuthCookie.setAccessible(true);
+        long timestamp = (long) getAuthenticatedTimeFromCommonAuthCookie.invoke(authzEndpointObject, commonAuthCookie);
+
+        if (sessionContext == null) {
+            assertEquals(timestamp, 0, "Authenticated time should be 0 when session context is null");
+        } else if (updatedTimestamp != null) {
+            assertEquals(timestamp, Long.parseLong(updatedTimestamp.toString()),
+                    "session context updated time should be equal to the authenticated time");
+        } else {
+            assertEquals(timestamp, Long.parseLong(createdTimeStamp.toString()),
+                    "session context created time should be equal to the authenticated time");
+        }
     }
 
     private void mockHttpRequest(final Map<String, String[]> requestParams,

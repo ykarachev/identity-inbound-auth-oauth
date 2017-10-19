@@ -23,7 +23,6 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityConfigParser;
@@ -35,7 +34,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-
+/**
+ * Unit test covering OAuthServerConfiguration
+ */
 @PrepareForTest({IdentityUtil.class})
 public class OAuthServerConfigurationTest extends PowerMockTestCase {
 
@@ -115,10 +116,6 @@ public class OAuthServerConfigurationTest extends PowerMockTestCase {
         Field instance = IdentityConfigParser.class.getDeclaredField("parser");
         instance.setAccessible(true);
         instance.set(null, null);
-    }
-
-    @AfterMethod
-    public void tearDown() throws Exception {
     }
 
     @Test
@@ -297,11 +294,6 @@ public class OAuthServerConfigurationTest extends PowerMockTestCase {
                 .isRefreshTokenRenewalEnabled());
     }
 
-    // @Test
-//    public void testGetSupportedGrantTypes() throws Exception {
-//        OAuthServerConfiguration.getInstance().getSupportedGrantTypes();
-//    }
-
     @Test
     public void testGetSupportedGrantTypeValidators() throws Exception {
         Assert.assertTrue(OAuthServerConfiguration.getInstance()
@@ -328,15 +320,13 @@ public class OAuthServerConfigurationTest extends PowerMockTestCase {
 
     @Test
     public void testGetSupportedClaims() throws Exception {
-
         Field claim = OAuthServerConfiguration.class.getDeclaredField("supportedClaims");
         claim.setAccessible(true);
         claim.set(OAuthServerConfiguration.getInstance(), new String[]{"claim1", "claim2"});
         String[] assertClaims = OAuthServerConfiguration.getInstance()
                 .getSupportedClaims();
-        Assert.assertTrue(
-                ArrayUtils.contains(assertClaims, "claim1") &&
-                        ArrayUtils.contains(assertClaims, "claim2"));
+        Assert.assertTrue(ArrayUtils.contains(assertClaims, "claim1") &&
+                ArrayUtils.contains(assertClaims, "claim2"));
     }
 
     @Test
@@ -369,12 +359,12 @@ public class OAuthServerConfigurationTest extends PowerMockTestCase {
         callBackHandler.setAccessible(true);
         callBackHandler.set(OAuthServerConfiguration.getInstance(), tokenClassMap);
         Assert.assertEquals(OAuthServerConfiguration.getInstance().getTokenValidatorClassNames(), tokenClassMap);
-
     }
 
     @Test
     public void testIsAccessTokenPartitioningEnabled() throws Exception {
-        Assert.assertFalse(OAuthServerConfiguration.getInstance().isAccessTokenPartitioningEnabled());
+        Assert.assertFalse(OAuthServerConfiguration.getInstance()
+                .isAccessTokenPartitioningEnabled());
     }
 
     private String fillURLPlaceholdersForTest(String url) {
@@ -383,3 +373,4 @@ public class OAuthServerConfigurationTest extends PowerMockTestCase {
                 .replace("${carbon.management.port}", "9443");
     }
 }
+

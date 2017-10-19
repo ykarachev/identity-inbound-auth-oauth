@@ -40,6 +40,9 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import java.io.File;
 import java.lang.reflect.Field;
 
+/**
+ * Unit test cases covering AbstractResponseTypeHandler
+ */
 @PrepareForTest({IdentityUtil.class})
 @PowerMockIgnore({"javax.net.*", "javax.security.*", "javax.crypto.*"})
 public class AbstractResponseTypeHandlerTest extends PowerMockTestCase {
@@ -55,15 +58,12 @@ public class AbstractResponseTypeHandlerTest extends PowerMockTestCase {
                 return null;
             }
         };
-
-        System.setProperty("carbon.home", System.getProperty("user.dir"));
+        System.setProperty("carbon.home", System.getProperty("user.dir")
+                + File.separator + "target");
         PowerMockito.mockStatic(IdentityUtil.class);
         PowerMockito.when(IdentityUtil.getIdentityConfigDirPath())
-                .thenReturn(System.getProperty("user.dir")
-                        + File.separator + "src"
-                        + File.separator + "test"
-                        + File.separator + "resources"
-                        + File.separator + "conf");
+                .thenReturn(System.getProperty("user.dir") + File.separator + "src" + File.separator + "test"
+                        + File.separator + "resources" + File.separator + "conf");
 
         Field oAuthCallbackHandlerRegistry =
                 OAuthServerConfiguration.class.getDeclaredField("instance");
@@ -79,7 +79,6 @@ public class AbstractResponseTypeHandlerTest extends PowerMockTestCase {
         instance.setAccessible(true);
         instance.set(null, null);
         abstractResponseTypeHandler.init();
-
     }
 
     @Test
@@ -152,5 +151,4 @@ public class AbstractResponseTypeHandlerTest extends PowerMockTestCase {
         oAuthAuthzReqMessageContext.addProperty("OAuthAppDO", oAuthAppDO);
         return oAuthAuthzReqMessageContext;
     }
-
 }

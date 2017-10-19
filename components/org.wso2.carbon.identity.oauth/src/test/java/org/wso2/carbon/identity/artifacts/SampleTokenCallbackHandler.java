@@ -23,9 +23,11 @@ import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML2TokenCallbackHandler;
 
+/**
+ * Sample TokenHandler class for SAML2TokenCallbackHandler casting tests
+ */
 public class SampleTokenCallbackHandler implements SAML2TokenCallbackHandler {
     @Override
     public void handleSAML2Token(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
-
     }
 }

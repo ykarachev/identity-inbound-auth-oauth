@@ -48,17 +48,18 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.identity.testutil.IdentityBaseTest;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 
 import java.security.MessageDigest;
 import java.util.LinkedHashSet;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
-import static org.mockito.Matchers.any;
 import static org.testng.Assert.assertEquals;
 
 @PrepareForTest({
@@ -70,7 +71,7 @@ import static org.testng.Assert.assertEquals;
         MessageDigest.class,
         IdentityConfigParser.class,
         OAuth2ServiceComponentHolder.class})
-public class DefaultIDTokenBuilderTest {
+public class DefaultIDTokenBuilderTest extends IdentityBaseTest {
     @Mock
     private Log log;
 

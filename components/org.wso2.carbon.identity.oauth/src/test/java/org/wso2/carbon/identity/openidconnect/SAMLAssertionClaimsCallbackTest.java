@@ -44,6 +44,7 @@ import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.identity.testutil.IdentityBaseTest;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.registry.core.session.UserRegistry;
@@ -72,7 +73,7 @@ import static org.testng.Assert.assertTrue;
         IdentityTenantUtil.class,
         OAuth2ServiceComponentHolder.class
 })
-public class SAMLAssertionClaimsCallbackTest {
+public class SAMLAssertionClaimsCallbackTest extends IdentityBaseTest {
 
     private String SAMPLE_ACCESS_TOKEN = "4952b467-86b2-31df-b63c-0bf25cec4f86";
     private int SAMPLE_TENANT_ID = 1234;
@@ -113,9 +114,6 @@ public class SAMLAssertionClaimsCallbackTest {
 
     @Mock
     private RealmService realmService;
-
-    @Mock
-    XMLObject xmlObject;
 
     @BeforeTest
     public void setUp() throws Exception {

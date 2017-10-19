@@ -34,6 +34,7 @@
         </classes>
     </test>
     <test name="org.wso2.carbon.identity.oauth">
+        <parameter name="log-level" value="info"/>
         <classes>
             <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest" />
             <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest" />
@@ -64,6 +65,29 @@
             <class name="org.wso2.carbon.identity.oauth.listener.IdentityOathEventListenerTest"/>
         </classes>
     </test>
+    <test name="org.wso2.carbon.identity.oauth.debug.enabled">
+        <parameter name="log-level" value="debug"/>
+        <classes>
+            <!-- Add test classes here only if they have DEBUG level logs -->
+            <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest" />
+            <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest" />
+
+            <class name="org.wso2.carbon.identity.oauth.event.AbstractOAuthEventInterceptorTest"/>
+
+            <class name="org.wso2.carbon.identity.oauth.tokenprocessor.EncryptionDecryptionPersistenceProcessorTest"/>
+            <class name="org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessorTest"/>
+
+            <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackHandlerRegistryTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.OAuth2ScopeServiceTest"/>
+            <class name="org.wso2.carbon.identity.oauth.OAuthUtilTest"/>
+            <class name="org.wso2.carbon.identity.oauth.OAuthServiceTest"/>
+            <class name="org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAOTest"/>
+            <class name="org.wso2.carbon.identity.oauth.config.OAuthCallbackHandlerMetaDataTest"/>
+            <class name="org.wso2.carbon.identity.oauth.config.OAuthServerConfigurationTest"/>
+            <class name="org.wso2.carbon.identity.oauth.listener.IdentityOathEventListenerTest"/>
+        </classes>
+    </test>
+
     <test name="org.wso2.carbon.identity.oauth2.token">
         <parameter name="log-level" value="info"/>
         <classes>
@@ -82,6 +106,7 @@
     <test name="org.wso2.carbon.identity.oauth2.token.debug">
         <parameter name="log-level" value="debug"/>
         <classes>
+            <!-- Add test classes here only if they have DEBUG level logs -->
             <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest"/>

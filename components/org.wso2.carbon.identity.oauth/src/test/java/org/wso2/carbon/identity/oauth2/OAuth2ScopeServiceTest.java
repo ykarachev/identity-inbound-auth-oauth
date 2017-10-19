@@ -20,7 +20,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.testng.PowerMockTestCase;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -74,14 +73,10 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         oAuth2ScopeService = new OAuth2ScopeService();
         CommonTestUtils.initPrivilegedCarbonContext();
 
-        Field f = OAuth2ScopeService.class.getDeclaredField("scopeMgtDAO");
-        f.setAccessible(true);
-        f.set(oAuth2ScopeService, mockedScopeMgtDAO);
-        f.setAccessible(false);
-    }
-
-    @AfterMethod
-    public void tearDown() throws Exception {
+        Field field = OAuth2ScopeService.class.getDeclaredField("scopeMgtDAO");
+        field.setAccessible(true);
+        field.set(oAuth2ScopeService, mockedScopeMgtDAO);
+        field.setAccessible(false);
     }
 
     @Test
@@ -258,5 +253,54 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         doThrow(new IdentityOAuth2ScopeServerException("dummyException")).when(mockedScopeMgtDAO).deleteScopeByName
                 (anyString(), anyInt());
         oAuth2ScopeService.deleteScope(name);
+    }
+
+    @Test
+    public void testUpdateScope() throws Exception {
+        String name = "dummyScopeName";
+        String description = "dummyScopeDescription";
+        mockedScope = new Scope(name, description);
+
+        mockStatic(OAuthScopeCache.class);
+        when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
+        when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(mockedScope);
+        assertNotNull(oAuth2ScopeService.updateScope(mockedScope));
+    }
+
+    @Test(expectedExceptions = IdentityException.class)
+    public void testUpdateScopeWithNullName() throws Exception {
+        String name = null;
+        String description = "dummyScopeDescription";
+        mockedScope = new Scope(name, description);
+        oAuth2ScopeService.updateScope(mockedScope);
+    }
+
+    @Test(expectedExceptions = IdentityException.class)
+    public void testUpdateScopeWithScopeNotExists() throws Exception {
+        String name = "dummyScopeName";
+        String description = "dummyScopeDescription";
+        mockedScope = new Scope(name, description);
+
+        mockStatic(OAuthScopeCache.class);
+        when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
+        when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(null);
+
+        when(mockedScopeMgtDAO.isScopeExists(anyString(), anyInt())).thenReturn(false);
+        oAuth2ScopeService.updateScope(mockedScope);
+    }
+
+    @Test(expectedExceptions = IdentityOAuth2ScopeServerException.class)
+    public void testUpdateScopeWithIdentityOAuth2ScopeServerException() throws Exception {
+        String name = "dummyScopeName";
+        String description = "dummyScopeDescription";
+        mockedScope = new Scope(name, description);
+
+        mockStatic(OAuthScopeCache.class);
+        when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
+        when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(mockedScope);
+
+        doThrow(new IdentityOAuth2ScopeServerException("dummyException")).when(mockedScopeMgtDAO).updateScopeByName
+                (any(Scope.class), anyInt());
+        oAuth2ScopeService.updateScope(mockedScope);
     }
 }

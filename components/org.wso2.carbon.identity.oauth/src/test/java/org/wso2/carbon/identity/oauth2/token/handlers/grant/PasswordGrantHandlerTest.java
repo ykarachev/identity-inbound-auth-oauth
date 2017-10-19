@@ -162,7 +162,7 @@ public class PasswordGrantHandlerTest extends PowerMockIdentityBaseTest {
 
         PasswordGrantHandler passwordGrantHandler = new PasswordGrantHandler();
         boolean actual = passwordGrantHandler.validateGrant(tokReqMsgCtx);
-        assertEquals(actual, expected, "message");
+        assertEquals(actual, expected);
     }
 
     @DataProvider(name = "GetValidateGrantForExceptionDataProvider")

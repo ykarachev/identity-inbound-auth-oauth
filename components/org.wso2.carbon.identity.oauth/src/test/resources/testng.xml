@@ -36,6 +36,7 @@
     <test name="org.wso2.carbon.identity.oauth">
         <classes>
             <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest" />
+            <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest" />
 
             <class name="org.wso2.carbon.identity.oauth.event.AbstractOAuthEventInterceptorTest"/>
 
@@ -58,6 +59,9 @@
             <class name="org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAOTest"/>
             <class name="org.wso2.carbon.identity.oauth.config.OAuthCallbackHandlerMetaDataTest"/>
             <class name="org.wso2.carbon.identity.oauth.config.OAuthServerConfigurationTest"/>
+            <class name="org.wso2.carbon.identity.oauth.listener.ClaimCacheRemoveListenerTest"/>
+            <class name="org.wso2.carbon.identity.oauth.listener.ClaimMetaDataCacheRemoveListenerTest"/>
+            <class name="org.wso2.carbon.identity.oauth.listener.IdentityOathEventListenerTest"/>
         </classes>
     </test>
     <test name="org.wso2.carbon.identity.oauth2.token">

@@ -17,9 +17,9 @@
   ~ under the License.
   -->
 
-<suite name="Suite1" verbose="1" object-factory="org.powermock.modules.testng.PowerMockObjectFactory" >
+<suite name="Suite1" verbose="1" >
 
-    <test name="Regression1">
+    <test name="DCR-Endpoint-Unit-Test">
         <classes>
             <class name="org.wso2.carbon.identity.oauth2.dcr.endpoint.util.DCRMUtilsTest"/>
             <class name="org.wso2.carbon.identity.oauth2.dcr.endpoint.impl.RegisterApiServiceImplTest"/>

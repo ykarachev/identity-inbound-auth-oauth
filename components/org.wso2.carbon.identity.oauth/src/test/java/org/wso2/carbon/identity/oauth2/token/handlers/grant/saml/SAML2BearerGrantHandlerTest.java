@@ -29,7 +29,6 @@ import org.opensaml.xml.signature.Signature;
 import org.opensaml.xml.signature.SignatureValidator;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -62,6 +61,7 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.sso.saml.SSOServiceProviderConfigManager;
 import org.wso2.carbon.identity.sso.saml.dto.SAMLSSOAuthnReqDTO;
 import org.wso2.carbon.identity.sso.saml.util.SAMLSSOUtil;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 import org.wso2.carbon.idp.mgt.IdentityProviderManagementException;
 import org.wso2.carbon.idp.mgt.IdentityProviderManager;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -85,8 +85,7 @@ import static org.powermock.api.mockito.PowerMockito.*;
         IdentityProvider.class, IdentityApplicationManagementUtil.class, OAuthServerConfiguration.class,
         OAuth2AccessTokenReqDTO.class, SSOServiceProviderConfigManager.class, SAML2BearerGrantHandler.class,
         OAuthComponentServiceHolder.class, OAuth2ServiceComponentHolder.class, MultitenantUtils.class})
-public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
-
+public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
 
     private SAML2BearerGrantHandler saml2BearerGrantHandler;
 
@@ -95,6 +94,10 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
     private ServiceProvider serviceProvider;
 
     private IdentityProvider identityProviderIns;
+
+    private FederatedAuthenticatorConfig samlConfig;
+
+    private FederatedAuthenticatorConfig oauthConfig;
 
     @Mock
     private OauthTokenIssuer oauthIssuer;
@@ -205,21 +208,10 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
         Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
-    @Test
-    public void testValidateGrant() throws Exception {
+    private void initFederatedAuthConfig(){
 
-        mockStatic(IdentityUtil.class);
-        when(IdentityUtil.isTokenLoggable(anyString())).thenReturn(true);
-
-        String assertionString = SAMLSSOUtil.marshall(assertion);
-        assertionString = new String(Base64.encodeBase64(assertionString.getBytes(Charsets.UTF_8)));
-        oAuth2AccessTokenReqDTO.setAssertion(assertionString);
-        when(IdentityUtil.unmarshall(anyString())).thenReturn(assertion);
-        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
-
-        setIdentityProviderManagerForMock();
-        FederatedAuthenticatorConfig oauthConfig = new FederatedAuthenticatorConfig();
-        FederatedAuthenticatorConfig samlConfig = new FederatedAuthenticatorConfig();
+        oauthConfig = new FederatedAuthenticatorConfig();
+        samlConfig = new FederatedAuthenticatorConfig();
 
         FederatedAuthenticatorConfig[] fedAuthConfs = {federatedAuthenticatorConfig};
         when(federatedAuthenticatorConfig.getProperties()).
@@ -237,6 +229,22 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
                 .thenReturn(getProperty("samlsso", TestConstants.LOACALHOST_DOMAIN));
         when(IdentityApplicationManagementUtil.getProperty(oauthConfig.getProperties(), "OAuth2TokenEPUrl"))
                 .thenReturn(getProperty("OAuth2TokenEPUrl", TestConstants.LOACALHOST_DOMAIN));
+    }
+
+    @Test
+    public void testValidateGrant() throws Exception {
+
+        mockStatic(IdentityUtil.class);
+        when(IdentityUtil.isTokenLoggable(anyString())).thenReturn(true);
+
+        String assertionString = SAMLSSOUtil.marshall(assertion);
+        assertionString = new String(Base64.encodeBase64(assertionString.getBytes(Charsets.UTF_8)));
+        oAuth2AccessTokenReqDTO.setAssertion(assertionString);
+        when(IdentityUtil.unmarshall(anyString())).thenReturn(assertion);
+        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+
+        setIdentityProviderManagerForMock();
+        initFederatedAuthConfig();
 
         Field field = SAML2BearerGrantHandler.class.getDeclaredField("profileValidator");
         field.setAccessible(true);
@@ -244,9 +252,9 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
         field.setAccessible(false);
         doNothing().when(profileValidator).validate(any(Signature.class));
 
-        Certificate certificate1 = x509Certificate;
+        Certificate certificate = x509Certificate;
         when(IdentityApplicationManagementUtil.decodeCertificate(anyString()))
-                .thenReturn(certificate1);
+                .thenReturn(certificate);
 
         whenNew(SignatureValidator.class).withArguments(any(X509Credential.class)).thenReturn(signatureValidator);
         doNothing().when(signatureValidator).validate(any(Signature.class));
@@ -292,8 +300,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
         Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
 
         when(IdentityApplicationManagementUtil.getProperty(oauthConfig.getProperties(), "OAuth2TokenEPUrl"))
-                .thenReturn(getProperty("TokenEPUrl", "notLocal")
-                );
+                .thenReturn(getProperty("TokenEPUrl", "notLocal"));
         Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
 
         when(IdentityApplicationManagementUtil.getProperty(samlConfig.getProperties(), "IdPEntityId"))
@@ -552,6 +559,4 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
     }
 
 }
-
-
 

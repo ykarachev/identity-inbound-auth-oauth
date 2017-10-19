@@ -1,5 +1,23 @@
+/*
+ * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.wso2.carbon.identity.oauth.scope.endpoint.impl;
 
+import org.apache.commons.logging.Log;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -8,234 +26,432 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.oauth.scope.endpoint.Exceptions.ScopeEndpointException;
+import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ErrorDTO;
 import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ScopeDTO;
 import org.wso2.carbon.identity.oauth.scope.endpoint.dto.ScopeToUpdateDTO;
 import org.wso2.carbon.identity.oauth.scope.endpoint.util.ScopeUtils;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeClientException;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeException;
-import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeServerException;
 import org.wso2.carbon.identity.oauth2.OAuth2ScopeService;
+import org.wso2.carbon.identity.oauth2.Oauth2ScopeConstants;
 import org.wso2.carbon.identity.oauth2.bean.Scope;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import javax.ws.rs.core.Response;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.ws.rs.core.Response;
-
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.reset;
 import static org.powermock.api.mockito.PowerMockito.doNothing;
 import static org.powermock.api.mockito.PowerMockito.doThrow;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertNull;
 
-/**
- * Created by isuri on 10/14/17.
- */
 @PowerMockIgnore("javax.*")
 @PrepareForTest({ScopeUtils.class,OAuth2ScopeService.class})
+public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
 
-public class ScopesApiServiceImplTest {
+    private ScopesApiServiceImpl scopesApiService = new ScopesApiServiceImpl();
+    private final static String SOME_SCOPE_NAME = "scope";
+    private final static String SOME_SCOPE_DESCRIPTION = "some description";
 
     @Mock
     private OAuth2ScopeService oAuth2ScopeService;
 
-    @Mock
-    private ScopeUtils scopeUtils;
-
     @BeforeMethod
     public void setUp() throws Exception {
         mockStatic(ScopeUtils.class);
-        mockStatic(OAuth2ScopeService.class);
+        //mockStatic(OAuth2ScopeService.class);
         when(ScopeUtils.getOAuth2ScopeService()).thenReturn(oAuth2ScopeService);
     }
 
-    private final String DESCRIPTION = "JJJJ";
-    private final String SCOPENAME = "openId";
-    private final String MESSAGE = "Message";
-    ArrayList<String> binding = new ArrayList<>(Arrays.asList("scope1", "scope2"));
-    private Scope scope = new Scope(SCOPENAME,MESSAGE,binding);
-
-    ScopesApiServiceImpl scopesApiService = new ScopesApiServiceImpl();
-
     @DataProvider(name = "BuildUpdateScope")
     public Object[][] buildUpdateApplication() {
-        String message1 = "Scopeservice1";
-        String message2 = "ScopeService2";
-        String message3 = "AnyOtherException";
 
-        ScopeToUpdateDTO scopeToUpdateDTO = new ScopeToUpdateDTO();
-        scopeToUpdateDTO.setDescription(DESCRIPTION);
-        ScopeToUpdateDTO scopeToUpdateDTO1 = new ScopeToUpdateDTO();
-        scopeToUpdateDTO1.setDescription(DESCRIPTION);
-        ScopeToUpdateDTO scopeToUpdateDTO2 = new ScopeToUpdateDTO();
-        scopeToUpdateDTO2.setDescription(DESCRIPTION);
-        ScopeToUpdateDTO scopeToUpdateDTO3 = new ScopeToUpdateDTO();
-        scopeToUpdateDTO3.setDescription(DESCRIPTION);
-        IdentityOAuth2ScopeClientException identityOAuth2ScopeClientException = new IdentityOAuth2ScopeClientException(message1);
-        IdentityOAuth2ScopeException oAuth2ScopeException = new IdentityOAuth2ScopeException(message2);
-        IdentityOAuth2ScopeServerException identityOAuth2ScopeServerException = new IdentityOAuth2ScopeServerException(message3);
-        return new Object[][] {
-                {"Scope2",true,null,identityOAuth2ScopeClientException},
-                {"Scope3",true,scope, oAuth2ScopeException},
-                {"Scope4",true,null,identityOAuth2ScopeServerException}
+        IdentityOAuth2ScopeClientException identityOAuth2ScopeClientException =
+                new IdentityOAuth2ScopeClientException("Oauth2 Scope Client Exception");
+        IdentityOAuth2ScopeException identityOAuth2ScopeException = new IdentityOAuth2ScopeException("Oauth2 Scope " +
+                "Exception");
+        return new Object[][]{
+                {Response.Status.OK, null},
+                {Response.Status.BAD_REQUEST, identityOAuth2ScopeClientException},
+                {Response.Status.NOT_FOUND, identityOAuth2ScopeClientException},
+                {Response.Status.INTERNAL_SERVER_ERROR, identityOAuth2ScopeException}
         };
     }
+
     @Test(dataProvider = "BuildUpdateScope")
-    public void testUpdateScope(String scopeName,boolean isException,Object scopeUpdateDTO,Object exception) throws Exception {
+    public void testUpdateScope(Response.Status expectation, Throwable throwable) throws Exception {
 
-        // Scope scope1 = new Scope(SCOPENAME,DESCRIPTION,binding);
-        // String name = "hhhh";
+        ScopeToUpdateDTO scopeToUpdateDTO = new ScopeToUpdateDTO();
+        scopeToUpdateDTO.setDescription("some description");
+        scopeToUpdateDTO.setBindings(Collections.<String>emptyList());
 
-        /*if(isException){
-            when(oAuth2ScopeService.updateScope(ScopeUtils.getUpdatedScope((ScopeToUpdateDTO)scopeUpdateDTO , scopeName))).thenThrow((Exception)exception);
-        }else {
-            when(oAuth2ScopeService.updateScope(ScopeUtils.getUpdatedScope((ScopeToUpdateDTO)scopeUpdateDTO,scopeName))).thenReturn((Scope)scope);
+        if (Response.Status.OK.equals(expectation)) {
+            when(ScopeUtils.getScopeDTO(any(Scope.class))).thenReturn(any(ScopeDTO.class));
+            assertEquals(scopesApiService.updateScope(scopeToUpdateDTO, SOME_SCOPE_NAME).getStatus(),
+                    Response.Status.OK.getStatusCode(), "Error occurred while updating scopes");
+        } else if (Response.Status.BAD_REQUEST.equals(expectation)) {
+            when(oAuth2ScopeService.updateScope(any(Scope.class))).thenThrow(IdentityOAuth2ScopeClientException.class);
+            callRealMethod();
+            try {
+                scopesApiService.updateScope(scopeToUpdateDTO, SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.BAD_REQUEST.getStatusCode(),
+                        "Cannot find HTTP Response, Bad Request in Case of " +
+                                "IdentityOAuth2ScopeClientException");
+                assertEquals(((ErrorDTO) (e.getResponse().getEntity())).getMessage(),
+                        Response.Status.BAD_REQUEST.getReasonPhrase(), "Cannot find appropriate error message " +
+                                "for HTTP Response, Bad Request");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        } else if (Response.Status.NOT_FOUND.equals(expectation)) {
+            ((IdentityOAuth2ScopeException) throwable).setErrorCode(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_NOT_FOUND_SCOPE.getCode());
+            when(oAuth2ScopeService.updateScope(any(Scope.class))).thenThrow(throwable);
+            callRealMethod();
+            try {
+                scopesApiService.updateScope(scopeToUpdateDTO, SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.NOT_FOUND.getStatusCode(),
+                        "Cannot find HTTP Response, Not Found in Case of " +
+                                "IdentityOAuth2ScopeClientException");
+                assertEquals(((ErrorDTO) (e.getResponse().getEntity())).getMessage(),
+                        Response.Status.NOT_FOUND.getReasonPhrase(), "Cannot find appropriate error message " +
+                                "for HTTP Response, Not Found");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        } else if (Response.Status.INTERNAL_SERVER_ERROR.equals(expectation)) {
+            when(oAuth2ScopeService.updateScope(any(Scope.class))).thenThrow(IdentityOAuth2ScopeException.class);
+            callRealMethod();
+            try {
+                scopesApiService.updateScope(scopeToUpdateDTO, SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                        "Cannot find HTTP Response, Internal Server Error in case of " +
+                                "IdentityOAuth2ScopeException");
+                assertNull(e.getResponse().getEntity(), "Do not include error message in case of " +
+                        "Server Exception");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
         }
-        assertNotEquals((ScopeToUpdateDTO)scopeUpdateDTO,scopeName);
-        //assertEquals(scopesApiService.updateScope((ScopeToUpdateDTO)scopeUpdateDTO,scopeName).getStatus(),20);
     }
-*/
-    }
-      /*if (isException) {
-        when(dcrmService.updateApplication
-                (DCRMUtils.getApplicationUpdateRequest((UpdateRequestDTO)updateRequestDTO),clientID))
-                .thenThrow((Exception)exception);
-    } else {
-        when(dcrmService.updateApplication
-                (DCRMUtils.getApplicationUpdateRequest((UpdateRequestDTO)updateRequestDTO),clientID))
-                .thenReturn(application);
-    }
-        Assert.assertEquals(registerApiService.updateApplication((UpdateRequestDTO)
-    updateRequestDTO,clientID).getStatus(),200);
-}*/
+
 
     @DataProvider(name = "BuildGetScope")
     public Object[][] buildGetApplication() {
-        IdentityOAuth2ScopeClientException scopeClientException = new IdentityOAuth2ScopeClientException("ClientException");
-        IdentityOAuth2ScopeServerException scopeServerException = new IdentityOAuth2ScopeServerException("DCRMServerException");
-        IdentityOAuth2ScopeException scopeException = new IdentityOAuth2ScopeException("AnyOtherException");
-        return new Object[][] {
-                {"Scope1",false, null},
-                {"Scope2",true, scopeClientException},
-                {"Scope3",true, scopeException},
-                {"Scope4",true, scopeServerException}
+        IdentityOAuth2ScopeClientException identityOAuth2ScopeClientException = new IdentityOAuth2ScopeClientException
+                ("Oauth2 Scope Client Exception");
+        IdentityOAuth2ScopeException identityOAuth2ScopeException = new IdentityOAuth2ScopeException
+                ("Oauth2 Scope Exception");
+        return new Object[][]{
+                {Response.Status.OK, null},
+                {Response.Status.BAD_REQUEST, identityOAuth2ScopeClientException},
+                {Response.Status.NOT_FOUND, identityOAuth2ScopeClientException},
+                {Response.Status.INTERNAL_SERVER_ERROR, identityOAuth2ScopeException}
         };
     }
-    @Test(dataProvider = "BuildGetScope")
-    public void testGetScope(String scopeName, boolean isException, Object exception) throws Exception {
-        Scope scope1 = new Scope(SCOPENAME,DESCRIPTION,binding);
-        if(isException){
-            when(oAuth2ScopeService.getScope(scopeName)).thenThrow((Exception)exception);
-        }else {
-            when(oAuth2ScopeService.getScope(scopeName)).thenReturn(scope1);
-        }
 
-        assertEquals(scopesApiService.getScope(scopeName).getStatus(),200);
+    @Test(dataProvider = "BuildGetScope")
+    public void testGetScope(Response.Status expectation, Throwable throwable) throws Exception {
+
+        if (Response.Status.OK.equals(expectation)) {
+            when(oAuth2ScopeService.getScope(SOME_SCOPE_NAME)).thenReturn(any(Scope.class));
+            assertEquals(scopesApiService.getScope(SOME_SCOPE_NAME).getStatus(), Response.Status.OK.getStatusCode(),
+                    "Error occurred while getting a scope");
+        } else if (Response.Status.BAD_REQUEST.equals(expectation)) {
+            when(oAuth2ScopeService.getScope(SOME_SCOPE_NAME)).thenThrow(throwable);
+            callRealMethod();
+            try {
+                scopesApiService.getScope(SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.BAD_REQUEST.getStatusCode(),
+                        "Cannot find HTTP Response, Bad Request in Case of " +
+                                "IdentityOAuth2ScopeClientException");
+                assertEquals(((ErrorDTO) (e.getResponse().getEntity())).getMessage(),
+                        Response.Status.BAD_REQUEST.getReasonPhrase(), "Cannot find appropriate error message " +
+                                "for HTTP Response, Bad Request");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        } else if (Response.Status.NOT_FOUND.equals(expectation)) {
+            ((IdentityOAuth2ScopeException) throwable).setErrorCode(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_NOT_FOUND_SCOPE.getCode());
+            when(oAuth2ScopeService.getScope(SOME_SCOPE_NAME)).thenThrow(throwable);
+            callRealMethod();
+            try {
+                scopesApiService.getScope(SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.NOT_FOUND.getStatusCode(),
+                        "Cannot find HTTP Response, Not Found in Case of " +
+                                "IdentityOAuth2ScopeClientException");
+                assertEquals(((ErrorDTO) (e.getResponse().getEntity())).getMessage(),
+                        Response.Status.NOT_FOUND.getReasonPhrase(), "Cannot find appropriate error message " +
+                                "for HTTP Response, Not Found");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        } else if (Response.Status.INTERNAL_SERVER_ERROR.equals(expectation)) {
+            when(oAuth2ScopeService.getScope(SOME_SCOPE_NAME)).thenThrow(IdentityOAuth2ScopeException.class);
+            ;
+            callRealMethod();
+            try {
+                scopesApiService.getScope(SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                        "Cannot find HTTP Response, Internal Server Error in case of " +
+                                "IdentityOAuth2ScopeException");
+                assertNull(e.getResponse().getEntity(), "Do not include error message in case of " +
+                        "Server Exception");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        }
     }
 
 
     @DataProvider(name = "BuildgetScopes")
     public Object[][] getscopes() {
         return new Object[][]{
-                {6565, 39},
-                {null, 7664},
-                {746, null},
-                {null, null}
+                {Response.Status.OK}, {Response.Status.INTERNAL_SERVER_ERROR}
         };
     }
-    @Test(dataProvider = "BuildgetScopes")
-    public void testGetScopes(Integer startIndex, Integer count) throws Exception {
-        Set<Scope> scope = new HashSet<>();
-        // Scope scope1 = new Scope(name1,description,binding);
-        mockStatic(ScopeUtils.class);
-        when(oAuth2ScopeService.getScopes(startIndex, count)).thenReturn(scope);
-        ScopesApiServiceImpl serviceImple = new ScopesApiServiceImpl();
-        Response response = serviceImple.getScopes(startIndex, count);
-        assertNotNull(response);
 
+    @Test(dataProvider = "BuildgetScopes")
+    public void testGetScopes(Response.Status expectation) throws Exception {
+
+        Set<Scope> scopes = new HashSet<>();
+        scopes.add(new Scope(SOME_SCOPE_NAME, SOME_SCOPE_DESCRIPTION));
+        int startIndex = 0;
+        int count = 1;
+
+        if (Response.Status.OK.equals(expectation)) {
+            when(oAuth2ScopeService.getScopes(any(Integer.class), any(Integer.class))).thenReturn(scopes);
+            when(ScopeUtils.class, "getScopeDTOs", any(Set.class)).thenCallRealMethod();
+            Response response = scopesApiService.getScopes(startIndex, count);
+            assertEquals(response.getStatus(), Response.Status.OK.getStatusCode(),
+                    "Error occurred while getting scopes");
+            assertEquals(((HashSet) response.getEntity()).size(), count, "Cannot Retrieve Expected Scopes");
+        } else if (Response.Status.INTERNAL_SERVER_ERROR.equals(expectation)) {
+            when(oAuth2ScopeService.getScopes(any(Integer.class), any(Integer.class))).
+                    thenThrow(IdentityOAuth2ScopeException.class);
+            callRealMethod();
+            try {
+                scopesApiService.getScopes(startIndex, count);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                        "Cannot find HTTP Response, Internal Server Error in case of " +
+                                "IdentityOAuth2ScopeException");
+                assertNull(e.getResponse().getEntity(), "Do not include error message in case of " +
+                        "Server Exception");
+            }
+        }
     }
 
 
     @DataProvider(name = "BuildDeleteScope")
     public Object[][] buildDeleteApplication() {
-       IdentityOAuth2ScopeClientException identityOAuth2ScopeClientException = new IdentityOAuth2ScopeClientException("DCRMClientException");
-       identityOAuth2ScopeClientException.getErrorDescription();
-        //dcrmClientException.setErrorCode("CONFLICT_");
-        return new Object[][] {
-                {"Scope1", false, identityOAuth2ScopeClientException},
-                {"Scope2", true, identityOAuth2ScopeClientException},
+        IdentityOAuth2ScopeClientException identityOAuth2ScopeClientException = new IdentityOAuth2ScopeClientException
+                ("Oauth2 Scope Client Exception");
+        IdentityOAuth2ScopeException identityOAuth2ScopeException = new IdentityOAuth2ScopeException
+                ("Oauth2 Scope Exception");
+        return new Object[][]{
+                {Response.Status.OK, null},
+                {Response.Status.BAD_REQUEST, identityOAuth2ScopeClientException},
+                {Response.Status.NOT_FOUND, identityOAuth2ScopeClientException}
         };
     }
-    @Test(dataProvider = "BuildDeleteScope")
-    public void testDeleteScope(String scopeName, boolean isException, Object exception) throws IdentityOAuth2ScopeException {
-        if (isException){
-            doThrow((Exception)exception).when(oAuth2ScopeService).deleteScope(scopeName);
-        }else{
-            doNothing().when(oAuth2ScopeService).deleteScope(scopeName);
-        }
-        assertEquals(scopesApiService.deleteScope("scope12").getStatus(),200);
 
+    @Test(dataProvider = "BuildDeleteScope")
+    public void testDeleteScope(Response.Status expectation, Throwable throwable) throws Exception {
+
+
+        if (Response.Status.OK.equals(expectation)) {
+            doNothing().when(oAuth2ScopeService).deleteScope(any(String.class));
+            assertEquals(scopesApiService.deleteScope(any(String.class)).getStatus(), Response.Status.OK.getStatusCode());
+        } else if (Response.Status.BAD_REQUEST.equals(expectation)) {
+            doThrow(throwable).when(oAuth2ScopeService).deleteScope(any(String.class));
+            callRealMethod();
+            try {
+                scopesApiService.deleteScope(SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.BAD_REQUEST.getStatusCode(),
+                        "Cannot find HTTP Response, Bad Request in Case of " +
+                                "IdentityOAuth2ScopeClientException");
+                assertEquals(((ErrorDTO) (e.getResponse().getEntity())).getMessage(),
+                        Response.Status.BAD_REQUEST.getReasonPhrase(), "Cannot find appropriate error message " +
+                                "for HTTP Response, Bad Request");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        } else if (Response.Status.NOT_FOUND.equals(expectation)) {
+            ((IdentityOAuth2ScopeException) throwable).setErrorCode(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_NOT_FOUND_SCOPE.getCode());
+            doThrow(throwable).when(oAuth2ScopeService).deleteScope(any(String.class));
+            callRealMethod();
+            try {
+                scopesApiService.deleteScope(SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.NOT_FOUND.getStatusCode(),
+                        "Cannot find HTTP Response, Not Found in Case of " +
+                                "IdentityOAuth2ScopeClientException");
+                assertEquals(((ErrorDTO) (e.getResponse().getEntity())).getMessage(),
+                        Response.Status.NOT_FOUND.getReasonPhrase(), "Cannot find appropriate error message " +
+                                "for HTTP Response, Not Found");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        }
     }
 
     @DataProvider(name = "BuildRegisterScope")
     public Object[][] buildRegisterApplication() {
-        ScopeDTO scopeDTO = new ScopeDTO();
-        scopeDTO.setName("Scope1");
-        ScopeDTO scopeDTO1= new ScopeDTO();
-        scopeDTO1.setName("Scope2");
-        IdentityOAuth2ScopeClientException dcrmClientException = new IdentityOAuth2ScopeClientException("ClientException");
-
-        return new Object[][] {
-                {scopeDTO, false, null},
-                {scopeDTO1, true, dcrmClientException}
+        IdentityOAuth2ScopeClientException identityOAuth2ScopeClientException = new IdentityOAuth2ScopeClientException
+                ("Oauth2 Scope Client Exception");
+        IdentityOAuth2ScopeException identityOAuth2ScopeException = new IdentityOAuth2ScopeException
+                ("Oauth2 Scope Exception");
+        return new Object[][]{
+                {Response.Status.OK, null},
+                {Response.Status.BAD_REQUEST, identityOAuth2ScopeClientException},
+                {Response.Status.CONFLICT, identityOAuth2ScopeClientException},
+                {Response.Status.INTERNAL_SERVER_ERROR, identityOAuth2ScopeException}
         };
     }
 
     @Test(dataProvider = "BuildRegisterScope")
-    public void testRegisterScope(Object scopeDTO, boolean isException, Object exception) throws Exception {
-        if (isException){
-            when(oAuth2ScopeService.registerScope(ScopeUtils.getScope((ScopeDTO)scopeDTO))).thenThrow((Exception)exception);
-        }else{
-            when(oAuth2ScopeService.registerScope(ScopeUtils.getScope((ScopeDTO)scopeDTO))).thenReturn(scope);
+    public void testRegisterScope(Response.Status expectation, Throwable throwable) throws Exception {
+
+        ScopeDTO scopeDTO = new ScopeDTO();
+        scopeDTO.setDescription("some description");
+        scopeDTO.setBindings(Collections.<String>emptyList());
+        if (Response.Status.OK.equals(expectation)) {
+            when(oAuth2ScopeService.registerScope(any(Scope.class))).thenReturn(any(Scope.class));
+            assertEquals(scopesApiService.registerScope(scopeDTO).getStatus(), Response.Status.CREATED.getStatusCode(),
+                    "Error occurred while registering scopes");
+        } else if (Response.Status.BAD_REQUEST.equals(expectation)) {
+            when(oAuth2ScopeService.registerScope(any(Scope.class))).thenThrow(throwable);
+            callRealMethod();
+            try {
+                scopesApiService.registerScope(scopeDTO);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.BAD_REQUEST.getStatusCode(),
+                        "Cannot find HTTP Response, Bad Request in Case of " +
+                                "IdentityOAuth2ScopeClientException");
+                assertEquals(((ErrorDTO) (e.getResponse().getEntity())).getMessage(),
+                        Response.Status.BAD_REQUEST.getReasonPhrase(), "Cannot find appropriate error message " +
+                                "for HTTP Response, Bad Request");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        } else if (Response.Status.CONFLICT.equals(expectation)) {
+            ((IdentityOAuth2ScopeException) throwable).setErrorCode(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_CONFLICT_REQUEST_EXISTING_SCOPE.getCode());
+            when(oAuth2ScopeService.registerScope(any(Scope.class))).thenThrow(throwable);
+            callRealMethod();
+            try {
+                scopesApiService.registerScope(scopeDTO);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.CONFLICT.getStatusCode(),
+                        "Cannot find HTTP Response, Conflict in Case of " +
+                                "IdentityOAuth2ScopeClientException");
+                assertEquals(((ErrorDTO) (e.getResponse().getEntity())).getMessage(),
+                        Response.Status.CONFLICT.getReasonPhrase(), "Cannot find appropriate error message " +
+                                "for HTTP Response, Conflict");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        } else if (Response.Status.INTERNAL_SERVER_ERROR.equals(expectation)) {
+            when(oAuth2ScopeService.registerScope(any(Scope.class))).thenThrow(IdentityOAuth2ScopeException.class);
+            callRealMethod();
+            try {
+                scopesApiService.registerScope(scopeDTO);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                        "Cannot find HTTP Response, Internal Server Error in case of " +
+                                "IdentityOAuth2ScopeException");
+                assertNull(e.getResponse().getEntity(), "Do not include error message in case of " +
+                        "Server Exception");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
         }
-        assertEquals(scopesApiService.registerScope((ScopeDTO)scopeDTO).getStatus(),201);
     }
 
     @DataProvider(name = "checkisScopeException")
     public Object[][] checkScopeException() {
-        String message1 = "Scopeservice1";
-        String message2 = "ScopeService2";
-        String message3 = "AnyOtherException";
 
-        IdentityOAuth2ScopeClientException identityOAuth2ScopeClientException = new IdentityOAuth2ScopeClientException("hhh");
-        IdentityOAuth2ScopeException oAuth2ScopeException = new IdentityOAuth2ScopeException(message2);
-        IdentityOAuth2ScopeServerException identityOAuth2ScopeServerException = new IdentityOAuth2ScopeServerException(message3);
+        IdentityOAuth2ScopeClientException identityOAuth2ScopeClientException = new IdentityOAuth2ScopeClientException
+                ("Oauth2 Scope Client Exception");
+        IdentityOAuth2ScopeException identityOAuth2ScopeException = new IdentityOAuth2ScopeException
+                ("Oauth2 Scope Exception");
         return new Object[][]{
-                {"scope", false, scope, identityOAuth2ScopeClientException},
-                {"scope70", false, null, oAuth2ScopeException},
-                {"scope07", false, null, identityOAuth2ScopeServerException},
-                {"scope1", false, null, null}
-
+                {Response.Status.OK, null},
+                {Response.Status.NOT_FOUND, null},
+                {Response.Status.BAD_REQUEST, identityOAuth2ScopeClientException},
+                {Response.Status.INTERNAL_SERVER_ERROR, identityOAuth2ScopeException}
         };
     }
 
-
     @Test(dataProvider = "checkisScopeException")
-    public void testIsScopeExists(String scopeName, boolean isException, Object scope, Object exception) throws Exception {
+    public void testIsScopeExists(Response.Status expectation, Throwable throwable) throws Exception {
 
-        mockStatic(ScopeUtils.class);
-        if (isException) {
-            when(oAuth2ScopeService.isScopeExists(scopeName)).thenThrow((Exception) exception);
-        } else {
-
-            when(oAuth2ScopeService.isScopeExists(scopeName)).thenReturn(Boolean.TRUE);
+        if (Response.Status.OK.equals(expectation)) {
+            when(oAuth2ScopeService.isScopeExists(SOME_SCOPE_NAME)).thenReturn(Boolean.TRUE);
+            assertEquals(scopesApiService.isScopeExists(SOME_SCOPE_NAME).getStatus(), Response.Status.OK.getStatusCode(),
+                    "Error occurred while checking is scope exist");
+        } else if (Response.Status.NOT_FOUND.equals(expectation)) {
+            when(oAuth2ScopeService.isScopeExists(SOME_SCOPE_NAME)).thenReturn(Boolean.FALSE);
+            assertEquals(scopesApiService.isScopeExists(SOME_SCOPE_NAME).getStatus(),
+                    Response.Status.NOT_FOUND.getStatusCode(),
+                    "Given scope does not exist but error while checking isExist");
+        } else if (Response.Status.BAD_REQUEST.equals(expectation)) {
+            when(oAuth2ScopeService.isScopeExists(SOME_SCOPE_NAME)).thenThrow(throwable);
+            callRealMethod();
+            try {
+                scopesApiService.isScopeExists(SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.BAD_REQUEST.getStatusCode(),
+                        "Cannot find HTTP Response, Bad Request in Case of " +
+                                "IdentityOAuth2ScopeClientException");
+                assertEquals(((ErrorDTO) (e.getResponse().getEntity())).getMessage(),
+                        Response.Status.BAD_REQUEST.getReasonPhrase(), "Cannot find appropriate error message " +
+                                "for HTTP Response, Bad Request");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
+        } else if (Response.Status.INTERNAL_SERVER_ERROR.equals(expectation)) {
+            when(oAuth2ScopeService.isScopeExists("scope")).thenThrow(IdentityOAuth2ScopeException.class);
+            callRealMethod();
+            try {
+                scopesApiService.isScopeExists(SOME_SCOPE_NAME);
+            } catch (ScopeEndpointException e) {
+                assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+                        "Cannot find HTTP Response, Internal Server Error in case of " +
+                                "IdentityOAuth2ScopeException");
+                assertNull(e.getResponse().getEntity(), "Do not include error message in case of " +
+                        "Server Exception");
+            } finally {
+                reset(oAuth2ScopeService);
+            }
         }
-
-        assertEquals(scopesApiService.isScopeExists(scopeName).getStatus(), 404);
     }
 
+    private void callRealMethod() throws Exception {
+        when(ScopeUtils.class, "handleErrorResponse", any(Response.Status.class), any(String.class),
+                any(Throwable.class), any(boolean.class), any(Log.class)).thenCallRealMethod();
+        when(ScopeUtils.class, "buildScopeEndpointException", any(Response.Status.class),
+                any(String.class), any(String.class), any(String.class), any(boolean.class)).thenCallRealMethod();
+        when(ScopeUtils.class, "getErrorDTO", any(String.class), any(String.class),
+                any(String.class)).thenCallRealMethod();
+    }
 
 
     @ObjectFactory

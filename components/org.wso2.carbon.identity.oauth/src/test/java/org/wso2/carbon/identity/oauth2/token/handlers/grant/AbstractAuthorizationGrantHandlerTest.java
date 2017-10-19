@@ -116,7 +116,6 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
     @BeforeMethod
     public void setUp() throws NoSuchFieldException, IllegalAccessException {
         initMocks(this);
-
         field = AbstractAuthorizationGrantHandler.class.getDeclaredField("tokenMgtDAO");
         field.setAccessible(true);
         tokenMgtDAO = mock(TokenMgtDAO.class);
@@ -432,7 +431,6 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
                 {oAuthTokenReqMessageContext3, scopeHandlers, false}
         };
     }
-
 
     @Test(dataProvider = "BuildTokenRequestMessageContext")
     public void testValidateScope(Object tokenRequestMessageContext, Set<OAuth2ScopeHandler> scopeHandlers,

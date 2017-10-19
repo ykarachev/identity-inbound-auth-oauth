@@ -43,7 +43,6 @@ public class AbstractValidatorTest extends PowerMockTestCase {
     private static final String VALUE = "value";
     private static final String NOT_ALLOWED_PARAM = "notAllowedParam";
 
-
     @BeforeTest
     public void setUp() {
 

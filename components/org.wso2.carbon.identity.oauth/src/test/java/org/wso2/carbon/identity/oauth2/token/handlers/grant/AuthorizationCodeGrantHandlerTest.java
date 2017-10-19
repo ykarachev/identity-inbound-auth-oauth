@@ -73,7 +73,6 @@ import static org.testng.AssertJUnit.assertTrue;
         AppInfoCache.class, OAuth2Util.class, IdentityUtil.class, OAuthCache.class})
 public class AuthorizationCodeGrantHandlerTest extends PowerMockTestCase {
 
-
     OAuthServerConfiguration oAuthServerConfiguration;
     AuthorizationCodeGrantHandler authorizationCodeGrantHandler;
     Log log;
@@ -134,7 +133,6 @@ public class AuthorizationCodeGrantHandlerTest extends PowerMockTestCase {
                 {oAuthTokenReqMessageContext, authzCodeDO3, true, true, 1000L, false},
                 {oAuthTokenReqMessageContext, authzCodeDO3, false, true, 1000L, false}
         };
-
     }
 
     @Test(dataProvider = "BuildTokenRequestMessageContext")
@@ -279,7 +277,5 @@ public class AuthorizationCodeGrantHandlerTest extends PowerMockTestCase {
         assertTrue(authorizationCodeGrantHandler.issueRefreshToken());
 
         assertFalse(authorizationCodeGrantHandler.issueRefreshToken());
-
     }
-
 }

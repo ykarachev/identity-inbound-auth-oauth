@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.oauth.config;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.testng.PowerMockTestCase;
@@ -30,6 +31,8 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 
@@ -294,6 +297,11 @@ public class OAuthServerConfigurationTest extends PowerMockTestCase {
                 .isRefreshTokenRenewalEnabled());
     }
 
+    // @Test
+//    public void testGetSupportedGrantTypes() throws Exception {
+//        OAuthServerConfiguration.getInstance().getSupportedGrantTypes();
+//    }
+
     @Test
     public void testGetSupportedGrantTypeValidators() throws Exception {
         Assert.assertTrue(OAuthServerConfiguration.getInstance()
@@ -314,9 +322,213 @@ public class OAuthServerConfigurationTest extends PowerMockTestCase {
 
     @Test
     public void testGetSupportedResponseTypeNames() throws Exception {
-        OAuthServerConfiguration.getInstance()
-                .getSupportedResponseTypeNames();
+        Assert.assertTrue(OAuthServerConfiguration.getInstance()
+                .getSupportedResponseTypeNames().size() == 4);
     }
+
+    @Test
+    public void testGetSupportedClaims() throws Exception {
+
+        Field claim = OAuthServerConfiguration.class.getDeclaredField("supportedClaims");
+        claim.setAccessible(true);
+        claim.set(OAuthServerConfiguration.getInstance(), new String[]{"claim1", "claim2"});
+        String[] assertClaims = OAuthServerConfiguration.getInstance()
+                .getSupportedClaims();
+        Assert.assertTrue(
+                ArrayUtils.contains(assertClaims, "claim1") &&
+                        ArrayUtils.contains(assertClaims, "claim2"));
+    }
+
+    @Test
+    public void testGetSupportedClientAuthHandlers() throws Exception {
+        Assert.assertFalse(OAuthServerConfiguration.getInstance()
+                .getSupportedClientAuthHandlers().isEmpty());
+    }
+
+    @Test
+    public void testGetSAML2TokenCallbackHandler() throws Exception {
+        Field callBackHandler = OAuthServerConfiguration.class
+                .getDeclaredField("saml2TokenCallbackHandlerName");
+        callBackHandler.setAccessible(true);
+        callBackHandler.set(OAuthServerConfiguration.getInstance(),
+                "org.wso2.carbon.identity.artifacts.SampleTokenCallbackHandler");
+        Assert.assertEquals(OAuthServerConfiguration.getInstance()
+                        .getSAML2TokenCallbackHandler()
+                        .getClass()
+                        .getName(),
+                "org.wso2.carbon.identity.artifacts.SampleTokenCallbackHandler");
+    }
+
+    @Test
+    public void testGetTokenValidatorClassNames() throws Exception {
+        Map<String, String> tokenClassMap = new HashMap<>();
+        tokenClassMap.put("clazz1", "sample.clazz1");
+        tokenClassMap.put("clazz2", "sample.clazz2");
+        Field callBackHandler = OAuthServerConfiguration.class
+                .getDeclaredField("tokenValidatorClassNames");
+        callBackHandler.setAccessible(true);
+        callBackHandler.set(OAuthServerConfiguration.getInstance(), tokenClassMap);
+        Assert.assertEquals(OAuthServerConfiguration.getInstance().getTokenValidatorClassNames(), tokenClassMap);
+
+    }
+
+    @Test
+    public void testIsAccessTokenPartitioningEnabled() throws Exception {
+        Assert.assertFalse(OAuthServerConfiguration.getInstance().isAccessTokenPartitioningEnabled());
+    }
+
+    @Test
+    public void testGetIdTokenAllowedForGrantTypesMap() throws Exception {
+    }
+
+    @Test
+    public void testGetIdTokenNotAllowedGrantTypesSet() throws Exception {
+    }
+
+    @Test
+    public void testIsUserNameAssertionEnabled() throws Exception {
+    }
+
+    @Test
+    public void testGetAccessTokenPartitioningDomains() throws Exception {
+    }
+
+    @Test
+    public void testIsAuthContextTokGenEnabled() throws Exception {
+    }
+
+    @Test
+    public void testGetTokenGeneratorImplClass() throws Exception {
+    }
+
+    @Test
+    public void testGetSignatureAlgorithm() throws Exception {
+    }
+
+    @Test
+    public void testGetIdTokenSignatureAlgorithm() throws Exception {
+    }
+
+    @Test
+    public void testGetUserInfoJWTSignatureAlgorithm() throws Exception {
+    }
+
+    @Test
+    public void testGetConsumerDialectURI() throws Exception {
+    }
+
+    @Test
+    public void testGetClaimsRetrieverImplClass() throws Exception {
+    }
+
+    @Test
+    public void testGetAuthorizationContextTTL() throws Exception {
+    }
+
+    @Test
+    public void testIsUseMultiValueSeparatorForAuthContextToken() throws Exception {
+    }
+
+    @Test
+    public void testGetPersistenceProcessor() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectIDTokenBuilder() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectCustomClaimsCallbackHandler() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectIDTokenIssuerIdentifier() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectIDTokenSubjectClaim() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectSkipeUserConsentConfig() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectIDTokenExpiration() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectUserInfoEndpointClaimDialect() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectUserInfoEndpointClaimRetriever() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectUserInfoEndpointRequestValidator() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectUserInfoEndpointAccessTokenValidator() throws Exception {
+    }
+
+    @Test
+    public void testGetOpenIDConnectUserInfoEndpointResponseBuilder() throws Exception {
+    }
+
+    @Test
+    public void testIsJWTSignedWithSPKey() throws Exception {
+    }
+
+    @Test
+    public void testIsImplicitErrorFragment() throws Exception {
+    }
+
+    @Test
+    public void testIsRevokeResponseHeadersEnabled() throws Exception {
+    }
+
+    @Test
+    public void testGetValueForIsRefreshTokenAllowed() throws Exception {
+    }
+
+    @Test
+    public void testGetUseSPTenantDomainValue() throws Exception {
+    }
+
+    @Test
+    public void testGetSaml2BearerTokenUserType() throws Exception {
+    }
+
+    @Test
+    public void testIsMapFederatedUsersToLocal() throws Exception {
+    }
+
+    @Test
+    public void testGetoAuth2ScopeValidator() throws Exception {
+    }
+
+    @Test
+    public void testSetoAuth2ScopeValidator() throws Exception {
+    }
+
+    @Test
+    public void testGetOAuth2ScopeValidators() throws Exception {
+    }
+
+    @Test
+    public void testSetOAuth2ScopeValidators() throws Exception {
+    }
+
+    @Test
+    public void testGetOAuth2ScopeHandlers() throws Exception {
+    }
+
+    @Test
+    public void testSetOAuth2ScopeHandlers() throws Exception {
+    }
+
 
     private String fillURLPlaceholdersForTest(String url) {
         return url.replace("${carbon.protocol}", "https")

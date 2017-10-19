@@ -24,9 +24,7 @@ import org.osgi.util.tracker.ServiceTracker;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.Assert;
-import org.testng.IObjectFactory;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.context.internal.OSGiDataHolder;
@@ -46,8 +44,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.Matchers.any;
-import static org.powermock.api.mockito.PowerMockito.*;
 import static org.powermock.api.mockito.PowerMockito.doThrow;
+import static org.powermock.api.mockito.PowerMockito.when;
+import static org.powermock.api.mockito.PowerMockito.whenNew;
+import static org.powermock.api.mockito.PowerMockito.doNothing;
 
 @PrepareForTest({BundleContext.class, ServiceTracker.class, PrivilegedCarbonContext.class, DCRMService.class})
 public class RegisterApiServiceImplTest extends PowerMockTestCase {
@@ -115,7 +115,8 @@ public class RegisterApiServiceImplTest extends PowerMockTestCase {
 
     @Test
     public  void testGetApplicationServerException() throws DCRMException {
-        when(dcrmService.getApplication("N2QqQluzQuL5X6CtM3KZwqzLQxxx")).thenThrow(new DCRMServerException("This is a server exception"));
+        when(dcrmService.getApplication("N2QqQluzQuL5X6CtM3KZwqzLQxxx")).
+                thenThrow(new DCRMServerException("This is a server exception"));
 
         try {
             registerApiService.getApplication("N2QqQluzQuL5X6CtM3KZwqzLQxxx");
@@ -140,7 +141,8 @@ public class RegisterApiServiceImplTest extends PowerMockTestCase {
     @Test
     public  void testUpdateApplicationServerException() throws Exception {
         UpdateRequestDTO updateRequestDTO = new UpdateRequestDTO();
-        doThrow(new DCRMServerException("Server")).when(dcrmService).updateApplication(any(ApplicationUpdateRequest.class),any(String.class));
+        doThrow(new DCRMServerException("Server")).when(dcrmService).updateApplication
+                (any(ApplicationUpdateRequest.class),any(String.class));
         try {
             registerApiService.updateApplication(updateRequestDTO,validclientId);
         } catch (DCRMEndpointException e) {
@@ -158,12 +160,6 @@ public class RegisterApiServiceImplTest extends PowerMockTestCase {
                 .thenReturn(application);
         Assert.assertEquals(registerApiService.updateApplication(updateRequestDTO1,clientID)
                 .getStatus(),Response.Status.OK.getStatusCode());
-
-    }
-
-    @ObjectFactory
-    public IObjectFactory getObjectFactory() {
-        return new org.powermock.modules.testng.PowerMockObjectFactory();
 
     }
 

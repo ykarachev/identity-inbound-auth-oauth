@@ -15,12 +15,13 @@
  */
 package org.wso2.carbon.identity.oauth2.dcr.endpoint;
 
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 
 public class TestUtil{
     public static void startTenantFlow (String tenantDomain) {
         String carbonHome = TestUtil.class.getResource("/").getFile();
-        System.setProperty("carbon.home", carbonHome);
+        System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
         PrivilegedCarbonContext.startTenantFlow();
         PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain);
     }

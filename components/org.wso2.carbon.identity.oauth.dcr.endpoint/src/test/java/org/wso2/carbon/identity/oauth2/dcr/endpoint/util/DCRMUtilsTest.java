@@ -49,9 +49,12 @@ public class DCRMUtilsTest {
         registrationRequestDTO.setRedirectUris(redirectUris);
         registrationRequestDTO.setGrantTypes(grantTypes);
         Assert.assertNotNull(DCRMUtils.getApplicationRegistrationRequest(registrationRequestDTO));
-        Assert.assertEquals(DCRMUtils.getApplicationRegistrationRequest(registrationRequestDTO).getClientName(), client_name);
-        Assert.assertEquals(DCRMUtils.getApplicationRegistrationRequest(registrationRequestDTO).getGrantTypes(), grantTypes);
-        Assert.assertEquals(DCRMUtils.getApplicationRegistrationRequest(registrationRequestDTO).getRedirectUris(), redirectUris);
+        Assert.assertEquals(DCRMUtils.getApplicationRegistrationRequest
+                (registrationRequestDTO).getClientName(), client_name);
+        Assert.assertEquals(DCRMUtils.getApplicationRegistrationRequest
+                (registrationRequestDTO).getGrantTypes(), grantTypes);
+        Assert.assertEquals(DCRMUtils.getApplicationRegistrationRequest
+                (registrationRequestDTO).getRedirectUris(), redirectUris);
     }
 
     @Test
@@ -61,9 +64,12 @@ public class DCRMUtilsTest {
         updateRequestDTO.setRedirectUris(redirectUris);
         updateRequestDTO.setGrantTypes(grantTypes);
         Assert.assertNotNull(DCRMUtils.getApplicationUpdateRequest(updateRequestDTO));
-        Assert.assertEquals(DCRMUtils.getApplicationUpdateRequest(updateRequestDTO).getClientName(), client_name);
-        Assert.assertEquals(DCRMUtils.getApplicationUpdateRequest(updateRequestDTO).getGrantTypes(), grantTypes);
-        Assert.assertEquals(DCRMUtils.getApplicationUpdateRequest(updateRequestDTO).getRedirectUris(), redirectUris);
+        Assert.assertEquals(DCRMUtils.getApplicationUpdateRequest
+                (updateRequestDTO).getClientName(), client_name);
+        Assert.assertEquals(DCRMUtils.getApplicationUpdateRequest
+                (updateRequestDTO).getGrantTypes(), grantTypes);
+        Assert.assertEquals(DCRMUtils.getApplicationUpdateRequest
+                (updateRequestDTO).getRedirectUris(), redirectUris);
     }
 
     @DataProvider(name = "BuildDCRMException")

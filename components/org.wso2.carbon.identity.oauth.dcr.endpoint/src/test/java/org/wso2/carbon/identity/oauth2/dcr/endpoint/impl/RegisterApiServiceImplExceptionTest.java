@@ -26,6 +26,7 @@ import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.context.internal.OSGiDataHolder;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
@@ -48,6 +49,7 @@ import static org.mockito.Matchers.any;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
+import static org.testng.Assert.assertEquals;
 
 @PrepareForTest({BundleContext.class, ServiceTracker.class, PrivilegedCarbonContext.class,  DCRDataHolder.class, ApplicationManagementService.class, ServiceProvider.class, OAuthAdminService.class})
 public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
@@ -80,7 +82,7 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
 
         //Get OSGIservice by starting the tenant flow.
         whenNew(ServiceTracker.class).withAnyArguments().thenReturn(serviceTracker);
-        TestUtil.startTenantFlow("carbon.super");
+        TestUtil.startTenantFlow(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME);
         Object[] services = new Object[1];
         services[0] = dcrmService;
         when(serviceTracker.getServices()).thenReturn(services);
@@ -92,7 +94,7 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
         try {
             registerApiService.deleteApplication("");
         } catch (DCRMEndpointException e){
-            Assert.assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
         }
     }
 
@@ -102,7 +104,7 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
         try {
             registerApiService.deleteApplication("ClientIDInvalid");
         } catch (DCRMEndpointException e){
-            Assert.assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
         }
     }
 
@@ -111,7 +113,7 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
         try {
             registerApiService.getApplication("");
         } catch (DCRMEndpointException e){
-            Assert.assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
         }
     }
 
@@ -121,7 +123,7 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
         try {
             registerApiService.getApplication("N2QqQluzQuL5X6CtM3KZwqzLQyyy");
         } catch (DCRMEndpointException e){
-            Assert.assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
         }
     }
 
@@ -144,7 +146,7 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
         try {
             registerApiService.registerApplication(registrationRequestDTO);
         } catch (DCRMEndpointException e){
-            Assert.assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
         }
     }
 
@@ -163,12 +165,13 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
         mockStatic(DCRDataHolder.class);
         when(DCRDataHolder.getInstance()).thenReturn(dataHolder);
         when(dataHolder.getApplicationManagementService()).thenReturn( applicationManagementService);
-        when(applicationManagementService.getServiceProvider(any(String.class),any(String.class))).thenThrow(new IdentityApplicationManagementException("execption"));
+        when(applicationManagementService.getServiceProvider(any(String.class),any(String.class))).
+                thenThrow(new IdentityApplicationManagementException("execption"));
 
         try {
             registerApiService.registerApplication(registrationRequestDTO);
         } catch (DCRMEndpointException e){
-            Assert.assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
         }
 
     }
@@ -181,7 +184,7 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
         try {
             registerApiService.registerApplication(registrationRequestDTO);
         } catch (DCRMEndpointException e){
-            Assert.assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
         }
     }
 
@@ -205,7 +208,7 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
         try {
             registerApiService.updateApplication(updateRequestDTO,"");
         } catch (DCRMEndpointException e){
-            Assert.assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
         }
     }
 
@@ -215,9 +218,9 @@ public class RegisterApiServiceImplExceptionTest extends PowerMockTestCase {
         UpdateRequestDTO updateRequestDTO = new UpdateRequestDTO();
         updateRequestDTO.setClientName("");
         try {
-            registerApiService.updateApplication(updateRequestDTO,"ClientID");
+            registerApiService.updateApplication(updateRequestDTO, "ClientID");
         } catch (DCRMEndpointException e){
-            Assert.assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
+            assertEquals(e.getResponse().getStatus(),Response.Status.INTERNAL_SERVER_ERROR.getStatusCode());
         }
     }
 

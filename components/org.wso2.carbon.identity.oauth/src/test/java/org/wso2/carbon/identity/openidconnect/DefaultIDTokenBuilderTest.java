@@ -25,7 +25,6 @@ import org.apache.commons.logging.Log;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.IObjectFactory;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
 import org.wso2.carbon.base.MultitenantConstants;
@@ -40,7 +39,6 @@ import org.wso2.carbon.identity.application.common.util.IdentityApplicationManag
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.core.util.IdentityConfigParser;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
@@ -72,7 +70,6 @@ import static org.testng.Assert.assertEquals;
         MessageDigest.class,
         IdentityConfigParser.class,
         OAuth2ServiceComponentHolder.class})
-
 public class DefaultIDTokenBuilderTest {
     @Mock
     private Log log;
@@ -148,16 +145,8 @@ public class DefaultIDTokenBuilderTest {
     private String TENANT_DOMAIN = "Tenant1";
     private String NONCE = "Nonce1";
 
-    @DataProvider(name = "BuildIdToken")
-    public Object[][] buildIdToken() {
-        return new Object[][]{
-                {"test"},
-                {null}
-        };
-    }
-
-    @Test(dataProvider = "BuildIdToken", expectedExceptions = IdentityOAuth2Exception.class)
-    public void testBuildIDToken(String expected) throws Exception {
+    @Test(expectedExceptions = IdentityOAuth2Exception.class)
+    public void testBuildIDToken() throws Exception {
         request1 = mock(OAuthTokenReqMessageContext.class);
         tokenReqDTO = mock(OAuth2AccessTokenReqDTO.class);
         when(request1.getOauth2AccessTokenReqDTO()).thenReturn(tokenReqDTO);
@@ -231,22 +220,12 @@ public class DefaultIDTokenBuilderTest {
 
         when(OAuth2Util.signJWT(any(JWTClaimsSet.class), any(JWSAlgorithm.class), anyString())).thenReturn(jwt);
         DefaultIDTokenBuilder defaultIDTokenBuilder1 = new DefaultIDTokenBuilder();
-        String actual = defaultIDTokenBuilder1.buildIDToken(request1, oAuth2AccessTokenRespDTO);
-        if (actual == expected) {
-            assertEquals(actual, expected, "Default token binder generated successfully.");
-        }
+        assertEquals(defaultIDTokenBuilder1.buildIDToken(request1, oAuth2AccessTokenRespDTO), null,
+                "Default token binder generated successfully.");
     }
 
-    @DataProvider(name = "AuthorizeIdToken")
-    public Object[][] authorizeIdToken() {
-        return new Object[][]{
-                {"test1"},
-                {null}
-        };
-    }
-
-    @Test(dataProvider = "AuthorizeIdToken")
-    public void testBuildIDTokenAuthorize(String expected) throws Exception {
+    @Test
+    public void testBuildIDTokenAuthorize() throws Exception {
         request = mock(OAuthAuthzReqMessageContext.class);
         identityProvider = mock(IdentityProvider.class);
         identityProviderManager = mock(IdentityProviderManager.class);
@@ -307,9 +286,6 @@ public class DefaultIDTokenBuilderTest {
 
         when(OAuth2Util.signJWT(any(JWTClaimsSet.class), any(JWSAlgorithm.class), anyString())).thenReturn(jwt);
         DefaultIDTokenBuilder defaultIDTokenBuilder = new DefaultIDTokenBuilder();
-        String actual = defaultIDTokenBuilder.buildIDToken(request, oAuth2AuthorizeRespDTO);
-        if (actual == expected) {
-            assertEquals(actual, expected, "Default token binder authorized successfully.");
-        }
+        assertEquals(defaultIDTokenBuilder.buildIDToken(request, oAuth2AuthorizeRespDTO), null, "Successfully authorized token");
     }
 }

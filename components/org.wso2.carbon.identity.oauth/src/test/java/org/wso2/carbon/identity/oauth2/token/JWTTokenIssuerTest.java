@@ -383,7 +383,6 @@ public class JWTTokenIssuerTest extends PowerMockTestCase {
         );
     }
 
-
     private void mockGrantHandlers() throws IdentityOAuth2Exception {
         AuthorizationGrantHandler userAccessTokenGrantHandler = mock(AuthorizationGrantHandler.class);
         when(userAccessTokenGrantHandler.isOfTypeApplicationUser()).thenReturn(true);
@@ -398,9 +397,8 @@ public class JWTTokenIssuerTest extends PowerMockTestCase {
         when(oAuthServerConfiguration.getSupportedGrantTypes()).thenReturn(grantHandlerMap);
     }
 
-
     @Test
-    public void testHandleCustomClaims() throws Exception {
+    public void testHandleCustomClaimsForAuthzMsgContext() throws Exception {
         mockCustomClaimsCallbackHandler();
         when(oAuthServerConfiguration.getSignatureAlgorithm()).thenReturn(SHA256_WITH_RSA);
 
@@ -417,7 +415,7 @@ public class JWTTokenIssuerTest extends PowerMockTestCase {
     }
 
     @Test
-    public void testHandleCustomClaims1() throws Exception {
+    public void testHandleCustomClaimsForTokenMsgContext() throws Exception {
         mockCustomClaimsCallbackHandler();
         when(oAuthServerConfiguration.getSignatureAlgorithm()).thenReturn(SHA256_WITH_RSA);
         JWTTokenIssuer jwtTokenIssuer = new JWTTokenIssuer();

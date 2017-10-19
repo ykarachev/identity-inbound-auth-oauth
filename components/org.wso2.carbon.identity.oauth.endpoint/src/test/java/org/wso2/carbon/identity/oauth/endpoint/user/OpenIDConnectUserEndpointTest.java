@@ -90,16 +90,15 @@ public class OpenIDConnectUserEndpointTest extends PowerMockIdentityBaseTest {
         String authResponse = "{\"token_type\":\"Bearer\",\"expires_in\":2061,\"access_token\":\"ca19a540f544777860e44e75f605d927\"}";
         return new Object[][]{
                 {authResponse, null, OAuthError.ResourceResponse.INSUFFICIENT_SCOPE, HttpServletResponse.SC_FORBIDDEN},
-                {null, null, OAuthError.ResourceResponse.INSUFFICIENT_SCOPE, HttpServletResponse.SC_FORBIDDEN},
-                {null, null, OAuthError.ResourceResponse.INVALID_TOKEN, HttpServletResponse.SC_UNAUTHORIZED},
-                {null, null, OAuthError.ResourceResponse.INVALID_REQUEST, HttpServletResponse.SC_BAD_REQUEST},
-                {null, null, null, HttpServletResponse.SC_BAD_REQUEST},
-
+                {"", null, OAuthError.ResourceResponse.INSUFFICIENT_SCOPE, HttpServletResponse.SC_FORBIDDEN},
+                {"", null, OAuthError.ResourceResponse.INVALID_TOKEN, HttpServletResponse.SC_UNAUTHORIZED},
+                {"", null, OAuthError.ResourceResponse.INVALID_REQUEST, HttpServletResponse.SC_BAD_REQUEST},
+                {"", null, null, HttpServletResponse.SC_BAD_REQUEST},
         };
     }
 
     /**
-     *
+     * Here handleError & setServiceProviderTenantId private methods also covered by this method.
      * @param authResponse
      * @param errorMessage
      * @param errorCode
@@ -107,7 +106,8 @@ public class OpenIDConnectUserEndpointTest extends PowerMockIdentityBaseTest {
      * @throws Exception
      */
     @Test(dataProvider = "provideDataForGetUserClaims")
-    public void testGetUserClaims(String authResponse, String errorMessage, String errorCode, int expectedStatus) throws Exception {
+    public void testGetUserClaims(String authResponse, String errorMessage, String errorCode,
+                                  int expectedStatus) throws Exception {
 
         String clientID = "rgfKVdnMQnJlSSr_pKFTxj3apiwYa";
 
@@ -150,9 +150,7 @@ public class OpenIDConnectUserEndpointTest extends PowerMockIdentityBaseTest {
         assertEquals(metadataValue1, "[no-store]", "Values are not equal");
         assertEquals(metadataValue2, "[no-cache]", "Values are not equal");
         assertNotNull(response);
-        if (authResponse != null) {
-            assertEquals(response.getEntity().toString(), authResponse, "Response values are not same");
-        }
+        assertEquals(response.getEntity().toString(), authResponse, "Response values are not same");
 
         openIDConnectUserEndpoint.getUserClaimsPost(httpServletRequest);
     }

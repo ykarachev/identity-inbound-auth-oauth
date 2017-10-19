@@ -52,6 +52,7 @@ import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.core.UserStoreManager;
 import org.wso2.carbon.user.core.service.RealmService;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -118,6 +119,9 @@ public class SAMLAssertionClaimsCallbackTest {
 
     @BeforeTest
     public void setUp() throws Exception {
+        String carbonHome = Paths.get(System.getProperty("user.dir"), "target").toString();
+        System.setProperty("carbon.home", carbonHome);
+
         oAuthComponentServiceHolder = OAuthComponentServiceHolder.getInstance();
         realmService = mock(RealmService.class);
         oAuthComponentServiceHolder.setRealmService(realmService);

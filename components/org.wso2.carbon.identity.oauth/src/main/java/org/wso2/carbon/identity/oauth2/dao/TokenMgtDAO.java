@@ -2677,10 +2677,6 @@ public class TokenMgtDAO {
                     "authorization codes.");
         }
 
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
-        PreparedStatement updateStateStatement = null;
-        PreparedStatement revokeActiveTokensStatement = null;
-        PreparedStatement deactiveActiveCodesStatement = null;
         String action;
         if (properties.containsKey(OAuthConstants.ACTION_PROPERTY_KEY)) {
             action = properties.getProperty(OAuthConstants.ACTION_PROPERTY_KEY);
@@ -2688,7 +2684,12 @@ public class TokenMgtDAO {
             throw new IdentityOAuth2Exception("Invalid operation.");
         }
 
+        Connection connection = null;
+        PreparedStatement updateStateStatement = null;
+        PreparedStatement revokeActiveTokensStatement = null;
+        PreparedStatement deactivateActiveCodesStatement = null;
         try {
+            connection = IdentityDatabaseUtil.getDBConnection();
             connection.setAutoCommit(false);
             if (OAuthConstants.ACTION_REVOKE.equals(action)) {
                 String newAppState;
@@ -2759,10 +2760,10 @@ public class TokenMgtDAO {
 
             //Deactivate all active authorization codes
             String sqlQuery = SQLQueries.UPDATE_AUTHORIZATION_CODE_STATE_FOR_CONSUMER_KEY;
-            deactiveActiveCodesStatement = connection.prepareStatement(sqlQuery);
-            deactiveActiveCodesStatement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);
-            deactiveActiveCodesStatement.setString(2, consumerKey);
-            deactiveActiveCodesStatement.executeUpdate();
+            deactivateActiveCodesStatement = connection.prepareStatement(sqlQuery);
+            deactivateActiveCodesStatement.setString(1, OAuthConstants.AuthorizationCodeState.REVOKED);
+            deactivateActiveCodesStatement.setString(2, consumerKey);
+            deactivateActiveCodesStatement.executeUpdate();
 
             connection.commit();
 
@@ -2771,7 +2772,7 @@ public class TokenMgtDAO {
         } finally {
             IdentityDatabaseUtil.closeStatement(updateStateStatement);
             IdentityDatabaseUtil.closeStatement(revokeActiveTokensStatement);
-            IdentityDatabaseUtil.closeAllConnections(connection, null, deactiveActiveCodesStatement);
+            IdentityDatabaseUtil.closeAllConnections(connection, null, deactivateActiveCodesStatement);
         }
     }
 

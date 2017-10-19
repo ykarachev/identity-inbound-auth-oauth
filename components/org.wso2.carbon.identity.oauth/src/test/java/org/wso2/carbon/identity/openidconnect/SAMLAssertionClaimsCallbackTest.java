@@ -123,10 +123,13 @@ public class SAMLAssertionClaimsCallbackTest {
         oAuthComponentServiceHolder.setRealmService(realmService);
         userRealm = mock(UserRealm.class);
         when(realmService.getTenantUserRealm(MultitenantConstants.SUPER_TENANT_ID)).thenReturn(userRealm);
+
         userStoreManager = mock(UserStoreManager.class);
         when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
+
         realmConfiguration = mock(RealmConfiguration.class);
         when(userStoreManager.getRealmConfiguration()).thenReturn(realmConfiguration);
+
         when(realmConfiguration.getUserStoreProperty(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR)).
                 thenReturn(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT);
 
@@ -179,14 +182,17 @@ public class SAMLAssertionClaimsCallbackTest {
         when(oAuthAuthzReqMessageContext.getApprovedScope()).thenReturn(approvedScopes);
         when(oAuthAuthzReqMessageContext.getProperty(OAuthConstants.ACCESS_TOKEN))
                 .thenReturn(SAMPLE_ACCESS_TOKEN);
+
         mockStatic(AuthorizationGrantCache.class);
         authorizationGrantCache = mock(AuthorizationGrantCache.class);
         AuthorizationGrantCacheEntry authorizationGrantCacheEntry = mock(AuthorizationGrantCacheEntry.class);
         when(AuthorizationGrantCache.getInstance()).thenReturn(authorizationGrantCache);
         when(authorizationGrantCache.getValueFromCache(any(AuthorizationGrantCacheKey.class))).
                 thenReturn(authorizationGrantCacheEntry);
+
         OAuth2AuthorizeReqDTO oAuth2AuthorizeReqDTO = mock(OAuth2AuthorizeReqDTO.class);
         when(oAuthAuthzReqMessageContext.getAuthorizationReqDTO()).thenReturn(oAuth2AuthorizeReqDTO);
+
         AuthenticatedUser authenticatedUser = mock(AuthenticatedUser.class);
         when(oAuth2AuthorizeReqDTO.getUser()).thenReturn(authenticatedUser);
         when(authenticatedUser.isFederatedUser()).thenReturn(true);
@@ -209,6 +215,6 @@ public class SAMLAssertionClaimsCallbackTest {
         when(userRegistry.get(OAuthConstants.SCOPE_RESOURCE_PATH)).thenReturn(resource);
 
         samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, oAuthAuthzReqMessageContext);
-
+        assertTrue(jwtClaimsSet.getAllClaims().isEmpty());
     }
 }

@@ -1839,11 +1839,153 @@ public class TokenMgtDAOTest extends IdentityBaseTest {
         }
     }
 
+    @DataProvider(name = "invalidateAndCreateNewTokenDataProvider")
+    public Object[][] invalidateAndCreateNewTokenData() {
+
+        return new Object[][]{
+                // Change grant
+                {
+                        MultitenantConstants.SUPER_TENANT_DOMAIN_NAME,
+                        MultitenantConstants.SUPER_TENANT_ID,
+                        UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME,
+                        OAuthConstants.UserType.APPLICATION_USER,
+                        OAuthConstants.GrantTypes.AUTHORIZATION_CODE,
+                        OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED
+                },
+                {
+                        MultitenantConstants.SUPER_TENANT_DOMAIN_NAME,
+                        MultitenantConstants.SUPER_TENANT_ID,
+                        UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME,
+                        OAuthConstants.UserType.APPLICATION_USER,
+                        OAuthConstants.GrantTypes.IMPLICIT,
+                        OAuthConstants.TokenStates.TOKEN_STATE_REVOKED
+                },
+                {
+                        MultitenantConstants.SUPER_TENANT_DOMAIN_NAME,
+                        MultitenantConstants.SUPER_TENANT_ID,
+                        UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME,
+                        OAuthConstants.UserType.APPLICATION_USER,
+                        OAuthConstants.GrantTypes.PASSWORD,
+                        OAuthConstants.TokenStates.TOKEN_STATE_INACTIVE
+                },
+                {
+                        MultitenantConstants.SUPER_TENANT_DOMAIN_NAME,
+                        MultitenantConstants.SUPER_TENANT_ID,
+                        UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME,
+                        OAuthConstants.UserType.APPLICATION_USER,
+                        OAuthConstants.GrantTypes.TOKEN,
+                        OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED
+                },
+                // Change Domain
+                {
+                        MultitenantConstants.SUPER_TENANT_DOMAIN_NAME,
+                        MultitenantConstants.SUPER_TENANT_ID,
+                        SAMPLE_DOMAIN,
+                        OAuthConstants.UserType.APPLICATION_USER,
+                        OAuthConstants.GrantTypes.AUTHORIZATION_CODE,
+                        OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED
+                },
+                // Change Tenant
+                {
+                        SAMPLE_TENANT_DOMAIN,
+                        SAMPLE_TENANT_ID,
+                        UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME,
+                        OAuthConstants.UserType.APPLICATION_USER,
+                        OAuthConstants.GrantTypes.AUTHORIZATION_CODE,
+                        OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED
+                },
+                // Change user type
+                {
+                        MultitenantConstants.SUPER_TENANT_DOMAIN_NAME,
+                        MultitenantConstants.SUPER_TENANT_ID,
+                        UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME,
+                        OAuthConstants.UserType.APPLICATION,
+                        OAuthConstants.GrantTypes.AUTHORIZATION_CODE,
+                        OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED
+                },
+        };
+    }
+
+    @Test(dataProvider = "invalidateAndCreateNewTokenDataProvider")
+    public void invalidateAndCreateNewToken(String tenantDomain, int tenantId, String userStoreDomain, String
+            applicationType, String grantType, String tokenState) throws Exception {
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
+        when(mockedOAuthServerConfiguration.getPersistenceProcessor()).thenReturn(new PlainTextPersistenceProcessor());
+        mockStatic(IdentityUtil.class);
+
+        String consumerKey = UUID.randomUUID().toString();
+        createApplication(consumerKey, UUID.randomUUID().toString(), tenantId);
+        AuthenticatedUser authenticatedUser = getAuthenticatedUser(tenantDomain, userStoreDomain);
+
+        AccessTokenDO existingAccessTokenDO = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            tokenMgtDAO.storeAccessToken(existingAccessTokenDO.getAccessToken(), consumerKey, existingAccessTokenDO,
+                    connection, userStoreDomain);
+        }
+
+        AccessTokenDO newAccessTokenDO = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            mockStatic(IdentityDatabaseUtil.class);
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+            tokenMgtDAO.invalidateAndCreateNewToken(existingAccessTokenDO.getTokenId(), tokenState, consumerKey, UUID
+                    .randomUUID().toString(), newAccessTokenDO, userStoreDomain);
+            assertTrue(OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(getAccessTokenStatusByTokenId(newAccessTokenDO
+                    .getTokenId())));
+            assertTrue(tokenState.equals(getAccessTokenStatusByTokenId(existingAccessTokenDO.getTokenId())));
+        }
+    }
+
+    @Test(dataProvider = "getAccessTokensForUserDataProvider")
+    public void getAccessTokensOfTenant(String tenantDomain, int tenantId, String userStoreDomain, String
+            applicationType, String grantType) throws Exception {
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
+        when(mockedOAuthServerConfiguration.getPersistenceProcessor()).thenReturn(new PlainTextPersistenceProcessor());
+        mockStatic(IdentityUtil.class);
+
+        String consumerKey = UUID.randomUUID().toString();
+        createApplication(consumerKey, UUID.randomUUID().toString(), tenantId);
+        AuthenticatedUser authenticatedUser = getAuthenticatedUser(tenantDomain, userStoreDomain);
+
+        AccessTokenDO accessTokenDO1 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        AccessTokenDO accessTokenDO2 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO2.setScope(new String[] {"scope3"});
+        AccessTokenDO accessTokenDO3 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO3.setTokenState(OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED);
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            tokenMgtDAO.storeAccessToken(accessTokenDO1.getAccessToken(), consumerKey, accessTokenDO1,
+                    connection, userStoreDomain);
+            tokenMgtDAO.storeAccessToken(accessTokenDO2.getAccessToken(), consumerKey, accessTokenDO2,
+                    connection, userStoreDomain);
+            tokenMgtDAO.storeAccessToken(accessTokenDO3.getAccessToken(), consumerKey, accessTokenDO3,
+                    connection, userStoreDomain);
+        }
+
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            mockStatic(IdentityDatabaseUtil.class);
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+            Set<AccessTokenDO> accessTokenDOs = tokenMgtDAO.getAccessTokensOfTenant(tenantId);
+            assertNotNull(accessTokenDOs, "Failed to retrieve access token for a tenant");
+            boolean success = true;
+            for(AccessTokenDO accessTokenDO : accessTokenDOs) {
+                if(accessTokenDO.getTenantID() != tenantId) {
+                    success = false;
+                }
+            }
+            assertTrue(success, "Failed to retrieve access token for a tenant");
+        }
+    }
+
     private AuthzCodeDO persistAuthorizationCode(String consumerKey, String authzCodeId, String authzCode,
                                                  String callbackUrl, String tenantDomain, int tenantId,
                                                  String userStoreDomain, boolean createApplication, String status)
-            throws
-            Exception {
+            throws Exception {
         if (createApplication) {
             createApplication(consumerKey, UUID.randomUUID().toString(), tenantId);
         }

@@ -23,6 +23,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
@@ -57,6 +58,14 @@ import static com.hazelcast.client.nearcache.ClientNearCacheType.Map;
 import static org.mockito.Matchers.*;
 import static org.powermock.api.mockito.PowerMockito.*;
 import static org.testng.Assert.*;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
+import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import static org.powermock.api.mockito.PowerMockito.when;
+import static org.powermock.api.mockito.PowerMockito.whenNew;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
 
 /**
  * This class tests the OAuth2Service class.
@@ -111,6 +120,8 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
     @BeforeMethod
     public void setUp() throws Exception {
         oAuth2Service = new OAuth2Service();
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
     }
 
     @AfterMethod
@@ -139,6 +150,7 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
         when(AuthorizationHandlerManager.getInstance()).thenReturn(authorizationHandlerManager);
         when(authorizationHandlerManager.handleAuthorization((OAuth2AuthorizeReqDTO) anyObject())).
                 thenReturn(mockedOAuth2AuthorizeRespDTO);
+        when(oAuthServerConfiguration.getTimeStampSkewInSeconds()).thenReturn(300L);
         OAuth2AuthorizeRespDTO oAuth2AuthorizeRespDTO = oAuth2Service.authorize(oAuth2AuthorizeReqDTO);
         assertNotNull(oAuth2AuthorizeRespDTO);
     }

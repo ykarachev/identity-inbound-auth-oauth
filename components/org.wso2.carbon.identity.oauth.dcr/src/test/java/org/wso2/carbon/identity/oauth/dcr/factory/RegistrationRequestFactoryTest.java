@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.wso2.carbon.identity.oauth.dcr.factory;
 
 import org.json.simple.JSONArray;
@@ -15,6 +33,8 @@ import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.FrameworkClientException;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityRequestFactory;
 import org.wso2.carbon.identity.application.authentication.framework.inbound.HttpIdentityResponse;
+import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequest;
 
 import java.io.BufferedReader;
@@ -25,10 +45,12 @@ import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
@@ -37,7 +59,6 @@ import static org.powermock.api.mockito.PowerMockito.doAnswer;
 import static org.powermock.api.support.membermodification.MemberMatcher.methodsDeclaredIn;
 import static org.powermock.api.support.membermodification.MemberModifier.suppress;
 import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.fail;
 
 @PrepareForTest(RegistrationRequestFactory.class)
 public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
@@ -47,22 +68,22 @@ public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
     private String ownerName = "dummyOwnerName";
 
     @Mock
-    HttpServletRequest mockHttpRequest;
+    private HttpServletRequest mockHttpRequest;
 
     @Mock
-    HttpServletResponse mockHttpResponse;
+    private HttpServletResponse mockHttpResponse;
 
     @Mock
-    RegistrationRequest.RegistrationRequestBuilder mockRegistrationRequestBuilder;
+    private RegistrationRequest.RegistrationRequestBuilder mockRegistrationRequestBuilder;
 
     @Mock
-    HttpIdentityResponse.HttpIdentityResponseBuilder mockHttpIdentityResponseBuilder;
+    private HttpIdentityResponse.HttpIdentityResponseBuilder mockHttpIdentityResponseBuilder;
 
     @Mock
-    BufferedReader mockReader;
+    private BufferedReader mockReader;
 
     @Mock
-    JSONParser jsonParser;
+    private JSONParser jsonParser;
 
     @BeforeMethod
     private void setUp() {
@@ -70,19 +91,8 @@ public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
         registrationRequestFactory = new RegistrationRequestFactory();
     }
 
-    @DataProvider(name = "JSONOBJECTDataProvider")
+    @DataProvider(name = "jsonObjectDataProvider")
     public Object[][] getData() {
-
-        JSONArray grantTypes = new JSONArray();
-        JSONArray redirectUrls = new JSONArray();
-        JSONArray responseTypes = new JSONArray();
-        JSONArray scopes = new JSONArray();
-        JSONArray contacts = new JSONArray();
-        grantTypes.add("dummyGrantType");
-        redirectUrls.add("dummyRedirectUrl");
-        responseTypes.add("dummyResponseType");
-        contacts.add("dummyContact");
-        scopes.add("dummyScope");
 
         String grantType = "dummyGrantType";
         String redirectUrl = "dummyRedirectUrl";
@@ -90,6 +100,17 @@ public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
         String clientName = "dummyClientName";
         String scope = "dummyScope";
         String contact = "dummyContact";
+
+        JSONArray grantTypes = new JSONArray();
+        JSONArray redirectUrls = new JSONArray();
+        JSONArray responseTypes = new JSONArray();
+        JSONArray scopes = new JSONArray();
+        JSONArray contacts = new JSONArray();
+        grantTypes.add(grantType);
+        redirectUrls.add(redirectUrl);
+        responseTypes.add(responseType);
+        contacts.add(contact);
+        scopes.add(scope);
 
         JSONArray emptyGrantTypes = new JSONArray();
         JSONArray emptyRedirectUrls = new JSONArray();
@@ -114,17 +135,22 @@ public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
         scopesWithInt.add(0);
 
         return new Object[][]{
+                // Check with String values.
                 {grantTypes, redirectUrls, responseTypes, clientName, scopes, contacts, grantTypes},
+                // Check with jsonArray.
                 {grantType, redirectUrl, responseType, clientName, scope, contact, grantType},
+                // Check with empty jsonArray.
                 {emptyGrantTypes, emptyRedirectUrls, emptyResponseTypes, clientName, emptyScopes, emptyContacts,
                         "empty"},
+                // Check with wrong data type values.
                 {0, 0, 0, clientName, 0, 0, "empty"},
+                // Check with Wrong data type values.
                 {grantTypeWithInt, redirectUrlsWithInt, responseTypesWithInt, null, scopesWithInt, contactsWithInt,
                         "empty"}
         };
     }
 
-    @Test(dataProvider = "JSONOBJECTDataProvider")
+    @Test(dataProvider = "jsonObjectDataProvider")
     public void testCreate(Object grantType, Object redirectUrl, Object responseType, String clientName, Object
             scope, Object contact, Object expected) throws Exception {
 
@@ -147,40 +173,54 @@ public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
 
         when(jsonParser.parse(mockReader)).thenReturn(jsonObject);
 
-        String carbonHome = Paths.get(System.getProperty("user.dir"), "src", "test", "resources").toString();
-        System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
-        PrivilegedCarbonContext.startTenantFlow();
-        PrivilegedCarbonContext.getThreadLocalCarbonContext().setUsername(ownerName);
+        try {
+            startTenantFlow();
+            PrivilegedCarbonContext.getThreadLocalCarbonContext().setUsername(ownerName);
 
-        registrationRequestFactory.create(mockRegistrationRequestBuilder, mockHttpRequest, mockHttpResponse);
+            registrationRequestFactory.create(mockRegistrationRequestBuilder, mockHttpRequest, mockHttpResponse);
 
-        if (clientName != null) {
-            assertEquals(registrationRequestProfile.getClientName(), clientName);
-        }
-
-        if (!expected.equals("empty")) {
-            if (expected instanceof String) {
-                assertEquals(registrationRequestProfile.getGrantTypes().get(0), grantType);
-                assertEquals(registrationRequestProfile.getRedirectUris().get(0), redirectUrl);
-                assertEquals(registrationRequestProfile.getContacts().get(0), contact);
-                assertEquals(registrationRequestProfile.getScopes().get(0), scope);
-                assertEquals(registrationRequestProfile.getResponseTypes().get(0), responseType);
-            } else {
-                assertEquals(registrationRequestProfile.getGrantTypes(), grantType);
-                assertEquals(registrationRequestProfile.getRedirectUris(), redirectUrl);
-                assertEquals(registrationRequestProfile.getContacts(), contact);
-                assertEquals(registrationRequestProfile.getScopes(), scope);
-                assertEquals(registrationRequestProfile.getResponseTypes(), responseType);
+            if (clientName != null) {
+                assertEquals(registrationRequestProfile.getClientName(), clientName,
+                        "expected client name is not found in registrationRequestProfile");
             }
 
+            if (!expected.equals("empty")) {
+                if (expected instanceof String) {
+                    assertEquals(registrationRequestProfile.getGrantTypes().get(0), grantType,
+                            "expected grant type is not found in registrationRequestProfile");
+                    assertEquals(registrationRequestProfile.getRedirectUris().get(0), redirectUrl,
+                            "expected redirectUrl is not found in registrationRequestProfile");
+                    assertEquals(registrationRequestProfile.getContacts().get(0), contact,
+                            "expected contact is not found in registrationRequestProfile");
+                    assertEquals(registrationRequestProfile.getScopes().get(0), scope,
+                            "expected scope is not found in registrationRequestProfile");
+                    assertEquals(registrationRequestProfile.getResponseTypes().get(0), responseType,
+                            "expected response type is not found in registrationRequestProfile");
+                } else {
+                    assertEquals(registrationRequestProfile.getGrantTypes(), grantType,
+                            "expected grant type is not found in registrationRequestProfile");
+                    assertEquals(registrationRequestProfile.getRedirectUris(), redirectUrl,
+                            "expected redirect url is not found in registrationRequestProfile");
+                    assertEquals(registrationRequestProfile.getContacts(), contact,
+                            "expected contact is not found in registrationRequestProfile");
+                    assertEquals(registrationRequestProfile.getScopes(), scope,
+                            "expected scope is not found in registrationRequestProfile");
+                    assertEquals(registrationRequestProfile.getResponseTypes(), responseType,
+                            "expected response type is not found in registrationRequestProfile");
+                }
+            }
+            assertEquals(registrationRequestProfile.getOwner(), ownerName,
+                    "expected owner name is not found in registrationRequestProfile");
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
         }
-        assertEquals(registrationRequestProfile.getOwner(), ownerName);
     }
 
-    @Test
+    @Test(expectedExceptions = IdentityException.class)
     public void testCreateWithEmptyRedirectUri() throws Exception {
 
         String grantType = "implicit";
+        // Check redirectUri by assigning wrong data type.
         int redirectUrl = 0;
         JSONObject jsonObject = new JSONObject();
 
@@ -197,17 +237,12 @@ public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
         whenNew(JSONParser.class).withNoArguments().thenReturn(jsonParser);
 
         when(jsonParser.parse(mockReader)).thenReturn(jsonObject);
-
-        String carbonHome = Paths.get(System.getProperty("user.dir"), "src", "test", "resources").toString();
-        System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
-        PrivilegedCarbonContext.startTenantFlow();
-        PrivilegedCarbonContext.getThreadLocalCarbonContext().setUsername(ownerName);
-
         try {
+            startTenantFlow();
+            PrivilegedCarbonContext.getThreadLocalCarbonContext().setUsername(ownerName);
             registrationRequestFactory.create(mockRegistrationRequestBuilder, mockHttpRequest, mockHttpResponse);
-            fail();
-        } catch (FrameworkClientException ex) {
-            assertEquals(ex.getMessage(), "RedirectUris property must have at least one URI value.");
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
         }
     }
 
@@ -227,7 +262,17 @@ public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
             }
         }).when(mockHttpIdentityResponseBuilder).setStatusCode(anyInt());
 
-        final String[] header = new String[2];
+        final String[] header = new String[3];
+        doAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+
+                header[0] = (String) invocation.getArguments()[1];
+                return null;
+            }
+        }).when(mockHttpIdentityResponseBuilder).addHeader(eq(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL),
+                anyString());
+
         doAnswer(new Answer<Object>() {
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
@@ -235,23 +280,45 @@ public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
                 header[1] = (String) invocation.getArguments()[1];
                 return null;
             }
-        }).when(mockHttpIdentityResponseBuilder).addHeader(anyString(), anyString());
+        }).when(mockHttpIdentityResponseBuilder).addHeader(eq(OAuthConstants.HTTP_RESP_HEADER_PRAGMA), anyString());
+
+        doAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+
+                header[2] = (String) invocation.getArguments()[1];
+                return null;
+            }
+        }).when(mockHttpIdentityResponseBuilder).addHeader(eq(HttpHeaders.CONTENT_TYPE), anyString());
 
         FrameworkClientException exception = mock(FrameworkClientException.class);
         when(exception.getMessage()).thenReturn(dummyDescription);
         registrationRequestFactory.handleException(exception, mockHttpRequest, mockHttpResponse);
 
-        assertEquals(header[1], MediaType.APPLICATION_JSON);
-        assertEquals((int) statusCode[0], HttpServletResponse.SC_BAD_REQUEST);
+        assertEquals(header[0], OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE, "Wrong header value " +
+                "for " + OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL);
+        assertEquals(header[1], OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE, "Wrong header value for " +
+                OAuthConstants.HTTP_RESP_HEADER_PRAGMA);
+        assertEquals(header[2], MediaType.APPLICATION_JSON, "Wrong header value for " + HttpHeaders.CONTENT_TYPE);
+
+        assertEquals((int) statusCode[0], HttpServletResponse.SC_BAD_REQUEST, "Status code doesn't match with "
+                + HttpServletResponse.SC_BAD_REQUEST);
     }
 
     @Test
     public void testGenerateErrorResponse() throws Exception {
 
         String dummyError = "dummyError";
-
         JSONObject jsonObject = registrationRequestFactory.generateErrorResponse(dummyError, dummyDescription);
-        assertEquals(jsonObject.get("error"), dummyError);
-        assertEquals(jsonObject.get("error_description"), dummyDescription);
+        assertEquals(jsonObject.get("error"), dummyError, "Response error doesn't match with expected error");
+        assertEquals(jsonObject.get("error_description"), dummyDescription, "Response description doesn't match " +
+                "with expected error");
+    }
+
+    private void startTenantFlow() {
+
+        String carbonHome = Paths.get(System.getProperty("user.dir"), "src", "test", "resources").toString();
+        System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
+        PrivilegedCarbonContext.startTenantFlow();
     }
 }

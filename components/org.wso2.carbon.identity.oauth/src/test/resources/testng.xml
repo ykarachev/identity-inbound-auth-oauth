@@ -1,4 +1,4 @@
-<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ Copyright (c) 2017, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
   ~
@@ -16,47 +16,64 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-
-<suite name="Suite1" verbose="1" >
-
-    <test name="Regression1">
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
+<suite name="org.wso2.carbon.identity.oauth.test.suite" verbose="1">
+    <test name="OAuthTestsWithInfoEnabled" preserve-order="false" parallel="false">
+        <parameter name="log-level" value="info"/>
         <classes>
-            <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest" />
-            <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest" />
-            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandlerTest" />
-            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest" />
-            <class name="org.wso2.carbon.identity.oauth2.OAuth2ServiceTest" />
-            <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackManagerTest"/>
-            <class name="org.wso2.carbon.identity.oauth.callback.DefaultCallbackHandlerTest"/>
-            <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackHandlerRegistryTest"/>
-            <class name="org.wso2.carbon.identity.oauth.tokenvaluegenerator.SHA256GeneratorTest"/>
-            <class name="org.wso2.carbon.identity.oauth.OAuthUtilTest"/>
-            <class name="org.wso2.carbon.identity.oauth.OAuthServiceTest"/>
-            <class name="org.wso2.carbon.identity.oauth2.dao.AccessContextTokenDOTest" />
-            <class name="org.wso2.carbon.identity.oauth2.dao.AuthContextTokenDOTest" />
-            <class name="org.wso2.carbon.identity.oauth2.dao.ScopeMgtDAOTest" />
-            <class name="org.wso2.carbon.identity.oauth2.dao.TokenMgtDAOTest" />
-            <class name="org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAOTest" />
+            <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.OAuth2ServiceTest"/>
         </classes>
     </test>
-    <test name="oauth.config">
+    <test name="org.wso2.carbon.identity.oauth2.dao">
         <classes>
-            <class name="org.wso2.carbon.identity.oauth.config.OAuthCallbackHandlerMetaDataTest" />
-            <class name="org.wso2.carbon.identity.oauth.config.OAuthServerConfigurationTest"/>
-            <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest"/>
-            <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest"/>
-            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandlerTest"/>
-            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.dao.AccessContextTokenDOTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.dao.AuthContextTokenDOTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.dao.ScopeMgtDAOTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.dao.TokenMgtDAOTest"/>
+        </classes>
+    </test>
+    <test name="org.wso2.carbon.identity.oauth">
+        <classes>
             <class name="org.wso2.carbon.identity.oauth.event.AbstractOAuthEventInterceptorTest"/>
+
             <class name="org.wso2.carbon.identity.oauth.tokenprocessor.EncryptionDecryptionPersistenceProcessorTest"/>
             <class name="org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessorTest"/>
+
             <class name="org.wso2.carbon.identity.oauth.util.ClaimCacheKeyTest"/>
             <class name="org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheEntryTest"/>
             <class name="org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheKeyTest"/>
             <class name="org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheTest"/>
             <class name="org.wso2.carbon.identity.oauth.util.UserClaimsTest"/>
+
+            <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackManagerTest"/>
+            <class name="org.wso2.carbon.identity.oauth.callback.DefaultCallbackHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth.callback.OAuthCallbackHandlerRegistryTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.OAuth2ScopeServiceTest"/>
+            <class name="org.wso2.carbon.identity.oauth.tokenvaluegenerator.SHA256GeneratorTest"/>
+            <class name="org.wso2.carbon.identity.oauth.OAuthUtilTest"/>
+            <class name="org.wso2.carbon.identity.oauth.OAuthServiceTest"/>
+            <class name="org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAOTest"/>
+            <class name="org.wso2.carbon.identity.oauth.config.OAuthCallbackHandlerMetaDataTest"/>
+            <class name="org.wso2.carbon.identity.oauth.config.OAuthServerConfigurationTest"/>
+        </classes>
+    </test>
+    <test name="org.wso2.carbon.identity.oauth2.token">
+        <parameter name="log-level" value="info"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.JWTTokenIssuerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.OauthTokenIssuerImplTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.AccessTokenIssuerTest"/>
+
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.AbstractAuthorizationGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.clientauth.BasicAuthClientAuthHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.RefreshGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.ClientCredentialsGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.OAuth2ScopeServiceTest"/>
         </classes>
     </test>
 </suite>

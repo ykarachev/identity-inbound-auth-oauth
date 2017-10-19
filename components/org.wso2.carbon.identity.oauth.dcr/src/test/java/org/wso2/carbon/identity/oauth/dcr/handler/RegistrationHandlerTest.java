@@ -35,7 +35,7 @@ import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
-import static org.testng.Assert.*;
+import static org.testng.Assert.assertEquals;
 
 @PrepareForTest({DCRManagementService.class, RegistrationHandler.class})
 public class RegistrationHandlerTest extends PowerMockTestCase {

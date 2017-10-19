@@ -45,7 +45,7 @@ public class IntrospectionResponseBuilderTest {
     @Test
     public void testResposeBuilderWithVal() {
 
-        String id_token = "eyJhbGciOiJSUzI1NiJ9.eyJhdXRoX3RpbWUiOjE0NTIxNzAxNzYsImV4cCI6MTQ1MjE3Mkzc3Niwic3ViI" +
+        String id_token = "eyJhbGciOiJSUzI1NiJ9.eyJhdXRoX3RpbWUiOjE0NTIxNzAxNzYsImV4cCI6MTQ1MjE3Mzc3Niwic3ViI" +
                 "joidXNlQGNhcmJvbi5zdXBlciIsImF6cCI6IjF5TDFfZnpuekdZdXRYNWdCMDNMNnRYR3lqZ2EiLCJhdF9oYXNoI" +
                 "joiWWljbDFlNTI5WlhZOE9zVDlvM3ktdyIsImF1ZCI6WyIxeUwxX2Z6bnpHWXV0WDVnQjAzTDZ0WEd5amdhIl0s" +
                 "ImlzcyI6Imh0dHBzOlwvXC9sb2NhbGhvc3Q6OTQ0M1wvb2F1dGgyXC90b2tlbiIsImlhdCI6MTQ1MjE3MDE3Nn0.RqAgm0ybe7tQ" +
@@ -73,18 +73,26 @@ public class IntrospectionResponseBuilderTest {
         // Here,if the token is not active we do not want to return back the nbf time.
         assertFalse(jsonObject.has(IntrospectionResponse.NBF), "NBF already exists in the response builder");
 
-        String errorMessage="Values are not equal";
-        assertEquals(jsonObject.get(IntrospectionResponse.IAT), 1452170176,errorMessage);
-        assertEquals(jsonObject.get(IntrospectionResponse.JTI), id_token,errorMessage);
-        assertEquals(jsonObject.get(IntrospectionResponse.SUB), "admin@carbon.super",errorMessage);
-        assertEquals(jsonObject.get(IntrospectionResponse.USERNAME), "admin@carbon.super",errorMessage);
-        assertEquals(jsonObject.get(IntrospectionResponse.TOKEN_TYPE), "Bearer",errorMessage);
-        assertEquals(jsonObject.get(IntrospectionResponse.AUD), "1yL1_fznzGYutX5gB03L6tXGyjga",errorMessage);
-        assertEquals(jsonObject.get(IntrospectionResponse.ISS), "https:\\/\\/localhost:9443\\/oauth2\\/token",errorMessage);
-        assertEquals(jsonObject.get(IntrospectionResponse.SCOPE), "test");
-        assertEquals(jsonObject.get(IntrospectionResponse.CLIENT_ID), "rgfKVdnMQnJSSr_pKFTxj3apiwYa",errorMessage);
-        assertEquals(jsonObject.get(IntrospectionResponse.Error.ERROR), "Invalid input",errorMessage);
-        assertEquals(jsonObject.get(IntrospectionResponse.Error.ERROR_DESCRIPTION), "error_discription",errorMessage);
+        assertEquals(jsonObject.get(IntrospectionResponse.IAT), 1452170176, "IAT values are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.JTI), id_token, "JTI values are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.SUB), "admin@carbon.super",
+                "SUBJECT values are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.USERNAME), "admin@carbon.super",
+                "USERNAME values are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.TOKEN_TYPE), "Bearer",
+                "TOKEN_TYPE values are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.AUD), "1yL1_fznzGYutX5gB03L6tXGyjga",
+                "AUD values are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.ISS), "https:\\/\\/localhost:9443\\/oauth2\\/token",
+                "ISS values are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.SCOPE), "test",
+                "SCOPE values are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.CLIENT_ID), "rgfKVdnMQnJSSr_pKFTxj3apiwYa",
+                "CLIENT_ID values are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.Error.ERROR), "Invalid input",
+                "ERROR messages are not equal");
+        assertEquals(jsonObject.get(IntrospectionResponse.Error.ERROR_DESCRIPTION), "error_discription",
+                "ERROR_DESCRIPTION messages are not equal");
     }
 
     /**

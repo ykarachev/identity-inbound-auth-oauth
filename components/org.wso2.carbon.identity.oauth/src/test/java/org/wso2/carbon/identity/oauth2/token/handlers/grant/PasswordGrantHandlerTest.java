@@ -34,6 +34,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 import org.wso2.carbon.user.core.UserRealm;
 import org.wso2.carbon.user.core.UserStoreManager;
 import org.wso2.carbon.user.core.service.RealmService;
@@ -57,7 +58,7 @@ import static org.testng.Assert.assertTrue;
                 OAuthServerConfiguration.class
         }
 )
-public class PasswordGrantHandlerTest {
+public class PasswordGrantHandlerTest extends PowerMockIdentityBaseTest {
 
     @Mock
     private OAuthTokenReqMessageContext tokReqMsgCtx;

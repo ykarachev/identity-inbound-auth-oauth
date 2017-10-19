@@ -79,6 +79,8 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
     @BeforeMethod
     public void setUp() throws Exception {
         oAuth2Service = new OAuth2Service();
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
     }
 
     @AfterMethod
@@ -107,6 +109,7 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
         when(AuthorizationHandlerManager.getInstance()).thenReturn(authorizationHandlerManager);
         when(authorizationHandlerManager.handleAuthorization((OAuth2AuthorizeReqDTO) anyObject())).
                 thenReturn(mockedOAuth2AuthorizeRespDTO);
+        when(oAuthServerConfiguration.getTimeStampSkewInSeconds()).thenReturn(300L);
         OAuth2AuthorizeRespDTO oAuth2AuthorizeRespDTO = oAuth2Service.authorize(oAuth2AuthorizeReqDTO);
         assertNotNull(oAuth2AuthorizeRespDTO);
     }

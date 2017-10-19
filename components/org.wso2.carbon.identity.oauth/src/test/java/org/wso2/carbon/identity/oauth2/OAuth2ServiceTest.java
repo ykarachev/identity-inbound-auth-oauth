@@ -19,7 +19,6 @@ package org.wso2.carbon.identity.oauth2;
 
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -35,6 +34,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2ClientValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
@@ -50,7 +50,7 @@ import static org.testng.Assert.assertNotNull;
  */
 @PrepareForTest({OAuth2Util.class, AuthorizationHandlerManager.class, OAuth2Service.class, IdentityTenantUtil.class,
         OAuthServerConfiguration.class})
-public class OAuth2ServiceTest extends PowerMockTestCase {
+public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
 
     @Mock
     private OAuth2AuthorizeReqDTO oAuth2AuthorizeReqDTO;

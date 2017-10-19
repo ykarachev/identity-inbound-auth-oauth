@@ -57,16 +57,17 @@ import static org.testng.Assert.assertNull;
 public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
 
     private ScopesApiServiceImpl scopesApiService = new ScopesApiServiceImpl();
-    private final static String SOME_SCOPE_NAME = "scope";
-    private final static String SOME_SCOPE_DESCRIPTION = "some description";
+    private String someScopeName;
+    private String someScopeDescription;
 
     @Mock
     private OAuth2ScopeService oAuth2ScopeService;
 
     @BeforeMethod
     public void setUp() throws Exception {
+        someScopeName = "scope";
+        someScopeDescription = "some description";
         mockStatic(ScopeUtils.class);
-        //mockStatic(OAuth2ScopeService.class);
         when(ScopeUtils.getOAuth2ScopeService()).thenReturn(oAuth2ScopeService);
     }
 
@@ -94,13 +95,13 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
 
         if (Response.Status.OK.equals(expectation)) {
             when(ScopeUtils.getScopeDTO(any(Scope.class))).thenReturn(any(ScopeDTO.class));
-            assertEquals(scopesApiService.updateScope(scopeToUpdateDTO, SOME_SCOPE_NAME).getStatus(),
+            assertEquals(scopesApiService.updateScope(scopeToUpdateDTO, someScopeName).getStatus(),
                     Response.Status.OK.getStatusCode(), "Error occurred while updating scopes");
         } else if (Response.Status.BAD_REQUEST.equals(expectation)) {
             when(oAuth2ScopeService.updateScope(any(Scope.class))).thenThrow(IdentityOAuth2ScopeClientException.class);
             callRealMethod();
             try {
-                scopesApiService.updateScope(scopeToUpdateDTO, SOME_SCOPE_NAME);
+                scopesApiService.updateScope(scopeToUpdateDTO, someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.BAD_REQUEST.getStatusCode(),
                         "Cannot find HTTP Response, Bad Request in Case of " +
@@ -117,7 +118,7 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
             when(oAuth2ScopeService.updateScope(any(Scope.class))).thenThrow(throwable);
             callRealMethod();
             try {
-                scopesApiService.updateScope(scopeToUpdateDTO, SOME_SCOPE_NAME);
+                scopesApiService.updateScope(scopeToUpdateDTO, someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.NOT_FOUND.getStatusCode(),
                         "Cannot find HTTP Response, Not Found in Case of " +
@@ -132,7 +133,7 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
             when(oAuth2ScopeService.updateScope(any(Scope.class))).thenThrow(IdentityOAuth2ScopeException.class);
             callRealMethod();
             try {
-                scopesApiService.updateScope(scopeToUpdateDTO, SOME_SCOPE_NAME);
+                scopesApiService.updateScope(scopeToUpdateDTO, someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                         "Cannot find HTTP Response, Internal Server Error in case of " +
@@ -144,7 +145,6 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
             }
         }
     }
-
 
     @DataProvider(name = "BuildGetScope")
     public Object[][] buildGetApplication() {
@@ -164,14 +164,14 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
     public void testGetScope(Response.Status expectation, Throwable throwable) throws Exception {
 
         if (Response.Status.OK.equals(expectation)) {
-            when(oAuth2ScopeService.getScope(SOME_SCOPE_NAME)).thenReturn(any(Scope.class));
-            assertEquals(scopesApiService.getScope(SOME_SCOPE_NAME).getStatus(), Response.Status.OK.getStatusCode(),
+            when(oAuth2ScopeService.getScope(someScopeName)).thenReturn(any(Scope.class));
+            assertEquals(scopesApiService.getScope(someScopeName).getStatus(), Response.Status.OK.getStatusCode(),
                     "Error occurred while getting a scope");
         } else if (Response.Status.BAD_REQUEST.equals(expectation)) {
-            when(oAuth2ScopeService.getScope(SOME_SCOPE_NAME)).thenThrow(throwable);
+            when(oAuth2ScopeService.getScope(someScopeName)).thenThrow(throwable);
             callRealMethod();
             try {
-                scopesApiService.getScope(SOME_SCOPE_NAME);
+                scopesApiService.getScope(someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.BAD_REQUEST.getStatusCode(),
                         "Cannot find HTTP Response, Bad Request in Case of " +
@@ -185,10 +185,10 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
         } else if (Response.Status.NOT_FOUND.equals(expectation)) {
             ((IdentityOAuth2ScopeException) throwable).setErrorCode(Oauth2ScopeConstants.ErrorMessages.
                     ERROR_CODE_NOT_FOUND_SCOPE.getCode());
-            when(oAuth2ScopeService.getScope(SOME_SCOPE_NAME)).thenThrow(throwable);
+            when(oAuth2ScopeService.getScope(someScopeName)).thenThrow(throwable);
             callRealMethod();
             try {
-                scopesApiService.getScope(SOME_SCOPE_NAME);
+                scopesApiService.getScope(someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.NOT_FOUND.getStatusCode(),
                         "Cannot find HTTP Response, Not Found in Case of " +
@@ -200,11 +200,11 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
                 reset(oAuth2ScopeService);
             }
         } else if (Response.Status.INTERNAL_SERVER_ERROR.equals(expectation)) {
-            when(oAuth2ScopeService.getScope(SOME_SCOPE_NAME)).thenThrow(IdentityOAuth2ScopeException.class);
+            when(oAuth2ScopeService.getScope(someScopeName)).thenThrow(IdentityOAuth2ScopeException.class);
             ;
             callRealMethod();
             try {
-                scopesApiService.getScope(SOME_SCOPE_NAME);
+                scopesApiService.getScope(someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                         "Cannot find HTTP Response, Internal Server Error in case of " +
@@ -217,7 +217,6 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
         }
     }
 
-
     @DataProvider(name = "BuildgetScopes")
     public Object[][] getscopes() {
         return new Object[][]{
@@ -229,7 +228,7 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
     public void testGetScopes(Response.Status expectation) throws Exception {
 
         Set<Scope> scopes = new HashSet<>();
-        scopes.add(new Scope(SOME_SCOPE_NAME, SOME_SCOPE_DESCRIPTION));
+        scopes.add(new Scope(someScopeName, someScopeDescription));
         int startIndex = 0;
         int count = 1;
 
@@ -256,7 +255,6 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
         }
     }
 
-
     @DataProvider(name = "BuildDeleteScope")
     public Object[][] buildDeleteApplication() {
         IdentityOAuth2ScopeClientException identityOAuth2ScopeClientException = new IdentityOAuth2ScopeClientException
@@ -281,7 +279,7 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
             doThrow(throwable).when(oAuth2ScopeService).deleteScope(any(String.class));
             callRealMethod();
             try {
-                scopesApiService.deleteScope(SOME_SCOPE_NAME);
+                scopesApiService.deleteScope(someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.BAD_REQUEST.getStatusCode(),
                         "Cannot find HTTP Response, Bad Request in Case of " +
@@ -298,7 +296,7 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
             doThrow(throwable).when(oAuth2ScopeService).deleteScope(any(String.class));
             callRealMethod();
             try {
-                scopesApiService.deleteScope(SOME_SCOPE_NAME);
+                scopesApiService.deleteScope(someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.NOT_FOUND.getStatusCode(),
                         "Cannot find HTTP Response, Not Found in Case of " +
@@ -404,19 +402,19 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
     public void testIsScopeExists(Response.Status expectation, Throwable throwable) throws Exception {
 
         if (Response.Status.OK.equals(expectation)) {
-            when(oAuth2ScopeService.isScopeExists(SOME_SCOPE_NAME)).thenReturn(Boolean.TRUE);
-            assertEquals(scopesApiService.isScopeExists(SOME_SCOPE_NAME).getStatus(), Response.Status.OK.getStatusCode(),
+            when(oAuth2ScopeService.isScopeExists(someScopeName)).thenReturn(Boolean.TRUE);
+            assertEquals(scopesApiService.isScopeExists(someScopeName).getStatus(), Response.Status.OK.getStatusCode(),
                     "Error occurred while checking is scope exist");
         } else if (Response.Status.NOT_FOUND.equals(expectation)) {
-            when(oAuth2ScopeService.isScopeExists(SOME_SCOPE_NAME)).thenReturn(Boolean.FALSE);
-            assertEquals(scopesApiService.isScopeExists(SOME_SCOPE_NAME).getStatus(),
+            when(oAuth2ScopeService.isScopeExists(someScopeName)).thenReturn(Boolean.FALSE);
+            assertEquals(scopesApiService.isScopeExists(someScopeName).getStatus(),
                     Response.Status.NOT_FOUND.getStatusCode(),
                     "Given scope does not exist but error while checking isExist");
         } else if (Response.Status.BAD_REQUEST.equals(expectation)) {
-            when(oAuth2ScopeService.isScopeExists(SOME_SCOPE_NAME)).thenThrow(throwable);
+            when(oAuth2ScopeService.isScopeExists(someScopeName)).thenThrow(throwable);
             callRealMethod();
             try {
-                scopesApiService.isScopeExists(SOME_SCOPE_NAME);
+                scopesApiService.isScopeExists(someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.BAD_REQUEST.getStatusCode(),
                         "Cannot find HTTP Response, Bad Request in Case of " +
@@ -431,7 +429,7 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
             when(oAuth2ScopeService.isScopeExists("scope")).thenThrow(IdentityOAuth2ScopeException.class);
             callRealMethod();
             try {
-                scopesApiService.isScopeExists(SOME_SCOPE_NAME);
+                scopesApiService.isScopeExists(someScopeName);
             } catch (ScopeEndpointException e) {
                 assertEquals(e.getResponse().getStatus(), Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
                         "Cannot find HTTP Response, Internal Server Error in case of " +
@@ -451,13 +449,6 @@ public class ScopesApiServiceImplTest extends PowerMockIdentityBaseTest {
                 any(String.class), any(String.class), any(String.class), any(boolean.class)).thenCallRealMethod();
         when(ScopeUtils.class, "getErrorDTO", any(String.class), any(String.class),
                 any(String.class)).thenCallRealMethod();
-    }
-
-
-    @ObjectFactory
-    public IObjectFactory getObjectFactory() {
-        return new org.powermock.modules.testng.PowerMockObjectFactory();
-
     }
 
 }

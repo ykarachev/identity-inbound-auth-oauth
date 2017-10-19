@@ -50,6 +50,7 @@ import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.isNull;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.testng.Assert.assertEquals;
@@ -96,10 +97,12 @@ public class PasswordGrantHandlerTest extends PowerMockIdentityBaseTest {
     @DataProvider(name = "ValidateGrantDataProvider")
     public Object[][] buildScopeString() {
         return new Object[][]{
-                {"randomUser", "wso2.com", "wso2.com", 1, true, "randomPassword", true, "DOMAIN", true},
-                {"randomUser", "wso2.com", "test.com", 1, false, "randomPassword", true, "DOMAIN", false},
+                {"randomUser", "wso2.com", "wso2.com", 1, true, "randomPassword", true, "DOMAIN", true, "Password " +
+                        "grant validation should be successful."},
+                {"randomUser", "wso2.com", "test.com", 1, false, "randomPassword", true, "DOMAIN", false, "Password " +
+                        "grant validation should fail."},
                 {"randomUser", "wso2.com", "test.com", MultitenantConstants.INVALID_TENANT_ID, true, "randomPassword",
-                        false, "DOMAIN", false},
+                        false, "DOMAIN", false, "Password grant validation should fail."},
         };
     }
 
@@ -112,7 +115,8 @@ public class PasswordGrantHandlerTest extends PowerMockIdentityBaseTest {
                                   String resourceOwnerPassword,
                                   boolean authenticate,
                                   String domain,
-                                  boolean expected) throws Exception {
+                                  boolean expected,
+                                  String message) throws Exception {
 
         when(tokReqMsgCtx.getOauth2AccessTokenReqDTO()).thenReturn(oAuth2AccessTokenReqDTO);
         when(oAuth2AccessTokenReqDTO.getResourceOwnerUsername()).thenReturn(username + userTenant);
@@ -162,7 +166,7 @@ public class PasswordGrantHandlerTest extends PowerMockIdentityBaseTest {
 
         PasswordGrantHandler passwordGrantHandler = new PasswordGrantHandler();
         boolean actual = passwordGrantHandler.validateGrant(tokReqMsgCtx);
-        assertEquals(actual, expected);
+        assertEquals(actual, expected, message);
     }
 
     @DataProvider(name = "GetValidateGrantForExceptionDataProvider")
@@ -209,17 +213,14 @@ public class PasswordGrantHandlerTest extends PowerMockIdentityBaseTest {
         }
         when(realmService.getTenantUserRealm(anyInt())).thenReturn(userRealm);
         when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
+        when(userStoreManager.authenticate(anyString(), isNull(String.class))).thenThrow(new UserStoreException());
 
         mockStatic(IdentityTenantUtil.class);
         when(IdentityTenantUtil.getTenantIdOfUser(anyString())).thenReturn(1);
 
-        if (password == null) {
-            when(userStoreManager.authenticate(anyString(), anyString())).thenThrow(new UserStoreException());
-        }
-
         PasswordGrantHandler passwordGrantHandler = new PasswordGrantHandler();
         passwordGrantHandler.validateGrant(tokReqMsgCtx);
-        fail();
+        fail("Password grant validation failed.");
     }
 
     @Test

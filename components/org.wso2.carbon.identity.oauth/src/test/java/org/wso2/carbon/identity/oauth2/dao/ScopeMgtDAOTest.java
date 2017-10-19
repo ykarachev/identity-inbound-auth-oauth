@@ -29,6 +29,7 @@ import org.wso2.carbon.identity.oauth2.IdentityOAuth2ScopeException;
 import org.wso2.carbon.identity.oauth2.Oauth2ScopeConstants;
 import org.wso2.carbon.identity.oauth2.bean.Scope;
 import org.wso2.carbon.identity.oauth2.dao.util.DAOUtils;
+import org.wso2.carbon.identity.testutil.IdentityBaseTest;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import java.sql.Connection;
@@ -50,7 +51,7 @@ import static org.testng.Assert.assertTrue;
  */
 
 @PrepareForTest(IdentityDatabaseUtil.class)
-public class ScopeMgtDAOTest {
+public class ScopeMgtDAOTest extends IdentityBaseTest {
 
     private static final int SAMPLE_TENANT_ID = 1;
 

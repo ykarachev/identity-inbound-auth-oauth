@@ -49,6 +49,7 @@ import java.util.Map;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.doCallRealMethod;
@@ -89,7 +90,7 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
 
     private String accessToken = "654564654646456456456456487987";
     static final String clientId = "IbWwXLf5MnKSY6x6gnR_7gd7f1wa";
-    static final String tokeId = "435fgd3535343535353453453453";
+    static final String tokenId = "435fgd3535343535353453453453";
 
     @BeforeMethod
     public void setUp() {
@@ -175,7 +176,24 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
         when(oAuthCache.getValueFromCache(any(OAuthCacheKey.class))).thenReturn(cacheEntry);
 
         when(cacheEntry.getAccessToken()).thenReturn(accessToken);
-        when(cacheEntry.getTokenId()).thenReturn(tokeId);
+        when(cacheEntry.getTokenId()).thenReturn(tokenId);
+        when(cacheEntry.getValidityPeriod()).thenReturn(cachedTokenValidity);
+        when(cacheEntry.getValidityPeriodInMillis()).thenReturn(cachedTokenValidity * 1000);
+        when(cacheEntry.getRefreshTokenValidityPeriodInMillis()).thenReturn(cachedRefreshTokenValidity);
+        if (cachedRefreshTokenValidity > 0) {
+            when(cacheEntry.getRefreshTokenIssuedTime()).thenReturn(new Timestamp(System.currentTimeMillis() -
+                    (60 * 1000)));
+        } else {
+            when(cacheEntry.getRefreshTokenIssuedTime()).thenReturn(new Timestamp(System.currentTimeMillis() -
+                    (1000 * 60 * 1000)));
+        }
+        if (cachedTokenValidity > 0) {
+            when(cacheEntry.getIssuedTime()).thenReturn(new Timestamp(System.currentTimeMillis() -
+                    (1000)));
+        } else {
+            when(cacheEntry.getIssuedTime()).thenReturn(new Timestamp(System.currentTimeMillis() -
+                    (10 * 60 * 1000)));
+        }
 
         when(serverConfiguration.getIdentityOauthTokenIssuer()).thenReturn(oauthIssuer);
 
@@ -200,10 +218,11 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
         when(OAuth2Util.getAppInformationByClientId(any(String.class))).thenReturn(oAuthAppDO);
         when(OAuth2Util.checkAccessTokenPartitioningEnabled()).thenReturn(false);
         when(OAuth2Util.checkUserNameAssertionEnabled()).thenReturn(false);
-        when(OAuth2Util.getTokenExpireTimeMillis(cacheEntry)).thenReturn(cachedTokenValidity);
-        when(OAuth2Util.getRefreshTokenExpireTimeMillis(cacheEntry)).thenReturn(cachedRefreshTokenValidity);
-        when(OAuth2Util.getTokenExpireTimeMillis(accessTokenDO)).thenReturn(dbTokenValidity);
-        when(OAuth2Util.getRefreshTokenExpireTimeMillis(accessTokenDO)).thenReturn(dbRefreshTokenValidity);
+        when(OAuth2Util.calculateValidityInMillis(anyLong(), anyLong())).thenCallRealMethod();
+
+        when(OAuth2Util.getTokenExpireTimeMillis(any(AccessTokenDO.class))).thenCallRealMethod();
+        when(OAuth2Util.getRefreshTokenExpireTimeMillis(any(AccessTokenDO.class))).thenCallRealMethod();
+        when(OAuth2Util.getAccessTokenExpireMillis(any(AccessTokenDO.class))).thenCallRealMethod();
 
         mockStatic(IdentityUtil.class);
         when(IdentityUtil.isUserStoreInUsernameCaseSensitive(any(String.class))).thenReturn(false);
@@ -219,11 +238,22 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
                     anyString(), anyBoolean())).thenReturn(null);
         }
         when(accessTokenDO.getTokenState()).thenReturn(dbTokenState);
+        when(accessTokenDO.getValidityPeriod()).thenReturn(dbTokenValidity);
+        when(accessTokenDO.getValidityPeriodInMillis()).thenReturn(dbTokenValidity * 1000);
+        when(accessTokenDO.getRefreshTokenValidityPeriodInMillis()).thenReturn(dbRefreshTokenValidity);
         if (dbRefreshTokenValidity > 0) {
             when(accessTokenDO.getRefreshTokenIssuedTime()).thenReturn(new Timestamp(System.currentTimeMillis() -
-                    (460 * 60 * 1000)));
+                    (60 * 1000)));
         } else {
-            when(accessTokenDO.getRefreshTokenIssuedTime()).thenReturn(null);
+            when(accessTokenDO.getRefreshTokenIssuedTime()).thenReturn(new Timestamp(System.currentTimeMillis() -
+                    (1000 * 60 * 1000)));
+        }
+        if (dbTokenValidity > 0) {
+            when(accessTokenDO.getIssuedTime()).thenReturn(new Timestamp(System.currentTimeMillis() -
+                    (1000)));
+        } else {
+            when(accessTokenDO.getIssuedTime()).thenReturn(new Timestamp(System.currentTimeMillis() -
+                    (10 * 60 * 1000)));
         }
         when(accessTokenDO.getAccessToken()).thenReturn(accessToken);
 

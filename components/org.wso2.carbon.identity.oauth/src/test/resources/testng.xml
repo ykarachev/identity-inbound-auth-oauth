@@ -35,6 +35,8 @@
     </test>
     <test name="org.wso2.carbon.identity.oauth">
         <classes>
+            <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest" />
+
             <class name="org.wso2.carbon.identity.oauth.event.AbstractOAuthEventInterceptorTest"/>
 
             <class name="org.wso2.carbon.identity.oauth.tokenprocessor.EncryptionDecryptionPersistenceProcessorTest"/>

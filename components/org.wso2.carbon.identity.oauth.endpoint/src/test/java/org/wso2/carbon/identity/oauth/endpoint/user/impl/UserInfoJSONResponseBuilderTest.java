@@ -267,7 +267,6 @@ public class UserInfoJSONResponseBuilderTest extends PowerMockTestCase {
 
     private Map getClaims(String[] inputClaims) {
         Map claimsMap = new HashMap();
-
         for (String claim : inputClaims) {
             if (claim.contains(":")) {
                 String[] keyValue = claim.split(":");
@@ -277,7 +276,6 @@ public class UserInfoJSONResponseBuilderTest extends PowerMockTestCase {
             } else {
                 claimsMap.put(claim, claim + "_value");
             }
-
         }
         return claimsMap;
     }

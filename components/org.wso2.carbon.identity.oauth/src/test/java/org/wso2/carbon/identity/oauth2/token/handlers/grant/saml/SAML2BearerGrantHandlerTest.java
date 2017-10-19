@@ -29,12 +29,9 @@ import org.opensaml.xml.signature.Signature;
 import org.opensaml.xml.signature.SignatureValidator;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockObjectFactory;
 import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.Assert;
-import org.testng.IObjectFactory;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.model.Claim;
@@ -89,11 +86,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
 
     private Assertion assertion;
 
-    @ObjectFactory
-    public IObjectFactory getObjectFactory() {
-
-        return new PowerMockObjectFactory();
-    }
+    private  ServiceProvider serviceProvider;
 
     @Mock
     private OauthTokenIssuer oauthIssuer;
@@ -153,8 +146,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
         when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
         when(oAuthServerConfiguration.getIdentityOauthTokenIssuer()).thenReturn(oauthIssuer);
         saml2BearerGrantHandler = new SAML2BearerGrantHandler();
-        assertion = buildAssertion();
         saml2BearerGrantHandler.init();
+        assertion = buildAssertion();
     }
 
     @Test
@@ -297,13 +290,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
         Assert.assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(),assertion.getSubject().getNameID().getValue());
 
         when(oAuthServerConfiguration.getSaml2BearerTokenUserType()).thenReturn(OAuthConstants.UserType.LOCAL_USER_TYPE);
-        ServiceProvider serviceProvider = new ServiceProvider();
-        serviceProvider.setSaasApp(true);
-        LocalAndOutboundAuthenticationConfig localAndOutboundAuthenticationConfig
-                = new LocalAndOutboundAuthenticationConfig();
-        localAndOutboundAuthenticationConfig.setUseTenantDomainInLocalSubjectIdentifier(false);
-        localAndOutboundAuthenticationConfig.setUseUserstoreDomainInLocalSubjectIdentifier(false);
-        serviceProvider.setLocalAndOutBoundAuthenticationConfig(localAndOutboundAuthenticationConfig);
+        serviceProvider = getServiceprovider(false,false);
         mockStatic(OAuthComponentServiceHolder.class);
         when(OAuthComponentServiceHolder.getInstance()).thenReturn(oAuthComponentServiceHolder);
         when(oAuthComponentServiceHolder.getRealmService()).thenReturn(realmService);
@@ -341,12 +328,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
 
         tokReqMsgCtx = new OAuthTokenReqMessageContext(oAuth2AccessTokenReqDTO);
         saml2BearerGrantHandler = new SAML2BearerGrantHandler();
-        LocalAndOutboundAuthenticationConfig localAndOutboundAuthenticationConfig
-                = new LocalAndOutboundAuthenticationConfig();
-        localAndOutboundAuthenticationConfig.setUseTenantDomainInLocalSubjectIdentifier(false);
-        localAndOutboundAuthenticationConfig.setUseUserstoreDomainInLocalSubjectIdentifier(true);
-        ServiceProvider serviceProvider = new ServiceProvider();
-        serviceProvider.setLocalAndOutBoundAuthenticationConfig(localAndOutboundAuthenticationConfig);
+        serviceProvider = getServiceprovider(false,true);
         AuthenticatedUser authenticatedUser = saml2BearerGrantHandler.buildLocalUser(tokReqMsgCtx, assertion,
                 serviceProvider, TestConstants.CARBON_TENANT_DOMAIN);
         Assert.assertEquals(authenticatedUser.getUserName(), TestConstants.TEST_USER_NAME);
@@ -356,6 +338,18 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
         authenticatedUser = saml2BearerGrantHandler.buildLocalUser(tokReqMsgCtx, assertion,
                 serviceProvider, TestConstants.CARBON_TENANT_DOMAIN);
         Assert.assertEquals(authenticatedUser.getTenantDomain(), TestConstants.CARBON_TENANT_DOMAIN);
+    }
+
+    private ServiceProvider getServiceprovider(boolean isTenantDomainInSubject, boolean isUserstoreDomainInSubject){
+
+        serviceProvider = new ServiceProvider();
+        serviceProvider.setSaasApp(true);
+        LocalAndOutboundAuthenticationConfig localAndOutboundAuthenticationConfig
+                = new LocalAndOutboundAuthenticationConfig();
+        localAndOutboundAuthenticationConfig.setUseTenantDomainInLocalSubjectIdentifier(isTenantDomainInSubject);
+        localAndOutboundAuthenticationConfig.setUseUserstoreDomainInLocalSubjectIdentifier(isUserstoreDomainInSubject);
+        serviceProvider.setLocalAndOutBoundAuthenticationConfig(localAndOutboundAuthenticationConfig);
+        return serviceProvider;
     }
 
     @Test
@@ -420,8 +414,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockTestCase {
                 TestConstants.LOACALHOST_DOMAIN, TestConstants.TEST_USER_NAME);
         authnReqDTO.setNameIDFormat(TestConstants.SAMPLE_NAME_ID_FORMAT);
         authnReqDTO.setIssuer(TestConstants.LOACALHOST_DOMAIN);
-        assertion = SAMLSSOUtil.buildSAMLAssertion(authnReqDTO, new DateTime(System.currentTimeMillis() + 10000000L), TestConstants
-                .SESSION_ID);
+        assertion = SAMLSSOUtil.buildSAMLAssertion(authnReqDTO, new DateTime(System.currentTimeMillis() + 10000000L),
+                TestConstants.SESSION_ID);
         return assertion;
     }
 

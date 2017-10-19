@@ -29,4 +29,7 @@ public final class DAOConstants {
     public static final String AUTHZ_CODE_STATUS_BY_CODE = "SELECT STATE FROM IDN_OAUTH2_AUTHORIZATION_CODE WHERE " +
             "AUTHORIZATION_CODE= ?";
 
+    public static final String TOKEN_STATUS_BY_TOKE = "SELECT TOKEN_STATE FROM IDN_OAUTH2_ACCESS_TOKEN WHERE " +
+            "TOKEN_ID=?";
+
 }

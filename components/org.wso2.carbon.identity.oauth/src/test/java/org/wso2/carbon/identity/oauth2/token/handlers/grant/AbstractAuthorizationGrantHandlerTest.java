@@ -18,13 +18,13 @@
 
 package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 
-import org.apache.commons.logging.Log;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.Assert;
-import org.testng.IObjectFactory;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -40,6 +40,7 @@ import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
 import java.lang.reflect.Field;
 import java.sql.Timestamp;
@@ -49,18 +50,16 @@ import java.util.Map;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.doCallRealMethod;
-import static org.powermock.api.mockito.PowerMockito.doNothing;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.TOKEN_STATE_REVOKED;
 
 @PrepareForTest({OAuth2Util.class, IdentityUtil.class, OAuthServerConfiguration.class, OAuthCache.class})
-public class AbstractAuthorizationGrantHandlerTest {
+public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBaseTest {
 
-    @Mock
-    private Log log;
     @Mock
     private AbstractAuthorizationGrantHandler handler;
     @Mock
@@ -92,59 +91,58 @@ public class AbstractAuthorizationGrantHandlerTest {
     static final String clientId = "IbWwXLf5MnKSY6x6gnR_7gd7f1wa";
     static final String tokeId = "435fgd3535343535353453453453";
 
+    @BeforeMethod
+    public void setUp() {
+        initMocks(this);
+    }
+
+    @AfterMethod
+    public void tearDown() {
+        Mockito.reset(handler, tokReqMsgCtx, oAuth2AccessTokenReqDTO, oAuthAppDO, tokenMgtDAO, oAuthCallbackManager,
+                serverConfiguration, oAuthCache, oauthIssuer, cacheEntry, accessTokenDO, refreshGrantHandler, authenticatedUser);
+    }
+
     @DataProvider(name = "IssueDataProvider")
     public Object[][] buildScopeString() {
         return new Object[][]{
-                {true, true, false, 3600L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
-                {true, true, false, 0L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
-                {true, true, false, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
-                {true, false, false, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
-                {false, false, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, false},
-                {false, false, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, false},
-                {false, false, false, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, false},
-                {false, false, false, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, false},
-                {true, false, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, false},
-                {true, false, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, false},
-                {true, false, false, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, false},
-                {true, false, false, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, false},
+                {true, true, 3600L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
+                {true, true, 0L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
+                {true, true, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
+                {true, false, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
+                {false, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, false},
+                {false, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, false},
+                {false, false, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, false},
+                {false, false, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, false},
+                {true, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, false},
+                {true, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, false},
+                {true, false, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, false},
+                {true, false, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, false},
 
-                {true, true, true, 3600L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
-                {true, true, true, 0L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
-                {true, true, true, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
-                {true, false, true, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
-                {false, false, true, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, false},
-                {false, false, true, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, false},
-                {false, false, true, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, false},
-                {false, false, true, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, false},
-                {true, false, true, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, false},
-                {true, false, true, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, false},
-                {true, false, true, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, false},
-                {true, false, true, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, false},
-
-                {true, true, true, 3600L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, true},
-                {true, true, true, 0L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, true},
-                {true, true, true, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, true},
-                {true, false, true, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, true},
-                {false, false, true, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, true},
-                {false, false, true, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, true},
-                {false, false, true, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, true},
-                {false, false, true, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, true},
-                {true, false, true, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, true},
-                {true, false, true, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, true},
-                {true, false, true, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, true},
-                {true, false, true, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, true},
+                {true, true, 3600L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, true},
+                {true, true, 0L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, true},
+                {true, true, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, true},
+                {true, false, 0L, 0L, 0L, 0L, false, TOKEN_STATE_ACTIVE, true},
+                {false, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, true},
+                {false, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, true},
+                {false, false, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, true},
+                {false, false, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, true},
+                {true, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_ACTIVE, true},
+                {true, false, 0L, 0L, 3600L, 0L, true, TOKEN_STATE_REVOKED, true},
+                {true, false, 0L, 0L, 0L, 0L, true, TOKEN_STATE_ACTIVE, true},
+                {true, false, 0L, 0L, 0L, 3600L, true, TOKEN_STATE_ACTIVE, true},
         };
     }
 
     @Test(dataProvider = "IssueDataProvider")
-    public void testIssue(boolean cacheEnabled, boolean cacheEntryAvailable, boolean debugEnabled, long
-            cachedTokenValidity, long cachedRefreshTokenValidity, long dbTokenValidity, long dbRefreshTokenValidity,
-                          boolean dbEntryAvailable, String dbTokenState, boolean tokenLoggable)
-            throws Exception {
-
-        when(log.isDebugEnabled()).thenReturn(debugEnabled);
-        doNothing().when(log).debug(any());
-        doNothing().when(log).debug(any(), any(Throwable.class));
+    public void testIssue(boolean cacheEnabled,
+                          boolean cacheEntryAvailable,
+                          long cachedTokenValidity,
+                          long cachedRefreshTokenValidity,
+                          long dbTokenValidity,
+                          long dbRefreshTokenValidity,
+                          boolean dbEntryAvailable,
+                          String dbTokenState,
+                          boolean tokenLoggable) throws Exception {
 
         Field field = AbstractAuthorizationGrantHandler.class.getDeclaredField("tokenMgtDAO");
         field.setAccessible(true);
@@ -169,11 +167,6 @@ public class AbstractAuthorizationGrantHandlerTest {
         field = AbstractAuthorizationGrantHandler.class.getDeclaredField("oauthIssuerImpl");
         field.setAccessible(true);
         field.set(handler, oauthIssuer);
-        field.setAccessible(false);
-
-        field = AbstractAuthorizationGrantHandler.class.getDeclaredField("log");
-        field.setAccessible(true);
-        field.set(handler, log);
         field.setAccessible(false);
 
         mockStatic(OAuthCache.class);
@@ -237,10 +230,5 @@ public class AbstractAuthorizationGrantHandlerTest {
         doCallRealMethod().when(handler).issue(any(OAuthTokenReqMessageContext.class));
         OAuth2AccessTokenRespDTO tokenRespDTO = handler.issue(tokReqMsgCtx);
         Assert.assertEquals(tokenRespDTO.getAccessToken(), accessToken, "Returned access token is not as expected.");
-    }
-
-    @ObjectFactory
-    public IObjectFactory getObjectFactory() {
-        return new org.powermock.modules.testng.PowerMockObjectFactory();
     }
 }

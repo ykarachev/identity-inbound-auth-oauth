@@ -49,6 +49,9 @@ public class DCRMUtilsTest {
         registrationRequestDTO.setRedirectUris(redirectUris);
         registrationRequestDTO.setGrantTypes(grantTypes);
         Assert.assertNotNull(DCRMUtils.getApplicationRegistrationRequest(registrationRequestDTO));
+        Assert.assertEquals(DCRMUtils.getApplicationRegistrationRequest(registrationRequestDTO).getClientName(), client_name);
+        Assert.assertEquals(DCRMUtils.getApplicationRegistrationRequest(registrationRequestDTO).getGrantTypes(), grantTypes);
+        Assert.assertEquals(DCRMUtils.getApplicationRegistrationRequest(registrationRequestDTO).getRedirectUris(), redirectUris);
     }
 
     @Test
@@ -58,6 +61,9 @@ public class DCRMUtilsTest {
         updateRequestDTO.setRedirectUris(redirectUris);
         updateRequestDTO.setGrantTypes(grantTypes);
         Assert.assertNotNull(DCRMUtils.getApplicationUpdateRequest(updateRequestDTO));
+        Assert.assertEquals(DCRMUtils.getApplicationUpdateRequest(updateRequestDTO).getClientName(), client_name);
+        Assert.assertEquals(DCRMUtils.getApplicationUpdateRequest(updateRequestDTO).getGrantTypes(), grantTypes);
+        Assert.assertEquals(DCRMUtils.getApplicationUpdateRequest(updateRequestDTO).getRedirectUris(), redirectUris);
     }
 
     @DataProvider(name = "BuildDCRMException")
@@ -78,7 +84,7 @@ public class DCRMUtilsTest {
 
     @Test(dataProvider = "BuildDCRMException", expectedExceptions = DCRMEndpointException.class)
     public void testHandleErrorResponse(DCRMException dcrmException) throws Exception {
-        Log log =null;
+        Log log = null;
         DCRMUtils.handleErrorResponse(dcrmException, log);
     }
 

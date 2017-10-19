@@ -460,7 +460,7 @@ public class OAuth2TokenEndpointTest extends TestOAuthEndpointBase {
         mockStatic(IdentityDatabaseUtil.class);
         when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
-        connection.close();
+        connection.close(); // Closing connection to manipulate SQLException
         Response response = oAuth2TokenEndpoint.issueAccessToken(request, new MultivaluedHashMap<String, String>());
         assertNotNull(response, "Token response is null");
         assertEquals(response.getStatus(), HttpServletResponse.SC_NOT_FOUND,

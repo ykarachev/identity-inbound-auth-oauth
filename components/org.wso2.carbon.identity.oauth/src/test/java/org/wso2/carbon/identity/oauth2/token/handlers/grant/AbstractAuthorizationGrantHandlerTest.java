@@ -31,6 +31,8 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.callback.OAuthCallbackManager;
+import org.wso2.carbon.identity.oauth.common.GrantType;
+import org.wso2.carbon.identity.oauth.config.OAuthCallbackHandlerMetaData;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
@@ -45,7 +47,9 @@ import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 import java.lang.reflect.Field;
 import java.sql.Timestamp;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
@@ -60,6 +64,9 @@ import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.T
 
 @PrepareForTest({OAuth2Util.class, IdentityUtil.class, OAuthServerConfiguration.class, OAuthCache.class})
 public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBaseTest {
+
+    private static final String DEFAULT_CALLBACK_HANDLER_CLASS_NAME =
+            "org.wso2.carbon.identity.oauth.callback.DefaultCallbackHandler";
 
     @Mock
     private AbstractAuthorizationGrantHandler handler;
@@ -104,7 +111,7 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
     }
 
     @DataProvider(name = "IssueDataProvider")
-    public Object[][] buildScopeString() {
+    public Object[][] issueDataProvider() {
         return new Object[][]{
                 {true, true, 3600L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
                 {true, true, 0L, 3600L, 0L, 0L, false, TOKEN_STATE_ACTIVE, false},
@@ -260,5 +267,40 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
         doCallRealMethod().when(handler).issue(any(OAuthTokenReqMessageContext.class));
         OAuth2AccessTokenRespDTO tokenRespDTO = handler.issue(tokReqMsgCtx);
         Assert.assertEquals(tokenRespDTO.getAccessToken(), accessToken, "Returned access token is not as expected.");
+    }
+
+    @DataProvider(name = "AuthorizeAccessDelegationDataProvider")
+    public Object[][] buildAuthorizeAccessDelegationDataProvider() {
+        return new Object[][]{
+                {GrantType.SAML20_BEARER.toString()},
+                {GrantType.IWA_NTLM.toString()},
+                {"password"}
+        };
+    }
+
+    @Test(dataProvider = "AuthorizeAccessDelegationDataProvider")
+    public void testAuthorizeAccessDelegation(String grantType) throws Exception {
+        Set<OAuthCallbackHandlerMetaData> callbackHandlerMetaData = new HashSet<>();
+        callbackHandlerMetaData.add(new OAuthCallbackHandlerMetaData(DEFAULT_CALLBACK_HANDLER_CLASS_NAME, null, 1));
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(serverConfiguration);
+        when(serverConfiguration.getCallbackHandlerMetaData()).thenReturn(callbackHandlerMetaData);
+
+        OAuthCallbackManager oAuthCallbackManager = new OAuthCallbackManager();
+        Field field = AbstractAuthorizationGrantHandler.class.getDeclaredField("callbackManager");
+        field.setAccessible(true);
+        field.set(handler, oAuthCallbackManager);
+        field.setAccessible(false);
+
+        when(oAuth2AccessTokenReqDTO.getClientId()).thenReturn(clientId);
+        when(oAuth2AccessTokenReqDTO.getGrantType()).thenReturn(grantType);
+
+        when(tokReqMsgCtx.getOauth2AccessTokenReqDTO()).thenReturn(oAuth2AccessTokenReqDTO);
+        when(tokReqMsgCtx.getAuthorizedUser()).thenReturn(authenticatedUser);
+
+        when(authenticatedUser.toString()).thenReturn("randomUser");
+        doCallRealMethod().when(handler).authorizeAccessDelegation(any(OAuthTokenReqMessageContext.class));
+        boolean result = handler.authorizeAccessDelegation(tokReqMsgCtx);
+        Assert.assertTrue(result);
     }
 }

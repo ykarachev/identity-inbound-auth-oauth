@@ -562,7 +562,7 @@ public class OAuth2Service extends AbstractAdmin {
     }
 
     public boolean isPKCESupportEnabled() {
-        return OAuth2Util.isPKCESupportEnabled();
+            return OAuth2Util.isPKCESupportEnabled();
     }
     private void addRevokeResponseHeaders(OAuthRevocationResponseDTO revokeResponseDTP, String accessToken,
                                           String refreshToken, String authorizedUser) {

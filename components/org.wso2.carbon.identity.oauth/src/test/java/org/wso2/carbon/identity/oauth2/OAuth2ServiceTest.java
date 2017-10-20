@@ -27,7 +27,6 @@ import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
@@ -47,6 +46,8 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2ClientValidationResponseDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuthRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuthRevocationResponseDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -54,8 +55,12 @@ import org.wso2.carbon.identity.oauth2.model.RefreshTokenValidationDataDO;
 import org.wso2.carbon.identity.oauth2.token.AccessTokenIssuer;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
+import org.wso2.carbon.user.core.UserRealm;
+import org.wso2.carbon.user.core.UserStoreManager;
+import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
@@ -85,7 +90,8 @@ import static org.testng.AssertJUnit.assertTrue;
         AccessTokenIssuer.class,
         OAuthComponentServiceHolder.class,
         OAuthUtil.class,
-        OAuthCache.class
+        OAuthCache.class,
+        MultitenantUtils.class
 })
 public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
 
@@ -242,7 +248,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         };
     }
 
-    @Test(dataProvider = "ExceptionforIssueAccess token")
+    @Test(dataProvider = "ExceptionforIssueAccessToken")
     public void testExceptionForIssueAccesstoken(Object exception, String errorMsg) throws IdentityException {
 
         AccessTokenIssuer accessTokenIssuer = mock(AccessTokenIssuer.class);
@@ -333,24 +339,28 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
      * DataProvider: ErrorMsg, Enable to set Details on revokeRequest,
      * Enable to throw Identity Exception,
      * Enable to throw InvalidOAuthClientException.
+     * Enable unauthorized client error
      */
     @DataProvider(name = "ExceptionforRevokeTokenByOAuthClient")
     public Object[][] createRevokeTokenException() {
         return new Object[][]{
-                {"Error occurred while revoking authorization grant for applications", true, true, false},
-                {"Invalid revocation request", false, false, false},
-                {"Unauthorized Client", true, false, true},
+                {"Error occurred while revoking authorization grant for applications", true, true, false, false},
+                {"Invalid revocation request", false, false, false, false},
+                {"Unauthorized Client", true, false, true, false},
+                {"Unauthorized Client", true, false, false, true},
         };
     }
 
     @Test(dataProvider = "ExceptionforRevokeTokenByOAuthClient")
     public void testIdentityOAuth2ExceptionForRevokeTokenByOAuthClient(
-            String errorMsg, boolean setDetails, boolean enableExp1, boolean enableExp2) throws Exception {
+            String errorMsg, boolean setDetails, boolean enableExp1, boolean enableExp2,
+            boolean enableExp3) throws Exception {
 
         setUpRevokeToken();
         AccessTokenDO accessTokenDO = new AccessTokenDO();
         accessTokenDO.setConsumerKey("testConsumerKey");
         accessTokenDO.setAuthzUser(authenticatedUser);
+        accessTokenDO.setGrantType(GrantType.CLIENT_CREDENTIALS.toString());
         if (enableExp1) {
             doThrow(new IdentityOAuth2Exception("")).when(oAuthEventInterceptorProxy)
                     .onPreTokenRevocationByClient(any(OAuthRevocationRequestDTO.class), anyMap());
@@ -358,6 +368,10 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         if (enableExp2) {
             when(OAuth2Util.authenticateClient(anyString(), anyString()))
                     .thenThrow(new InvalidOAuthClientException(" "));
+        }
+        if (enableExp3) {
+            when(OAuth2Util.authenticateClient(anyString(), anyString()))
+                    .thenReturn(false);
         }
         TokenMgtDAO tokenMgtDAO = mock(TokenMgtDAO.class);
         doNothing().when(tokenMgtDAO).revokeTokens(any(String[].class));
@@ -368,12 +382,79 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
             revokeRequestDTO.setConsumerKey("testConsumerKey");
             revokeRequestDTO.setToken("testToken");
         }
-        revokeRequestDTO.setToken_type(GrantType.CLIENT_CREDENTIALS.toString());
+        revokeRequestDTO.setToken_type(GrantType.REFRESH_TOKEN.toString());
 
         when(oAuthCache.getValueFromCache(any(OAuthCacheKey.class))).thenReturn(accessTokenDO);
         mockStatic(OAuthCache.class);
         when(OAuthCache.getInstance()).thenReturn(oAuthCache);
         assertEquals(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).getErrorMsg(), errorMsg);
+    }
+
+    /**
+     * DataProvider: map,claims array,supported claim array, size of expected out put,username
+     */
+    @DataProvider(name = "provideUserClaims")
+    public Object[][] createUserClaims() {
+
+        Map<String, String> testMap1 = new HashMap<>();
+        testMap1.put("http://wso2.org/claims/emailaddress", "test@wso2.com");
+        testMap1.put("http://wso2.org/claims/givenname", "testFirstName");
+        testMap1.put("http://wso2.org/claims/lastname", "testLastName");
+
+        Map<String, String> testMap2 = new HashMap<>();
+        return new Object[][]{
+                {testMap1, new String[]{"openid"}, new String[]{"test"}, 9, "testUser"},
+                {testMap1, new String[]{"openid"}, new String[]{"test"}, 0, null},
+                {testMap2, new String[]{"openid"}, new String[]{}, 1, "testUser"},
+                {testMap2, new String[]{}, new String[]{"test"}, 0, "testUser"},
+        };
+    }
+
+    @Test(dataProvider = "provideUserClaims")
+    public void testGetUserClaims(Object map, String[] claims, String[] supClaims,
+                                  int arraySize, String username) throws Exception {
+
+        OAuth2TokenValidationResponseDTO respDTO = mock(OAuth2TokenValidationResponseDTO.class);
+        when(respDTO.getAuthorizedUser()).thenReturn(username);
+        when(respDTO.getScope()).thenReturn(claims);
+
+        OAuth2TokenValidationService oAuth2TokenValidationService = mock(OAuth2TokenValidationService.class);
+        when(oAuth2TokenValidationService.validate(any(OAuth2TokenValidationRequestDTO.class))).thenReturn(respDTO);
+        whenNew(OAuth2TokenValidationService.class).withAnyArguments().thenReturn(oAuth2TokenValidationService);
+
+        mockStatic(MultitenantUtils.class);
+        when(MultitenantUtils.getTenantDomain(anyString())).thenReturn("testTenant");
+        when(MultitenantUtils.getTenantAwareUsername(anyString())).thenReturn("testUser");
+
+        UserStoreManager userStoreManager = mock(UserStoreManager.class);
+        when(userStoreManager.getUserClaimValues(anyString(), any(String[].class), anyString())).thenReturn((Map) map);
+        UserRealm testRealm = mock(UserRealm.class);
+        when(testRealm.getUserStoreManager()).thenReturn(userStoreManager);
+        mockStatic(IdentityTenantUtil.class);
+        when(IdentityTenantUtil.getRealm(anyString(), anyString())).thenReturn(testRealm);
+
+        when(oAuthServerConfiguration.getSupportedClaims()).thenReturn(supClaims);
+        assertEquals(oAuth2Service.getUserClaims("test").length, arraySize);
+    }
+
+    @Test
+    public void testExceptionForGetUserClaims() throws Exception {
+
+        OAuth2TokenValidationResponseDTO respDTO = mock(OAuth2TokenValidationResponseDTO.class);
+        when(respDTO.getAuthorizedUser()).thenReturn("testUser");
+        when(respDTO.getScope()).thenReturn(new String[]{"openid"});
+
+        OAuth2TokenValidationService oAuth2TokenValidationService = mock(OAuth2TokenValidationService.class);
+        when(oAuth2TokenValidationService.validate(any(OAuth2TokenValidationRequestDTO.class))).thenReturn(respDTO);
+        whenNew(OAuth2TokenValidationService.class).withAnyArguments().thenReturn(oAuth2TokenValidationService);
+
+        mockStatic(MultitenantUtils.class);
+        when(MultitenantUtils.getTenantDomain(anyString())).thenReturn("testTenant");
+        when(MultitenantUtils.getTenantAwareUsername(anyString())).thenReturn("testUser");
+
+        mockStatic(IdentityTenantUtil.class);
+        when(IdentityTenantUtil.getRealm(anyString(), anyString())).thenThrow(new IdentityException(""));
+        assertEquals(oAuth2Service.getUserClaims("test").length, 1);
     }
 
     private void setUpRevokeToken() throws Exception {

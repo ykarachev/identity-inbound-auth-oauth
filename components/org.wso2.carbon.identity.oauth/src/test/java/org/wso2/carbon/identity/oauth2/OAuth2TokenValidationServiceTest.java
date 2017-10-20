@@ -83,7 +83,7 @@ public class OAuth2TokenValidationServiceTest extends PowerMockTestCase {
         when(mockedValidationHandler.validate(any(OAuth2TokenValidationRequestDTO.class))).thenReturn
                 (mockedOAuth2TokenValidationResponseDTO);
 
-        assertNotNull(tokenValidationService.validate(mockedTokenValidationRequestDTO));
+        assertNotNull(tokenValidationService.validate(mockedTokenValidationRequestDTO), "Expected a not null object.");
     }
 
     @Test
@@ -91,10 +91,10 @@ public class OAuth2TokenValidationServiceTest extends PowerMockTestCase {
         when(mockedOAuthEventInterceptor.isEnabled()).thenReturn(true);
         doThrow(new IdentityOAuth2Exception("dummyException")).when(mockedOAuthEventInterceptor).onPreTokenValidation
                 (any(OAuth2TokenValidationRequestDTO.class), anyMap());
-        OAuth2TokenValidationResponseDTO oAuth2TokenValidationResponseDTO = tokenValidationService.validate(mockedTokenValidationRequestDTO);
 
-        assertNotNull(oAuth2TokenValidationResponseDTO);
-        assertEquals(oAuth2TokenValidationResponseDTO.getErrorMsg(), "dummyException");
+        OAuth2TokenValidationResponseDTO oAuth2TokenValidationResponseDTO = tokenValidationService.validate(mockedTokenValidationRequestDTO);
+        assertNotNull(oAuth2TokenValidationResponseDTO, "Expected a not null object");
+        assertEquals(oAuth2TokenValidationResponseDTO.getErrorMsg(), "dummyException", "Expected error message did not received");
     }
 
     @Test
@@ -104,11 +104,11 @@ public class OAuth2TokenValidationServiceTest extends PowerMockTestCase {
 
         doThrow(new IdentityOAuth2Exception("dummyException")).when(mockedValidationHandler).validate(any
                 (OAuth2TokenValidationRequestDTO.class));
+
         OAuth2TokenValidationResponseDTO oAuth2TokenValidationResponseDTO = tokenValidationService.validate
                 (mockedTokenValidationRequestDTO);
-
-        assertNotNull(oAuth2TokenValidationResponseDTO);
-        assertEquals(oAuth2TokenValidationResponseDTO.getErrorMsg(), errorMsg);
+        assertNotNull(oAuth2TokenValidationResponseDTO, "Expected a not null object");
+        assertEquals(oAuth2TokenValidationResponseDTO.getErrorMsg(), errorMsg, "Expected error message did not received");
     }
 
     @Test
@@ -118,28 +118,29 @@ public class OAuth2TokenValidationServiceTest extends PowerMockTestCase {
         when(mockedValidationHandler.validate(any(OAuth2TokenValidationRequestDTO.class))).thenReturn
                 (mockedOAuth2TokenValidationResponseDTO);
 
-        assertNotNull(tokenValidationService.validate(mockedTokenValidationRequestDTO));
+        assertNotNull(tokenValidationService.validate(mockedTokenValidationRequestDTO), "Expected to be not null");
     }
 
     @Test
     public void testFindOAuthConsumerIfTokenIsValid() throws Exception {
         when(mockedValidationHandler.findOAuthConsumerIfTokenIsValid(any(OAuth2TokenValidationRequestDTO.class)))
                 .thenReturn(mockedClientApplicationDTO);
+
         OAuth2ClientApplicationDTO oAuth2ClientApplicationDTO = tokenValidationService.findOAuthConsumerIfTokenIsValid
                 (mockedTokenValidationRequestDTO);
-
-        assertNotNull(oAuth2ClientApplicationDTO);
+        assertNotNull(oAuth2ClientApplicationDTO, "Expected to be not null");
     }
 
     @Test
     public void testFindOAuthConsumerIfTokenIsValidWithException() throws Exception {
         when(mockedValidationHandler.findOAuthConsumerIfTokenIsValid(any(OAuth2TokenValidationRequestDTO.class)))
                 .thenThrow(new IdentityOAuth2Exception("dummyException"));
+
         OAuth2ClientApplicationDTO oAuth2ClientApplicationDTO = tokenValidationService.findOAuthConsumerIfTokenIsValid
                 (mockedTokenValidationRequestDTO);
-
-        assertNotNull(oAuth2ClientApplicationDTO);
-        assertEquals(oAuth2ClientApplicationDTO.getAccessTokenValidationResponse().getErrorMsg(), "dummyException");
+        assertNotNull(oAuth2ClientApplicationDTO, "Expected a not null object");
+        assertEquals(oAuth2ClientApplicationDTO.getAccessTokenValidationResponse().getErrorMsg(), "dummyException",
+                "Expected error message did not received");
     }
 
     @Test
@@ -154,8 +155,7 @@ public class OAuth2TokenValidationServiceTest extends PowerMockTestCase {
 
         OAuth2IntrospectionResponseDTO oAuth2IntrospectionResponseDTO = tokenValidationService
                 .buildIntrospectionResponse(mockedOAuth2TokenValidationRequestDTO);
-
-        assertNotNull(oAuth2IntrospectionResponseDTO);
+        assertNotNull(oAuth2IntrospectionResponseDTO, "Expected to be not null");
     }
 
     @Test
@@ -163,11 +163,11 @@ public class OAuth2TokenValidationServiceTest extends PowerMockTestCase {
         when(mockedOAuthEventInterceptor.isEnabled()).thenReturn(true);
         doThrow(new IdentityOAuth2Exception("dummyException")).when(mockedOAuthEventInterceptor).onPreTokenValidation
                 (any(OAuth2TokenValidationRequestDTO.class), anyMap());
+
         OAuth2IntrospectionResponseDTO oAuth2IntrospectionResponseDTO = tokenValidationService
                 .buildIntrospectionResponse(mockedOAuth2TokenValidationRequestDTO);
-
-        assertNotNull(oAuth2IntrospectionResponseDTO);
-        assertEquals(oAuth2IntrospectionResponseDTO.getError(), "dummyException");
+        assertNotNull(oAuth2IntrospectionResponseDTO, "Expected a not null object");
+        assertEquals(oAuth2IntrospectionResponseDTO.getError(), "dummyException", "Expected error message did not received");
     }
 
     @Test
@@ -177,11 +177,11 @@ public class OAuth2TokenValidationServiceTest extends PowerMockTestCase {
 
         when(mockedValidationHandler.buildIntrospectionResponse(any(OAuth2TokenValidationRequestDTO.class)))
                 .thenThrow(new IdentityOAuth2Exception("dummyException"));
+
         OAuth2IntrospectionResponseDTO oAuth2IntrospectionResponseDTO = tokenValidationService.buildIntrospectionResponse
                 (mockedOAuth2TokenValidationRequestDTO);
-
-        assertNotNull(oAuth2IntrospectionResponseDTO);
-        assertEquals(oAuth2IntrospectionResponseDTO.getError(), errorMsg);
+        assertNotNull(oAuth2IntrospectionResponseDTO, "Expected a not null object");
+        assertEquals(oAuth2IntrospectionResponseDTO.getError(), errorMsg, "Expected error message did not received");
     }
 
     @Test
@@ -192,6 +192,6 @@ public class OAuth2TokenValidationServiceTest extends PowerMockTestCase {
                 .thenReturn(mockedIntrospectionResponseDTO);
         when(mockedOAuthComponentServiceHolder.getOAuthEventInterceptorProxy()).thenReturn(null);
 
-        assertNotNull(tokenValidationService.buildIntrospectionResponse(mockedOAuth2TokenValidationRequestDTO));
+        assertNotNull(tokenValidationService.buildIntrospectionResponse(mockedOAuth2TokenValidationRequestDTO), "Expected to be not null");
     }
 }

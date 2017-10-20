@@ -357,7 +357,6 @@ public class OAuth2Util {
     public static boolean authenticateClient(String clientId, String clientSecretProvided)
             throws IdentityOAuthAdminException, IdentityOAuth2Exception, InvalidOAuthClientException {
 
-
         boolean cacheHit = false;
         String clientSecret = null;
 

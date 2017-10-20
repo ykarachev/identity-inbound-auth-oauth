@@ -21,7 +21,6 @@ import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.testng.PowerMockTestCase;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -29,9 +28,7 @@ import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.OAuthUtil;
-import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
@@ -45,27 +42,36 @@ import org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcess
 import org.wso2.carbon.identity.oauth.tokenprocessor.TokenPersistenceProcessor;
 import org.wso2.carbon.identity.oauth2.authz.AuthorizationHandlerManager;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
-import org.wso2.carbon.identity.oauth2.dto.*;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2ClientValidationResponseDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuthRevocationRequestDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuthRevocationResponseDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.RefreshTokenValidationDataDO;
 import org.wso2.carbon.identity.oauth2.token.AccessTokenIssuer;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
-import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.HashMap;
 
-import static com.hazelcast.client.nearcache.ClientNearCacheType.Map;
-import static org.mockito.Matchers.*;
-import static org.powermock.api.mockito.PowerMockito.*;
-import static org.testng.Assert.*;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyMap;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
+import static org.powermock.api.mockito.PowerMockito.doNothing;
+import static org.powermock.api.mockito.PowerMockito.doThrow;
+import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.AssertJUnit.assertTrue;
 
 /**
  * This class tests the OAuth2Service class.
@@ -81,7 +87,7 @@ import static org.testng.Assert.assertNotNull;
         OAuthUtil.class,
         OAuthCache.class
 })
-public class OAuth2ServiceTest extends PowerMockTestCase {
+public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
 
     @Mock
     private OAuth2AuthorizeReqDTO oAuth2AuthorizeReqDTO;
@@ -90,28 +96,28 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
     private AuthorizationHandlerManager authorizationHandlerManager;
 
     @Mock
-    OAuth2AuthorizeRespDTO mockedOAuth2AuthorizeRespDTO;
+    private OAuth2AuthorizeRespDTO mockedOAuth2AuthorizeRespDTO;
 
     @Mock
-    OAuthAppDAO oAuthAppDAO;
+    private OAuthAppDAO oAuthAppDAO;
 
     @Mock
-    OAuthAppDO oAuthAppDO;
+    private OAuthAppDO oAuthAppDO;
 
     @Mock
-    AuthenticatedUser authenticatedUser;
+    private AuthenticatedUser authenticatedUser;
 
     @Mock
-    OAuthEventInterceptor oAuthEventInterceptorProxy;
+    private OAuthEventInterceptor oAuthEventInterceptorProxy;
 
     @Mock
     private OAuthServerConfiguration oAuthServerConfiguration;
 
     @Mock
-    OAuthComponentServiceHolder oAuthComponentServiceHolder;
+    private OAuthComponentServiceHolder oAuthComponentServiceHolder;
 
     @Mock
-    OAuthCache oAuthCache;
+    private OAuthCache oAuthCache;
 
     OAuth2Service oAuth2Service;
     static final String clientId = "IbWwXLf5MnKSY6x6gnR_7gd7f1wa";
@@ -120,6 +126,7 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
     @BeforeMethod
     public void setUp() throws Exception {
         oAuth2Service = new OAuth2Service();
+        when(oAuthServerConfiguration.getTimeStampSkewInSeconds()).thenReturn(3600L);
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
     }
@@ -245,11 +252,6 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
     @Test
     public void testIsPKCESupportEnabled() {
 
-        OAuthServerConfiguration oAuthServerConfiguration = mock(OAuthServerConfiguration.class);
-        when(oAuthServerConfiguration.getTimeStampSkewInSeconds()).thenReturn(3600L);
-
-        mockStatic(OAuthServerConfiguration.class);
-        when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
         mockStatic(OAuth2Util.class);
         when(OAuth2Util.isPKCESupportEnabled()).thenReturn(true);
         assertTrue(oAuth2Service.isPKCESupportEnabled());
@@ -267,11 +269,10 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
         refreshTokenValidationDataDO.setScope(new String[]{"test"});
         refreshTokenValidationDataDO.setRefreshTokenState(OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
 
-        TokenMgtDAO tokenMgtDAO = mock(TokenMgtDAO.class);    //mock methods for tokenMgtDAO
+        TokenMgtDAO tokenMgtDAO = mock(TokenMgtDAO.class);
         when(tokenMgtDAO.validateRefreshToken(anyString(), anyString())).thenReturn(refreshTokenValidationDataDO);
         whenNew(TokenMgtDAO.class).withAnyArguments().thenReturn(tokenMgtDAO);
         doNothing().when(tokenMgtDAO).revokeTokens(any(String[].class));
-
         OAuthRevocationRequestDTO revokeRequestDTO = new OAuthRevocationRequestDTO();
         assertEquals(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).getErrorMsg(),
                 "Invalid revocation request");
@@ -303,13 +304,10 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
         accessTokenDO.setConsumerKey("testCosumerKey");
         accessTokenDO.setAuthzUser(authenticatedUser);
 
-
-        TokenMgtDAO tokenMgtDAO = mock(TokenMgtDAO.class);    //mock methods for tokenMgtDAO
+        TokenMgtDAO tokenMgtDAO = mock(TokenMgtDAO.class);
         doNothing().when(tokenMgtDAO).revokeTokens(any(String[].class));
         when(tokenMgtDAO.retrieveAccessToken(anyString(), anyBoolean())).thenReturn(accessTokenDO);
         whenNew(TokenMgtDAO.class).withAnyArguments().thenReturn(tokenMgtDAO);
-
-
         OAuthRevocationRequestDTO revokeRequestDTO = new OAuthRevocationRequestDTO();
         revokeRequestDTO.setConsumerKey("testCosumerKey");
         revokeRequestDTO.setToken("testToken");
@@ -321,9 +319,6 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
 
         oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO);
         assertFalse(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).isError());
-
-//        when(oAuthCache.getValueFromCache(any(OAuthCacheKey.class))).thenReturn(null);
-//        assertFalse(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).isError());
 
         when(OAuth2Util.authenticateClient(anyString(), anyString())).thenThrow(new InvalidOAuthClientException(" "));
         assertEquals(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).getErrorMsg(), "Unauthorized Client");
@@ -350,7 +345,6 @@ public class OAuth2ServiceTest extends PowerMockTestCase {
         String result = "Error occurred while revoking authorization grant for applications";
         assertEquals(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).getErrorMsg(), result);
     }
-
 
     public void setUpRevokeToken() throws Exception {
 

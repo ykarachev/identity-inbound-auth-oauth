@@ -20,7 +20,8 @@ package org.wso2.carbon.identity.oauth.util;
 
 import org.testng.annotations.Test;
 
-import static org.testng.AssertJUnit.assertTrue;
+import static org.junit.Assert.assertTrue;
+
 
 /**
  * Test Class for the ClaimCache.

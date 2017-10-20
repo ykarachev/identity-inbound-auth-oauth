@@ -91,6 +91,9 @@ import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.assertEquals;
 
+/**
+ * tests for SAML2BearerGrantHandler
+ */
 @PowerMockIgnore({"javax.net.*"})
 @PrepareForTest({IdentityUtil.class, IdentityTenantUtil.class, IdentityProviderManager.class, MultitenantUtils.class,
         IdentityApplicationManagementUtil.class, OAuthServerConfiguration.class, SSOServiceProviderConfigManager.class,
@@ -99,62 +102,42 @@ import static org.testng.Assert.assertEquals;
 public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
 
     private SAML2BearerGrantHandler saml2BearerGrantHandler;
-
     private Assertion assertion;
-
     private ServiceProvider serviceProvider;
-
     private FederatedAuthenticatorConfig samlConfig;
-
     private FederatedAuthenticatorConfig oauthConfig;
-
-    private  FederatedAuthenticatorConfig federatedAuthenticatorConfig;
+    private FederatedAuthenticatorConfig federatedAuthenticatorConfig;
 
     @Mock
     private OauthTokenIssuer oauthIssuer;
-
     @Mock
     private OAuthComponentServiceHolder oAuthComponentServiceHolder;
-
     @Mock
     private RealmService realmService;
-
     @Mock
     private TenantManager tenantManager;
-
     @Mock
     private IdentityProviderManager identityProviderManager;
-
     @Mock
     private SSOServiceProviderConfigManager ssoServiceProviderConfigManager;
-
     @Mock
     private OAuthTokenReqMessageContext tokReqMsgCtx;
-
     @Mock
     private OAuth2AccessTokenReqDTO oAuth2AccessTokenReqDTO;
-
     @Mock
     private OAuthServerConfiguration oAuthServerConfiguration;
-
     @Mock
     private SAMLSignatureProfileValidator profileValidator;
-
     @Mock
     private X509Certificate x509Certificate;
-
     @Mock
     private SignatureValidator signatureValidator;
-
     @Mock
     private UserStoreManager userStoreManager;
-
     @Mock
     private UserRealm userRealm;
-
     @Mock
     private ApplicationManagementService applicationManagementService;
-
     @Mock
     private TokenPersistenceProcessor persistenceProcessor;
 
@@ -173,97 +156,6 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         tokReqMsgCtx = new OAuthTokenReqMessageContext(oAuth2AccessTokenReqDTO);
         tokReqMsgCtx.setTenantID(-1234);
         assertion = buildAssertion();
-    }
-
-    private void mockOAuthComponents() throws Exception {
-
-        serviceProvider = getServicProvider(false, false);
-        mockStatic(OAuthComponentServiceHolder.class);
-        when(OAuthComponentServiceHolder.getInstance()).thenReturn(oAuthComponentServiceHolder);
-        when(oAuthComponentServiceHolder.getRealmService()).thenReturn(realmService);
-        mockStatic(OAuth2ServiceComponentHolder.class);
-        when(OAuth2ServiceComponentHolder.getApplicationMgtService()).thenReturn(applicationManagementService);
-        when(applicationManagementService.getServiceProviderByClientId(anyString(), anyString(), anyString()))
-                .thenReturn(serviceProvider);
-    }
-
-    private IdentityProvider getIdentityProvider(String name){
-
-        IdentityProvider identityProvider = new IdentityProvider();
-        identityProvider.setIdentityProviderName(name);
-        return identityProvider;
-    }
-
-
-    private void initIdentityProviderManager() throws Exception {
-
-        mockStatic(IdentityApplicationManagementUtil.class);
-        IdentityProvider identityProviderIns = getIdentityProvider("LOCAL");
-        when(IdentityProviderManager.getInstance()).thenReturn(identityProviderManager);
-        when(identityProviderManager
-                .getIdPByAuthenticatorPropertyValue(anyString(), anyString(), anyString(), anyString(), anyBoolean()))
-                .thenReturn(identityProviderIns);
-    }
-
-    private void initFederatedAuthConfig() {
-
-        oauthConfig = new FederatedAuthenticatorConfig();
-        samlConfig = new FederatedAuthenticatorConfig();
-
-        IdentityProvider identityProvider = getIdentityProvider(null);
-        federatedAuthenticatorConfig.setProperties(new Property[]{getProperty(IdentityApplicationConstants
-                .Authenticator.SAML2SSO.IDP_ENTITY_ID, TestConstants.LOACALHOST_DOMAIN)});
-        federatedAuthenticatorConfig.setName(IdentityApplicationConstants.Authenticator.SAML2SSO.NAME);
-        FederatedAuthenticatorConfig[] fedAuthConfs = {federatedAuthenticatorConfig};
-        identityProvider.setFederatedAuthenticatorConfigs(fedAuthConfs);
-
-        when(IdentityApplicationManagementUtil.getFederatedAuthenticator(fedAuthConfs, "samlsso"))
-                .thenReturn(samlConfig);
-        when(IdentityApplicationManagementUtil.getFederatedAuthenticator(fedAuthConfs, "openidconnect"))
-                .thenReturn(oauthConfig);
-        when(IdentityApplicationManagementUtil.getProperty(samlConfig.getProperties(), "IdPEntityId"))
-                .thenReturn(getProperty("samlsso", TestConstants.LOACALHOST_DOMAIN));
-        when(IdentityApplicationManagementUtil.getProperty(oauthConfig.getProperties(), "OAuth2TokenEPUrl"))
-                .thenReturn(getProperty("OAuth2TokenEPUrl", TestConstants.LOACALHOST_DOMAIN));
-    }
-
-    private void initAssertion() throws Exception {
-
-        String assertionString = SAMLSSOUtil.marshall(assertion);
-        assertionString = new String(Base64.encodeBase64(assertionString.getBytes(Charsets.UTF_8)));
-        oAuth2AccessTokenReqDTO.setAssertion(assertionString);
-        when(IdentityUtil.unmarshall(anyString())).thenReturn(assertion);
-        when(IdentityUtil.isTokenLoggable(anyString())).thenReturn(true);
-    }
-
-    private void initSignatureValidator() throws Exception {
-
-        Field field = SAML2BearerGrantHandler.class.getDeclaredField("profileValidator");
-        field.setAccessible(true);
-        field.set(saml2BearerGrantHandler, profileValidator);
-        field.setAccessible(false);
-        doNothing().when(profileValidator).validate(any(Signature.class));
-
-        Certificate certificate = x509Certificate;
-        when(IdentityApplicationManagementUtil.decodeCertificate(anyString()))
-                .thenReturn(certificate);
-        whenNew(SignatureValidator.class).withArguments(any(X509Credential.class)).thenReturn(signatureValidator);
-        doNothing().when(signatureValidator).validate(any(Signature.class));
-    }
-
-    private void initSAMLGrant() throws Exception {
-
-        initAssertion();
-        initIdentityProviderManager();
-        initFederatedAuthConfig();
-        initSignatureValidator();
-        SAML2TokenCallbackHandler callbackHandler = new SAML2TokenCallbackHandler() {
-            @Override
-            public void handleSAML2Token(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
-                //doNothingForTestingPurpose
-            }
-        };
-        when(oAuthServerConfiguration.getSAML2TokenCallbackHandler()).thenReturn(callbackHandler);
     }
 
     @Test
@@ -676,6 +568,96 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         }
         authnReqDTO.getUser().setUserAttributes(userAttributes);
         return authnReqDTO;
+    }
+
+    private void mockOAuthComponents() throws Exception {
+
+        serviceProvider = getServicProvider(false, false);
+        mockStatic(OAuthComponentServiceHolder.class);
+        when(OAuthComponentServiceHolder.getInstance()).thenReturn(oAuthComponentServiceHolder);
+        when(oAuthComponentServiceHolder.getRealmService()).thenReturn(realmService);
+        mockStatic(OAuth2ServiceComponentHolder.class);
+        when(OAuth2ServiceComponentHolder.getApplicationMgtService()).thenReturn(applicationManagementService);
+        when(applicationManagementService.getServiceProviderByClientId(anyString(), anyString(), anyString()))
+                .thenReturn(serviceProvider);
+    }
+
+    private IdentityProvider getIdentityProvider(String name){
+
+        IdentityProvider identityProvider = new IdentityProvider();
+        identityProvider.setIdentityProviderName(name);
+        return identityProvider;
+    }
+
+    private void initIdentityProviderManager() throws Exception {
+
+        mockStatic(IdentityApplicationManagementUtil.class);
+        IdentityProvider identityProviderIns = getIdentityProvider("LOCAL");
+        when(IdentityProviderManager.getInstance()).thenReturn(identityProviderManager);
+        when(identityProviderManager
+                .getIdPByAuthenticatorPropertyValue(anyString(), anyString(), anyString(), anyString(), anyBoolean()))
+                .thenReturn(identityProviderIns);
+    }
+
+    private void initFederatedAuthConfig() {
+
+        oauthConfig = new FederatedAuthenticatorConfig();
+        samlConfig = new FederatedAuthenticatorConfig();
+
+        IdentityProvider identityProvider = getIdentityProvider(null);
+        federatedAuthenticatorConfig.setProperties(new Property[]{getProperty(IdentityApplicationConstants
+                .Authenticator.SAML2SSO.IDP_ENTITY_ID, TestConstants.LOACALHOST_DOMAIN)});
+        federatedAuthenticatorConfig.setName(IdentityApplicationConstants.Authenticator.SAML2SSO.NAME);
+        FederatedAuthenticatorConfig[] fedAuthConfs = {federatedAuthenticatorConfig};
+        identityProvider.setFederatedAuthenticatorConfigs(fedAuthConfs);
+
+        when(IdentityApplicationManagementUtil.getFederatedAuthenticator(fedAuthConfs, "samlsso"))
+                .thenReturn(samlConfig);
+        when(IdentityApplicationManagementUtil.getFederatedAuthenticator(fedAuthConfs, "openidconnect"))
+                .thenReturn(oauthConfig);
+        when(IdentityApplicationManagementUtil.getProperty(samlConfig.getProperties(), "IdPEntityId"))
+                .thenReturn(getProperty("samlsso", TestConstants.LOACALHOST_DOMAIN));
+        when(IdentityApplicationManagementUtil.getProperty(oauthConfig.getProperties(), "OAuth2TokenEPUrl"))
+                .thenReturn(getProperty("OAuth2TokenEPUrl", TestConstants.LOACALHOST_DOMAIN));
+    }
+
+    private void initAssertion() throws Exception {
+
+        String assertionString = SAMLSSOUtil.marshall(assertion);
+        assertionString = new String(Base64.encodeBase64(assertionString.getBytes(Charsets.UTF_8)));
+        oAuth2AccessTokenReqDTO.setAssertion(assertionString);
+        when(IdentityUtil.unmarshall(anyString())).thenReturn(assertion);
+        when(IdentityUtil.isTokenLoggable(anyString())).thenReturn(true);
+    }
+
+    private void initSignatureValidator() throws Exception {
+
+        Field field = SAML2BearerGrantHandler.class.getDeclaredField("profileValidator");
+        field.setAccessible(true);
+        field.set(saml2BearerGrantHandler, profileValidator);
+        field.setAccessible(false);
+        doNothing().when(profileValidator).validate(any(Signature.class));
+
+        Certificate certificate = x509Certificate;
+        when(IdentityApplicationManagementUtil.decodeCertificate(anyString()))
+                .thenReturn(certificate);
+        whenNew(SignatureValidator.class).withArguments(any(X509Credential.class)).thenReturn(signatureValidator);
+        doNothing().when(signatureValidator).validate(any(Signature.class));
+    }
+
+    private void initSAMLGrant() throws Exception {
+
+        initAssertion();
+        initIdentityProviderManager();
+        initFederatedAuthConfig();
+        initSignatureValidator();
+        SAML2TokenCallbackHandler callbackHandler = new SAML2TokenCallbackHandler() {
+            @Override
+            public void handleSAML2Token(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
+                //doNothingForTestingPurpose
+            }
+        };
+        when(oAuthServerConfiguration.getSAML2TokenCallbackHandler()).thenReturn(callbackHandler);
     }
 
 }

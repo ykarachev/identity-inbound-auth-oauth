@@ -30,6 +30,8 @@
             <class name="org.wso2.carbon.identity.oauth.dcr.factory.RegistrationRequestFactoryTest"/>
             <class name="org.wso2.carbon.identity.oauth.dcr.factory.UnregistrationRequestFactoryTest"/>
             <class name="org.wso2.carbon.identity.oauth.dcr.util.DCRMUtilsTest"/>
+            <class name="org.wso2.carbon.identity.oauth.dcr.handler.RegistrationHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth.dcr.handler.UnRegistrationHandlerTest"/>
         </classes>
     </test>
 
@@ -44,6 +46,8 @@
         <class name="org.wso2.carbon.identity.oauth.dcr.factory.UnregistrationRequestFactoryTest"/>
         <class name="org.wso2.carbon.identity.oauth.dcr.util.DCRMUtilsTest"/>
         <class name="org.wso2.carbon.identity.oauth.dcr.util.HandlerManagerTest"/>
+        <class name="org.wso2.carbon.identity.oauth.dcr.handler.RegistrationHandlerTest"/>
+        <class name="org.wso2.carbon.identity.oauth.dcr.handler.UnRegistrationHandlerTest"/>
     </classes>
     </test>
 </suite>

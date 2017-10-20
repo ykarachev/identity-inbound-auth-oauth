@@ -70,8 +70,8 @@
     <test name="org.wso2.carbon.identity.oauth.debug.enabled">
         <parameter name="log-level" value="debug"/>
         <classes>
-            <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest" />
-            <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest" />
+            <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest"/>
+            <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest"/>
 
             <class name="org.wso2.carbon.identity.oauth.event.AbstractOAuthEventInterceptorTest"/>
 
@@ -130,4 +130,17 @@
             <class name="org.wso2.carbon.identity.oauth2.OAuth2ScopeServiceTest"/>
         </classes>
     </test>
+    <test name="org.wso2.carbon.identity.oauth2.authz">
+        <parameter name="log-level" value="info"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth2.authz.handlers.AbstractResponseTypeHandlerTest"/>
+        </classes>
+    </test>
+    <test name="org.wso2.carbon.identity.oauth2.authz.debug">
+        <parameter name="log-level" value="debug"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth2.authz.handlers.AbstractResponseTypeHandlerTest"/>
+        </classes>
+    </test>
+
 </suite>

@@ -18,32 +18,38 @@
 
 package org.wso2.carbon.identity.oauth2.internal;
 
-import org.apache.commons.dbcp.BasicDataSource;
-import org.mockito.InjectMocks;
+import org.apache.commons.lang.StringUtils;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockTestCase;
-import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.common.model.InboundAuthenticationConfig;
 import org.wso2.carbon.identity.application.common.model.InboundAuthenticationRequestConfig;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.core.util.IdentityDatabaseUtil;
+import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
+import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
+import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
+import org.wso2.carbon.identity.oauth.cache.CacheEntry;
+import org.wso2.carbon.identity.oauth.cache.OAuthCache;
+import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.dao.TestOAuthDAOBase;
 import org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessor;
+import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
 
 import java.sql.Connection;
-import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.Set;
 
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
@@ -51,94 +57,275 @@ import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
-import static org.wso2.carbon.identity.oauth2.dao.util.DAOUtils.getFilePath;
 
 /**
  * Test class for OAuthApplicationMgtListener test cases.
  */
-@PrepareForTest({OAuth2ServiceComponentHolder.class, OAuthServerConfiguration.class, IdentityDatabaseUtil.class})
+@PrepareForTest({OAuth2ServiceComponentHolder.class, OAuthServerConfiguration.class, IdentityDatabaseUtil.class,
+        OAuthApplicationMgtListener.class, AuthorizationGrantCache.class, OAuthCache.class, IdentityTenantUtil.class})
 public class OAuthApplicationMgtListenerTest extends TestOAuthDAOBase {
 
-    private static final String CLIENT_ID = "ca19a540f544777860e44e75f605d927";
-    private static final String SECRET = "87n9a540f544777860e44e75f605d435";
-    private static final String APP_NAME = "myApp";
-    private static final String USER_NAME = "user1";
-    private static final String APP_STATE = "ACTIVE";
-    private static final String CALLBACK = "http://localhost:8080/redirect";
     private static final String DB_NAME = "testDB";
+    private static final String OAUTH2 = "oauth2";
+    private static final String OAUTH = "oauth";
+    private static final String OAUTH_CONSUMER_SECRET = "oauthConsumerSecret";
+    private static final String SAAS_PROPERTY = "saasProperty";
 
-    public static final String OAUTH2 = "oauth2";
-    private static final String oauthConsumerSecret = "oauthConsumerSecret";
     private String tenantDomain = "carbon.super";
-    Connection connection;
+    private String spName = "testOauthApp";
+    private String userName = "randomUser";
 
-    @InjectMocks
-    OAuthApplicationMgtListener oAuthApplicationMgtListener = new OAuthApplicationMgtListener();
+    private OAuthApplicationMgtListener oAuthApplicationMgtListener;
 
     @Mock
     private ApplicationManagementService mockAppMgtService;
-    @Mock
-    private OAuthConsumerDAO mockDAO;
+
     @Mock
     private OAuthServerConfiguration mockOauthServicerConfig;
 
+    @Mock
+    private TokenMgtDAO mockTokenMgtDAO;
+
+    @Mock
+    private AuthorizationGrantCache mockAuthorizationGrantCache;
+
+    @Mock
+    private AuthorizationGrantCacheEntry mockAuthorizationGrantCacheEntry;
+
+    @Mock
+    private OAuthCache mockOauthCache;
+
+    @Mock
+    private CacheEntry mockCacheEntry;
+
     @BeforeClass
     public void setUp() throws Exception {
-//        connection = setUpDatabaseConnection();
 
-                         initiateH2Base(DB_NAME, getFilePath("h2.sql"));
-                    //createBase(CLIENT_ID, SECRET, USER_NAME, APP_NAME, CALLBACK);
-
+        //initialize in-memory H2 DB.
+        initiateH2Base(DB_NAME, getFilePath("h2.sql"));
+        oAuthApplicationMgtListener = new OAuthApplicationMgtListener();
     }
-
 
     @BeforeMethod
     public void setUpBeforeMethod() throws Exception {
 
         initMocks(this);
-        mockStatic(OAuth2ServiceComponentHolder.class);
         mockStatic(IdentityDatabaseUtil.class);
-        when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
-
-        PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
-        when(mockOauthServicerConfig.getPersistenceProcessor()).thenReturn(processor);
+        mockStatic(OAuth2ServiceComponentHolder.class);
+        when(OAuth2ServiceComponentHolder.getApplicationMgtService()).thenReturn(mockAppMgtService);
 
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(mockOauthServicerConfig);
+        PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
+        when(mockOauthServicerConfig.getPersistenceProcessor()).thenReturn(processor);
 
+        whenNew(TokenMgtDAO.class).withNoArguments().thenReturn(mockTokenMgtDAO);
 
-        when(OAuth2ServiceComponentHolder.getApplicationMgtService()).thenReturn(mockAppMgtService);
-        whenNew(OAuthConsumerDAO.class).withNoArguments().thenReturn(mockDAO);
-        when(mockDAO.getOAuthConsumerSecret(anyString())).thenReturn("consumerSecret");
+        mockStatic(AuthorizationGrantCache.class);
+        when(AuthorizationGrantCache.getInstance()).thenReturn(mockAuthorizationGrantCache);
 
+        mockStatic(OAuthCache.class);
+        when(OAuthCache.getInstance()).thenReturn(mockOauthCache);
     }
 
-    @AfterTest
-    public void tearDown() throws SQLException {
+    @DataProvider(name = "GetSPConfigData")
+    public Object[][] SPConfigData() {
 
-        if (connection != null && !connection.isClosed()) {
-            connection.close();
+        return new Object[][]{
+                {true, true, OAUTH2, OAUTH_CONSUMER_SECRET},
+                {true, true, OAUTH, OAUTH_CONSUMER_SECRET},
+                {true, false, null, null},
+                {true, true, "otherAuthType", "otherPropName"},
+                {true, true, OAUTH2, "otherPropName"},
+                {false, false, null, null}
+        };
+    }
+
+    @Test
+    public void testGetDefaultOrderId() {
+
+        int result = oAuthApplicationMgtListener.getDefaultOrderId();
+        assertEquals(result, 11, "Failed to get default order ID.");
+    }
+
+    @Test(dataProvider = "GetSPConfigData")
+    public void testDoPreUpdateApplication(Boolean hasAuthConfig,
+                                           Boolean hasRequestConfig,
+                                           String authType,
+                                           String propName) throws Exception {
+
+        ServiceProvider serviceProvider = createServiceProvider(1, hasAuthConfig, hasRequestConfig, authType,
+                propName);
+
+        ServiceProvider persistedServiceProvider = new ServiceProvider();
+        serviceProvider.setApplicationID(1);
+        serviceProvider.setSaasApp(true);
+        when(mockAppMgtService.getServiceProvider(serviceProvider.getApplicationID()))
+                .thenReturn(persistedServiceProvider);
+
+        Boolean result = oAuthApplicationMgtListener.doPreUpdateApplication(serviceProvider, tenantDomain, userName);
+        assertTrue(result, "Pre-update application failed.");
+    }
+
+    @Test(dataProvider = "GetSPConfigData")
+    public void testDoPostGetServiceProvider(Boolean hasAuthConfig, Boolean hasRequestConfig, String authType,
+                                             String propName) throws Exception {
+
+        try (Connection connection = getConnection(DB_NAME)) {
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+            ServiceProvider serviceProvider = createServiceProvider(1, hasAuthConfig, hasRequestConfig, authType,
+                    propName);
+            Boolean result =
+                    oAuthApplicationMgtListener.doPostGetServiceProvider(serviceProvider, spName, tenantDomain);
+            assertTrue(result, "Post-get service provider failed.");
         }
     }
 
-    public Connection setUpDatabaseConnection() throws Exception {
+    @Test
+    public void testDoPostGetServiceProviderWhenSPisNull() throws Exception {
 
-        BasicDataSource dataSource = new BasicDataSource();
+        try (Connection connection = getConnection(DB_NAME)) {
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
-        dataSource.setDriverClassName("org.h2.Driver");
-        dataSource.setUsername("username");
-        dataSource.setPassword("password");
-        dataSource.setUrl("jdbc:h2:mem:test");
-
-        Connection connection = dataSource.getConnection();
-        connection.createStatement().executeUpdate("RUNSCRIPT FROM 'src/test/resources/dbscripts/h2.sql'");
-
-        return connection;
+            Boolean result =
+                    oAuthApplicationMgtListener.doPostGetServiceProvider(null, spName, tenantDomain);
+            assertTrue(result, "Post-get service provider failed.");
+        }
     }
 
-    public ServiceProvider createServiceProvider(int appId, Boolean hasAuthConfig, Boolean hasRequestConfig,
-                                                 String authType,
-                                                 String propName) {
+    @Test
+    public void testDoPostGetServiceProviderByClientId() throws Exception {
+
+        try (Connection connection = getConnection(DB_NAME)) {
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+            ServiceProvider serviceProvider = createServiceProvider(1, true, true, OAUTH2, OAUTH_CONSUMER_SECRET);
+            Boolean result = oAuthApplicationMgtListener.doPostGetServiceProviderByClientId(serviceProvider,
+                    "clientId", "clientType", tenantDomain);
+            assertTrue(result, "Post-get service provider by client ID failed.");
+        }
+    }
+
+    @Test
+    public void testDoPostCreateApplication() throws Exception {
+
+        try (Connection connection = getConnection(DB_NAME)) {
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+            ServiceProvider serviceProvider = createServiceProvider(1, true, true, OAUTH2, OAUTH_CONSUMER_SECRET);
+            Boolean result = oAuthApplicationMgtListener.doPostCreateApplication(serviceProvider, tenantDomain,
+                    userName);
+            assertTrue(result, "Post-create application failed.");
+        }
+    }
+
+    @DataProvider(name = "GetPostUpdateApplicationData")
+    public Object[][] PostUpdateApplicationData() {
+
+        return new Object[][]{
+                {true, true, OAUTH2, OAUTH_CONSUMER_SECRET, true, true},
+                {true, true, OAUTH, OAUTH_CONSUMER_SECRET, false, false},
+                {true, false, null, null, false, false},
+                {true, true, "otherAuthType", "otherPropName", false, false},
+                {true, true, OAUTH2, "otherPropName", false, false},
+                {false, false, null, null, false, false}
+        };
+    }
+
+    @Test(dataProvider = "GetPostUpdateApplicationData")
+    public void testDoPostUpdateApplication(Boolean hasAuthConfig,
+                                            Boolean hasRequestConfig,
+                                            String authType,
+                                            String propName,
+                                            Boolean cacheEnabled,
+                                            Boolean saasEnabledBefore) throws Exception {
+
+        try (Connection connection = getConnection(DB_NAME)) {
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+            if (StringUtils.equals(authType, OAUTH2) || StringUtils.equals(authType, OAUTH)) {
+                Set<String> accessTokens = new HashSet<>();
+                accessTokens.add("accessToken1");
+                accessTokens.add("accessToken2");
+                accessTokens.add("accessToken3");
+
+                Set<String> authCodes = new HashSet<>();
+                authCodes.add("authCode1");
+                authCodes.add("authCode2");
+                when(mockTokenMgtDAO.getActiveTokensForConsumerKey(anyString())).thenReturn(accessTokens);
+                when(mockTokenMgtDAO.getAuthorizationCodesForConsumerKey(anyString())).thenReturn(authCodes);
+            } else {
+                when(mockTokenMgtDAO.getActiveTokensForConsumerKey(anyString())).thenReturn(new HashSet<String>());
+                when(mockTokenMgtDAO.getActiveAuthorizationCodesForConsumerKey(anyString()))
+                        .thenReturn(new HashSet<String>());
+            }
+
+            if (cacheEnabled) {
+                when(mockAuthorizationGrantCache.getValueFromCacheByToken(any(AuthorizationGrantCacheKey.class)))
+                        .thenReturn(mockAuthorizationGrantCacheEntry);
+                when(mockOauthCache.getValueFromCache(any(OAuthCacheKey.class))).thenReturn(mockCacheEntry);
+            }
+
+            mockStatic(IdentityTenantUtil.class);
+            when(IdentityTenantUtil.getTenantId(anyString())).thenReturn(1);
+
+            if (saasEnabledBefore) {
+                IdentityUtil.threadLocalProperties.get().put(SAAS_PROPERTY, true);
+            }
+
+            System.setProperty(CarbonBaseConstants.CARBON_HOME, "");
+            ServiceProvider serviceProvider = createServiceProvider(1, hasAuthConfig, hasRequestConfig, authType,
+                    propName);
+            Boolean result = oAuthApplicationMgtListener.doPostUpdateApplication(serviceProvider, tenantDomain,
+                    userName);
+            assertTrue(result, "Post-update application failed.");
+        }
+    }
+
+    @Test
+    public void testDoPostGetApplicationExcludingFileBasedSPs() throws Exception {
+
+        try (Connection connection = getConnection(DB_NAME)) {
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+            ServiceProvider serviceProvider = createServiceProvider(1, true, true, OAUTH2, OAUTH_CONSUMER_SECRET);
+            Boolean result = oAuthApplicationMgtListener.doPostGetApplicationExcludingFileBasedSPs(serviceProvider,
+                    spName, tenantDomain);
+            assertTrue(result, "Post-get application excluding file based service providers failed.");
+        }
+    }
+
+    @Test
+    public void doPreDeleteApplication() throws Exception {
+
+        try (Connection connection = getConnection(DB_NAME)) {
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+            ServiceProvider serviceProvider = createServiceProvider(1, false, false, "otherAuthType",
+                    OAUTH_CONSUMER_SECRET);
+            when(mockAppMgtService.getApplicationExcludingFileBasedSPs(anyString(), anyString()))
+                    .thenReturn(serviceProvider);
+
+            Boolean result = oAuthApplicationMgtListener.doPreDeleteApplication(spName, tenantDomain, userName);
+            assertTrue(result, "Post-delete application failed.");
+        }
+    }
+
+    /**
+     * Create service provider with required configurations.
+     *
+     * @param appId
+     * @param hasAuthConfig
+     * @param hasRequestConfig
+     * @param authType
+     * @param propName
+     * @return
+     */
+    private ServiceProvider createServiceProvider(int appId,
+                                                  Boolean hasAuthConfig,
+                                                  Boolean hasRequestConfig,
+                                                  String authType,
+                                                  String propName) {
 
         ServiceProvider serviceProvider = new ServiceProvider();
         serviceProvider.setApplicationID(appId);
@@ -158,61 +345,8 @@ public class OAuthApplicationMgtListenerTest extends TestOAuthDAOBase {
             } else {
                 inboundAuthenticationConfig.setInboundAuthenticationRequestConfigs(null);
             }
-
             serviceProvider.setInboundAuthenticationConfig(inboundAuthenticationConfig);
         }
-
         return serviceProvider;
     }
-
-
-    @Test
-    public void testGetDefaultOrderId() {
-
-        int result = oAuthApplicationMgtListener.getDefaultOrderId();
-        assertEquals(result, 11);
-    }
-
-    @Test(dataProvider = "SPConfigData")
-    public void testDoPreUpdateApplication(Boolean hasAuthConfig, Boolean hasRequestConfig, String authType,
-                                           String propName)
-            throws IdentityApplicationManagementException {
-
-
-        ServiceProvider serviceProvider = createServiceProvider(1, hasAuthConfig, hasRequestConfig, authType,
-                propName);
-
-        ServiceProvider serviceProvider2 = new ServiceProvider();
-        serviceProvider.setApplicationID(1);
-        serviceProvider.setSaasApp(true);
-        when(mockAppMgtService.getServiceProvider(serviceProvider.getApplicationID())).thenReturn(serviceProvider2);
-
-        Boolean result =
-                oAuthApplicationMgtListener.doPreUpdateApplication(serviceProvider, "carbon.super", "userName");
-        assertTrue(result);
-    }
-
-    @DataProvider(name = "SPConfigData")
-    public Object[][] getSPConfigData() {
-
-
-        return new Object[][]{
-                {true, true, OAUTH2, "oauthConsumerSecret"},
-                {true, false, null, null},
-                {true, true, "otherAuthType", "otherPropName"},
-                {true, true, OAUTH2, "otherPropName"},
-                {false, false, null, null},
-
-        };
-    }
-
-    @Test
-    public void doPostGetServiceProvider() throws Exception {
-
-        ServiceProvider serviceProvider1 = createServiceProvider(1, true, true, OAUTH2, "oauthConsumerSecret");
-        Boolean result = oAuthApplicationMgtListener.doPostGetServiceProvider(serviceProvider1, "spName", tenantDomain);
-        assertTrue(result);
-    }
-
-
 }

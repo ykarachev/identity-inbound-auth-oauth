@@ -27,6 +27,7 @@ import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
@@ -377,7 +378,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         assertEquals(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).getErrorMsg(), errorMsg);
     }
 
-    public void setUpRevokeToken() throws Exception {
+    private void setUpRevokeToken() throws Exception {
 
         when(oAuthEventInterceptorProxy.isEnabled()).thenReturn(true);
         doNothing().when(oAuthEventInterceptorProxy).onPostTokenRevocationByClient

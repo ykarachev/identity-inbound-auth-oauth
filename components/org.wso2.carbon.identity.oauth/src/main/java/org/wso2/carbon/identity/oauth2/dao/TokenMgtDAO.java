@@ -2168,6 +2168,7 @@ public class TokenMgtDAO {
                     dataDO.setAccessToken(accessToken);
                     dataDO.setRefreshToken(refreshToken);
                     dataDO.setTokenId(tokenId);
+                    dataDO.setTenantID(tenantId);
                     accessTokenDOMap.put(accessToken, dataDO);
                 } else {
                     String scope = resultSet.getString(8).trim();

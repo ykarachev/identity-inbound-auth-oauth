@@ -19,13 +19,13 @@ package org.wso2.carbon.identity.oauth.dcr.handler;
 
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.oauth.dcr.context.DCRMessageContext;
 import org.wso2.carbon.identity.oauth.dcr.model.UnregistrationRequest;
 import org.wso2.carbon.identity.oauth.dcr.model.UnregistrationResponse;
 import org.wso2.carbon.identity.oauth.dcr.service.DCRManagementService;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
@@ -34,7 +34,7 @@ import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.testng.Assert.assertEquals;
 
 @PrepareForTest({UnRegistrationHandler.class, DCRManagementService.class})
-public class UnRegistrationHandlerTest extends PowerMockTestCase {
+public class UnRegistrationHandlerTest extends PowerMockIdentityBaseTest {
 
     private UnRegistrationHandler unRegistrationHandler;
 
@@ -48,7 +48,7 @@ public class UnRegistrationHandlerTest extends PowerMockTestCase {
     DCRManagementService mockDCRManagementService;
 
     @BeforeMethod
-    public void setUp() throws Exception {
+    public void setUp() {
         initMocks(this);
         unRegistrationHandler = new UnRegistrationHandler();
     }

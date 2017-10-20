@@ -19,10 +19,7 @@ package org.wso2.carbon.identity.oauth.dcr.handler;
 
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockTestCase;
-import org.testng.IObjectFactory;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.oauth.dcr.context.DCRMessageContext;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequest;
@@ -30,6 +27,7 @@ import org.wso2.carbon.identity.oauth.dcr.model.RegistrationRequestProfile;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationResponse;
 import org.wso2.carbon.identity.oauth.dcr.model.RegistrationResponseProfile;
 import org.wso2.carbon.identity.oauth.dcr.service.DCRManagementService;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
@@ -38,7 +36,7 @@ import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.testng.Assert.assertEquals;
 
 @PrepareForTest({DCRManagementService.class, RegistrationHandler.class})
-public class RegistrationHandlerTest extends PowerMockTestCase {
+public class RegistrationHandlerTest extends PowerMockIdentityBaseTest {
 
     private RegistrationHandler registrationHandler;
     private String testTenantDomain = "testTenantDomain";
@@ -59,7 +57,7 @@ public class RegistrationHandlerTest extends PowerMockTestCase {
     DCRManagementService mockDCRManagementService;
 
     @BeforeMethod
-    public void setUp() throws Exception {
+    public void setUp() {
         initMocks(this);
         registrationHandler = new RegistrationHandler();
     }
@@ -80,10 +78,5 @@ public class RegistrationHandlerTest extends PowerMockTestCase {
         whenNew(RegistrationResponse.DCRRegisterResponseBuilder.class).withNoArguments().thenReturn(registerResponseBuilder);
 
         assertEquals(registrationHandler.handle(mockDcrMessageContext), registerResponseBuilder);
-    }
-
-    @ObjectFactory
-    public IObjectFactory getObjectFactory() {
-        return new org.powermock.modules.testng.PowerMockObjectFactory();
     }
 }

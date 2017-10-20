@@ -87,19 +87,22 @@ public class AbstractResponseTypeHandlerTest extends PowerMockTestCase {
                 .getClass().getSuperclass().getDeclaredField("cacheEnabled");
         abstractResponseTypeHandler.init();
         field.setAccessible(true);
-        Assert.assertTrue(field.getBoolean(abstractResponseTypeHandler));
+        Assert.assertTrue(field.getBoolean(abstractResponseTypeHandler),
+                "AbstractResponseTypeHandler not set");
     }
 
     @Test(dataProvider = "grantTypeProvider")
     public void testValidateAccessDelegation(String grantType, boolean result) throws Exception {
         Assert.assertEquals(abstractResponseTypeHandler.
-                validateAccessDelegation(this.setSampleOAuthReqMessageContext(grantType)), result);
+                        validateAccessDelegation(this.setSampleOAuthReqMessageContext(grantType)),
+                result, "Access Delegation not set");
     }
 
     @Test
     public void testValidateScope() throws Exception {
         Assert.assertTrue(abstractResponseTypeHandler
-                .validateScope(this.setSampleOAuthReqMessageContext(null)));
+                        .validateScope(this.setSampleOAuthReqMessageContext(null)),
+                "Validate scope returns wrong value");
     }
 
     @Test(dataProvider = "grantTypeProvider2")

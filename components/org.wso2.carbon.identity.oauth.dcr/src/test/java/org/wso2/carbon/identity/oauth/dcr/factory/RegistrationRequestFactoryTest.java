@@ -45,6 +45,7 @@ import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
@@ -89,6 +90,27 @@ public class RegistrationRequestFactoryTest extends PowerMockIdentityBaseTest {
     private void setUp() {
 
         registrationRequestFactory = new RegistrationRequestFactory();
+    }
+
+    /**
+     * DataProvider: requestURI, httpMethod, expected value
+     */
+    @DataProvider(name = "httpMethodAndUriProvider")
+    public Object[][] getHttpMethodAndUri() {
+
+        return new Object[][]{
+                {"dummyVal/identity/register/", HttpMethod.POST, true},
+                {"dummyVal/identity/register/dummyVal", HttpMethod.POST, false},
+        };
+    }
+
+    @Test(dataProvider = "httpMethodAndUriProvider")
+    public void testCanHandle(String requestURI, String httpMethod, boolean expected) throws Exception {
+
+        when(mockHttpRequest.getRequestURI()).thenReturn(requestURI);
+        when(mockHttpRequest.getMethod()).thenReturn(httpMethod);
+        assertEquals(registrationRequestFactory.canHandle(mockHttpRequest, mockHttpResponse), expected,
+                "Redirect Uri doesn't match");
     }
 
     @DataProvider(name = "jsonObjectDataProvider")

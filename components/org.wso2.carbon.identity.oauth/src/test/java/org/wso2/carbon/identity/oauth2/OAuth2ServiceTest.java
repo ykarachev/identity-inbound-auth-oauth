@@ -278,7 +278,6 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
     public void testRevokeTokenByOAuthClientWithRefreshToken(String grantType, String tokenState) throws Exception {
 
         setUpRevokeToken();
-
         RefreshTokenValidationDataDO refreshTokenValidationDataDO = new RefreshTokenValidationDataDO();
         refreshTokenValidationDataDO.setGrantType(GrantType.REFRESH_TOKEN.toString());
         refreshTokenValidationDataDO.setAccessToken("testAccessToken");
@@ -304,8 +303,8 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
 
     @Test
     public void testRevokeTokenByOAuthClientWithAccesstoken() throws Exception {
-        setUpRevokeToken();
 
+        setUpRevokeToken();
         AuthenticatedUser authenticatedUser = mock(AuthenticatedUser.class);
         when(authenticatedUser.toString()).thenReturn("testAuthenticatedUser");
 
@@ -317,6 +316,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         doNothing().when(tokenMgtDAO).revokeTokens(any(String[].class));
         when(tokenMgtDAO.retrieveAccessToken(anyString(), anyBoolean())).thenReturn(accessTokenDO);
         whenNew(TokenMgtDAO.class).withAnyArguments().thenReturn(tokenMgtDAO);
+
         OAuthRevocationRequestDTO revokeRequestDTO = new OAuthRevocationRequestDTO();
         revokeRequestDTO.setConsumerKey("testConsumerKey");
         revokeRequestDTO.setToken("testToken");
@@ -325,7 +325,6 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         when(oAuthCache.getValueFromCache(any(OAuthCacheKey.class))).thenReturn(accessTokenDO);
         mockStatic(OAuthCache.class);
         when(OAuthCache.getInstance()).thenReturn(oAuthCache);
-
         oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO);
         assertFalse(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).isError());
     }
@@ -349,7 +348,6 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
             String errorMsg, boolean setDetails, boolean enableExp1, boolean enableExp2) throws Exception {
 
         setUpRevokeToken();
-
         AccessTokenDO accessTokenDO = new AccessTokenDO();
         accessTokenDO.setConsumerKey("testConsumerKey");
         accessTokenDO.setAuthzUser(authenticatedUser);

@@ -30,7 +30,6 @@ import org.opensaml.xml.signature.SignatureValidator;
 import org.opensaml.xml.validation.ValidationException;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -111,6 +110,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
 
     private FederatedAuthenticatorConfig oauthConfig;
 
+    private  FederatedAuthenticatorConfig federatedAuthenticatorConfig;
+
     @Mock
     private OauthTokenIssuer oauthIssuer;
 
@@ -128,9 +129,6 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
 
     @Mock
     private IdentityProvider identityProvider;
-
-    @Mock
-    private FederatedAuthenticatorConfig federatedAuthenticatorConfig;
 
     @Mock
     private SSOServiceProviderConfigManager ssoServiceProviderConfigManager;
@@ -174,6 +172,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(oAuthServerConfiguration.getIdentityOauthTokenIssuer()).thenReturn(oauthIssuer);
         when(oAuthServerConfiguration.getPersistenceProcessor()).thenReturn(persistenceProcessor);
 
+        federatedAuthenticatorConfig = new FederatedAuthenticatorConfig();
         saml2BearerGrantHandler = new SAML2BearerGrantHandler();
         saml2BearerGrantHandler.init();
         oAuth2AccessTokenReqDTO = new OAuth2AccessTokenReqDTO();
@@ -212,12 +211,11 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         oauthConfig = new FederatedAuthenticatorConfig();
         samlConfig = new FederatedAuthenticatorConfig();
 
+        federatedAuthenticatorConfig.setProperties(new Property[]{getProperty(IdentityApplicationConstants
+                .Authenticator.SAML2SSO.IDP_ENTITY_ID, TestConstants.LOACALHOST_DOMAIN)});
+        federatedAuthenticatorConfig.setName(IdentityApplicationConstants.Authenticator.SAML2SSO.NAME);
+
         FederatedAuthenticatorConfig[] fedAuthConfs = {federatedAuthenticatorConfig};
-        when(federatedAuthenticatorConfig.getProperties()).
-                thenReturn((new Property[]{getProperty(IdentityApplicationConstants
-                        .Authenticator.SAML2SSO.IDP_ENTITY_ID, TestConstants.LOACALHOST_DOMAIN)}));
-        when(federatedAuthenticatorConfig.getName()).thenReturn(
-                IdentityApplicationConstants.Authenticator.SAML2SSO.NAME);
         when(identityProvider.getFederatedAuthenticatorConfigs()).thenReturn(fedAuthConfs);
 
         when(IdentityApplicationManagementUtil.getFederatedAuthenticator(fedAuthConfs, "samlsso"))
@@ -300,9 +298,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
     public void testValidateGrantWhenFACIsInvalid() throws Exception {
 
         initSAMLGrant();
-        when(federatedAuthenticatorConfig.getProperties()).
-                thenReturn((new Property[]{getProperty(IdentityApplicationConstants
-                        .Authenticator.SAML2SSO.IDP_ENTITY_ID, "notLocal")}));
+        federatedAuthenticatorConfig.setProperties(new Property[]{getProperty(IdentityApplicationConstants
+                .Authenticator.SAML2SSO.IDP_ENTITY_ID, "notLocal")});
         assertTrue(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
@@ -607,11 +604,10 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(realmService.getTenantManager()).thenReturn(tenantManager);
         SAMLSSOUtil.setRealmService(realmService);
 
-        when(federatedAuthenticatorConfig.getProperties()).thenReturn(new Property[]
+        federatedAuthenticatorConfig.setProperties(new Property[]
                 {getProperty(IdentityApplicationConstants.Authenticator.SAML2SSO.IDP_ENTITY_ID,
                         TestConstants.LOACALHOST_DOMAIN)});
-        when(federatedAuthenticatorConfig.getName()).thenReturn(
-                IdentityApplicationConstants.Authenticator.SAML2SSO.NAME);
+        federatedAuthenticatorConfig.setName( IdentityApplicationConstants.Authenticator.SAML2SSO.NAME);
         FederatedAuthenticatorConfig[] fedAuthConfs = {federatedAuthenticatorConfig};
         when(identityProvider.getFederatedAuthenticatorConfigs()).thenReturn(fedAuthConfs);
 

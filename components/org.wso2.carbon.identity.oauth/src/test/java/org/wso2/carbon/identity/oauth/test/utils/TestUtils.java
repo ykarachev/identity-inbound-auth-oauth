@@ -17,6 +17,11 @@
 package org.wso2.carbon.identity.oauth.test.utils;
 
 
+import org.wso2.carbon.base.CarbonBaseConstants;
+import org.wso2.carbon.context.PrivilegedCarbonContext;
+
+import java.nio.file.Paths;
+
 import static org.testng.Assert.assertEquals;
 import static org.testng.AssertJUnit.assertNotNull;
 
@@ -32,5 +37,14 @@ public class TestUtils {
         assertNotNull(instance);
         assertNotNull(anotherInstance);
         assertEquals(instance, anotherInstance);
+    }
+
+    public static void initPrivilegedCarbonContext(String tenantDomain, int tenantID, String userName) throws Exception {
+        String carbonHome = Paths.get(System.getProperty("user.dir"), "src", "test", "resources").toString();
+        System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
+        PrivilegedCarbonContext.startTenantFlow();
+        PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain);
+        PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantId(tenantID);
+        PrivilegedCarbonContext.getThreadLocalCarbonContext().setUsername(userName);
     }
 }

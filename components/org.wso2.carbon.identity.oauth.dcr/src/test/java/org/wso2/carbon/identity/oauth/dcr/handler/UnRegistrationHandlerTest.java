@@ -18,6 +18,8 @@
 package org.wso2.carbon.identity.oauth.dcr.handler;
 
 import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -27,15 +29,22 @@ import org.wso2.carbon.identity.oauth.dcr.model.UnregistrationResponse;
 import org.wso2.carbon.identity.oauth.dcr.service.DCRManagementService;
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
+import static org.mockito.Matchers.anyString;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
+import static org.powermock.api.mockito.PowerMockito.doAnswer;
 import static org.testng.Assert.assertEquals;
 
 @PrepareForTest({UnRegistrationHandler.class, DCRManagementService.class})
 public class UnRegistrationHandlerTest extends PowerMockIdentityBaseTest {
 
     private UnRegistrationHandler unRegistrationHandler;
+    private String dummyUserId = "1234";
+    private String dummyApplicationName = "testApplicationname";
+    private String dummyConsumerKey = "testConsumerKey";
+    private UnregistrationRequest.DCRUnregisterRequestBuilder dCRUnregisterRequestBuilder;
+    private UnregistrationRequest unregistrationRequest;
 
     @Mock
     DCRMessageContext mockDcrMessageContext;
@@ -53,19 +62,42 @@ public class UnRegistrationHandlerTest extends PowerMockIdentityBaseTest {
 
     @Test
     public void testHandle() throws Exception {
+
         when(mockDcrMessageContext.getIdentityRequest()).thenReturn(mockUnregistrationRequest);
+
+        dCRUnregisterRequestBuilder = new UnregistrationRequest.DCRUnregisterRequestBuilder();
 
         UnregistrationResponse.DCUnregisterResponseBuilder dCUnregisterResponseBuilder =
                 new UnregistrationResponse.DCUnregisterResponseBuilder();
         whenNew(UnregistrationResponse.DCUnregisterResponseBuilder.class).withNoArguments().
                 thenReturn(dCUnregisterResponseBuilder);
 
+        dCRUnregisterRequestBuilder.setUserId(dummyUserId);
+        dCRUnregisterRequestBuilder.setApplicationName(dummyApplicationName);
+        dCRUnregisterRequestBuilder.setConsumerKey(dummyConsumerKey);
+        UnregistrationRequest requestBuilder = dCRUnregisterRequestBuilder.build();
+
         mockStatic(DCRManagementService.class);
         when (DCRManagementService.getInstance()).thenReturn(mockDCRManagementService);
-        mockDCRManagementService.unregisterOAuthApplication(mockUnregistrationRequest.getUserId(),
-                mockUnregistrationRequest.getApplicationName(),
-                mockUnregistrationRequest.getConsumerKey());
+        when(mockDcrMessageContext.getIdentityRequest()).thenReturn(requestBuilder);
 
-        assertEquals(unRegistrationHandler.handle(mockDcrMessageContext), dCUnregisterResponseBuilder);
+        final String[] params = new String[3];
+        doAnswer(new Answer<Object>() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                params[0] = (String) invocation.getArguments()[0];
+                params[1] = (String) invocation.getArguments()[1];
+                params[2] = (String) invocation.getArguments()[2];
+                return null;
+            }
+        }).when(mockDCRManagementService).unregisterOAuthApplication(anyString(), anyString(), anyString());
+
+        unRegistrationHandler.handle(mockDcrMessageContext);
+
+        assertEquals(unRegistrationHandler.handle(mockDcrMessageContext), dCUnregisterResponseBuilder,
+                "Expected response builder is different from the actual");
+        assertEquals(params[0],  dummyUserId, "Expected tenant user Id is not equal to the actual");
+        assertEquals(params[1],  dummyApplicationName, "Expected application name is not equal to the actual");
+        assertEquals(params[2],  dummyConsumerKey, "Expected consumer key is not equal to the actual");
     }
 }

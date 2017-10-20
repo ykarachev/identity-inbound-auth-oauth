@@ -18,6 +18,9 @@
 package org.wso2.carbon.identity.oauth.dcr.handler;
 
 import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+import org.omg.CORBA.Object;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -29,15 +32,16 @@ import org.wso2.carbon.identity.oauth.dcr.model.RegistrationResponseProfile;
 import org.wso2.carbon.identity.oauth.dcr.service.DCRManagementService;
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
-import static org.powermock.api.mockito.PowerMockito.when;
-import static org.powermock.api.mockito.PowerMockito.whenNew;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyObject;
+import static org.powermock.api.mockito.PowerMockito.*;
 import static org.testng.Assert.assertEquals;
 
 @PrepareForTest({DCRManagementService.class, RegistrationHandler.class})
 public class RegistrationHandlerTest extends PowerMockIdentityBaseTest {
 
     private RegistrationHandler registrationHandler;
+    private RegistrationRequestProfile mockRegistrationRequestProfile;
     private String testTenantDomain = "testTenantDomain";
 
     @Mock
@@ -45,9 +49,6 @@ public class RegistrationHandlerTest extends PowerMockIdentityBaseTest {
 
     @Mock
     DCRMessageContext mockDcrMessageContext;
-
-    @Mock
-    RegistrationRequestProfile mockRegistrationRequestProfile;
 
     @Mock
     RegistrationResponseProfile mockRegistrationResponseProfile;
@@ -62,12 +63,15 @@ public class RegistrationHandlerTest extends PowerMockIdentityBaseTest {
 
     @Test
     public void testHandle() throws Exception {
+        mockRegistrationRequestProfile = new RegistrationRequestProfile();
+
         when(mockDcrMessageContext.getIdentityRequest()).thenReturn(mockRegisterRequest);
         when(mockRegisterRequest.getRegistrationRequestProfile()).thenReturn(mockRegistrationRequestProfile);
         when(mockRegisterRequest.getTenantDomain()).thenReturn(testTenantDomain);
 
         mockStatic(DCRManagementService.class);
         when (DCRManagementService.getInstance()).thenReturn(mockDCRManagementService);
+
         when(mockDCRManagementService.registerOAuthApplication(mockRegistrationRequestProfile)).
                 thenReturn(mockRegistrationResponseProfile);
 
@@ -75,6 +79,9 @@ public class RegistrationHandlerTest extends PowerMockIdentityBaseTest {
                 new RegistrationResponse.DCRRegisterResponseBuilder();
         whenNew(RegistrationResponse.DCRRegisterResponseBuilder.class).withNoArguments().thenReturn(registerResponseBuilder);
 
-        assertEquals(registrationHandler.handle(mockDcrMessageContext), registerResponseBuilder);
+        assertEquals(registrationHandler.handle(mockDcrMessageContext), registerResponseBuilder,
+                "Expected response builder is different from the actual");
+        assertEquals(mockRegistrationRequestProfile.getTenantDomain(), testTenantDomain,
+                "Expected tenant domain is not equal to the actual tenant domain");
     }
 }

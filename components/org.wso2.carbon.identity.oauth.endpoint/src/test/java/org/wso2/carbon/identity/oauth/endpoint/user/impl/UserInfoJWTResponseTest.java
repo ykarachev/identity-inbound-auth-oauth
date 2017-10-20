@@ -106,7 +106,6 @@ public class UserInfoJWTResponseTest extends UserInfoResponseBaseTest {
         prepareAuthorizationGrantCache(getClaimsFromCache);
         prepareClaimUtil(getClaims(inputClaims));
         String responseString = userInfoJWTResponse.getResponseString(prepareTokenResponseDTO());
-        System.out.println(responseString);
         for (String claim : assertClaims) {
             assertTrue(decodeJWT(responseString).contains(claim), "Expected to present " + claim + " in the response " +
                     "string");

@@ -28,9 +28,9 @@ import org.wso2.carbon.identity.oauth.util.ClaimCacheKey;
 import org.wso2.carbon.identity.oauth.util.ClaimMetaDataCache;
 import org.wso2.carbon.identity.oauth.util.UserClaims;
 
+import java.util.SortedMap;
 import javax.cache.Cache;
 import javax.cache.event.CacheEntryEvent;
-import java.util.SortedMap;
 
 import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;

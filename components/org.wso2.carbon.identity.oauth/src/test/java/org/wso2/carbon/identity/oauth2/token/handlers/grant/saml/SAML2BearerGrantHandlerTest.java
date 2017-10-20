@@ -27,6 +27,7 @@ import org.opensaml.security.SAMLSignatureProfileValidator;
 import org.opensaml.xml.security.x509.X509Credential;
 import org.opensaml.xml.signature.Signature;
 import org.opensaml.xml.signature.SignatureValidator;
+import org.opensaml.xml.validation.ValidationException;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.Assert;
@@ -74,6 +75,7 @@ import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.lang.reflect.Field;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
@@ -377,6 +379,14 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
+    @Test
+    public void testValidateGrantForValidationException() throws Exception {
+
+        initSAMLGrant();
+        whenNew(SignatureValidator.class).withArguments(any(X509Credential.class)).thenThrow(ValidationException.class);
+        assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx),"Error while validating the signature.");
+    }
+
     @Test(expectedExceptions = IdentityOAuth2Exception.class)
     public void testValidateGrantIPMException() throws Exception {
 
@@ -387,6 +397,15 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
                 .thenThrow(IdentityProviderManagementException.class);
         assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx),
                 "Error while getting an Identity Provider for issuer value :" + assertion.getIssuer().getValue());
+    }
+
+    @Test(expectedExceptions = IdentityOAuth2Exception.class)
+    public void testValidateGrantForCertificateException() throws Exception {
+
+        initSAMLGrant();
+        when(IdentityApplicationManagementUtil.decodeCertificate(anyString()))
+                .thenThrow(CertificateException.class);
+        assertTrue(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx),"Error occurred while decoding public certificate of Identity Provider");
     }
 
     @Test

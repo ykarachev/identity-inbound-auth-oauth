@@ -26,11 +26,12 @@ import static org.testng.AssertJUnit.assertTrue;
  * Test Class for the ClaimCache.
  */
 public class ClaimCacheTest {
+
     @Test
     public void testGetInstance() throws Exception {
-
+        //test a sigleton class with empty instance
         assertTrue(ClaimCache.getInstance() instanceof ClaimCache);
-
+        //test a singleton class with existing instance
         assertTrue(ClaimCache.getInstance() instanceof ClaimCache);
     }
 

@@ -43,6 +43,7 @@ import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 import org.wso2.carbon.identity.oauth2.model.RefreshTokenValidationDataDO;
+import org.wso2.carbon.identity.testutil.IdentityBaseTest;
 import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.tenant.TenantManager;
@@ -67,7 +68,7 @@ import static org.testng.Assert.assertTrue;
  * Unit tests for TokenMgtDAO.
  */
 @PrepareForTest({IdentityDatabaseUtil.class, IdentityUtil.class, OAuthServerConfiguration.class})
-public class TokenMgtDAOTest {
+public class TokenMgtDAOTest extends IdentityBaseTest {
 
     private static final String DB_NAME = "TOKEN_DB";
 

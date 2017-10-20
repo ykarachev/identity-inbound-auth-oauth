@@ -20,7 +20,6 @@ package org.wso2.carbon.identity.oauth2;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -229,24 +228,29 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         when(AccessTokenIssuer.getInstance()).thenReturn(accessTokenIssuer);
         when(accessTokenIssuer.issue(any(OAuth2AccessTokenReqDTO.class))).thenReturn(tokenRespDTO);
         assertNotNull(oAuth2Service.issueAccessToken(new OAuth2AccessTokenReqDTO()));
-
-        when(accessTokenIssuer.issue(any(OAuth2AccessTokenReqDTO.class)))
-                .thenThrow(new InvalidOAuthClientException(""));
-        assertEquals(oAuth2Service.issueAccessToken(new OAuth2AccessTokenReqDTO())
-                .getErrorMsg(), "Invalid Client");
     }
 
+    /**
+     * DataProvider: Exceptions,ErrorMsg
+     */
+    @DataProvider(name = "ExceptionforIssueAccessToken")
+    public Object[][] createExceptions() {
+        return new Object[][]{
+                {new IdentityOAuth2Exception(""), "server_error"},
+                {new InvalidOAuthClientException(""), "invalid_client"},
+        };
+    }
 
-    @Test
-    public void testExceptionForIssueAccesstoken() throws IdentityException {
+    @Test(dataProvider = "ExceptionforIssueAccess token")
+    public void testExceptionForIssueAccesstoken(Object exception, String errorMsg) throws IdentityException {
 
         AccessTokenIssuer accessTokenIssuer = mock(AccessTokenIssuer.class);
         mockStatic(AccessTokenIssuer.class);
         when(AccessTokenIssuer.getInstance()).thenReturn(accessTokenIssuer);
         when(accessTokenIssuer.issue(any(OAuth2AccessTokenReqDTO.class)))
-                .thenThrow(new IdentityOAuth2Exception(""));
+                .thenThrow((Exception) exception);
         assertEquals(oAuth2Service.issueAccessToken(new OAuth2AccessTokenReqDTO())
-                .getErrorCode(), "server_error");
+                .getErrorCode(), errorMsg);
     }
 
     @Test
@@ -257,8 +261,20 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         assertTrue(oAuth2Service.isPKCESupportEnabled());
     }
 
-    @Test
-    public void testRevokeTokenByOAuthClientWithRefreshToken() throws Exception {
+    /**
+     * DataProvider: grantType, token state
+     */
+    @DataProvider(name = "RefreshTokenWithDifferentFlows")
+    public Object[][] createRefreshtoken() {
+        return new Object[][]{
+                {GrantType.REFRESH_TOKEN.toString(), OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE},
+                {null, OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE},
+                {GrantType.REFRESH_TOKEN.toString(), OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED},
+        };
+    }
+
+    @Test(dataProvider = "RefreshTokenWithDifferentFlows")
+    public void testRevokeTokenByOAuthClientWithRefreshToken(String grantType, String tokenState) throws Exception {
 
         setUpRevokeToken();
 
@@ -267,30 +283,22 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         refreshTokenValidationDataDO.setAccessToken("testAccessToken");
         refreshTokenValidationDataDO.setAuthorizedUser(authenticatedUser);
         refreshTokenValidationDataDO.setScope(new String[]{"test"});
-        refreshTokenValidationDataDO.setRefreshTokenState(OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
+        refreshTokenValidationDataDO.setRefreshTokenState(tokenState);
 
         TokenMgtDAO tokenMgtDAO = mock(TokenMgtDAO.class);
         when(tokenMgtDAO.validateRefreshToken(anyString(), anyString())).thenReturn(refreshTokenValidationDataDO);
         whenNew(TokenMgtDAO.class).withAnyArguments().thenReturn(tokenMgtDAO);
         doNothing().when(tokenMgtDAO).revokeTokens(any(String[].class));
-        OAuthRevocationRequestDTO revokeRequestDTO = new OAuthRevocationRequestDTO();
-        assertEquals(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).getErrorMsg(),
-                "Invalid revocation request");
 
-        revokeRequestDTO.setConsumerKey("testCosumerKey");
-        revokeRequestDTO.setToken("testToken");
-        revokeRequestDTO.setToken_type(GrantType.REFRESH_TOKEN.toString());
-        assertFalse(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).isError());
-
-        revokeRequestDTO.setToken_type(null);
         when(oAuthCache.getValueFromCache(any(OAuthCacheKey.class))).thenReturn(null);
         mockStatic(OAuthCache.class);
         when(OAuthCache.getInstance()).thenReturn(oAuthCache);
-        assertFalse(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).isError());
 
-        refreshTokenValidationDataDO.setRefreshTokenState(OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED);
-        when(tokenMgtDAO.validateRefreshToken(anyString(), anyString())).thenReturn(refreshTokenValidationDataDO);
-        assertNotNull(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO));
+        OAuthRevocationRequestDTO revokeRequestDTO = new OAuthRevocationRequestDTO();
+        revokeRequestDTO.setConsumerKey("testConsumerKey");
+        revokeRequestDTO.setToken("testToken");
+        revokeRequestDTO.setToken_type(grantType);
+        assertFalse(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).isError());
     }
 
     @Test
@@ -301,7 +309,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         when(authenticatedUser.toString()).thenReturn("testAuthenticatedUser");
 
         AccessTokenDO accessTokenDO = new AccessTokenDO();
-        accessTokenDO.setConsumerKey("testCosumerKey");
+        accessTokenDO.setConsumerKey("testConsumerKey");
         accessTokenDO.setAuthzUser(authenticatedUser);
 
         TokenMgtDAO tokenMgtDAO = mock(TokenMgtDAO.class);
@@ -309,7 +317,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         when(tokenMgtDAO.retrieveAccessToken(anyString(), anyBoolean())).thenReturn(accessTokenDO);
         whenNew(TokenMgtDAO.class).withAnyArguments().thenReturn(tokenMgtDAO);
         OAuthRevocationRequestDTO revokeRequestDTO = new OAuthRevocationRequestDTO();
-        revokeRequestDTO.setConsumerKey("testCosumerKey");
+        revokeRequestDTO.setConsumerKey("testConsumerKey");
         revokeRequestDTO.setToken("testToken");
         revokeRequestDTO.setToken_type(GrantType.CLIENT_CREDENTIALS.toString());
 
@@ -319,31 +327,54 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
 
         oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO);
         assertFalse(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).isError());
-
-        when(OAuth2Util.authenticateClient(anyString(), anyString())).thenThrow(new InvalidOAuthClientException(" "));
-        assertEquals(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).getErrorMsg(), "Unauthorized Client");
     }
 
-    @Test
-    public void testIdentityOAuth2ExceptionForRevokeTokenByOAuthClient() throws Exception {
+    /**
+     * DataProvider: ErrorMsg, Enable to set Details on revokeRequest,
+     * Enable to throw Identity Exception,
+     * Enable to throw InvalidOAuthClientException.
+     */
+    @DataProvider(name = "ExceptionforRevokeTokenByOAuthClient")
+    public Object[][] createRevokeTokenException() {
+        return new Object[][]{
+                {"Error occurred while revoking authorization grant for applications", true, true, false},
+                {"Invalid revocation request", false, false, false},
+                {"Unauthorized Client", true, false, true},
+        };
+    }
 
-        when(oAuthEventInterceptorProxy.isEnabled()).thenReturn(true);
-        doThrow(new IdentityOAuth2Exception("")).when(oAuthEventInterceptorProxy)
-                .onPreTokenRevocationByClient(any(OAuthRevocationRequestDTO.class), anyMap());
-        when(oAuthComponentServiceHolder.getOAuthEventInterceptorProxy()).thenReturn(oAuthEventInterceptorProxy);
-        mockStatic(OAuthComponentServiceHolder.class);
-        when(OAuthComponentServiceHolder.getInstance()).thenReturn(oAuthComponentServiceHolder);
+    @Test(dataProvider = "ExceptionforRevokeTokenByOAuthClient")
+    public void testIdentityOAuth2ExceptionForRevokeTokenByOAuthClient(
+            String errorMsg, boolean setDetails, boolean enableExp1, boolean enableExp2) throws Exception {
 
-        mockStatic(OAuthServerConfiguration.class);
-        when(oAuthServerConfiguration.getPersistenceProcessor()).thenReturn(persistenceProcessor);
-        TokenMgtDAO tokenMgtDAO = mock(TokenMgtDAO.class);    //mock methods for tokenMgtDAO
+        setUpRevokeToken();
+
+        AccessTokenDO accessTokenDO = new AccessTokenDO();
+        accessTokenDO.setConsumerKey("testConsumerKey");
+        accessTokenDO.setAuthzUser(authenticatedUser);
+        if (enableExp1) {
+            doThrow(new IdentityOAuth2Exception("")).when(oAuthEventInterceptorProxy)
+                    .onPreTokenRevocationByClient(any(OAuthRevocationRequestDTO.class), anyMap());
+        }
+        if (enableExp2) {
+            when(OAuth2Util.authenticateClient(anyString(), anyString()))
+                    .thenThrow(new InvalidOAuthClientException(" "));
+        }
+        TokenMgtDAO tokenMgtDAO = mock(TokenMgtDAO.class);
+        doNothing().when(tokenMgtDAO).revokeTokens(any(String[].class));
+        when(tokenMgtDAO.retrieveAccessToken(anyString(), anyBoolean())).thenReturn(accessTokenDO);
         whenNew(TokenMgtDAO.class).withAnyArguments().thenReturn(tokenMgtDAO);
-
         OAuthRevocationRequestDTO revokeRequestDTO = new OAuthRevocationRequestDTO();
-        revokeRequestDTO.setConsumerKey("testCosumerKey");
-        revokeRequestDTO.setToken("testToken");
-        String result = "Error occurred while revoking authorization grant for applications";
-        assertEquals(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).getErrorMsg(), result);
+        if (setDetails) {
+            revokeRequestDTO.setConsumerKey("testConsumerKey");
+            revokeRequestDTO.setToken("testToken");
+        }
+        revokeRequestDTO.setToken_type(GrantType.CLIENT_CREDENTIALS.toString());
+
+        when(oAuthCache.getValueFromCache(any(OAuthCacheKey.class))).thenReturn(accessTokenDO);
+        mockStatic(OAuthCache.class);
+        when(OAuthCache.getInstance()).thenReturn(oAuthCache);
+        assertEquals(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).getErrorMsg(), errorMsg);
     }
 
     public void setUpRevokeToken() throws Exception {

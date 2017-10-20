@@ -353,7 +353,8 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
 
     @Test(dataProvider = "ExceptionforRevokeTokenByOAuthClient")
     public void testIdentityOAuth2ExceptionForRevokeTokenByOAuthClient(
-            String errorMsg, boolean setDetails, boolean enableExp1, boolean enableExp2, boolean enableExp3) throws Exception {
+            String errorMsg, boolean setDetails, boolean enableExp1, boolean enableExp2,
+            boolean enableExp3) throws Exception {
 
         setUpRevokeToken();
         AccessTokenDO accessTokenDO = new AccessTokenDO();
@@ -410,7 +411,8 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
     }
 
     @Test(dataProvider = "provideUserClaims")
-    public void testGetUserClaims(Object map, String[] claims, String[] supClaims, int arraySize, String username) throws Exception {
+    public void testGetUserClaims(Object map, String[] claims, String[] supClaims,
+                                  int arraySize, String username) throws Exception {
 
         OAuth2TokenValidationResponseDTO respDTO = mock(OAuth2TokenValidationResponseDTO.class);
         when(respDTO.getAuthorizedUser()).thenReturn(username);
@@ -452,7 +454,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
 
         mockStatic(IdentityTenantUtil.class);
         when(IdentityTenantUtil.getRealm(anyString(), anyString())).thenThrow(new IdentityException(""));
-        oAuth2Service.getUserClaims("test");
+        assertEquals(oAuth2Service.getUserClaims("test").length, 1);
     }
 
     private void setUpRevokeToken() throws Exception {

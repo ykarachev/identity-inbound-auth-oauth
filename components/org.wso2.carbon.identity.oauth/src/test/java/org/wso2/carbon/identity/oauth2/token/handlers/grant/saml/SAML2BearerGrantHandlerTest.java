@@ -86,6 +86,9 @@ import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.powermock.api.mockito.PowerMockito.doNothing;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
 
 @PowerMockIgnore({"javax.net.*"})
 @PrepareForTest({IdentityUtil.class, IdentityTenantUtil.class, IdentityProviderManager.class, OAuth2Util.class,
@@ -270,7 +273,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
     public void testValidateGrant() throws Exception {
 
         initSAMLGrant();
-        Assert.assertTrue(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertTrue(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @Test
@@ -279,7 +282,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         initSAMLGrant();
         when(IdentityApplicationManagementUtil.getProperty(samlConfig.getProperties(), "IdPEntityId"))
                 .thenReturn(getProperty("samlsso", null));
-        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @Test
@@ -288,7 +291,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         initSAMLGrant();
         when(IdentityApplicationManagementUtil.getProperty(samlConfig.getProperties(), "IdPEntityId"))
                 .thenReturn(getProperty("samlsso", "notLocalHost"));
-        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @Test
@@ -298,7 +301,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(federatedAuthenticatorConfig.getProperties()).
                 thenReturn((new Property[]{getProperty(IdentityApplicationConstants
                         .Authenticator.SAML2SSO.IDP_ENTITY_ID, "notLocal")}));
-        Assert.assertTrue(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertTrue(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @Test
@@ -308,7 +311,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(identityProviderManager
                 .getIdPByAuthenticatorPropertyValue(anyString(), anyString(), anyString(), anyString(), anyBoolean()))
                 .thenReturn(null);
-        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @DataProvider(name = "validateGrantWhenAuthDiffer")
@@ -327,7 +330,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(identityProviderManager
                 .getIdPByAuthenticatorPropertyValue("IdPEntityId", "localhost", "carbon.super", authenticator, false))
                 .thenReturn(null);
-        Assert.assertTrue(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertTrue(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @Test
@@ -336,7 +339,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         initSAMLGrant();
         when(IdentityApplicationManagementUtil.getProperty(oauthConfig.getProperties(), "OAuth2TokenEPUrl"))
                 .thenReturn(getProperty("TokenEPUrl", "notLocal"));
-        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @DataProvider(name = "ValidateGrantForDifferentProperty")
@@ -354,7 +357,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         initSAMLGrant();
         when(IdentityApplicationManagementUtil.getProperty(samlConfig.getProperties(), propertyName))
                 .thenReturn(null);
-        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @Test
@@ -362,7 +365,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
 
         initSAMLGrant();
         when(oAuthServerConfiguration.getTimeStampSkewInSeconds()).thenReturn(-1000000000000000L);
-        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @Test
@@ -371,7 +374,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         initSAMLGrant();
         identityProviderIns.setAlias("");
         identityProviderIns.setIdentityProviderName("notLocal");
-        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
     }
 
     @Test(expectedExceptions = IdentityOAuth2Exception.class)
@@ -382,14 +385,15 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(identityProviderManager
                 .getIdPByAuthenticatorPropertyValue(anyString(), anyString(), anyString(), anyString(), anyBoolean()))
                 .thenThrow(IdentityProviderManagementException.class);
-        Assert.assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx));
+        assertFalse(saml2BearerGrantHandler.validateGrant(tokReqMsgCtx),
+                "Error while getting an Identity Provider for issuer value :" + assertion.getIssuer().getValue());
     }
 
     @Test
     public void testIssueRefreshToken() throws Exception {
 
         when(oAuthServerConfiguration.getValueForIsRefreshTokenAllowed(OAuthConstants.OAUTH_SAML2_BEARER_METHOD)).thenReturn(true);
-        Assert.assertTrue(saml2BearerGrantHandler.issueRefreshToken());
+        assertTrue(saml2BearerGrantHandler.issueRefreshToken());
     }
 
     @Test
@@ -397,7 +401,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
 
         when(oAuthServerConfiguration.getSaml2BearerTokenUserType()).thenReturn(OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX);
         saml2BearerGrantHandler.setUser(tokReqMsgCtx, identityProvider, assertion, TestConstants.CARBON_TENANT_DOMAIN);
-        Assert.assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue());
+        assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue());
     }
 
     @Test
@@ -409,7 +413,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
         when(userStoreManager.isExistingUser(anyString())).thenReturn(true);
         saml2BearerGrantHandler.setUser(tokReqMsgCtx, identityProvider, assertion, TestConstants.CARBON_TENANT_DOMAIN);
-        Assert.assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue());
+        assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue(),
+                "the local user set to the token req message context after validating the user");
     }
 
     @Test
@@ -420,9 +425,11 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(realmService.getTenantUserRealm(anyInt())).thenReturn(userRealm);
         when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
         when(userStoreManager.isExistingUser(anyString())).thenReturn(true);
-        when(identityProvider.getIdentityProviderName()).thenReturn(IdentityApplicationConstants.RESIDENT_IDP_RESERVED_NAME);
+        when(identityProvider.getIdentityProviderName())
+                .thenReturn(IdentityApplicationConstants.RESIDENT_IDP_RESERVED_NAME);
         saml2BearerGrantHandler.setUser(tokReqMsgCtx, identityProvider, assertion, TestConstants.CARBON_TENANT_DOMAIN);
-        Assert.assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue());
+        assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue(),
+                "Set the local user identified from subject identifier from assertion");
     }
 
     @Test
@@ -435,7 +442,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
         when(userStoreManager.isExistingUser(anyString())).thenReturn(true);
         saml2BearerGrantHandler.setUser(tokReqMsgCtx, identityProvider, assertion, TestConstants.CARBON_TENANT_DOMAIN);
-        Assert.assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue());
+        assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue(),
+                "Build and set Federated User when idp is not local");
     }
 
     @Test
@@ -448,16 +456,19 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(oAuthServerConfiguration.getSaml2BearerTokenUserType()).thenReturn(OAuthConstants.UserType.LEGACY_USER_TYPE);
         saml2BearerGrantHandler.setUser(tokReqMsgCtx, identityProvider, assertion, TestConstants.CARBON_TENANT_DOMAIN);
         String subject = tokReqMsgCtx.getAuthorizedUser().getAuthenticatedSubjectIdentifier();
-        Assert.assertEquals(subject, authenticatedUser.getAuthenticatedSubjectIdentifier());
+        assertEquals(subject, authenticatedUser.getAuthenticatedSubjectIdentifier(),
+                "setting the username to Token MessageContext from assertion by removing the domain name");
     }
 
     @Test(expectedExceptions = IdentityOAuth2Exception.class)
     public void testSetLocalUserForIAMException() throws Exception {
 
         mockOAuthComponents();
-        when(OAuth2ServiceComponentHolder.getApplicationMgtService()).thenThrow(IdentityApplicationManagementException.class);
+        when(OAuth2ServiceComponentHolder.getApplicationMgtService())
+                .thenThrow(IdentityApplicationManagementException.class);
         saml2BearerGrantHandler.setLocalUser(tokReqMsgCtx, assertion, "notValid");
-        Assert.assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue());
+        assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue(),
+                "Error while retrieving service provider for invalid spTenantDomain.");
     }
 
     @Test(expectedExceptions = IdentityOAuth2Exception.class)
@@ -469,7 +480,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(userStoreManager.isExistingUser(anyString())).thenReturn(true);
         serviceProvider.setSaasApp(false);
         saml2BearerGrantHandler.setLocalUser(tokReqMsgCtx, assertion, "notValid");
-        Assert.assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue());
+        assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue(),
+                "Non SaaS app tries to issue token for a different tenant domain.");
     }
 
     @Test(expectedExceptions = IdentityOAuth2Exception.class)
@@ -480,7 +492,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
         when(userStoreManager.isExistingUser(anyString())).thenReturn(false);
         saml2BearerGrantHandler.setLocalUser(tokReqMsgCtx, assertion, TestConstants.CARBON_TENANT_DOMAIN);
-        Assert.assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue());
+        assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue(),
+                "User doesn't exist in local user store");
     }
 
     @DataProvider(name = "SetUserForInvalidUserStoreManager")
@@ -511,7 +524,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(userRealm.getUserStoreManager()).thenThrow(UserStoreException.class);
         when(identityProvider.getIdentityProviderName()).thenReturn(IdentityApplicationConstants.RESIDENT_IDP_RESERVED_NAME);
         saml2BearerGrantHandler.setUser(tokReqMsgCtx, identityProvider, assertion, TestConstants.CARBON_TENANT_DOMAIN);
-        Assert.assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue());
+        assertEquals(tokReqMsgCtx.getAuthorizedUser().getUserName(), assertion.getSubject().getNameID().getValue(),
+                "Error while building local user from given assertion");
     }
 
     @Test
@@ -520,18 +534,19 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         serviceProvider = getServicProvider(false, true);
         AuthenticatedUser authenticatedUser = saml2BearerGrantHandler.buildLocalUser(tokReqMsgCtx, assertion,
                 serviceProvider, TestConstants.CARBON_TENANT_DOMAIN);
-        Assert.assertEquals(authenticatedUser.getUserName(), TestConstants.TEST_USER_NAME);
+        assertEquals(authenticatedUser.getUserName(), TestConstants.TEST_USER_NAME);
     }
 
     @Test
-    public void testBuildLocalUserEmptyTenantDomain() throws Exception {
+    public void testBuildLocalUserWhenTenantDomainIsEmpty() throws Exception {
 
         serviceProvider = getServicProvider(false, true);
         mockStatic(MultitenantUtils.class);
         when(MultitenantUtils.getTenantDomain(anyString())).thenReturn("");
         AuthenticatedUser authenticatedUser = saml2BearerGrantHandler.buildLocalUser(tokReqMsgCtx, assertion,
                 serviceProvider, TestConstants.CARBON_TENANT_DOMAIN);
-        Assert.assertEquals(authenticatedUser.getTenantDomain(), TestConstants.CARBON_TENANT_DOMAIN);
+        assertEquals(authenticatedUser.getTenantDomain(), TestConstants.CARBON_TENANT_DOMAIN,
+                "userTenantDomain is set as spTenantDomain");
     }
 
     @Test
@@ -543,7 +558,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(OAuth2Util.getUserFromUserName(anyString())).thenReturn(authenticatedUser);
         saml2BearerGrantHandler.createLegacyUser(tokReqMsgCtx, assertion);
         String subject = tokReqMsgCtx.getAuthorizedUser().getAuthenticatedSubjectIdentifier();
-        Assert.assertEquals(subject, authenticatedUser.getAuthenticatedSubjectIdentifier());
+        assertEquals(subject, authenticatedUser.getAuthenticatedSubjectIdentifier(),
+                "setting the username to Token MessageContext from assertion by removing the domain name");
     }
 
     private Property getProperty(String name, String value) {
@@ -645,4 +661,3 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
     }
 
 }
-

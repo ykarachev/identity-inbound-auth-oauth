@@ -23,8 +23,8 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.IObjectFactory;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
 import org.testng.annotations.ObjectFactory;
+import org.testng.annotations.Test;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.core.model.IdentityCacheConfig;
 import org.wso2.carbon.identity.core.model.IdentityEventListenerConfig;
@@ -36,6 +36,7 @@ import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.util.ClaimCache;
 import org.wso2.carbon.identity.oauth.util.ClaimMetaDataCache;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
+import org.wso2.carbon.identity.testutil.IdentityBaseTest;
 import org.wso2.carbon.user.core.UserStoreManager;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 
@@ -43,21 +44,21 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.MockitoAnnotations.initMocks;
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.mock;
+import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import static org.powermock.api.mockito.PowerMockito.spy;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
-import static org.powermock.api.mockito.PowerMockito.spy;
 import static org.testng.Assert.assertEquals;
 import static org.testng.AssertJUnit.assertTrue;
 
 @PrepareForTest({UserCoreUtil.class, IdentityTenantUtil.class, OAuthServerConfiguration.class,
         IdentityOathEventListener.class, AuthorizationGrantCache.class, IdentityUtil.class,
         StringUtils.class, ClaimMetaDataCache.class})
-public class IdentityOathEventListenerTest {
+public class IdentityOathEventListenerTest extends IdentityBaseTest {
 
     private IdentityOathEventListener identityOathEventListener = new IdentityOathEventListener();
     private IdentityOathEventListener spiedIdentityEventListener;
@@ -107,7 +108,7 @@ public class IdentityOathEventListenerTest {
         spiedIdentityEventListener = spy(new IdentityOathEventListener());
         when(IdentityUtil.readEventListenerProperty(anyString(), anyString())).thenReturn(identityEventListenerConfig);
         when(identityOathEventListener.getOrderId()).thenReturn(orderId);
-        assertEquals(identityOathEventListener.getExecutionOrderId(), expected,"asserting exec. order id");
+        assertEquals(identityOathEventListener.getExecutionOrderId(), expected, "asserting exec. order id");
     }
 
     @Test

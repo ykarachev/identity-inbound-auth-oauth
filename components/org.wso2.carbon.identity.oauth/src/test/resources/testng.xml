@@ -58,6 +58,7 @@
             <class name="org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAOTest"/>
             <class name="org.wso2.carbon.identity.oauth.config.OAuthCallbackHandlerMetaDataTest"/>
             <class name="org.wso2.carbon.identity.oauth.config.OAuthServerConfigurationTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.OAuth2TokenValidationServiceTest"/>
         </classes>
     </test>
     <test name="org.wso2.carbon.identity.oauth2.token">

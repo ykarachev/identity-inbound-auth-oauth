@@ -52,14 +52,19 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
 
     @Mock
     Scope mockedScope;
+
     @Mock
     IdentityCacheConfig mockedIdentityCacheConfig;
+
     @Mock
     ScopeMgtDAO mockedScopeMgtDAO;
+
     @Mock
     Set<Scope> mockedScopeSet;
+
     @Mock
     OAuthScopeCache mockedOAuthScopeCache;
+
     @InjectMocks
     private OAuth2ScopeService oAuth2ScopeService;
 
@@ -144,7 +149,23 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
     @Test(dataProvider = "indexAndCountProvider", expectedExceptions = IdentityOAuth2ScopeServerException.class)
     public void testGetScopesWithScopeServerException(Integer startIndex, Integer count) throws Exception {
         when(mockedScopeMgtDAO.getScopesWithPagination(anyInt(), anyInt(), anyInt())).thenThrow(new
-                IdentityOAuth2ScopeServerException("dummyIdentityOAuth2ScopeServerWxception"));
+                IdentityOAuth2ScopeServerException("dummyIdentityOAuth2ScopeServerException"));
+        oAuth2ScopeService.getScopes(startIndex, count);
+    }
+
+    @Test(dataProvider = "indexAndCountProvider", expectedExceptions = IdentityOAuth2ScopeServerException.class)
+    public void testGetScopesWithScopeServerExceptionConstruct2(Integer startIndex, Integer count) throws Exception {
+        when(mockedScopeMgtDAO.getScopesWithPagination(anyInt(), anyInt(), anyInt())).thenThrow(new
+                IdentityOAuth2ScopeServerException("dummyIdentityOAuth2ScopeServerException", "Generated for testing " +
+                "purpose"));
+        oAuth2ScopeService.getScopes(startIndex, count);
+    }
+
+    @Test(dataProvider = "indexAndCountProvider", expectedExceptions = IdentityOAuth2ScopeServerException.class)
+    public void testGetScopesWithScopeServerExceptionConstruct3(Integer startIndex, Integer count) throws Exception {
+        Throwable throwable = new Throwable();
+        when(mockedScopeMgtDAO.getScopesWithPagination(anyInt(), anyInt(), anyInt())).thenThrow(new
+                IdentityOAuth2ScopeServerException("dummyIdentityOAuth2ScopeServerException", throwable));
         oAuth2ScopeService.getScopes(startIndex, count);
     }
 

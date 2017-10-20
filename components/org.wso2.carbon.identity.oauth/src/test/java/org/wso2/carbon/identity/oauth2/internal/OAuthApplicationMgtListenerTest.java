@@ -174,10 +174,9 @@ public class OAuthApplicationMgtListenerTest extends TestOAuthDAOBase {
         try (Connection connection = getConnection(DB_NAME)) {
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
-            ServiceProvider serviceProvider = createServiceProvider(1, hasAuthConfig, hasRequestConfig, authType,
-                    propName);
-            Boolean result =
-                    oAuthApplicationMgtListener.doPostGetServiceProvider(serviceProvider, spName, tenantDomain);
+            ServiceProvider serviceProvider =
+                    createServiceProvider(1, hasAuthConfig, hasRequestConfig, authType, propName);
+            Boolean result = oAuthApplicationMgtListener.doPostGetServiceProvider(serviceProvider, spName, tenantDomain);
             assertTrue(result, "Post-get service provider failed.");
         }
     }
@@ -188,8 +187,7 @@ public class OAuthApplicationMgtListenerTest extends TestOAuthDAOBase {
         try (Connection connection = getConnection(DB_NAME)) {
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
-            Boolean result =
-                    oAuthApplicationMgtListener.doPostGetServiceProvider(null, spName, tenantDomain);
+            Boolean result = oAuthApplicationMgtListener.doPostGetServiceProvider(null, spName, tenantDomain);
             assertTrue(result, "Post-get service provider failed.");
         }
     }
@@ -214,8 +212,7 @@ public class OAuthApplicationMgtListenerTest extends TestOAuthDAOBase {
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
             ServiceProvider serviceProvider = createServiceProvider(1, true, true, OAUTH2, OAUTH_CONSUMER_SECRET);
-            Boolean result = oAuthApplicationMgtListener.doPostCreateApplication(serviceProvider, tenantDomain,
-                    userName);
+            Boolean result = oAuthApplicationMgtListener.doPostCreateApplication(serviceProvider, tenantDomain, userName);
             assertTrue(result, "Post-create application failed.");
         }
     }

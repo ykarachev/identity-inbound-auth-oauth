@@ -678,6 +678,13 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
 
         OAuthAppDO oAuthAppDO = (OAuthAppDO)tokReqMsgCtx.getProperty("OAuthAppDO");
 
+        if (oAuthAppDO == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("OAuthAppDO is not available in OAuthTokenReqMessageContext for client id: " + tokenReqDTO
+                        .getClientId());
+            }
+            return false;
+        }
         if (StringUtils.isBlank(oAuthAppDO.getGrantTypes())) {
             if (log.isDebugEnabled()) {
                 log.debug("Could not find authorized grant types for client id: " + tokenReqDTO.getClientId());

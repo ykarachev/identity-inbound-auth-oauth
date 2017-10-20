@@ -21,7 +21,6 @@ package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -59,6 +58,8 @@ import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.doCallRealMethod;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.TOKEN_STATE_REVOKED;
 
@@ -67,6 +68,7 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
 
     private static final String DEFAULT_CALLBACK_HANDLER_CLASS_NAME =
             "org.wso2.carbon.identity.oauth.callback.DefaultCallbackHandler";
+    private static final String PASSWORD_GRANT = "password";
 
     @Mock
     private AbstractAuthorizationGrantHandler handler;
@@ -96,8 +98,8 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
     private AuthenticatedUser authenticatedUser;
 
     private String accessToken = "654564654646456456456456487987";
-    static final String clientId = "IbWwXLf5MnKSY6x6gnR_7gd7f1wa";
-    static final String tokenId = "435fgd3535343535353453453453";
+    private static final String clientId = "IbWwXLf5MnKSY6x6gnR_7gd7f1wa";
+    private static final String tokenId = "435fgd3535343535353453453453";
 
     @BeforeMethod
     public void setUp() {
@@ -218,15 +220,15 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
         when(authenticatedUser.toString()).thenReturn("randomUser");
 
         when(oAuth2AccessTokenReqDTO.getClientId()).thenReturn(clientId);
-        when(oAuth2AccessTokenReqDTO.getGrantType()).thenReturn("password");
+        when(oAuth2AccessTokenReqDTO.getGrantType()).thenReturn(PASSWORD_GRANT);
 
         mockStatic(OAuth2Util.class);
-        when(OAuth2Util.buildScopeString(any(String[].class))).thenReturn("scope1 scope2");
         when(OAuth2Util.getAppInformationByClientId(any(String.class))).thenReturn(oAuthAppDO);
         when(OAuth2Util.checkAccessTokenPartitioningEnabled()).thenReturn(false);
         when(OAuth2Util.checkUserNameAssertionEnabled()).thenReturn(false);
-        when(OAuth2Util.calculateValidityInMillis(anyLong(), anyLong())).thenCallRealMethod();
 
+        when(OAuth2Util.buildScopeString(any(String[].class))).thenCallRealMethod();
+        when(OAuth2Util.calculateValidityInMillis(anyLong(), anyLong())).thenCallRealMethod();
         when(OAuth2Util.getTokenExpireTimeMillis(any(AccessTokenDO.class))).thenCallRealMethod();
         when(OAuth2Util.getRefreshTokenExpireTimeMillis(any(AccessTokenDO.class))).thenCallRealMethod();
         when(OAuth2Util.getAccessTokenExpireMillis(any(AccessTokenDO.class))).thenCallRealMethod();
@@ -266,7 +268,7 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
 
         doCallRealMethod().when(handler).issue(any(OAuthTokenReqMessageContext.class));
         OAuth2AccessTokenRespDTO tokenRespDTO = handler.issue(tokReqMsgCtx);
-        Assert.assertEquals(tokenRespDTO.getAccessToken(), accessToken, "Returned access token is not as expected.");
+        assertEquals(tokenRespDTO.getAccessToken(), accessToken, "Returned access token is not as expected.");
     }
 
     @DataProvider(name = "AuthorizeAccessDelegationDataProvider")
@@ -274,7 +276,7 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
         return new Object[][]{
                 {GrantType.SAML20_BEARER.toString()},
                 {GrantType.IWA_NTLM.toString()},
-                {"password"}
+                {PASSWORD_GRANT}
         };
     }
 
@@ -301,6 +303,33 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
         when(authenticatedUser.toString()).thenReturn("randomUser");
         doCallRealMethod().when(handler).authorizeAccessDelegation(any(OAuthTokenReqMessageContext.class));
         boolean result = handler.authorizeAccessDelegation(tokReqMsgCtx);
-        Assert.assertTrue(result);
+        assertTrue(result);
+    }
+
+    @DataProvider(name = "IsAuthorizedClientDataProvider")
+    public Object[][] buildIsAuthorizedClient() {
+        return new Object[][]{
+                {true, GrantType.SAML20_BEARER.toString() + " " + GrantType.IWA_NTLM.toString() + " " + PASSWORD_GRANT,
+                        PASSWORD_GRANT, true},
+                {true, GrantType.SAML20_BEARER.toString() + " " + GrantType.IWA_NTLM.toString(), PASSWORD_GRANT, false},
+                {true, null, PASSWORD_GRANT, false},
+                {false, null, PASSWORD_GRANT, false},
+        };
+    }
+
+    @Test(dataProvider = "IsAuthorizedClientDataProvider")
+    public void testIsAuthorizedClient(boolean oAuthAppDOAvailable, String grantTypes, String grantType, boolean
+            result) throws Exception {
+        if (oAuthAppDOAvailable) {
+            when(tokReqMsgCtx.getProperty("OAuthAppDO")).thenReturn(oAuthAppDO);
+        } else {
+            when(tokReqMsgCtx.getProperty("OAuthAppDO")).thenReturn(null);
+        }
+        when(oAuthAppDO.getGrantTypes()).thenReturn(grantTypes);
+        when(tokReqMsgCtx.getOauth2AccessTokenReqDTO()).thenReturn(oAuth2AccessTokenReqDTO);
+        when(oAuth2AccessTokenReqDTO.getGrantType()).thenReturn(grantType);
+
+        doCallRealMethod().when(handler).isAuthorizedClient(any(OAuthTokenReqMessageContext.class));
+        assertEquals(handler.isAuthorizedClient(tokReqMsgCtx), result);
     }
 }

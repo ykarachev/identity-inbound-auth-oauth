@@ -437,6 +437,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
 
     @Test
     public void testExceptionForGetUserClaims() throws Exception {
+
         OAuth2TokenValidationResponseDTO respDTO = mock(OAuth2TokenValidationResponseDTO.class);
         when(respDTO.getAuthorizedUser()).thenReturn("testUser");
         when(respDTO.getScope()).thenReturn(new String[]{"openid"});
@@ -452,7 +453,6 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         mockStatic(IdentityTenantUtil.class);
         when(IdentityTenantUtil.getRealm(anyString(), anyString())).thenThrow(new IdentityException(""));
         oAuth2Service.getUserClaims("test");
-
     }
 
     private void setUpRevokeToken() throws Exception {

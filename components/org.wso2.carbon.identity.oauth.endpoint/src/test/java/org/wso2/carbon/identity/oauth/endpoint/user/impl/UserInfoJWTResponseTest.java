@@ -19,9 +19,8 @@
 package org.wso2.carbon.identity.oauth.endpoint.user.impl;
 
 import com.nimbusds.jose.JWSAlgorithm;
-import org.apache.commons.codec.binary.Base64;
+import com.nimbusds.jwt.PlainJWT;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -32,10 +31,13 @@ import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
+import java.text.ParseException;
+
 import static org.mockito.Matchers.anyString;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.spy;
 import static org.powermock.api.mockito.PowerMockito.when;
+import static org.testng.Assert.assertTrue;
 
 /**
  * Test class to test UserInfoJWTResponse.
@@ -104,21 +106,15 @@ public class UserInfoJWTResponseTest extends UserInfoResponseBaseTest {
         prepareAuthorizationGrantCache(getClaimsFromCache);
         prepareClaimUtil(getClaims(inputClaims));
         String responseString = userInfoJWTResponse.getResponseString(prepareTokenResponseDTO());
+        System.out.println(responseString);
         for (String claim : assertClaims) {
-            Assert.assertTrue(decodeJWT(responseString).contains(claim), "Expected to present " + claim + " in the response " +
+            assertTrue(decodeJWT(responseString).contains(claim), "Expected to present " + claim + " in the response " +
                     "string");
         }
     }
 
-
-    public String decodeJWT(String jwtToken) {
-        String[] split_string = jwtToken.split("\\.");
-        String base64EncodedHeader = split_string[0];
-        String base64EncodedBody = split_string[1];
-        Base64 base64Url = new Base64(true);
-        String header = new String(base64Url.decode(base64EncodedHeader));
-        String body = new String(base64Url.decode(base64EncodedBody));
-        return header + "---" + body;
+    private String decodeJWT(String jwtToken) throws ParseException {
+        return PlainJWT.parse(jwtToken).getPayload().toString();
     }
 
     protected void mockOAuthServerConfiguration(boolean useSigningAlgorithm) throws Exception {

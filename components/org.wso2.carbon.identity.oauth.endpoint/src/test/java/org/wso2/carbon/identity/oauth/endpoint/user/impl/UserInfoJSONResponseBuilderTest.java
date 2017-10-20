@@ -19,7 +19,6 @@
 package org.wso2.carbon.identity.oauth.endpoint.user.impl;
 
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.wso2.carbon.base.MultitenantConstants;
@@ -36,6 +35,7 @@ import static org.mockito.Matchers.anyString;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.spy;
 import static org.powermock.api.mockito.PowerMockito.when;
+import static org.testng.Assert.assertTrue;
 
 /**
  * This class contains tests for UserInfoJSONResponseBuilder.
@@ -99,7 +99,7 @@ public class UserInfoJSONResponseBuilderTest extends UserInfoResponseBaseTest {
             String responseString = userInfoJSONResponseBuilder.getResponseString(prepareTokenResponseDTO());
 
             for (String claim : assertClaims) {
-                Assert.assertTrue(responseString.contains(claim), "Expected to present " + claim + " in the response " +
+                assertTrue(responseString.contains(claim), "Expected to present " + claim + " in the response " +
                         "string");
             }
         } finally {

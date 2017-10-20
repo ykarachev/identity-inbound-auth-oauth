@@ -27,7 +27,6 @@ import org.wso2.carbon.identity.oauth.dcr.model.UnregistrationResponse;
 import org.wso2.carbon.identity.oauth.dcr.service.DCRManagementService;
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
-import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
@@ -49,7 +48,6 @@ public class UnRegistrationHandlerTest extends PowerMockIdentityBaseTest {
 
     @BeforeMethod
     public void setUp() {
-        initMocks(this);
         unRegistrationHandler = new UnRegistrationHandler();
     }
 

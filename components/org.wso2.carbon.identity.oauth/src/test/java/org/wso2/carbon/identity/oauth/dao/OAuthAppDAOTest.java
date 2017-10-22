@@ -31,10 +31,10 @@ import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
-import org.wso2.carbon.identity.oauth.test.utils.TestUtils;
 import org.wso2.carbon.identity.oauth.tokenprocessor.PlainTextPersistenceProcessor;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
+import org.wso2.carbon.identity.oauth2.test.utils.CommonTestUtils;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.tenant.TenantManager;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
@@ -122,7 +122,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         mockStatic(OAuth2ServiceComponentHolder.class);
         when(OAuth2ServiceComponentHolder.isPkceEnabled()).thenReturn(enablePKCE);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
             mockStatic(IdentityUtil.class);
@@ -151,7 +151,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         mockStatic(OAuth2ServiceComponentHolder.class);
         when(OAuth2ServiceComponentHolder.isPkceEnabled()).thenReturn(enablePKCE);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             Connection connection1 = spy(connection);
             doThrow(new SQLException()).when(connection1).commit();
             mockStatic(IdentityDatabaseUtil.class);
@@ -176,7 +176,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
@@ -185,7 +185,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
 
             OAuthAppDAO AppDAO = new OAuthAppDAO();
             assertEquals(AppDAO.addOAuthConsumer(user, -1234, "PRIMARY"),
-                    new String[] {newKey, secret});
+                    new String[]{newKey, secret});
         }
     }
 
@@ -201,7 +201,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             Connection connection1 = spy(connection);
             doThrow(new SQLException()).when(connection1).commit();
             mockStatic(IdentityDatabaseUtil.class);
@@ -211,7 +211,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
 
             OAuthAppDAO AppDAO = new OAuthAppDAO();
             assertEquals(AppDAO.addOAuthConsumer(user, -1234, "PRIMARY"),
-                    new String[] {newKey, secret});
+                    new String[]{newKey, secret});
         }
     }
 
@@ -226,7 +226,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         mockStatic(OAuth2ServiceComponentHolder.class);
         when(OAuth2ServiceComponentHolder.isPkceEnabled()).thenReturn(enablePKCE);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
@@ -246,7 +246,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         mockStatic(OAuth2ServiceComponentHolder.class);
         when(OAuth2ServiceComponentHolder.isPkceEnabled()).thenReturn(enablePKCE);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             Connection connection1 = spy(connection);
             doThrow(new SQLException()).when(connection1).commit();
             mockStatic(IdentityDatabaseUtil.class);
@@ -267,7 +267,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             PreparedStatement statement = connection.prepareStatement(GET_SECRET_SQL);
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
@@ -277,7 +277,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             statement.setString(1, CLIENT_ID);
 
             try (ResultSet resultSet = statement.executeQuery()) {
-                if(resultSet.next()) {
+                if (resultSet.next()) {
                     assertNull(resultSet.getString(1), "Checking whether the CONSUMER_SECRET is successfully deleted.");
                 }
             }
@@ -294,7 +294,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             Connection connection1 = spy(connection);
             doThrow(new SQLException()).when(connection1).commit();
             PreparedStatement statement = connection.prepareStatement(GET_SECRET_SQL);
@@ -306,7 +306,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             statement.setString(1, CLIENT_ID);
 
             try (ResultSet resultSet = statement.executeQuery()) {
-                if(resultSet.next()) {
+                if (resultSet.next()) {
                     assertNull(resultSet.getString(1), "Checking whether the CONSUMER_SECRET is successfully deleted.");
                 }
             }
@@ -323,7 +323,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection1 = getConnection(DB_NAME)){
+        try (Connection connection1 = getConnection(DB_NAME)) {
             PreparedStatement statement = connection1.prepareStatement(GET_APP_SQL);
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection1);
@@ -332,8 +332,8 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             AppDAO.updateOAuthConsumerApp(APP_NAME, CLIENT_ID);
             statement.setString(1, CLIENT_ID);
 
-            try(ResultSet resultSet = statement.executeQuery()) {
-                if(resultSet.next()) {
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
                     assertEquals(resultSet.getString(1), APP_NAME, "Checking whether the table " +
                             "is updated with the passed appName.");
                 }
@@ -351,7 +351,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection1 = getConnection(DB_NAME)){
+        try (Connection connection1 = getConnection(DB_NAME)) {
             Connection connection2 = spy(connection1);
             doThrow(new SQLException()).when(connection2).commit();
             PreparedStatement statement = connection1.prepareStatement(GET_APP_SQL);
@@ -362,8 +362,8 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             AppDAO.updateOAuthConsumerApp(APP_NAME, CLIENT_ID);
             statement.setString(1, CLIENT_ID);
 
-            try(ResultSet resultSet = statement.executeQuery()) {
-                if(resultSet.next()) {
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
                     assertEquals(resultSet.getString(1), APP_NAME, "Checking whether the table " +
                             "is updated with the passed appName.");
                 }
@@ -379,7 +379,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
 
@@ -397,7 +397,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             Connection connection1 = spy(connection);
             doThrow(new SQLException()).when(connection1).commit();
             mockStatic(IdentityDatabaseUtil.class);
@@ -419,8 +419,8 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         PlainTextPersistenceProcessor processor = new PlainTextPersistenceProcessor();
         when(mockedServerConfig.getPersistenceProcessor()).thenReturn(processor);
 
-        try(Connection connection1 = getConnection(DB_NAME);
-            PreparedStatement statement = connection1.prepareStatement(GET_APP_STATE_SQL)) {
+        try (Connection connection1 = getConnection(DB_NAME);
+             PreparedStatement statement = connection1.prepareStatement(GET_APP_STATE_SQL)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection1);
 
@@ -428,8 +428,8 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
             AppDAO.updateConsumerAppState(CLIENT_ID, APP_STATE);
             statement.setString(1, CLIENT_ID);
 
-            try(ResultSet resultSet = statement.executeQuery()) {
-                if(resultSet.next()) {
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
                     assertEquals(resultSet.getString(1), APP_STATE, "Checking whether the table " +
                             "is updated with the passed APP_STATE.");
                 }
@@ -471,7 +471,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         when(mockedRealmService.getTenantManager()).thenReturn(mockedTenantManager);
         when(mockedTenantManager.getDomain(-12345)).thenReturn("PRIMARY");
 
-        try(Connection connection1 = getConnection(DB_NAME)){
+        try (Connection connection1 = getConnection(DB_NAME)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection1);
 
@@ -503,7 +503,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         when(mockedRealmService.getTenantManager()).thenReturn(mockedTenantManager);
         when(mockedTenantManager.getDomain(-12345)).thenReturn("PRIMARY");
 
-        try(Connection connection = getConnection(DB_NAME)){
+        try (Connection connection = getConnection(DB_NAME)) {
             Connection connection1 = spy(connection);
             doThrow(new SQLException()).when(connection1).commit();
             mockStatic(IdentityDatabaseUtil.class);
@@ -531,7 +531,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         when(IdentityTenantUtil.getTenantDomain(-12345)).thenReturn("PRIMARY");
         whenNew(AuthenticatedUser.class).withNoArguments().thenReturn(mockedAuthenticatedUser);
 
-        try(Connection connection1 = getConnection(DB_NAME)){
+        try (Connection connection1 = getConnection(DB_NAME)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection1);
 
@@ -557,7 +557,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         when(IdentityTenantUtil.getTenantDomain(-12345)).thenReturn("PRIMARY");
         whenNew(AuthenticatedUser.class).withNoArguments().thenReturn(mockedAuthenticatedUser);
 
-        try(Connection connection = getConnection(DB_NAME)){
+        try (Connection connection = getConnection(DB_NAME)) {
             Connection connection1 = spy(connection);
             doThrow(new SQLException()).when(connection1).commit();
             mockStatic(IdentityDatabaseUtil.class);
@@ -579,13 +579,13 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         mockStatic(OAuth2ServiceComponentHolder.class);
         when(OAuth2ServiceComponentHolder.isPkceEnabled()).thenReturn(enablePKCE);
 
-        TestUtils.initPrivilegedCarbonContext("PRIMARY", -1234, USER_NAME);
+        CommonTestUtils.initPrivilegedCarbonContext("PRIMARY", -1234, USER_NAME);
 
         whenNew(AuthenticatedUser.class).withNoArguments().thenReturn(mockedAuthenticatedUser);
         mockStatic(IdentityTenantUtil.class);
         when(IdentityTenantUtil.getTenantDomain(-12345)).thenReturn("PRIMARY");
 
-        try(Connection connection1 = getConnection(DB_NAME)) {
+        try (Connection connection1 = getConnection(DB_NAME)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection1);
 
@@ -605,13 +605,13 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         mockStatic(OAuth2ServiceComponentHolder.class);
         when(OAuth2ServiceComponentHolder.isPkceEnabled()).thenReturn(enablePKCE);
 
-        TestUtils.initPrivilegedCarbonContext("PRIMARY", -1234, USER_NAME);
+        CommonTestUtils.initPrivilegedCarbonContext("PRIMARY", -1234, USER_NAME);
 
         whenNew(AuthenticatedUser.class).withNoArguments().thenReturn(mockedAuthenticatedUser);
         mockStatic(IdentityTenantUtil.class);
         when(IdentityTenantUtil.getTenantDomain(-12345)).thenReturn("PRIMARY");
 
-        try(Connection connection = getConnection(DB_NAME)) {
+        try (Connection connection = getConnection(DB_NAME)) {
             Connection connection1 = spy(connection);
             doThrow(new SQLException()).when(connection1).commit();
             mockStatic(IdentityDatabaseUtil.class);

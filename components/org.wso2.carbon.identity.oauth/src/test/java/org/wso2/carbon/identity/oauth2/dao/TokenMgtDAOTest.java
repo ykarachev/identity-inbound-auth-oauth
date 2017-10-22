@@ -54,6 +54,7 @@ import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 
@@ -1954,7 +1955,7 @@ public class TokenMgtDAOTest extends IdentityBaseTest {
                 tenantId, grantType);
         AccessTokenDO accessTokenDO2 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
                 tenantId, grantType);
-        accessTokenDO2.setScope(new String[] {"scope3"});
+        accessTokenDO2.setScope(new String[]{"scope3"});
         AccessTokenDO accessTokenDO3 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
                 tenantId, grantType);
         accessTokenDO3.setTokenState(OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED);
@@ -1973,12 +1974,224 @@ public class TokenMgtDAOTest extends IdentityBaseTest {
             Set<AccessTokenDO> accessTokenDOs = tokenMgtDAO.getAccessTokensOfTenant(tenantId);
             assertNotNull(accessTokenDOs, "Failed to retrieve access token for a tenant");
             boolean success = true;
-            for(AccessTokenDO accessTokenDO : accessTokenDOs) {
-                if(accessTokenDO.getTenantID() != tenantId) {
+            for (AccessTokenDO accessTokenDO : accessTokenDOs) {
+                if (accessTokenDO.getTenantID() != tenantId) {
                     success = false;
                 }
             }
             assertTrue(success, "Failed to retrieve access token for a tenant");
+        }
+    }
+
+    @Test(dataProvider = "getAccessTokensForUserDataProvider")
+    public void testGetAccessTokensOfUserStore(String tenantDomain, int tenantId, String userStoreDomain, String
+            applicationType, String grantType) throws Exception {
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
+        when(mockedOAuthServerConfiguration.getPersistenceProcessor()).thenReturn(new PlainTextPersistenceProcessor());
+        mockStatic(IdentityUtil.class);
+
+        String consumerKey = UUID.randomUUID().toString();
+        createApplication(consumerKey, UUID.randomUUID().toString(), tenantId);
+        AuthenticatedUser authenticatedUser = getAuthenticatedUser(tenantDomain, userStoreDomain);
+
+        AccessTokenDO accessTokenDO1 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        AccessTokenDO accessTokenDO2 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO2.setScope(new String[]{"scope3"});
+        AccessTokenDO accessTokenDO3 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO3.setTokenState(OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED);
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            tokenMgtDAO.storeAccessToken(accessTokenDO1.getAccessToken(), consumerKey, accessTokenDO1,
+                    connection, userStoreDomain);
+            tokenMgtDAO.storeAccessToken(accessTokenDO2.getAccessToken(), consumerKey, accessTokenDO2,
+                    connection, userStoreDomain);
+            tokenMgtDAO.storeAccessToken(accessTokenDO3.getAccessToken(), consumerKey, accessTokenDO3,
+                    connection, userStoreDomain);
+        }
+
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            mockStatic(IdentityDatabaseUtil.class);
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+            Set<AccessTokenDO> accessTokenDOs = tokenMgtDAO.getAccessTokensOfUserStore(tenantId, userStoreDomain);
+            assertNotNull(accessTokenDOs, "Failed to retrieve access token for a tenant");
+            boolean success = true;
+            for (AccessTokenDO accessTokenDO : accessTokenDOs) {
+                if (!userStoreDomain.equals(accessTokenDO.getAuthzUser().getUserStoreDomain())) {
+                    success = false;
+                }
+            }
+            assertTrue(success, "Failed to retrieve access token for a tenant");
+        }
+    }
+
+    @Test(dataProvider = "retrieveAccessTokenDataProvider")
+    public void testRetrieveLatestAccessTokens(String tenantDomain, int tenantId, String userStoreDomain, String
+            applicationType, String grantType, boolean includeExpiredTokens) throws Exception {
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
+        when(mockedOAuthServerConfiguration.getPersistenceProcessor()).thenReturn(new PlainTextPersistenceProcessor());
+        mockStatic(IdentityUtil.class);
+
+        String consumerKey = UUID.randomUUID().toString();
+        createApplication(consumerKey, UUID.randomUUID().toString(), tenantId);
+        AuthenticatedUser authenticatedUser = getAuthenticatedUser(tenantDomain, userStoreDomain);
+
+        String scope1 = UUID.randomUUID().toString();
+        String scope2 = UUID.randomUUID().toString();
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        AccessTokenDO accessTokenDO1 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO1.setScope(new String[]{scope1});
+        accessTokenDO1.setIssuedTime(timestamp);
+        AccessTokenDO accessTokenDO2 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO2.setScope(new String[]{scope2});
+        accessTokenDO2.setIssuedTime(timestamp);
+        AccessTokenDO accessTokenDO3 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO3.setScope(new String[]{scope1});
+        accessTokenDO3.setTokenState(OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED);
+        accessTokenDO3.setIssuedTime(timestamp);
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            tokenMgtDAO.storeAccessToken(accessTokenDO1.getAccessToken(), consumerKey, accessTokenDO1,
+                    connection, userStoreDomain);
+            tokenMgtDAO.storeAccessToken(accessTokenDO2.getAccessToken(), consumerKey, accessTokenDO2,
+                    connection, userStoreDomain);
+            tokenMgtDAO.storeAccessToken(accessTokenDO3.getAccessToken(), consumerKey, accessTokenDO3,
+                    connection, userStoreDomain);
+        }
+
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            mockStatic(IdentityDatabaseUtil.class);
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+
+            List<AccessTokenDO> accessTokenDOs = tokenMgtDAO.retrieveLatestAccessTokens(consumerKey,
+                    authenticatedUser, userStoreDomain, scope1, includeExpiredTokens, 3);
+
+            if (includeExpiredTokens) {
+                assertTrue(accessTokenDOs != null && accessTokenDOs.size() == 2, "Failed to retrieve latest access " +
+                        "tokens");
+            } else {
+                assertTrue(accessTokenDOs != null && accessTokenDOs.size() == 1, "Failed to retrieve latest access " +
+                        "tokens");
+            }
+        }
+    }
+
+    @Test(dataProvider = "retrieveAccessTokenDataProvider")
+    public void testRetrieveLatestToken(String tenantDomain, int tenantId, String userStoreDomain, String
+            applicationType, String grantType, boolean active) throws Exception {
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
+        when(mockedOAuthServerConfiguration.getPersistenceProcessor()).thenReturn(new PlainTextPersistenceProcessor());
+        mockStatic(IdentityUtil.class);
+
+        String consumerKey = UUID.randomUUID().toString();
+        createApplication(consumerKey, UUID.randomUUID().toString(), tenantId);
+        AuthenticatedUser authenticatedUser = getAuthenticatedUser(tenantDomain, userStoreDomain);
+
+        String scope1 = UUID.randomUUID().toString();
+        String scope2 = UUID.randomUUID().toString();
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        AccessTokenDO accessTokenDO1 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO1.setScope(new String[]{scope1});
+        accessTokenDO1.setIssuedTime(timestamp);
+        AccessTokenDO accessTokenDO2 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO2.setScope(new String[]{scope2});
+        accessTokenDO2.setIssuedTime(timestamp);
+        AccessTokenDO accessTokenDO3 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO3.setScope(new String[]{scope1});
+        accessTokenDO3.setTokenState(OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED);
+        accessTokenDO3.setIssuedTime(timestamp);
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            tokenMgtDAO.storeAccessToken(accessTokenDO1.getAccessToken(), consumerKey, accessTokenDO1,
+                    connection, userStoreDomain);
+            tokenMgtDAO.storeAccessToken(accessTokenDO2.getAccessToken(), consumerKey, accessTokenDO2,
+                    connection, userStoreDomain);
+            tokenMgtDAO.storeAccessToken(accessTokenDO3.getAccessToken(), consumerKey, accessTokenDO3,
+                    connection, userStoreDomain);
+        }
+
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            AccessTokenDO accessTokenDO = tokenMgtDAO.retrieveLatestToken(connection, consumerKey,
+                    authenticatedUser, userStoreDomain, scope1, active);
+
+            if (active) {
+                assertTrue(accessTokenDO != null && accessTokenDO1.getAccessToken().equals(accessTokenDO
+                        .getAccessToken()), "Failed to retrieve latest active token.");
+            } else {
+                assertTrue(accessTokenDO != null && accessTokenDO3.getAccessToken().equals(accessTokenDO
+                        .getAccessToken()), "Failed to retrieve latest non active token.");
+            }
+        }
+    }
+
+    @Test(dataProvider = "retrieveAccessTokenDataProvider")
+    public void testUpdateAppAndRevokeTokensAndAuthzCodes(String tenantDomain, int tenantId, String userStoreDomain,
+                                                        String applicationType, String grantType, boolean isRevoke)
+            throws Exception {
+        mockStatic(OAuthServerConfiguration.class);
+        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
+        when(mockedOAuthServerConfiguration.getPersistenceProcessor()).thenReturn(new PlainTextPersistenceProcessor());
+        mockStatic(IdentityUtil.class);
+
+        String consumerKey = UUID.randomUUID().toString();
+        createApplication(consumerKey, UUID.randomUUID().toString(), tenantId);
+        AuthenticatedUser authenticatedUser = getAuthenticatedUser(tenantDomain, userStoreDomain);
+
+        String scope1 = UUID.randomUUID().toString();
+        String scope2 = UUID.randomUUID().toString();
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+        AccessTokenDO accessTokenDO1 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO1.setScope(new String[]{scope1});
+        accessTokenDO1.setIssuedTime(timestamp);
+        AccessTokenDO accessTokenDO2 = getAccessTokenDO(consumerKey, authenticatedUser, applicationType,
+                tenantId, grantType);
+        accessTokenDO2.setScope(new String[]{scope2});
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            tokenMgtDAO.storeAccessToken(accessTokenDO1.getAccessToken(), consumerKey, accessTokenDO1,
+                    connection, userStoreDomain);
+            tokenMgtDAO.storeAccessToken(accessTokenDO2.getAccessToken(), consumerKey, accessTokenDO2,
+                    connection, userStoreDomain);
+        }
+
+        AuthzCodeDO authzCodeDO1 = persistAuthorizationCode(consumerKey, UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(), CALLBACK_URL, tenantDomain, tenantId, userStoreDomain, false,
+                OAuthConstants.AuthorizationCodeState.ACTIVE);
+        AuthzCodeDO authzCodeDO2 = persistAuthorizationCode(consumerKey, UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(), CALLBACK_URL, tenantDomain, tenantId, userStoreDomain, false,
+                OAuthConstants.AuthorizationCodeState.ACTIVE);
+
+        try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
+            mockStatic(IdentityDatabaseUtil.class);
+            when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);
+            Properties properties = new Properties();
+            if (isRevoke) {
+                properties.put(OAuthConstants.ACTION_PROPERTY_KEY, OAuthConstants.ACTION_REVOKE);
+                properties.put(OAuthConstants.OAUTH_APP_NEW_STATE, OAuthConstants.OauthAppStates.APP_STATE_REVOKED);
+            } else {
+                properties.put(OAuthConstants.ACTION_PROPERTY_KEY, OAuthConstants.ACTION_REGENERATE);
+                properties.put(OAuthConstants.OAUTH_APP_NEW_SECRET_KEY, UUID.randomUUID().toString());
+            }
+            tokenMgtDAO.updateAppAndRevokeTokensAndAuthzCodes(consumerKey, properties, new String[]{authzCodeDO1
+                    .getAuthorizationCode(), authzCodeDO2.getAuthorizationCode()}, new String[]{accessTokenDO1
+                    .getAccessToken(), accessTokenDO2.getAccessToken()});
+
+            assertTrue(OAuthConstants.AuthorizationCodeState.REVOKED.equals(getAuthzCodeStatusByCode(authzCodeDO1
+                    .getAuthorizationCode())));
+            assertTrue(OAuthConstants.AuthorizationCodeState.REVOKED.equals(getAuthzCodeStatusByCode(authzCodeDO2
+                    .getAuthorizationCode())));
+            assertTrue(OAuthConstants.TokenStates.TOKEN_STATE_REVOKED.equals(getAccessTokenStatusByTokenId(
+                    accessTokenDO1.getTokenId())));
+            assertTrue(OAuthConstants.TokenStates.TOKEN_STATE_REVOKED.equals(getAccessTokenStatusByTokenId(
+                    accessTokenDO2.getTokenId())));
         }
     }
 
@@ -2001,7 +2214,7 @@ public class TokenMgtDAOTest extends IdentityBaseTest {
         AuthzCodeDO authzCodeDO = new AuthzCodeDO(authenticatedUser, new String[]{"scope1", "scope2"},
                 new Timestamp(System.currentTimeMillis()), 3600000L, callbackUrl, consumerKey, authzCode, authzCodeId,
                 null, null);
-        authzCodeDO.setState(OAuthConstants.AuthorizationCodeState.ACTIVE);
+        authzCodeDO.setState(status);
         try (Connection connection = DAOUtils.getConnection(DB_NAME)) {
             mockStatic(IdentityDatabaseUtil.class);
             when(IdentityDatabaseUtil.getDBConnection()).thenReturn(connection);

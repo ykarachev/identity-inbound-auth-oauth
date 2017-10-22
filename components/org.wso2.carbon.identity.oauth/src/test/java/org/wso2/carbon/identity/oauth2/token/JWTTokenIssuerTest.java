@@ -104,14 +104,6 @@ public class JWTTokenIssuerTest extends PowerMockIdentityBaseTest {
         reset(oAuthServerConfiguration);
     }
 
-    @Test
-    public void testAccessToken() throws Exception {
-    }
-
-    @Test
-    public void testAccessToken1() throws Exception {
-    }
-
     @DataProvider(name = "requestScopesProvider")
     public Object[][] provideRequestScopes() {
         final String[] SCOPES_WITH_AUD = new String[]{"aud", "scope1", "scope1"};
@@ -123,6 +115,9 @@ public class JWTTokenIssuerTest extends PowerMockIdentityBaseTest {
         };
     }
 
+    /**
+     * Test for Plain JWT Building from {@link OAuthTokenReqMessageContext}
+     */
     @Test(dataProvider = "requestScopesProvider")
     public void testBuildJWTTokenFromTokenMsgContext(String requestScopes[],
                                                      List<String> expectedJWTAudiences) throws Exception {
@@ -140,6 +135,9 @@ public class JWTTokenIssuerTest extends PowerMockIdentityBaseTest {
         assertEquals(plainJWT.getJWTClaimsSet().getAudience(), expectedJWTAudiences);
     }
 
+    /**
+     * Test for Plain JWT Building from {@link OAuthAuthzReqMessageContext}
+     */
     @Test(dataProvider = "requestScopesProvider")
     public void testBuildJWTTokenFromAuthzMsgContext(String requestScopes[],
                                                      List<String> expectedJWTAudiences) throws Exception {
@@ -171,14 +169,6 @@ public class JWTTokenIssuerTest extends PowerMockIdentityBaseTest {
                 anyString());
 
         return jwtTokenIssuer;
-    }
-
-    @Test
-    public void testBuildJWTToken1() throws Exception {
-    }
-
-    @Test
-    public void testSignJWT() throws Exception {
     }
 
     @Test(expectedExceptions = IdentityOAuth2Exception.class)

@@ -36,6 +36,12 @@
             <class name="org.wso2.carbon.identity.oauth.dao.OAuthAppDAOTest" />
         </classes>
     </test>
+    <test name="org.wso2.carbon.identity.oauth2.dao.pkce.enabled">
+        <parameter name="pkce-enabled" value="true"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth2.dao.TokenMgtDAOTest"/>
+        </classes>
+    </test>
     <test name="org.wso2.carbon.identity.oauth">
         <parameter name="log-level" value="info"/>
         <classes>

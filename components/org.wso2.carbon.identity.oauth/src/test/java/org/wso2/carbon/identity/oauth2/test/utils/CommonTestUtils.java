@@ -39,7 +39,9 @@ public class CommonTestUtils {
         assertEquals(instance, anotherInstance);
     }
 
-    public static void initPrivilegedCarbonContext(String tenantDomain, int tenantID, String userName) throws Exception {
+    public static void initPrivilegedCarbonContext(String tenantDomain,
+                                                   int tenantID,
+                                                   String userName) throws Exception {
         String carbonHome = Paths.get(System.getProperty("user.dir"), "src", "test", "resources").toString();
         System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
         PrivilegedCarbonContext.startTenantFlow();

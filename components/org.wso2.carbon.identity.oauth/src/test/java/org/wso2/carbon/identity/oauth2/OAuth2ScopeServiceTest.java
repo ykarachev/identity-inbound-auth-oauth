@@ -19,7 +19,6 @@ package org.wso2.carbon.identity.oauth2;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -32,6 +31,7 @@ import org.wso2.carbon.identity.oauth.cache.OAuthScopeCacheKey;
 import org.wso2.carbon.identity.oauth2.bean.Scope;
 import org.wso2.carbon.identity.oauth2.dao.ScopeMgtDAO;
 import org.wso2.carbon.identity.oauth2.test.utils.CommonTestUtils;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
 import java.lang.reflect.Field;
 import java.util.Set;
@@ -48,24 +48,32 @@ import static org.testng.Assert.assertNotNull;
 
 @PrepareForTest({IdentityUtil.class, IdentityDatabaseUtil.class, OAuth2ScopeService.class, ScopeMgtDAO.class,
         OAuthScopeCache.class})
-public class OAuth2ScopeServiceTest extends PowerMockTestCase {
+public class OAuth2ScopeServiceTest extends PowerMockIdentityBaseTest {
 
     @Mock
     Scope mockedScope;
+
     @Mock
     IdentityCacheConfig mockedIdentityCacheConfig;
+
     @Mock
     ScopeMgtDAO mockedScopeMgtDAO;
+
     @Mock
     Set<Scope> mockedScopeSet;
+
     @Mock
     OAuthScopeCache mockedOAuthScopeCache;
+
     @InjectMocks
     private OAuth2ScopeService oAuth2ScopeService;
 
     @DataProvider(name = "indexAndCountProvider")
     public static Object[][] indexAndCountProvider() {
-        return new Object[][]{{null, 1}, {1, null}, {1, 2}};
+        return new Object[][]{
+                {null, 1},
+                {1, null},
+                {1, 2}};
     }
 
     @BeforeMethod
@@ -87,12 +95,11 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
 
         mockStatic(IdentityUtil.class);
         when(IdentityUtil.getIdentityCacheConfig(anyString(), anyString())).thenReturn(mockedIdentityCacheConfig);
-
         when(mockedScopeMgtDAO.isScopeExists(anyString(), anyInt())).thenReturn(false);
 
         Scope scope = oAuth2ScopeService.registerScope(mockedScope);
-        assertEquals(scope.getName(), "dummyScopeName");
-        assertEquals(scope.getDescription(), "dummyScopeDescription");
+        assertEquals(scope.getName(), "dummyScopeName", "Expected name did not received");
+        assertEquals(scope.getDescription(), "dummyScopeDescription", "Expected description did not received");
     }
 
     @Test(expectedExceptions = IdentityException.class)
@@ -100,6 +107,7 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         String name = "";
         String description = "dummyScopeDescription";
         mockedScope = new Scope(name, description);
+
         oAuth2ScopeService.registerScope(mockedScope);
     }
 
@@ -108,6 +116,7 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         String name = "dummyScopeName";
         String description = "";
         mockedScope = new Scope(name, description);
+
         oAuth2ScopeService.registerScope(mockedScope);
     }
 
@@ -119,32 +128,53 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
 
         mockStatic(IdentityUtil.class);
         when(IdentityUtil.getIdentityCacheConfig(anyString(), anyString())).thenReturn(mockedIdentityCacheConfig);
-
         when(mockedScopeMgtDAO.isScopeExists(anyString(), anyInt())).thenReturn(true);
+
         oAuth2ScopeService.registerScope(mockedScope);
     }
 
     @Test
     public void testGetScopes() throws Exception {
         when(mockedScopeMgtDAO.getAllScopes(anyInt())).thenReturn(mockedScopeSet);
-        assertNotNull(oAuth2ScopeService.getScopes(null, null));
+
+        assertNotNull(oAuth2ScopeService.getScopes(null, null), "Expected a not null object");
     }
 
     @Test(expectedExceptions = IdentityOAuth2ScopeServerException.class)
     public void testGetScopesWithIdentityException() throws Exception {
         when(mockedScopeMgtDAO.getAllScopes(anyInt())).thenThrow(new IdentityOAuth2ScopeServerException(anyString()));
+
         oAuth2ScopeService.getScopes(null, null);
     }
 
     @Test(dataProvider = "indexAndCountProvider")
     public void testGetScopesWithStartAndCount(Integer startIndex, Integer count) throws Exception {
-        assertNotNull(oAuth2ScopeService.getScopes(startIndex, count));
+        assertNotNull(oAuth2ScopeService.getScopes(startIndex, count), "Expected a not null object");
     }
 
     @Test(dataProvider = "indexAndCountProvider", expectedExceptions = IdentityOAuth2ScopeServerException.class)
     public void testGetScopesWithScopeServerException(Integer startIndex, Integer count) throws Exception {
         when(mockedScopeMgtDAO.getScopesWithPagination(anyInt(), anyInt(), anyInt())).thenThrow(new
-                IdentityOAuth2ScopeServerException("dummyIdentityOAuth2ScopeServerWxception"));
+                IdentityOAuth2ScopeServerException("dummyIdentityOAuth2ScopeServerException"));
+
+        oAuth2ScopeService.getScopes(startIndex, count);
+    }
+
+    @Test(dataProvider = "indexAndCountProvider", expectedExceptions = IdentityOAuth2ScopeServerException.class)
+    public void testGetScopesWithScopeServerExceptionConstruct2(Integer startIndex, Integer count) throws Exception {
+        when(mockedScopeMgtDAO.getScopesWithPagination(anyInt(), anyInt(), anyInt())).thenThrow(new
+                IdentityOAuth2ScopeServerException("dummyIdentityOAuth2ScopeServerException", "Generated for testing " +
+                "purpose"));
+
+        oAuth2ScopeService.getScopes(startIndex, count);
+    }
+
+    @Test(dataProvider = "indexAndCountProvider", expectedExceptions = IdentityOAuth2ScopeServerException.class)
+    public void testGetScopesWithScopeServerExceptionConstruct3(Integer startIndex, Integer count) throws Exception {
+        Throwable throwable = new Throwable();
+        when(mockedScopeMgtDAO.getScopesWithPagination(anyInt(), anyInt(), anyInt())).thenThrow(new
+                IdentityOAuth2ScopeServerException("dummyIdentityOAuth2ScopeServerException", throwable));
+
         oAuth2ScopeService.getScopes(startIndex, count);
     }
 
@@ -154,7 +184,8 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(mockedScope);
-        assertNotNull(oAuth2ScopeService.getScope(name));
+
+        assertNotNull(oAuth2ScopeService.getScope(name), "Expected a not null object");
     }
 
     @Test(expectedExceptions = IdentityException.class)
@@ -168,12 +199,11 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(null);
-
         when(mockedScopeMgtDAO.getScopeByName(anyString(), anyInt())).thenReturn(mockedScope);
-
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
-        assertNotNull(oAuth2ScopeService.getScope(name));
+
+        assertNotNull(oAuth2ScopeService.getScope(name), "Expected a not null object");
     }
 
     @Test(expectedExceptions = IdentityException.class)
@@ -182,8 +212,8 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(null);
-
         when(mockedScopeMgtDAO.getScopeByName(anyString(), anyInt())).thenReturn(null);
+
         oAuth2ScopeService.getScope(name);
     }
 
@@ -193,9 +223,9 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(null);
-
         when(mockedScopeMgtDAO.getScopeByName(anyString(), anyInt())).thenThrow(new IdentityOAuth2ScopeServerException
                 ("dummyIdentityOAuth2ScopeServerException"));
+
         oAuth2ScopeService.getScope(name);
     }
 
@@ -210,9 +240,9 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(null);
-
         when(mockedScopeMgtDAO.isScopeExists(anyString(), anyInt())).thenThrow(new IdentityOAuth2ScopeServerException
                 ("dummyIdentityOAuth2ScopeServerException"));
+
         oAuth2ScopeService.isScopeExists(name);
     }
 
@@ -222,8 +252,8 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(mockedScope);
-
         doNothing().when(mockedScopeMgtDAO).deleteScopeByName(anyString(), anyInt());
+
         oAuth2ScopeService.deleteScope(name);
     }
 
@@ -238,8 +268,8 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(null);
-
         when(mockedScopeMgtDAO.isScopeExists(anyString(), anyInt())).thenReturn(false);
+
         oAuth2ScopeService.deleteScope(name);
     }
 
@@ -249,9 +279,9 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(mockedScope);
-
         doThrow(new IdentityOAuth2ScopeServerException("dummyException")).when(mockedScopeMgtDAO).deleteScopeByName
                 (anyString(), anyInt());
+
         oAuth2ScopeService.deleteScope(name);
     }
 
@@ -264,7 +294,8 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(mockedScope);
-        assertNotNull(oAuth2ScopeService.updateScope(mockedScope));
+
+        assertNotNull(oAuth2ScopeService.updateScope(mockedScope), "Expected a not null object");
     }
 
     @Test(expectedExceptions = IdentityException.class)
@@ -272,6 +303,7 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         String name = null;
         String description = "dummyScopeDescription";
         mockedScope = new Scope(name, description);
+
         oAuth2ScopeService.updateScope(mockedScope);
     }
 
@@ -284,8 +316,8 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(null);
-
         when(mockedScopeMgtDAO.isScopeExists(anyString(), anyInt())).thenReturn(false);
+
         oAuth2ScopeService.updateScope(mockedScope);
     }
 
@@ -298,9 +330,9 @@ public class OAuth2ScopeServiceTest extends PowerMockTestCase {
         mockStatic(OAuthScopeCache.class);
         when(OAuthScopeCache.getInstance()).thenReturn(mockedOAuthScopeCache);
         when(mockedOAuthScopeCache.getValueFromCache(any(OAuthScopeCacheKey.class))).thenReturn(mockedScope);
-
         doThrow(new IdentityOAuth2ScopeServerException("dummyException")).when(mockedScopeMgtDAO).updateScopeByName
                 (any(Scope.class), anyInt());
+
         oAuth2ScopeService.updateScope(mockedScope);
     }
 }

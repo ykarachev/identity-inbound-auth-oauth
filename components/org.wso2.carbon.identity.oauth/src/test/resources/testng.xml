@@ -59,6 +59,7 @@
             <class name="org.wso2.carbon.identity.oauth.tokenvaluegenerator.SHA256GeneratorTest"/>
             <class name="org.wso2.carbon.identity.oauth.OAuthUtilTest"/>
             <class name="org.wso2.carbon.identity.oauth.OAuthServiceTest"/>
+            <class name="org.wso2.carbon.identity.oauth.OAuthAdminService"/>
             <class name="org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAOTest"/>
             <class name="org.wso2.carbon.identity.oauth.config.OAuthCallbackHandlerMetaDataTest"/>
             <class name="org.wso2.carbon.identity.oauth.config.OAuthServerConfigurationTest"/>

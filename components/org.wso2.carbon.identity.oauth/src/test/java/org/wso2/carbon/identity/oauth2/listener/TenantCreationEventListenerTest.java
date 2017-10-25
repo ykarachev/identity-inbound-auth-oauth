@@ -19,11 +19,11 @@ import org.mockito.Mock;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.core.util.IdentityConfigParser;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth2.TestConstants;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
+import org.wso2.carbon.identity.oauth2.test.utils.CommonTestUtils;
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.ResourceImpl;
@@ -40,21 +40,18 @@ public class TenantCreationEventListenerTest extends PowerMockIdentityBaseTest {
     private TenantCreationEventListener tenantCreationEventListener = new TenantCreationEventListener();
 
     @Mock
-    RegistryService registryService;
+    private RegistryService registryService;
 
     @Mock
-    UserRegistry registry;
+    private UserRegistry registry;
 
     @Mock
-    IdentityConfigParser identityConfigParser;
+    private IdentityConfigParser identityConfigParser;
 
     @BeforeMethod
     public void setUp() throws Exception {
         String carbonHome = getClass().getResource("/").getFile();
-        System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
-        System.setProperty(TestConstants.CARBON_PROTOCOL, TestConstants.CARBON_PROTOCOL_HTTPS);
-        System.setProperty(TestConstants.CARBON_HOST, TestConstants.CARBON_HOST_LOCALHOST);
-        System.setProperty(TestConstants.CARBON_MANAGEMENT_PORT, TestConstants.CARBON_DEFAULT_HTTPS_PORT);
+        CommonTestUtils.setOAuthServerConfigurationProperties(carbonHome);
         OAuth2ServiceComponentHolder.setRegistryService(registryService);
     }
 

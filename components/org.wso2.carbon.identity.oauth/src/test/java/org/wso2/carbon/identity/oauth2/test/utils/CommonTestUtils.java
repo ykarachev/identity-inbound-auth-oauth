@@ -22,13 +22,22 @@ package org.wso2.carbon.identity.oauth2.test.utils;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
+import org.wso2.carbon.identity.oauth2.TestConstants;
+import org.wso2.carbon.tomcat.jndi.CarbonJavaURLContextFactory;
 
 import java.nio.file.Paths;
+import java.util.Properties;
+
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.AssertJUnit.assertNotNull;
+import static org.wso2.carbon.identity.oauth.dao.TestOAuthDAOBase.getDatasource;
 
 public class CommonTestUtils {
+
+    public static final String JDBC_SUBCONTEXT = "jdbc";
 
     private CommonTestUtils() {
     }
@@ -56,6 +65,22 @@ public class CommonTestUtils {
         String userName = "testUser";
 
         initPrivilegedCarbonContext(tenantDomain, tenantID, userName);
+    }
+
+    public static void setOAuthServerConfigurationProperties(String carbonHome) {
+        System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
+        System.setProperty(TestConstants.CARBON_PROTOCOL, TestConstants.CARBON_PROTOCOL_HTTPS);
+        System.setProperty(TestConstants.CARBON_HOST, TestConstants.CARBON_HOST_LOCALHOST);
+        System.setProperty(TestConstants.CARBON_MANAGEMENT_PORT, TestConstants.CARBON_DEFAULT_HTTPS_PORT);
+    }
+
+    public static void populateInitialContext(String dbName) throws NamingException {
+        Properties properties = new Properties();
+        properties.put(TestConstants.JAVA_NAMING_FACTORY_INITIAL,
+                       new CarbonJavaURLContextFactory().getClass().getCanonicalName());
+        InitialContext initialContext = new InitialContext(properties);
+        initialContext.createSubcontext(JDBC_SUBCONTEXT);
+        initialContext.bind(dbName, getDatasource(dbName));
     }
 
 }

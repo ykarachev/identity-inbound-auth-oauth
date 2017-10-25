@@ -19,11 +19,18 @@ import org.mockito.Mock;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+<<<<<<< HEAD
+=======
+import org.wso2.carbon.base.CarbonBaseConstants;
+>>>>>>> upstream/master
 import org.wso2.carbon.identity.core.util.IdentityConfigParser;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth2.TestConstants;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
+<<<<<<< HEAD
 import org.wso2.carbon.identity.oauth2.test.utils.CommonTestUtils;
+=======
+>>>>>>> upstream/master
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.ResourceImpl;
@@ -40,6 +47,7 @@ public class TenantCreationEventListenerTest extends PowerMockIdentityBaseTest {
     private TenantCreationEventListener tenantCreationEventListener = new TenantCreationEventListener();
 
     @Mock
+<<<<<<< HEAD
     private RegistryService registryService;
 
     @Mock
@@ -47,11 +55,27 @@ public class TenantCreationEventListenerTest extends PowerMockIdentityBaseTest {
 
     @Mock
     private IdentityConfigParser identityConfigParser;
+=======
+    RegistryService registryService;
+
+    @Mock
+    UserRegistry registry;
+
+    @Mock
+    IdentityConfigParser identityConfigParser;
+>>>>>>> upstream/master
 
     @BeforeMethod
     public void setUp() throws Exception {
         String carbonHome = getClass().getResource("/").getFile();
+<<<<<<< HEAD
         CommonTestUtils.setOAuthServerConfigurationProperties(carbonHome);
+=======
+        System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
+        System.setProperty(TestConstants.CARBON_PROTOCOL, TestConstants.CARBON_PROTOCOL_HTTPS);
+        System.setProperty(TestConstants.CARBON_HOST, TestConstants.CARBON_HOST_LOCALHOST);
+        System.setProperty(TestConstants.CARBON_MANAGEMENT_PORT, TestConstants.CARBON_DEFAULT_HTTPS_PORT);
+>>>>>>> upstream/master
         OAuth2ServiceComponentHolder.setRegistryService(registryService);
     }
 

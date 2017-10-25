@@ -177,6 +177,12 @@
 
         </classes>
     </test>
+    <test name="org.wso2.carbon.identity.oauth2.listener">
+        <parameter name="log-level" value="info"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth2.listener.TenantCreationEventListenerTest"/>
+        </classes>
+    </test>
     <test name="org.wso2.carbon.identity.oauth2.internal">
         <parameter name="log-level" value="info"/>
         <classes>

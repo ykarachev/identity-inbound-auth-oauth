@@ -79,7 +79,7 @@ public class TokenMgtDAO {
     private static final String UTC = "UTC";
     private static TokenPersistenceProcessor persistenceProcessor;
 
-    private static final int DEFAULT_POOL_SIZE = 100;
+    private static final int DEFAULT_POOL_SIZE = 0;
     private static final int DEFAULT_TOKEN_PERSIST_RETRY_COUNT = 5;
     private static final boolean DEFAULT_PERSIST_ENABLED = true;
 

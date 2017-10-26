@@ -250,6 +250,8 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
         when(IdentityUtil.isTokenLoggable(anyString())).thenReturn(tokenLoggable);
 
         when(oauthIssuer.accessToken(any(OAuthTokenReqMessageContext.class))).thenReturn(accessToken);
+        when(oAuthAppDO.getApplicationAccessTokenExpiryTime()).thenReturn(3600L);
+        when(oAuthAppDO.getUserAccessTokenExpiryTime()).thenReturn(3600L);
 
         if (dbEntryAvailable) {
             when(tokenMgtDAO.retrieveLatestAccessToken(anyString(), any(AuthenticatedUser.class), anyString(),

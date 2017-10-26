@@ -668,7 +668,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     @Override
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
             throws IdentityOAuth2Exception {
-        return true;
+        return tokReqMsgCtx.getOauth2AccessTokenReqDTO() != null;
+
     }
 
     @Override

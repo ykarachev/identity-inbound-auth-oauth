@@ -47,6 +47,7 @@
 
     String consumerkey = request.getParameter("consumerkey");
     String callback = request.getParameter("callback");
+    String backchannelLogoutUrl=request.getParameter("bclogout");
     String applicationName = request.getParameter("application");
     String consumersecret = request.getParameter("consumersecret");
     String oauthVersion = request.getParameter("oauthVersion");
@@ -75,37 +76,36 @@
 	boolean isError = false;
 	
     try {
-        if (OAuthUIUtil.isValidURI(callback)) {
-            String cookie = (String) session.getAttribute(ServerConstants.ADMIN_SERVICE_COOKIE);
-            String backendServerURL = CarbonUIUtil.getServerURL(config.getServletContext(), session);
-            ConfigurationContext configContext =
-                    (ConfigurationContext) config.getServletContext().getAttribute(CarbonConstants.CONFIGURATION_CONTEXT);
-            OAuthAdminClient client = new OAuthAdminClient(cookie, backendServerURL, configContext);
-            app.setOauthConsumerKey(consumerkey);
-            app.setOauthConsumerSecret(consumersecret);
-            app.setCallbackUrl(callback);
-            app.setApplicationName(applicationName);
-            app.setOAuthVersion(oauthVersion);
-            app.setPkceMandatory(pkceMandatory);
-            app.setPkceSupportPlain(pkceSupportPlain);
-            app.setUserAccessTokenExpiryTime(Long.parseLong(userAccessTokenExpiryTime));
-            app.setApplicationAccessTokenExpiryTime(Long.parseLong(applicationAccessTokenExpiryTime));
-            app.setRefreshTokenExpiryTime(Long.parseLong(refreshTokenExpiryTime));
-            String[] grantTypes = client.getAllowedOAuthGrantTypes();
-            for (String grantType : grantTypes) {
-                String grant = request.getParameter("grant_" + grantType);
-                if (grant != null) {
-                    buff.append(grantType + " ");
-                }
+if (OAuthUIUtil.isValidURI(callback)) {
+        String cookie = (String) session.getAttribute(ServerConstants.ADMIN_SERVICE_COOKIE);
+        String backendServerURL = CarbonUIUtil.getServerURL(config.getServletContext(), session);
+        ConfigurationContext configContext =
+                (ConfigurationContext) config.getServletContext().getAttribute(CarbonConstants.CONFIGURATION_CONTEXT);
+        OAuthAdminClient client = new OAuthAdminClient(cookie, backendServerURL, configContext);
+        app.setOauthConsumerKey(consumerkey);
+        app.setOauthConsumerSecret(consumersecret);
+        app.setCallbackUrl(callback);
+        app.setApplicationName(applicationName);
+        app.setBackChannelLogoutUrl(backchannelLogoutUrl);app.setOAuthVersion(oauthVersion);
+        app.setPkceMandatory(pkceMandatory);
+        app.setPkceSupportPlain(pkceSupportPlain);
+        app.setUserAccessTokenExpiryTime(Long.parseLong(userAccessTokenExpiryTime));
+        app.setApplicationAccessTokenExpiryTime(Long.parseLong(applicationAccessTokenExpiryTime));
+        app.setRefreshTokenExpiryTime(Long.parseLong(refreshTokenExpiryTime));
+        String[] grantTypes = client.getAllowedOAuthGrantTypes();
+        for (String grantType : grantTypes) {
+            String grant = request.getParameter("grant_" + grantType);
+            if (grant != null) {
+                buff.append(grantType + " ");
             }
-            grants = buff.toString();
-            if (OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)) {
-                app.setGrantTypes(grants);
-            }
-            client.updateOAuthApplicationData(app);
-            String message = resourceBundle.getString("app.updated.successfully");
-            CarbonUIMessage.sendCarbonUIMessage(message, CarbonUIMessage.INFO, request);
-        } else {
+        }
+        grants = buff.toString();
+        if(OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)){
+            app.setGrantTypes(grants);
+        }
+        client.updateOAuthApplicationData(app);
+        String message = resourceBundle.getString("app.updated.successfully");
+        CarbonUIMessage.sendCarbonUIMessage(message,CarbonUIMessage.INFO, request);} else {
             isError = false;
             String message = resourceBundle.getString("callback.is.not.url");
             CarbonUIMessage.sendCarbonUIMessage(message, CarbonUIMessage.ERROR, request);

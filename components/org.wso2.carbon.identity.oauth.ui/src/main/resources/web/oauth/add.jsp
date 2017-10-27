@@ -87,6 +87,7 @@
 
                 function validate() {
                     var callbackUrl = document.getElementById('callback').value;
+                    var backChannelLogoutUrl = document.getElementById('bclogout').value;
                     var userTokenExpiryTime = document.getElementById("userAccessTokenExpiryTime").value;
                     var applicationTokenExpiryTime = document.getElementById("userAccessTokenExpiryTime").value;
                     var refreshTokenExpiryTime = document.getElementById("refreshTokenExpiryTime").value;
@@ -95,6 +96,11 @@
                         CARBON.showWarningDialog('<fmt:message key="callback.is.fragment"/>');
                         return false;
                     }
+                    if (backChannelLogoutUrl.indexOf("#") !== -1) {
+                        CARBON.showWarningDialog('<fmt:message key="backchannel.logout.is.fragment"/>');
+                        return false;
+                    }
+
                     if ($(jQuery("#grant_authorization_code"))[0].checked || $(jQuery("#grant_implicit"))[0].checked) {
                         // This is to support providing regex patterns for callback URLs
                         if (callbackUrl.startsWith("regexp=")) {
@@ -102,6 +108,11 @@
                         } else if (!isWhiteListed(callbackUrl, ["url"])) {
                             CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
                             return false;
+                        }
+                        if (!isWhiteListed(backChannelLogoutUrl, ["url"]) || !isNotBlackListed(backChannelLogoutUrl,
+                            ["uri-unsafe-exists"])) {
+                        CARBON.showWarningDialog('<fmt:message key="backchannel.logout.is.not.url"/>');
+                        return false;
                         }
                     }
                     var value = document.getElementsByName("application")[0].value;
@@ -131,6 +142,11 @@
                             CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
                             return false;
 
+                        }
+                        if (!isWhiteListed(backChannelLogoutUrl, ["url"]) || !isNotBlackListed(backChannelLogoutUrl,
+                                ["uri-unsafe-exists"])) {
+                            CARBON.showWarningDialog('<fmt:message key="backchannel.logout.is.not.url"/>');
+                            return false;
                         }
                         if (!isWhiteListed(userTokenExpiryTime, ["digits-only"])) {
                             CARBON.showWarningDialog('<fmt:message key="invalid.user.access.token.expiry.time"/>');
@@ -224,6 +240,11 @@
                                 <td><input class="text-box-big" id="callback" name="callback" type="text"
                                            white-list-patterns="https-url"/></td>
 		                    </tr>
+                            <tr id="bclogout_row">
+                                <td class="leftCol-med"><fmt:message key="bclogout"/></td>
+                                <td><input class="text-box-big" id="bclogout" name="bclogout"
+                                           type="text" white-list-patterns="https-url"/></td>
+                            </tr>
 		                     <tr id="grant_row" name="grant_row">
 		                        <td class="leftCol-med"><fmt:message key='grantTypes'/></td>
 		                        <td>
@@ -369,4 +390,3 @@
         </div>
     </div>
 </fmt:bundle>
-

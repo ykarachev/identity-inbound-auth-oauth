@@ -489,6 +489,23 @@ public class OAuth2Util {
         return clientId + ":" + authzCode;
     }
 
+    /**
+     * Build the cache key string when storing token info in cache
+     *
+     * @param clientId
+     * @param scope
+     * @param authorizedUser
+     * @return
+     */
+    public static String buildCacheKeyStringForToken(String clientId, String scope, String authorizedUser) {
+        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
+        if (isUsernameCaseSensitive) {
+            return clientId + ":" + authorizedUser + ":" + scope;
+        } else {
+            return clientId + ":" + authorizedUser.toLowerCase() + ":" + scope;
+        }
+    }
+
     public static AccessTokenDO validateAccessTokenDO(AccessTokenDO accessTokenDO) {
 
         long validityPeriodMillis = accessTokenDO.getValidityPeriodInMillis();

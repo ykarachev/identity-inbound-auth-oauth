@@ -21,6 +21,7 @@ package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
@@ -39,6 +40,7 @@ import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
+import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.buildCacheKeyStringForToken;
 import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.getTimeToExpire;
 import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.validatePKCE;
 
@@ -49,7 +51,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
 
     // This is used to keep the pre processed authorization code in the OAuthTokenReqMessageContext.
     private static final String AUTHZ_CODE = "AuthorizationCode";
-    public static final int ALLOWED_MINIMUM_VALIDITY_PERIOD = 1000;
+    private static final int ALLOWED_MINIMUM_VALIDITY_PERIOD = 1000;
     private static Log log = LogFactory.getLog(AuthorizationCodeGrantHandler.class);
 
     @Override
@@ -102,30 +104,15 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
     @Override
     public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx)
             throws IdentityOAuth2Exception {
-        OAuth2AccessTokenRespDTO tokenRespDTO = super.issue(tokReqMsgCtx);
+        OAuth2AccessTokenRespDTO tokenResp = super.issue(tokReqMsgCtx);
+        String authzCode = retrieveAuthzCode(tokReqMsgCtx);
 
-        // get the token from the OAuthTokenReqMessageContext which is stored while validating
-        // the authorization code.
-        String authzCode = (String) tokReqMsgCtx.getProperty(AUTHZ_CODE);
-        boolean existingTokenUsed = false;
-        if (tokReqMsgCtx.getProperty(EXISTING_TOKEN_ISSUED) != null) {
-            existingTokenUsed = (Boolean) tokReqMsgCtx.getProperty(EXISTING_TOKEN_ISSUED);
-        }
-        // if it's not there (which is unlikely), recalculate it.
-        if (authzCode == null) {
-            authzCode = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getAuthorizationCode();
-        }
+        deactivateAuthzCode(tokReqMsgCtx, tokenResp.getTokenId(), authzCode);
+        clearAuthzCodeCache(tokReqMsgCtx, authzCode);
+        return tokenResp;
+    }
 
-        try {
-            if (existingTokenUsed){
-                // has given an already issued access token. So the authorization code is not deactivated yet
-                tokenMgtDAO.deactivateAuthorizationCode(authzCode, tokenRespDTO.getTokenId());
-            }
-        } catch (IdentityException e) {
-            throw new IdentityOAuth2Exception("Error occurred while deactivating authorization code", e);
-        }
-
-        // Clear the cache entry
+    private void clearAuthzCodeCache(OAuthTokenReqMessageContext tokReqMsgCtx, String authzCode) {
         if (cacheEnabled) {
             String clientId = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getClientId();
             OAuthCacheKey cacheKey = new OAuthCacheKey(OAuth2Util.buildCacheKeyStringForAuthzCode(
@@ -136,8 +123,59 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                 log.debug("Cache was cleared for authorization code info for client id : " + clientId);
             }
         }
+    }
 
-        return tokenRespDTO;
+    private void deactivateAuthzCode(OAuthTokenReqMessageContext tokReqMsgCtx, String tokenId,
+                                     String authzCode) throws IdentityOAuth2Exception {
+        try {
+            if (isExistingTokenUsed(tokReqMsgCtx)){
+                // has given an already issued access token. So the authorization code is not deactivated yet
+                tokenMgtDAO.deactivateAuthorizationCode(authzCode, tokenId);
+                if(log.isDebugEnabled()
+                        && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+                    log.debug("Deactivated authorization code : " + authzCode);
+                }
+            }
+        } catch (IdentityException e) {
+            throw new IdentityOAuth2Exception("Error occurred while deactivating authorization code", e);
+        }
+    }
+
+    /**
+     * Returns whether an unexpired, pre-generated token is served for this request
+     * @param tokReqMsgCtx
+     * @return
+     */
+    private boolean isExistingTokenUsed(OAuthTokenReqMessageContext tokReqMsgCtx) {
+        if (tokReqMsgCtx.getProperty(EXISTING_TOKEN_ISSUED) != null) {
+            if (log.isDebugEnabled()) {
+                log.debug("Token request message context has 'existingTokenUsed' value : " +
+                        tokReqMsgCtx.getProperty(EXISTING_TOKEN_ISSUED).toString());
+            }
+            return (Boolean) tokReqMsgCtx.getProperty(EXISTING_TOKEN_ISSUED);
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("'existingTokenUsed' property not set in token request message context");
+        }
+        return false;
+    }
+
+    /**
+     * Get the token from the OAuthTokenReqMessageContext which is stored while validating the authorization code.
+     * If it's not there (which is unlikely), recalculate it.
+     * @param tokReqMsgCtx
+     * @return
+     */
+    private String retrieveAuthzCode(OAuthTokenReqMessageContext tokReqMsgCtx) {
+        String authzCode = (String) tokReqMsgCtx.getProperty(AUTHZ_CODE);
+        if (authzCode == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("authorization code is not saved in the token request message context for client : " +
+                tokReqMsgCtx.getOauth2AccessTokenReqDTO().getClientId());
+            }
+            authzCode = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getAuthorizationCode();
+        }
+        return authzCode;
     }
 
     @Override
@@ -198,15 +236,10 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         return tokenMgtDAO.validateAuthorizationCode(tokenReqDTO.getClientId(), tokenReqDTO.getAuthorizationCode());
     }
 
-    private String buildCacheKey(String clientId, AuthzCodeDO authzCodeDO) {
+    private String buildCacheKeyForToken(String clientId, AuthzCodeDO authzCodeDO) {
         String scope = OAuth2Util.buildScopeString(authzCodeDO.getScope());
         String authorizedUser = authzCodeDO.getAuthorizedUser().toString();
-        boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(authorizedUser);
-        if (isUsernameCaseSensitive) {
-            return clientId + ":" + authorizedUser + ":" + scope;
-        } else {
-            return clientId + ":" + authorizedUser.toLowerCase() + ":" + scope;
-        }
+        return buildCacheKeyStringForToken(clientId, scope, authorizedUser);
     }
 
     /**
@@ -230,7 +263,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         }
 
         if (isIncativeAuthzCode(authzCodeBean)) {
-            removeIfCached(authzCodeBean, clientId);
+            clearTokenCache(authzCodeBean, clientId);
             throw new IdentityOAuth2Exception("Inactive authorization code received from token request");
         }
 
@@ -240,12 +273,13 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         return true;
     }
 
-    private void removeIfCached(AuthzCodeDO authzCodeBean, String clientId) {
+    private void clearTokenCache(AuthzCodeDO authzCodeBean, String clientId) {
         if (cacheEnabled) {
-            String cacheKeyString = buildCacheKey(clientId, authzCodeBean);
+            String cacheKeyString = buildCacheKeyForToken(clientId, authzCodeBean);
             OAuthCache.getInstance().clearCacheEntry(new OAuthCacheKey(cacheKeyString));
             if(log.isDebugEnabled()) {
-                log.debug("Removed inactive authz code : " + authzCodeBean.getAuthorizationCode() + " from cache");
+                log.debug("Removed token from cache for user : " + authzCodeBean.getAuthorizedUser().toString() +
+                        ", for client : " + clientId);
             }
         }
     }

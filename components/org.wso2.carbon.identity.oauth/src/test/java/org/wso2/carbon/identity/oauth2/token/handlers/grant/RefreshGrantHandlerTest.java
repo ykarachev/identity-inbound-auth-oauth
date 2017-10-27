@@ -228,9 +228,9 @@ public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
                         any(AccessTokenDO.class), anyString());
 
         if (isValidToken) {
-            when(OAuth2Util.calculateValidityInMillis(anyLong(), anyLong())).thenReturn(new Long(5000));
+            when(OAuth2Util.getTimeToExpire(anyLong(), anyLong())).thenReturn(new Long(5000));
         } else {
-            when(OAuth2Util.calculateValidityInMillis(anyLong(), anyLong())).thenReturn(Long.valueOf(0));
+            when(OAuth2Util.getTimeToExpire(anyLong(), anyLong())).thenReturn(Long.valueOf(0));
         }
         when(mockOAuthServerConfiguration.isRefreshTokenRenewalEnabled()).thenReturn(isRenew);
         when(IdentityUtil.isUserStoreInUsernameCaseSensitive(anyString())).thenReturn(isUsernameCaseSensitive);

@@ -677,7 +677,7 @@ public class OAuth2UtilTest extends PowerMockIdentityBaseTest {
     public void testCalculateValidityInMillis() throws Exception {
         long issuedTimeInMillis = System.currentTimeMillis() - 5000;
         long validityPeriodMillis = 100000;
-        assertTrue(OAuth2Util.calculateValidityInMillis(issuedTimeInMillis, validityPeriodMillis) > 0);
+        assertTrue(OAuth2Util.getTimeToExpire(issuedTimeInMillis, validityPeriodMillis) > 0);
     }
 
     @Test

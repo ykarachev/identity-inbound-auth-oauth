@@ -39,6 +39,9 @@ import org.wso2.carbon.identity.oauth2.model.AuthzCodeDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
+import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.getTimeToExpire;
+import static org.wso2.carbon.identity.oauth2.util.OAuth2Util.validatePKCE;
+
 /**
  * Implements the AuthorizationGrantHandler for the Grant Type : authorization_code.
  */
@@ -46,50 +49,53 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
 
     // This is used to keep the pre processed authorization code in the OAuthTokenReqMessageContext.
     private static final String AUTHZ_CODE = "AuthorizationCode";
+    public static final int ALLOWED_MINIMUM_VALIDITY_PERIOD = 1000;
     private static Log log = LogFactory.getLog(AuthorizationCodeGrantHandler.class);
-
 
     @Override
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
+        super.validateGrant(tokReqMsgCtx);
+        OAuth2AccessTokenReqDTO tokenReq = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
+        AuthzCodeDO authzCodeBean = getPersistedAuthzCode(tokenReq);
 
-        if (!super.validateGrant(tokReqMsgCtx)) {
-            log.error("Invalid Token request message context");
-            return false;
-        }
-
-        OAuth2AccessTokenReqDTO oAuth2AccessTokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
-        AuthzCodeDO authzCodeDO = getSavedAuthzCodeData(oAuth2AccessTokenReqDTO);
-
-        if (!isAuthzCodeDataValid(authzCodeDO, oAuth2AccessTokenReqDTO.getClientId())) {
-            return false;
-        }
-
+        validateAuthzCodeFromRequest(authzCodeBean, tokenReq.getClientId(), tokenReq.getAuthorizationCode());
         // If redirect_uri was given in the authorization request,
         // token request should send matching redirect_uri value
-        if (!isCallbackUrlValid(authzCodeDO.getCallbackUrl(), oAuth2AccessTokenReqDTO.getCallbackURI())) {
-
-            if (log.isDebugEnabled()) {
-                log.debug("Invalid redirect uri " + oAuth2AccessTokenReqDTO.getCallbackURI() +
-                        " in the token request for client : " + oAuth2AccessTokenReqDTO.getClientId());
-            }
-            return false;
-        }
-
-        if (!isPKCEValid(authzCodeDO, oAuth2AccessTokenReqDTO.getPkceCodeVerifier())) {
-            return false;
-        }
-
+        validateCallbackUrlFromRequest(tokenReq.getCallbackURI(), authzCodeBean.getCallbackUrl());
+        validatePKCECode(authzCodeBean, tokenReq.getPkceCodeVerifier());
         if (log.isDebugEnabled()) {
-            log.debug("Found Authorization Code for Client : " + oAuth2AccessTokenReqDTO.getClientId() +
-                    ", authorized user : " + authzCodeDO.getAuthorizedUser() +
-                    ", scope : " + OAuth2Util.buildScopeString(authzCodeDO.getScope()));
+            log.debug("Found Authorization Code for Client : " + tokenReq.getClientId() +
+                    ", authorized user : " + authzCodeBean.getAuthorizedUser() +
+                    ", scope : " + OAuth2Util.buildScopeString(authzCodeBean.getScope()));
         }
 
-        tokReqMsgCtx.setAuthorizedUser(authzCodeDO.getAuthorizedUser());
-        tokReqMsgCtx.setScope(authzCodeDO.getScope());
+        setPropertiesForTokenGeneration(tokReqMsgCtx, tokenReq, authzCodeBean);
+        return true;
+    }
+
+    private void setPropertiesForTokenGeneration(OAuthTokenReqMessageContext tokReqMsgCtx,
+                                                 OAuth2AccessTokenReqDTO tokenReq, AuthzCodeDO authzCodeBean) {
+        tokReqMsgCtx.setAuthorizedUser(authzCodeBean.getAuthorizedUser());
+        tokReqMsgCtx.setScope(authzCodeBean.getScope());
         // keep the pre processed authz code as a OAuthTokenReqMessageContext property to avoid
         // calculating it again when issuing the access token.
-        tokReqMsgCtx.addProperty(AUTHZ_CODE, oAuth2AccessTokenReqDTO.getAuthorizationCode());
+        tokReqMsgCtx.addProperty(AUTHZ_CODE, tokenReq.getAuthorizationCode());
+    }
+
+    private boolean validateCallbackUrlFromRequest(String callbackUrlFromRequest,
+                                                   String callbackUrlFromPersistedAuthzCode)
+            throws IdentityOAuth2Exception {
+        if (StringUtils.isEmpty(callbackUrlFromPersistedAuthzCode)) {
+            return true;
+        }
+
+        if (!callbackUrlFromPersistedAuthzCode.equals(callbackUrlFromRequest)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Received callback url in the request : " + callbackUrlFromRequest +
+                        " is not matching with persisted callback url " + callbackUrlFromPersistedAuthzCode);
+            }
+            throw new IdentityOAuth2Exception("Callback url mismatch");
+        }
         return true;
     }
 
@@ -169,7 +175,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
      * @return
      * @throws IdentityOAuth2Exception
      */
-    private AuthzCodeDO getSavedAuthzCodeData(OAuth2AccessTokenReqDTO tokenReqDTO) throws IdentityOAuth2Exception {
+    private AuthzCodeDO getPersistedAuthzCode(OAuth2AccessTokenReqDTO tokenReqDTO) throws IdentityOAuth2Exception {
 
         AuthzCodeDO authzCodeDO;
         // If cache is enabled, check in the cache first.
@@ -203,108 +209,115 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         }
     }
 
-    private boolean isCallbackUrlValid(String callbackUrlInAuthzRequest, String callbackUrlInTokenRequest) {
-
-        if (StringUtils.isEmpty(callbackUrlInAuthzRequest)) {
-            // If redirect_uri was not available in the authorization request,
-            // no need to validate redirect_uri in the token request at this point
-            return true;
-        } else if (!callbackUrlInAuthzRequest.equals(callbackUrlInTokenRequest)) {
-            return false;
-        }
-        return true;
-    }
-
     /**
      * Checks whether the retrieved authorization data is invalid, inactive or expired.
      * Returns true otherwise
      *
-     * @param authzCodeDO
+     * @param authzCodeBean
      * @param clientId
      * @return
      * @throws IdentityOAuth2Exception
      */
-    private boolean isAuthzCodeDataValid(AuthzCodeDO authzCodeDO, String clientId)
+    private boolean validateAuthzCodeFromRequest(AuthzCodeDO authzCodeBean, String clientId, String authzCode)
             throws IdentityOAuth2Exception {
-        if (authzCodeDO == null) {
+        if (authzCodeBean == null) {
             // If no auth code details available, cannot proceed with Authorization code grant
             if(log.isDebugEnabled()) {
-                log.debug("Invalid access token request with Client Id : " + clientId +
-                        ", Invalid authorization code provided.");
+                log.debug("Invalid token request for client id: " + clientId +
+                        "and couldn't find persisted data for authorization code: " + authzCode);
             }
-            return false;
+           throw new IdentityOAuth2Exception("Invalid authorization code received from token request");
         }
-        if (OAuthConstants.AuthorizationCodeState.INACTIVE.equals(authzCodeDO.getState())) {
-            if(log.isDebugEnabled()) {
-                log.debug("Invalid access token request with Client Id : " + clientId +
-                        ", Inactive authorization code provided.");
-            }
-            if (cacheEnabled) {
-                String cacheKeyString = buildCacheKey(clientId, authzCodeDO);
-                OAuthCache.getInstance().clearCacheEntry(new OAuthCacheKey(cacheKeyString));
-            }
-            return false;
+
+        if (isIncativeAuthzCode(authzCodeBean)) {
+            removeIfCached(authzCodeBean, clientId);
+            throw new IdentityOAuth2Exception("Inactive authorization code received from token request");
         }
-        if (isAuthzCodeExpired(authzCodeDO)) {
-            return false;
+
+        if (isAuthzCodeExpired(authzCodeBean)) {
+            throw new IdentityOAuth2Exception("Expired authorization code received from token request");
         }
         return true;
     }
 
-    private boolean isAuthzCodeExpired(AuthzCodeDO authzCodeDO)
-            throws IdentityOAuth2Exception {
-        long issuedTimeInMillis = authzCodeDO.getIssuedTime().getTime();
-        long validityPeriodInMillis = authzCodeDO.getValidityPeriod();
-
-        // If the code is not valid for more than 1 sec, it is considered to be expired
-        if (OAuth2Util.calculateValidityInMillis(issuedTimeInMillis, validityPeriodInMillis) < 1000) {
+    private void removeIfCached(AuthzCodeDO authzCodeBean, String clientId) {
+        if (cacheEnabled) {
+            String cacheKeyString = buildCacheKey(clientId, authzCodeBean);
+            OAuthCache.getInstance().clearCacheEntry(new OAuthCacheKey(cacheKeyString));
             if(log.isDebugEnabled()) {
-                log.debug("Authorization Code Issued Time(ms): " + issuedTimeInMillis +
-                        ", Validity Period: " + validityPeriodInMillis + ", Timestamp Skew: " +
-                        OAuthServerConfiguration.getInstance().getTimeStampSkewInSeconds() * 1000 +
-                        ", Current Time: " + System.currentTimeMillis());
+                log.debug("Removed inactive authz code : " + authzCodeBean.getAuthorizationCode() + " from cache");
             }
+        }
+    }
 
-            // remove the authorization code from the database.
-            tokenMgtDAO.changeAuthzCodeState(authzCodeDO.getAuthorizationCode(),
-                    OAuthConstants.AuthorizationCodeState.EXPIRED);
-            if (log.isDebugEnabled()) {
-                log.debug("Expired Authorization code issued for client " + authzCodeDO.getConsumerKey() +
-                        " was removed from the database.");
-            }
-
-            if (cacheEnabled) {
-                // remove the authorization code from the cache
-                OAuthCache.getInstance().clearCacheEntry(new OAuthCacheKey(
-                        OAuth2Util.buildCacheKeyStringForAuthzCode(authzCodeDO.getConsumerKey(),
-                                authzCodeDO.getAuthorizationCode())));
-                if (log.isDebugEnabled()) {
-                    log.debug("Expired Authorization code issued for client " + authzCodeDO.getConsumerKey() +
-                            " was removed from the cache.");
-                }
+    private boolean isIncativeAuthzCode(AuthzCodeDO authzCodeBean) {
+        if (OAuthConstants.AuthorizationCodeState.INACTIVE.equals(authzCodeBean.getState())) {
+            if(log.isDebugEnabled()) {
+                log.debug("Invalid access token request with Client Id : " + authzCodeBean.getConsumerKey() +
+                        ", Inactive authorization code : " + authzCodeBean.getAuthorizationCode());
             }
             return true;
         }
         return false;
     }
 
+    private boolean isAuthzCodeExpired(AuthzCodeDO authzCodeBean)
+            throws IdentityOAuth2Exception {
+        long issuedTime = authzCodeBean.getIssuedTime().getTime();
+        long validityPeriod = authzCodeBean.getValidityPeriod();
+
+        // If the code is not valid for more than 1 sec, it is considered to be expired
+        if (getTimeToExpire(issuedTime, validityPeriod) < ALLOWED_MINIMUM_VALIDITY_PERIOD) {
+            markAsExpired(authzCodeBean);
+            if(log.isDebugEnabled()) {
+                log.debug("Authorization Code Issued Time(ms): " + issuedTime +
+                        ", Validity Period: " + validityPeriod + ", Timestamp Skew: " +
+                        OAuthServerConfiguration.getInstance().getTimeStampSkewInSeconds() * 1000 +
+                        ", Current Time: " + System.currentTimeMillis());
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private void markAsExpired(AuthzCodeDO authzCodeBean) throws IdentityOAuth2Exception {
+        tokenMgtDAO.changeAuthzCodeState(authzCodeBean.getAuthorizationCode(),
+                OAuthConstants.AuthorizationCodeState.EXPIRED);
+        if (log.isDebugEnabled()) {
+            log.debug("Changed state of authorization code : " + authzCodeBean.getAuthorizationCode() + " to expired");
+        }
+
+        if (cacheEnabled) {
+            // remove the authorization code from the cache
+            OAuthCache.getInstance().clearCacheEntry(new OAuthCacheKey(
+                    OAuth2Util.buildCacheKeyStringForAuthzCode(authzCodeBean.getConsumerKey(),
+                            authzCodeBean.getAuthorizationCode())));
+            if (log.isDebugEnabled()) {
+                log.debug("Expired Authorization code issued for client " + authzCodeBean.getConsumerKey() +
+                        " was removed from the cache.");
+            }
+        }
+    }
+
     /**
      * Performs PKCE Validation for "Authorization Code" Grant Type
      *
-     * @param authzCodeDO
-     * @param codeVerifier
+     * @param authzCodeBean
+     * @param verificationCode
      * @return true if PKCE is validated
      * @throws IdentityOAuth2Exception
      */
-    private boolean isPKCEValid(AuthzCodeDO authzCodeDO, String codeVerifier) throws IdentityOAuth2Exception {
-
-        String PKCECodeChallenge = authzCodeDO.getPkceCodeChallenge();
-        String PKCECodeChallengeMethod = authzCodeDO.getPkceCodeChallengeMethod();
-        OAuthAppDO oAuthAppDO = getOAuthAppDO(authzCodeDO.getConsumerKey());
-        if (!OAuth2Util.doPKCEValidation(PKCECodeChallenge, codeVerifier, PKCECodeChallengeMethod, oAuthAppDO)) {
+    private boolean validatePKCECode(AuthzCodeDO authzCodeBean, String verificationCode) throws IdentityOAuth2Exception {
+        String PKCECodeChallenge = authzCodeBean.getPkceCodeChallenge();
+        String PKCECodeChallengeMethod = authzCodeBean.getPkceCodeChallengeMethod();
+        OAuthAppDO oAuthApp = getOAuthAppDO(authzCodeBean.getConsumerKey());
+        if (!validatePKCE(PKCECodeChallenge, verificationCode, PKCECodeChallengeMethod, oAuthApp)) {
             //possible malicious oAuthRequest
             log.warn("Failed PKCE Verification for oAuth 2.0 request");
-            return false;
+            if (log.isDebugEnabled()) {
+                log.debug("PKCE code verification failed for client : " + authzCodeBean.getConsumerKey());
+            }
+            throw new IdentityOAuth2Exception("PKCE validation failed");
         }
         return true;
     }

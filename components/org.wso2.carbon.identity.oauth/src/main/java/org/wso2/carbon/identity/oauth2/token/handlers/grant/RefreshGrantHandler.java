@@ -213,7 +213,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         long issuedTime = refreshTokenValidationDataDO.getIssuedTime().getTime();
         long refreshValidityMillis = refreshTokenValidationDataDO.getValidityPeriodInMillis();
 
-        if (OAuth2Util.calculateValidityInMillis(issuedTime, refreshValidityMillis) >= 1000) {
+        if (OAuth2Util.getTimeToExpire(issuedTime, refreshValidityMillis) >= 1000) {
             if (!renew) {
                 // if refresh token renewal not enabled, we use existing one else we issue a new refresh token
                 refreshToken = oauth2AccessTokenReqDTO.getRefreshToken();

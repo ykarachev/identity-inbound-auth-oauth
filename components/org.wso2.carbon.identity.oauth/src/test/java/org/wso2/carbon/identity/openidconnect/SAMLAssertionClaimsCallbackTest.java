@@ -18,7 +18,6 @@
 package org.wso2.carbon.identity.openidconnect;
 
 import com.nimbusds.jwt.JWTClaimsSet;
-import org.apache.commons.lang.StringUtils;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.opensaml.saml2.core.Assertion;
@@ -26,7 +25,9 @@ import org.opensaml.saml2.core.Attribute;
 import org.opensaml.saml2.core.AttributeStatement;
 import org.opensaml.saml2.core.NameID;
 import org.opensaml.saml2.core.Subject;
+import org.opensaml.saml2.core.impl.AssertionBuilder;
 import org.opensaml.saml2.core.impl.AttributeBuilder;
+import org.opensaml.saml2.core.impl.AttributeStatementBuilder;
 import org.opensaml.xml.ConfigurationException;
 import org.opensaml.xml.XMLObject;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
@@ -40,6 +41,7 @@ import org.w3c.dom.Element;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.ClaimConfig;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
@@ -51,7 +53,6 @@ import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
-import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
@@ -89,14 +90,15 @@ import static org.wso2.carbon.identity.core.util.IdentityCoreConstants.MULTI_ATT
 /**
  * Class which tests SAMLAssertionClaimsCallback.
  */
-@PowerMockIgnore("javax.xml.*")
+@PowerMockIgnore({"javax.xml.*", "org.w3c.*"})
 @PrepareForTest({
         AuthorizationGrantCache.class,
         PrivilegedCarbonContext.class,
         IdentityTenantUtil.class,
         OAuth2ServiceComponentHolder.class,
         ClaimMetadataHandler.class,
-        UserCoreUtil.class
+        UserCoreUtil.class,
+        FrameworkUtils.class
 })
 public class SAMLAssertionClaimsCallbackTest {
 
@@ -167,63 +169,44 @@ public class SAMLAssertionClaimsCallbackTest {
     public void setUp() throws Exception {
         System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
 
-        OAuthComponentServiceHolder oAuthComponentServiceHolder = OAuthComponentServiceHolder.getInstance();
-        realmService = mock(RealmService.class);
-        oAuthComponentServiceHolder.setRealmService(realmService);
-        userRealm = mock(UserRealm.class);
-        when(realmService.getTenantUserRealm(anyInt())).thenReturn(userRealm);
-
-        userStoreManager = mock(UserStoreManager.class);
-        when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
-
-        realmConfiguration = mock(RealmConfiguration.class);
-        when(userStoreManager.getRealmConfiguration()).thenReturn(realmConfiguration);
-
-        when(realmConfiguration.getUserStoreProperty(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR)).
-                thenReturn(MULTI_ATTRIBUTE_SEPARATOR_DEFAULT);
+        mockStatic(FrameworkUtils.class);
+        when(FrameworkUtils.getMultiAttributeSeparator()).thenReturn(MULTI_ATTRIBUTE_SEPARATOR_DEFAULT);
 
         samlAssertionClaimsCallback = new SAMLAssertionClaimsCallback();
     }
 
     @DataProvider(name = "samlAttributeValueProvider")
-    public Object[][] provideSamlAssertion() {
+    public Object[][] provideSamlAttributeValues() {
         return new Object[][]{
                 // Empty attribute value
-                {new String[]{""}},
+                {new String[]{""}, ""},
                 // Single attribute value
-                {new String[]{"value1"}},
+                {new String[]{"value1"}, "value1"},
                 // Multiple attribute values
-                {new String[]{"value1", "value2"}}
+                {new String[]{"value1", "value2"}, "value1" + MULTI_ATTRIBUTE_SEPARATOR_DEFAULT + "value2"},
+                // Multiple attribute values with an empty value
+                {new String[]{"value1", "", "value2"}, "value1" + MULTI_ATTRIBUTE_SEPARATOR_DEFAULT + "value2"}
         };
     }
 
-    @Test(dataProvider = "samlAttributeValueProvider")
-    public void testCustomClaimForOAuthTokenReqMessageContext(String[] attributeValues) throws Exception {
+    @Test(dataProvider = "provideSamlAttributeValues")
+    public void testCustomClaimForOAuthTokenReqMessageContext(String[] attributeValues,
+                                                              String expectedClaimValue) throws Exception {
 
-        jwtClaimsSet = new JWTClaimsSet();
-        requestMsgCtx = mock(OAuthTokenReqMessageContext.class);
+        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
+        Assertion assertion = getAssertion(attributeValues);
 
-        List<Attribute> attributesList = new ArrayList<>();
-        Attribute attribute = buildAttribute(CUSTOM_ATTRIBUTE_NAME, attributeValues);
-        attributesList.add(attribute);
+        OAuth2AccessTokenReqDTO accessTokenReqDTO = new OAuth2AccessTokenReqDTO();
+        OAuthTokenReqMessageContext requestMsgCtx = new OAuthTokenReqMessageContext(accessTokenReqDTO);
+        requestMsgCtx.addProperty(OAuthConstants.OAUTH_SAML2_ASSERTION, assertion);
 
-        AttributeStatement statement = mock(AttributeStatement.class);
-        List<AttributeStatement> attributeStatementList = new ArrayList<>();
-        attributeStatementList.add(statement);
-        when(statement.getAttributes()).thenReturn(attributesList);
-
-        Assertion assertion = mock(Assertion.class);
-        when(assertion.getAttributeStatements()).thenReturn(attributeStatementList);
-
-        when(requestMsgCtx.getProperty(OAuthConstants.OAUTH_SAML2_ASSERTION)).thenReturn(assertion);
         samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, requestMsgCtx);
 
         // Assert whether the custom attribute from SAML Assertion was set as a claim.
         assertFalse(jwtClaimsSet.getCustomClaims().isEmpty());
         assertNotNull(jwtClaimsSet.getCustomClaim(CUSTOM_ATTRIBUTE_NAME));
         // Assert whether multi value attribute values were joined correctly.
-        assertEquals(jwtClaimsSet.getCustomClaim(CUSTOM_ATTRIBUTE_NAME),
-                StringUtils.join(attributeValues, MULTI_ATTRIBUTE_SEPARATOR_DEFAULT));
+        assertEquals(jwtClaimsSet.getCustomClaim(CUSTOM_ATTRIBUTE_NAME), expectedClaimValue);
     }
 
     @Test
@@ -441,6 +424,26 @@ public class SAMLAssertionClaimsCallbackTest {
 
         when(newRegistry.getConfigSystemRegistry(anyInt())).thenReturn(userRegistry);
         when(userRegistry.get(OAuthConstants.SCOPE_RESOURCE_PATH)).thenReturn(resource);
+    }
+
+    private Assertion getAssertion(String[] attributeValues) throws ConfigurationException {
+        // Build the SAML Attribute
+        List<Attribute> attributesList = new ArrayList<>();
+        Attribute attribute = buildAttribute(CUSTOM_ATTRIBUTE_NAME, attributeValues);
+        attributesList.add(attribute);
+
+        // Build the SAML Attribute statement
+        AttributeStatement statement =
+                new AttributeStatementBuilder().buildObject(AttributeStatement.DEFAULT_ELEMENT_NAME);
+        statement.getAttributes().addAll(attributesList);
+
+        List<AttributeStatement> attributeStatementList = new ArrayList<>();
+        attributeStatementList.add(statement);
+
+        // Build the SAML Assertion
+        Assertion assertion = new AssertionBuilder().buildObject(Assertion.DEFAULT_ELEMENT_NAME);
+        assertion.getAttributeStatements().addAll(attributeStatementList);
+        return assertion;
     }
 
     private Attribute buildAttribute(String attributeName, String[] attributeValues) throws ConfigurationException {

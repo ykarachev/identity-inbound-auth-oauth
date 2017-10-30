@@ -19,7 +19,6 @@
 package org.wso2.carbon.identity.oauth2.token.handlers.grant;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -30,6 +29,7 @@ import org.testng.annotations.Test;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
@@ -257,7 +257,7 @@ public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
             assertEquals(actual.getRefreshToken(), tokenReqDTO.getRefreshToken(), "Token issuance should be " +
                     "successful and the response should contain the valid refresh token.");
         } else {
-            assertEquals(actual.getErrorCode(), OAuthError.TokenResponse.INVALID_REQUEST, "Should receive " +
+            assertEquals(actual.getErrorCode(), OAuth2ErrorCodes.INVALID_GRANT, "Should receive " +
                     "error response for invalid refresh token.");
         }
     }

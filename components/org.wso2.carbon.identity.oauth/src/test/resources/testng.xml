@@ -166,13 +166,32 @@
             <class name="org.wso2.carbon.identity.oauth2.OAuth2ScopeServiceTest"/>
 
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.iwa.ntlm.NTLMAuthenticationGrantHandlerTest"/>
+
+            <class name="org.wso2.carbon.identity.oauth2.bean.ScopeTest"/>
+
         </classes>
     </test>
+    <test name="org.wso2.carbon.identity.oauth2.authcontext">
+        <parameter name="log-level" value="debug"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth2.authcontext.DefaultClaimsRetrieverTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.authcontext.JWTTokenGeneratorTest"/>
+        </classes>
+    </test>
+
+    <test name="org.wso2.carbon.identity.oauth2.bean">
+        <parameter name="log-level" value="debug"/>
+        <classes>
+            <class name="org.wso2.carbon.identity.oauth2.bean.ScopeTest"/>
+        </classes>
+    </test>
+
     <test name="org.wso2.carbon.identity.oauth2.authz">
         <parameter name="log-level" value="info"/>
         <classes>
             <class name="org.wso2.carbon.identity.oauth2.authz.handlers.AbstractResponseTypeHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.authz.handlers.TokenResponseTypeHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContextTest"/>
         </classes>
     </test>
     <test name="org.wso2.carbon.identity.oauth2.authz.debug">

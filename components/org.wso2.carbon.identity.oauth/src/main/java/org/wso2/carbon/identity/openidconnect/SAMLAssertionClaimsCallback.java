@@ -46,6 +46,7 @@ import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.claim.metadata.mgt.ClaimMetadataHandler;
+import org.wso2.carbon.identity.claim.metadata.mgt.exception.ClaimMetadataException;
 import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -68,12 +69,15 @@ import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.StringTokenizer;
+
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.ACCESS_TOKEN;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.AUTHZ_CODE;
 
 /**
  * Returns the claims of the SAML assertion
@@ -82,12 +86,13 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
 
     private final static Log log = LogFactory.getLog(SAMLAssertionClaimsCallback.class);
     private final static String INBOUND_AUTH2_TYPE = "oauth2";
-    private final static String SP_DIALECT = "http://wso2.org/oidc/claim";
+    private final static String OIDC_DIALECT = "http://wso2.org/oidc/claim";
     private static final String UPDATED_AT = "updated_at";
     private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
     private static final String EMAIL_VERIFIED = "email_verified";
     private static final String ADDRESS_PREFIX = "address.";
     private static final String ADDRESS = "address";
+    private static final String OIDC_SCOPE_CLAIM_SEPARATOR = ",";
 
     private static String userAttributeSeparator = FrameworkUtils.getMultiAttributeSeparator();
 
@@ -99,83 +104,103 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             if (log.isDebugEnabled()) {
                 log.debug("SAML Assertion found in OAuthTokenReqMessageContext to process claims.");
             }
-            // Process Attributes in the SAML Assertion and derive claims to be set in the id_token
-            if (assertion.getSubject() != null) {
-                String subject = assertion.getSubject().getNameID().getValue();
-                if (log.isDebugEnabled()) {
-                    log.debug("Setting subject: " + subject + " found in <NameID> of the SAML Assertion.");
-                }
-                jwtClaimsSet.setSubject(subject);
-            }
-
-            List<AttributeStatement> attributeStatementList = assertion.getAttributeStatements();
-            if (CollectionUtils.isNotEmpty(attributeStatementList)) {
-                for (AttributeStatement statement : attributeStatementList) {
-                    List<Attribute> attributesList = statement.getAttributes();
-                    for (Attribute attribute : attributesList) {
-                        setAttributeValuesAsClaim(jwtClaimsSet, attribute);
-                    }
-                }
-            } else {
-                if (log.isDebugEnabled()) {
-                    log.debug("No <AttributeStatement> elements found in the SAML Assertion to process claims.");
-                }
-            }
+            addSubjectClaimFromAssertion(jwtClaimsSet, assertion);
+            addCustomClaimsFromAssertion(jwtClaimsSet, assertion);
         } else {
-            // No SAML Assertion to work with so we retrieve the claim from cache/userStore/messageContext.
+            // No SAML Assertion to work with so we retrieve the claims from cache/userStore/messageContext.
             if (log.isDebugEnabled()) {
                 log.debug("Adding claims of user: " + requestMsgCtx.getAuthorizedUser() + " to the JWTClaimSet used " +
                         "to build the id_token.");
             }
-            try {
-                Map<String, Object> claims = getUserClaims(requestMsgCtx);
-                setClaimsToJwtClaimSet(claims, jwtClaimsSet);
-            } catch (OAuthSystemException e) {
-                log.error("Error occurred while adding claims of " + requestMsgCtx.getAuthorizedUser() +
-                        " to the JWTClaimSet used to build the id_token.", e);
+            handleUserClaims(jwtClaimsSet, requestMsgCtx);
+        }
+    }
+
+    private void handleUserClaims(JWTClaimsSet jwtClaimsSet, OAuthTokenReqMessageContext requestMsgCtx) {
+        try {
+            Map<String, Object> claims = getUserClaims(requestMsgCtx);
+            setClaimsToJwtClaimSet(claims, jwtClaimsSet);
+        } catch (OAuthSystemException e) {
+            log.error("Error occurred while adding claims of user: " + requestMsgCtx.getAuthorizedUser() +
+                    " to the JWTClaimSet used to build the id_token.", e);
+        }
+    }
+
+    private void addCustomClaimsFromAssertion(JWTClaimsSet jwtClaimsSet, Assertion assertion) {
+        List<AttributeStatement> attributeStatementList = assertion.getAttributeStatements();
+
+        if (CollectionUtils.isNotEmpty(attributeStatementList)) {
+            for (AttributeStatement statement : attributeStatementList) {
+                List<Attribute> attributesList = statement.getAttributes();
+                for (Attribute attribute : attributesList) {
+                    setAttributeValuesAsClaim(jwtClaimsSet, attribute);
+                }
             }
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("No <AttributeStatement> elements found in the SAML Assertion to process claims.");
+            }
+        }
+    }
+
+    private void addSubjectClaimFromAssertion(JWTClaimsSet jwtClaimsSet, Assertion assertion) {
+        // Process <Subject> element in the SAML Assertion and populate subject claim in the JWTClaimSet.
+        if (assertion.getSubject() != null) {
+            String subject = assertion.getSubject().getNameID().getValue();
+            if (log.isDebugEnabled()) {
+                log.debug("Setting subject: " + subject + " found in <NameID> of the SAML Assertion.");
+            }
+            jwtClaimsSet.setSubject(subject);
         }
     }
 
     private void setAttributeValuesAsClaim(JWTClaimsSet jwtClaimsSet, Attribute attribute) {
         List<XMLObject> values = attribute.getAttributeValues();
         if (values != null) {
-            String attributeValues = null;
-            // Iterate the attribute values and combine them with the multi attribute separator to
-            // form a single claim value.
-            // Eg: value1 and value2 = value1,,,value2 (multi-attribute separator = ,,,)
-            for (int i = 0; i < values.size(); i++) {
-                Element value = attribute.getAttributeValues().get(i).getDOM();
-                String attributeValue = value.getTextContent();
-                if (log.isDebugEnabled()) {
-                    log.debug("AttributeValue: " + attributeValue + " found for Attribute: " + attribute.getName() +
-                            ".");
-                }
-                if (StringUtils.isBlank(attributeValues)) {
-                    attributeValues = attributeValue;
-                } else {
-                    attributeValues += userAttributeSeparator + attributeValue;
-                }
-            }
+            List<String> attributeValues = getNonEmptyAttributeValues(attribute, values);
             if (log.isDebugEnabled()) {
                 log.debug("Claim: " + attribute.getName() + " Value: " + attributeValues + " set in the JWTClaimSet.");
             }
-            jwtClaimsSet.setClaim(attribute.getName(), attributeValues);
+            String joinedAttributeString = StringUtils.join(attributeValues, userAttributeSeparator);
+            jwtClaimsSet.setClaim(attribute.getName(), joinedAttributeString);
         }
     }
 
-    @Override
-    public void handleCustomClaims(JWTClaimsSet jwtClaimsSet, OAuthAuthzReqMessageContext requestMsgCtx) {
-
-        if (log.isDebugEnabled()) {
-            log.debug("Adding claims for user " + requestMsgCtx.getAuthorizationReqDTO().getUser() + " to id token.");
+    private List<String> getNonEmptyAttributeValues(Attribute attribute, List<XMLObject> values) {
+        String attributeName = attribute.getName();
+        List<String> attributeValues = new ArrayList<>();
+        // Iterate the attribute values and combine them with the multi attribute separator to
+        // form a single claim value.
+        // Eg: value1 and value2 = value1,,,value2 (multi-attribute separator = ,,,)
+        for (int i = 0; i < values.size(); i++) {
+            Element value = attribute.getAttributeValues().get(i).getDOM();
+            // Get the attribute value
+            String attributeValue = value.getTextContent();
+            if (StringUtils.isBlank(attributeValue)) {
+                log.warn("Ignoring empty attribute value found for attribute: " + attributeName);
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("AttributeValue: " + attributeValue + " found for Attribute: " + attributeName + ".");
+                }
+                attributeValues.add(attributeValue);
+            }
         }
+        return attributeValues;
+    }
+
+    @Override
+    public void handleCustomClaims(JWTClaimsSet jwtClaimsSet, OAuthAuthzReqMessageContext authzReqMessageContext) {
+        AuthenticatedUser authorizedUser = authzReqMessageContext.getAuthorizationReqDTO().getUser();
+        if (log.isDebugEnabled()) {
+            log.debug("Adding claims of user: " + authorizedUser + " to the JWTClaimSet used to build the id_token.");
+        }
+
         try {
-            Map<String, Object> claims = getUserClaims(requestMsgCtx);
+            Map<String, Object> claims = getUserClaims(authzReqMessageContext);
             setClaimsToJwtClaimSet(claims, jwtClaimsSet);
         } catch (OAuthSystemException e) {
-            log.error("Error occurred while adding claims of " + requestMsgCtx.getAuthorizationReqDTO().getUser() +
-                    " to id token.", e);
+            log.error("Error occurred while adding claims of user: " + authorizedUser + " to the JWTClaimSet used to " +
+                    "build the id_token.", e);
         }
     }
 
@@ -186,69 +211,94 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
      * @return Mapped claimed
      * @throws OAuthSystemException
      */
-    private Map<String, Object> getUserClaims(OAuthTokenReqMessageContext requestMsgCtx)
-            throws OAuthSystemException {
+    private Map<String, Object> getUserClaims(OAuthTokenReqMessageContext requestMsgCtx) throws OAuthSystemException {
 
-        Map<ClaimMapping, String> userAttributes = Collections.emptyMap();
-        Map<String, Object> claims = Collections.emptyMap();
+        Map<ClaimMapping, String> userAttributes;
+        Map<String, Object> claims;
 
-        if (requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN) != null) {
-            // get the user claims cached against the access token if any
-            userAttributes = getUserAttributesFromCacheUsingToken(requestMsgCtx.getProperty(OAuthConstants
-                    .ACCESS_TOKEN).toString());
+        // Get any user attributes that were cached against the access token
+        userAttributes = getUserAttributesCachedAgainstToken(requestMsgCtx.getProperty(ACCESS_TOKEN));
+        if (MapUtils.isEmpty(userAttributes)) {
+            // TODO: add a log here
+            userAttributes = getUserAttributesCachedAgainstAuthorizationCode(requestMsgCtx.getProperty(AUTHZ_CODE));
         }
 
-        if (MapUtils.isEmpty(userAttributes) && requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE) != null) {
-            // get the cached user claims against the authorization code if any
-            userAttributes =
-                    getUserAttributesFromCacheUsingCode(requestMsgCtx.getProperty(OAuthConstants.AUTHZ_CODE).toString());
-        }
+        claims = getClaimMapForUser(requestMsgCtx, userAttributes);
 
-        if (MapUtils.isEmpty(userAttributes) && !requestMsgCtx.getAuthorizedUser().isFederatedUser()) {
-            if (log.isDebugEnabled()) {
-                log.debug("User attributes not found in cache. Trying to retrieve attribute for user " + requestMsgCtx
-                        .getAuthorizedUser());
-            }
-            try {
-                claims = getClaimsFromUserStore(requestMsgCtx);
-            } catch (UserStoreException | IdentityApplicationManagementException | IdentityException e) {
-                log.error("Error occurred while getting claims for user " + requestMsgCtx.getAuthorizedUser(), e);
-            }
-        } else {
-            claims = getClaimsMap(userAttributes);
-        }
         String tenantDomain = requestMsgCtx.getOauth2AccessTokenReqDTO().getTenantDomain();
+        // Restrict Claims going into the token based on the scope
         return controlClaimsFromScope(requestMsgCtx.getScope(), tenantDomain, claims);
     }
 
-    private Map<String, Object> getUserClaims(OAuthAuthzReqMessageContext requestMsgCtx)
-            throws OAuthSystemException {
-
-        Map<ClaimMapping, String> userAttributes = Collections.emptyMap();
-        Map<String, Object> claims = Collections.emptyMap();
-
-        if (requestMsgCtx.getProperty(OAuthConstants.ACCESS_TOKEN) != null) {
-            // get the user claims cached against the access token if any
-            userAttributes = getUserAttributesFromCacheUsingToken(requestMsgCtx.getProperty(OAuthConstants
-                    .ACCESS_TOKEN).toString());
-        }
-
-        if (MapUtils.isEmpty(userAttributes) && !(requestMsgCtx.getAuthorizationReqDTO().getUser().isFederatedUser())) {
-            if (log.isDebugEnabled()) {
-                log.debug("User attributes not found in cache. Trying to retrieve attribute for user " + requestMsgCtx
-                        .getAuthorizationReqDTO().getUser());
-            }
-            try {
-                claims = getClaimsFromUserStore(requestMsgCtx);
-            } catch (UserStoreException | IdentityApplicationManagementException | IdentityException e) {
-                log.error("Error occurred while getting claims for user " + requestMsgCtx.getAuthorizationReqDTO().getUser(),
-                        e);
+    private Map<String, Object> getClaimMapForUser(OAuthTokenReqMessageContext requestMsgCtx,
+                                                   Map<ClaimMapping, String> userAttributes) {
+        Map<String, Object> claimMap = Collections.emptyMap();
+        if (MapUtils.isEmpty(userAttributes)) {
+            if (!requestMsgCtx.getAuthorizedUser().isFederatedUser()) {
+                if (log.isDebugEnabled()) {
+                    log.debug("User attributes not found in cache. Trying to retrieve attribute for local user: " +
+                            requestMsgCtx.getAuthorizedUser());
+                }
+                try {
+                    claimMap = getClaimsFromUserStore(requestMsgCtx);
+                } catch (UserStoreException | IdentityApplicationManagementException | IdentityException e) {
+                    log.error("Error occurred while getting claims for user " + requestMsgCtx.getAuthorizedUser(), e);
+                }
+            } else {
+                claimMap = getClaimsMap(userAttributes);
             }
         } else {
+            claimMap = getClaimsMap(userAttributes);
+        }
+        return claimMap;
+    }
+
+    private Map<ClaimMapping, String> getUserAttributesCachedAgainstAuthorizationCode(Object authorizationCode) {
+        Map<ClaimMapping, String> userAttributes = Collections.emptyMap();
+        if (authorizationCode != null) {
+            // get the cached user claims against the authorization code if any
+            userAttributes = getUserAttributesFromCacheUsingCode(authorizationCode.toString());
+        }
+        return userAttributes;
+    }
+
+    private Map<ClaimMapping, String> getUserAttributesCachedAgainstToken(Object accessToken) {
+        Map<ClaimMapping, String> userAttributes = Collections.emptyMap();
+        if (accessToken != null) {
+            // get the user claims cached against the access token if any
+            userAttributes = getUserAttributesFromCacheUsingToken(accessToken.toString());
+        }
+        return userAttributes;
+    }
+
+    private Map<String, Object> getUserClaims(OAuthAuthzReqMessageContext authzReqMessageContext)
+            throws OAuthSystemException {
+
+        Map<ClaimMapping, String> userAttributes;
+        Map<String, Object> claims = Collections.emptyMap();
+
+        userAttributes = getUserAttributesCachedAgainstToken(authzReqMessageContext.getProperty(ACCESS_TOKEN));
+
+        if (MapUtils.isEmpty(userAttributes))
+            if (!(authzReqMessageContext.getAuthorizationReqDTO().getUser().isFederatedUser())) {
+                if (log.isDebugEnabled()) {
+                    log.debug("User attributes not found in cache. Trying to retrieve attribute for user " +
+                            authzReqMessageContext.getAuthorizationReqDTO().getUser());
+                }
+                try {
+                    claims = getClaimsFromUserStore(authzReqMessageContext);
+                } catch (UserStoreException | IdentityApplicationManagementException | IdentityException e) {
+                    log.error("Error occurred while getting claims for user " +
+                            authzReqMessageContext.getAuthorizationReqDTO().getUser(), e);
+                }
+            } else {
+                claims = getClaimsMap(userAttributes);
+            }
+        else {
             claims = getClaimsMap(userAttributes);
         }
-        String tenantDomain = requestMsgCtx.getAuthorizationReqDTO().getTenantDomain();
-        return controlClaimsFromScope(requestMsgCtx.getApprovedScope(), tenantDomain, claims);
+        String tenantDomain = authzReqMessageContext.getAuthorizationReqDTO().getTenantDomain();
+        return controlClaimsFromScope(authzReqMessageContext.getApprovedScope(), tenantDomain, claims);
     }
 
     /**
@@ -279,26 +329,17 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             throws UserStoreException, IdentityApplicationManagementException, IdentityException {
 
         Map<String, Object> mappedAppClaims = new HashMap<>();
+        String spTenantDomain = getServiceProviderTenantDomain(requestMsgCtx);
+        ServiceProvider serviceProvider =
+                getServiceProvider(requestMsgCtx.getOauth2AccessTokenReqDTO().getClientId(), spTenantDomain);
 
-        String spTenantDomain = (String) requestMsgCtx.getProperty(MultitenantConstants.TENANT_DOMAIN);
-
-        // There are certain flows where tenant domain is not added as a message context property.
-        if (spTenantDomain == null) {
-            spTenantDomain = requestMsgCtx.getOauth2AccessTokenReqDTO().getTenantDomain();
-        }
-
-        ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
-        String spName = applicationMgtService
-                .getServiceProviderNameByClientId(requestMsgCtx.getOauth2AccessTokenReqDTO().getClientId(),
-                        INBOUND_AUTH2_TYPE, spTenantDomain);
-        ServiceProvider serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(spName,
-                spTenantDomain);
         if (serviceProvider == null) {
             return mappedAppClaims;
         }
+
         ClaimMapping[] requestedLocalClaimMap = serviceProvider.getClaimConfig().getClaimMappings();
-        if (requestedLocalClaimMap == null || !(requestedLocalClaimMap.length > 0)) {
-            return new HashMap<>();
+        if (ArrayUtils.isEmpty(requestedLocalClaimMap)) {
+            return mappedAppClaims;
         }
 
         AuthenticatedUser user = requestMsgCtx.getAuthorizedUser();
@@ -308,7 +349,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         if (realm == null) {
             log.warn("Invalid tenant domain provided. Empty claim returned back for tenant " + userTenantDomain
                     + " and user " + username);
-            return new HashMap<>();
+            return mappedAppClaims;
         }
 
         List<String> claimURIList = new ArrayList<>();
@@ -321,34 +362,53 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
             log.debug("Requested number of local claims: " + claimURIList.size());
         }
 
-        String domain = IdentityUtil.extractDomainFromName(username);
-        RealmConfiguration realmConfiguration = ((org.wso2.carbon.user.core.UserStoreManager) realm
-                .getUserStoreManager()).getSecondaryUserStoreManager(domain).getRealmConfiguration();
-        String claimSeparator = realmConfiguration.getUserStoreProperty(
-                IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR);
-        if (StringUtils.isBlank(claimSeparator)) {
-            claimSeparator = IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
+        String claimSeparator = FrameworkUtils.getMultiAttributeSeparator();
+        Map<String, String> userClaims =
+                getUserClaimsMap(serviceProvider, username, realm, claimURIList, claimSeparator);
+
+        addUserClaimsInOidcDialect(mappedAppClaims, spTenantDomain, username, userClaims);
+
+        if (StringUtils.isNotBlank(claimSeparator)) {
+            mappedAppClaims.put(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR, claimSeparator);
         }
 
-        Map<String, String> oidcToLocalClaimMappings = ClaimMetadataHandler.getInstance()
-                .getMappingsMapFromOtherDialectToCarbon(SP_DIALECT, null, spTenantDomain, false);
+        return mappedAppClaims;
+    }
+
+    private void addUserClaimsInOidcDialect(Map<String, Object> mappedAppClaims,
+                                            String spTenantDomain,
+                                            String username,
+                                            Map<String, String> userClaims) throws ClaimMetadataException {
+        if (MapUtils.isEmpty(userClaims)) {
+            // User claims can be empty if user does not exist in user stores. Probably a federated user.
+            if (log.isDebugEnabled()) {
+                log.debug("No claims found for " + username + " from user store.");
+            }
+        } else {
+            // Retrieve OIDC to Local Claim Mappings.
+            Map<String, String> oidcToLocalClaimMappings = ClaimMetadataHandler.getInstance()
+                    .getMappingsMapFromOtherDialectToCarbon(OIDC_DIALECT, null, spTenantDomain, false);
+
+            if (log.isDebugEnabled()) {
+                log.debug("Number of user claims retrieved for " + username + " from user store: " + userClaims.size());
+            }
+            // get user claims in OIDC dialect
+            mappedAppClaims.putAll(getUserClaimsInOidcDialect(oidcToLocalClaimMappings, userClaims));
+        }
+    }
+
+    private Map<String, String> getUserClaimsMap(ServiceProvider serviceProvider,
+                                                 String username,
+                                                 UserRealm realm,
+                                                 List<String> claimURIList,
+                                                 String claimSeparator) throws FrameworkException, UserStoreException {
         Map<String, String> userClaims = null;
         try {
             userClaims = realm.getUserStoreManager().getUserClaimValues(
                     MultitenantUtils.getTenantAwareUsername(username),
                     claimURIList.toArray(new String[claimURIList.size()]), null);
 
-            //set local2sp role mappings
-            for (Map.Entry<String, String> claim : userClaims.entrySet()) {
-                if (FrameworkConstants.LOCAL_ROLE_CLAIM_URI.equals(claim.getKey())) {
-                    String roleClaim = claim.getValue();
-                    List<String> rolesList = new LinkedList<>(Arrays.asList(roleClaim.split(claimSeparator)));
-
-                    String roles = getServiceProviderMappedUserRoles(serviceProvider, rolesList, claimSeparator);
-                    claim.setValue(roles);
-                    break;
-                }
-            }
+            setSpMappedRoleClaim(serviceProvider, claimSeparator, userClaims);
         } catch (UserStoreException e) {
             if (e.getMessage().contains("UserNotFound")) {
                 if (log.isDebugEnabled()) {
@@ -358,26 +418,40 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
                 throw e;
             }
         }
+        return userClaims;
+    }
 
-        if (MapUtils.isEmpty(userClaims)) {
-            // User claims can be empty if user does not exist in user stores. Probably a federated user.
-            if (log.isDebugEnabled()) {
-                log.debug("No claims found for " + username + " from user store.");
+    private void setSpMappedRoleClaim(ServiceProvider serviceProvider,
+                                      String claimSeparator,
+                                      Map<String, String> userClaims) throws FrameworkException {
+        //set local2sp role mappings
+        for (Map.Entry<String, String> claim : userClaims.entrySet()) {
+            if (FrameworkConstants.LOCAL_ROLE_CLAIM_URI.equals(claim.getKey())) {
+                String roleClaim = claim.getValue();
+                List<String> rolesList = new LinkedList<>(Arrays.asList(roleClaim.split(claimSeparator)));
+
+                String roles = getServiceProviderMappedUserRoles(serviceProvider, rolesList, claimSeparator);
+                claim.setValue(roles);
+                break;
             }
-        } else {
-            if (log.isDebugEnabled()) {
-                log.debug("Number of user claims retrieved for " + username + " from user store: " + userClaims.size());
-            }
-
-            // get user claims in OIDC dialect
-            mappedAppClaims.putAll(getUserClaimsInOidcDialect(oidcToLocalClaimMappings, userClaims));
         }
+    }
 
-        if (StringUtils.isNotBlank(claimSeparator)) {
-            mappedAppClaims.put(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR, claimSeparator);
+    private String getServiceProviderTenantDomain(OAuthTokenReqMessageContext requestMsgCtx) {
+        String spTenantDomain = (String) requestMsgCtx.getProperty(MultitenantConstants.TENANT_DOMAIN);
+        // There are certain flows where tenant domain is not added as a message context property.
+        if (spTenantDomain == null) {
+            spTenantDomain = requestMsgCtx.getOauth2AccessTokenReqDTO().getTenantDomain();
         }
+        return spTenantDomain;
+    }
 
-        return mappedAppClaims;
+    private ServiceProvider getServiceProvider(String clientId,
+                                               String spTenantDomain) throws IdentityApplicationManagementException {
+        ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
+        String spName =
+                applicationMgtService.getServiceProviderNameByClientId(clientId, INBOUND_AUTH2_TYPE, spTenantDomain);
+        return applicationMgtService.getApplicationExcludingFileBasedSPs(spName, spTenantDomain);
     }
 
     /**
@@ -456,7 +530,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         }
 
         Map<String, String> spToLocalClaimMappings = ClaimMetadataHandler.getInstance().
-                getMappingsMapFromOtherDialectToCarbon(SP_DIALECT, null, spTenantDomain, false);
+                getMappingsMapFromOtherDialectToCarbon(OIDC_DIALECT, null, spTenantDomain, false);
 
         Map<String, String> userClaims = null;
         try {
@@ -610,21 +684,129 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
      *
      * @param requestedScopes String[] requestedScopes
      * @param tenantDomain    String tenantDomain
-     * @param claims          Object> claims
+     * @param userClaims      Object> claims
      * @return
      */
     private Map<String, Object> controlClaimsFromScope(String[] requestedScopes,
                                                        String tenantDomain,
-                                                       Map<String, Object> claims) {
-        Resource oidcScopesResource = null;
-        String addressScopeClaims = null;
-        String requestedScopeClaims;
-        String[] arrRequestedScopeClaims;
-        Map<String, Object> returnClaims = new HashMap<>();
-        Map<String, Object> claimsforAddressScope = new HashMap<>();
-
+                                                       Map<String, Object> userClaims) {
+        List<String> claimUrisInRequestedScope;
+        Map<String, Object> returnedClaims = new HashMap<>();
+        Map<String, Object> claimValuesForAddressScope = new HashMap<>();
 
         // Load Tenant Registry and retrieve the oidc scope resource.
+        Resource oidcScopesResource = getOidcScopeResource(tenantDomain);
+        List<String> claimUrisInAddressScope = getAddressScopeClaims(oidcScopesResource);
+
+        if (oidcScopesResource != null && oidcScopesResource.getProperties() != null) {
+            Properties supportedOidcScopes = oidcScopesResource.getProperties();
+            // Iterate through scopes requested in the OAuth2/OIDC request to filter claims
+            for (String requestedScope : requestedScopes) {
+                // Check if requested scope is a supported OIDC scope value
+                if (supportedOidcScopes.containsKey(requestedScope)) {
+                    // Requested scope is an registered OIDC scope. Get the claims belonging to the scope.
+                    claimUrisInRequestedScope = getClaimUrisInSupportedOidcScope(oidcScopesResource, requestedScope);
+                    // Iterate the user claims and pick ones that are supported by the OIDC scope.
+                    for (Map.Entry<String, Object> claimMapEntry : userClaims.entrySet()) {
+                        String claimUri = claimMapEntry.getKey();
+                        Object claimValue = claimMapEntry.getValue();
+
+                        if (claimUrisInRequestedScope.contains(claimUri)) {
+                            // User claim is supported by the requested oidc scope.
+                            if (isAddressClaim(claimUri, claimUrisInAddressScope)) {
+                                // Handle Address Claims
+                                populateClaimsForAddressScope(claimUri, claimValue,
+                                        claimUrisInAddressScope, claimValuesForAddressScope);
+                            } else {
+                                returnedClaims.put(claimMapEntry.getKey(), userClaims.get(claimMapEntry.getKey()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Some OIDC claims need special formatting etc. These are handled below
+        handleAddressClaim(returnedClaims, claimValuesForAddressScope);
+        handleUpdateAtClaim(returnedClaims);
+        handlePhoneNumberVerifiedClaim(returnedClaims);
+        handleEmailVerifiedClaim(returnedClaims);
+
+        return returnedClaims;
+    }
+
+    private void populateClaimsForAddressScope(String claimUri,
+                                               Object claimValue,
+                                               List<String> addressScopeClaims,
+                                               Map<String, Object> claimsforAddressScope) {
+        if (claimUri.contains(ADDRESS_PREFIX)) {
+            claimsforAddressScope.put(claimUri.substring(ADDRESS_PREFIX.length()), claimValue);
+        } else if (addressScopeClaims.contains(claimUri)) {
+            claimsforAddressScope.put(claimUri, claimValue);
+        }
+    }
+
+    private void handleAddressClaim(Map<String, Object> returnedClaims, Map<String, Object> claimsforAddressScope) {
+        if (MapUtils.isNotEmpty(claimsforAddressScope)) {
+            final JSONObject jsonObject = new JSONObject();
+            claimsforAddressScope.forEach(jsonObject::put);
+            returnedClaims.put(ADDRESS, jsonObject);
+        }
+    }
+
+    private List<String> getAddressScopeClaims(Resource oidcScopesResource) {
+        String[] addressScopeClaims;
+        if (StringUtils.isBlank(oidcScopesResource.getProperty(ADDRESS))) {
+            addressScopeClaims = new String[0];
+        } else {
+            addressScopeClaims = oidcScopesResource.getProperty(ADDRESS).split(OIDC_SCOPE_CLAIM_SEPARATOR);
+        }
+        return Arrays.asList(addressScopeClaims);
+    }
+
+    private boolean isAddressClaim(String claimUri, List<String> addressScopeClaims) {
+        return StringUtils.isNotBlank(claimUri) &&
+                (claimUri.contains(ADDRESS_PREFIX) || addressScopeClaims.contains(claimUri));
+    }
+
+    private List<String> getClaimUrisInSupportedOidcScope(Resource oidcScopesResource, String requestedScope) {
+        String[] requestedScopeClaimsArray;
+        if (StringUtils.isBlank(oidcScopesResource.getProperty(requestedScope))) {
+            requestedScopeClaimsArray = new String[0];
+        } else {
+            requestedScopeClaimsArray = oidcScopesResource.getProperty(requestedScope).split(OIDC_SCOPE_CLAIM_SEPARATOR);
+        }
+        return Arrays.asList(requestedScopeClaimsArray);
+    }
+
+    private void handleUpdateAtClaim(Map<String, Object> returnClaims) {
+        if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
+            if (returnClaims.get(UPDATED_AT) instanceof String) {
+                returnClaims.put(UPDATED_AT, Integer.parseInt((String) (returnClaims.get(UPDATED_AT))));
+            }
+        }
+    }
+
+    private void handlePhoneNumberVerifiedClaim(Map<String, Object> returnClaims) {
+        if (returnClaims.containsKey(PHONE_NUMBER_VERIFIED))
+            if (returnClaims.get(PHONE_NUMBER_VERIFIED) != null) {
+                if (returnClaims.get(PHONE_NUMBER_VERIFIED) instanceof String) {
+                    returnClaims.put(PHONE_NUMBER_VERIFIED, (Boolean.valueOf((String)
+                            (returnClaims.get(PHONE_NUMBER_VERIFIED)))));
+                }
+            }
+    }
+
+    private void handleEmailVerifiedClaim(Map<String, Object> returnClaims) {
+        if (returnClaims.containsKey(EMAIL_VERIFIED) && returnClaims.get(EMAIL_VERIFIED) != null) {
+            if (returnClaims.get(EMAIL_VERIFIED) instanceof String) {
+                returnClaims.put(EMAIL_VERIFIED, (Boolean.valueOf((String) (returnClaims.get(EMAIL_VERIFIED)))));
+            }
+        }
+    }
+
+    private Resource getOidcScopeResource(String tenantDomain) {
+        Resource oidcScopesResource = null;
         try {
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
             startTenantFlow(tenantDomain, tenantId);
@@ -635,68 +817,7 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         } finally {
             PrivilegedCarbonContext.endTenantFlow();
         }
-
-
-        if (oidcScopesResource != null && oidcScopesResource.getProperties() != null) {
-            addressScopeClaims = oidcScopesResource.getProperty(ADDRESS);
-        }
-
-        for (String requestedScope : requestedScopes) {
-            if (oidcScopesResource != null && oidcScopesResource.getProperties() != null) {
-                Enumeration supporetdScopes = oidcScopesResource.getProperties().propertyNames();
-                while (supporetdScopes.hasMoreElements()) {
-                    String supportedScope = (String) supporetdScopes.nextElement();
-                    if (supportedScope.equals(requestedScope)) {
-                        requestedScopeClaims = oidcScopesResource.getProperty(requestedScope);
-                        if (requestedScopeClaims.contains(",")) {
-                            arrRequestedScopeClaims = requestedScopeClaims.split(",");
-                        } else {
-                            arrRequestedScopeClaims = new String[1];
-                            arrRequestedScopeClaims[0] = requestedScopeClaims;
-                        }
-                        for (Map.Entry<String, Object> entry : claims.entrySet()) {
-                            String requestedClaim = entry.getKey();
-                            if (Arrays.asList(arrRequestedScopeClaims).contains(requestedClaim)) {
-                                // Address claim is handled for both ways, where address claims are sent as "address."
-                                // prefix or in address scope.
-                                if (requestedClaim.contains(ADDRESS_PREFIX)) {
-                                    claimsforAddressScope.put(entry.getKey().substring(ADDRESS_PREFIX.length()), claims.get(entry.getKey()));
-                                } else if (addressScopeClaims != null && addressScopeClaims.contains(requestedClaim)) {
-                                    claimsforAddressScope.put(entry.getKey(), claims.get(entry.getKey()));
-                                } else {
-                                    returnClaims.put(entry.getKey(), claims.get(entry.getKey()));
-                                }
-                            }
-                        }
-
-                    }
-                }
-            }
-        }
-        if (claimsforAddressScope.size() > 0) {
-            JSONObject jsonObject = new JSONObject();
-            for (Map.Entry<String, Object> entry : claimsforAddressScope.entrySet()) {
-                jsonObject.put(entry.getKey(), entry.getValue());
-            }
-            returnClaims.put(ADDRESS, jsonObject);
-        }
-        if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
-            if (returnClaims.get(UPDATED_AT) instanceof String) {
-                returnClaims.put(UPDATED_AT, Integer.parseInt((String) (returnClaims.get(UPDATED_AT))));
-            }
-        }
-        if (returnClaims.containsKey(PHONE_NUMBER_VERIFIED) && returnClaims.get(PHONE_NUMBER_VERIFIED) != null) {
-            if (returnClaims.get(PHONE_NUMBER_VERIFIED) instanceof String) {
-                returnClaims.put(PHONE_NUMBER_VERIFIED, (Boolean.valueOf((String)
-                        (returnClaims.get(PHONE_NUMBER_VERIFIED)))));
-            }
-        }
-        if (returnClaims.containsKey(EMAIL_VERIFIED) && returnClaims.get(EMAIL_VERIFIED) != null) {
-            if (returnClaims.get(EMAIL_VERIFIED) instanceof String) {
-                returnClaims.put(EMAIL_VERIFIED, (Boolean.valueOf((String) (returnClaims.get(EMAIL_VERIFIED)))));
-            }
-        }
-        return returnClaims;
+        return oidcScopesResource;
     }
 
     private void startTenantFlow(String tenantDomain, int tenantId) {
@@ -705,5 +826,4 @@ public class SAMLAssertionClaimsCallback implements CustomClaimsCallbackHandler 
         carbonContext.setTenantId(tenantId);
         carbonContext.setTenantDomain(tenantDomain);
     }
-
 }

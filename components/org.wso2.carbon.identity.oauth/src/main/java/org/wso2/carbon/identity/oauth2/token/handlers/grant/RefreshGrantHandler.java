@@ -55,100 +55,139 @@ import java.util.UUID;
 public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
 
     private static final String PREV_ACCESS_TOKEN = "previousAccessToken";
+    public static final int LAST_ACCESS_TOKEN_RETRIEVAL_LIMIT = 10;
     private static Log log = LogFactory.getLog(RefreshGrantHandler.class);
 
     @Override
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
             throws IdentityOAuth2Exception {
+        super.validateGrant(tokReqMsgCtx);
+        OAuth2AccessTokenReqDTO tokenReq = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
+        RefreshTokenValidationDataDO validationDataBean = tokenMgtDAO.validateRefreshToken(
+                tokenReq.getClientId(), tokenReq.getRefreshToken());
 
-        if(!super.validateGrant(tokReqMsgCtx)){
-            return false;
+        validatePersistedAccessToken(validationDataBean, tokenReq.getClientId());
+        validateRefreshTokenInRequest(tokenReq, validationDataBean);
+
+        if (log.isDebugEnabled()) {
+            log.debug("Refresh token validation successful for Client id : " + tokenReq.getClientId() +
+                    ", Authorized User : " + validationDataBean.getAuthorizedUser() +
+                    ", Token Scope : " + OAuth2Util.buildScopeString(validationDataBean.getScope()));
         }
+        setPropertiesForTokenGeneration(tokReqMsgCtx, validationDataBean);
+        return true;
+    }
 
-        OAuth2AccessTokenReqDTO tokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
+    private void setPropertiesForTokenGeneration(OAuthTokenReqMessageContext tokReqMsgCtx,
+                                                 RefreshTokenValidationDataDO validationDataBean) {
+        tokReqMsgCtx.setAuthorizedUser(validationDataBean.getAuthorizedUser());
+        tokReqMsgCtx.setScope(validationDataBean.getScope());
+        // Store the old access token as a OAuthTokenReqMessageContext property, this is already
+        // a preprocessed token.
+        tokReqMsgCtx.addProperty(PREV_ACCESS_TOKEN, validationDataBean);
+    }
 
-        String refreshToken = tokenReqDTO.getRefreshToken();
+    private boolean validateRefreshTokenInRequest(OAuth2AccessTokenReqDTO tokenReq,
+                                                  RefreshTokenValidationDataDO validationDataBean)
+            throws IdentityOAuth2Exception {
+        validateRefreshTokenStatus(validationDataBean, tokenReq.getClientId());
+        if (isLatestRefreshToken(tokenReq, validationDataBean)) {
+            return true;
+        } else {
+            throw new IdentityOAuth2Exception("Invalid refresh token value in the request");
+        }
+    }
 
-        RefreshTokenValidationDataDO validationDataDO = tokenMgtDAO.validateRefreshToken(
-                tokenReqDTO.getClientId(), refreshToken);
-
-        if (validationDataDO.getAccessToken() == null) {
+    private boolean isLatestRefreshToken(OAuth2AccessTokenReqDTO tokenReq,
+                                         RefreshTokenValidationDataDO validationDataBean)
+            throws IdentityOAuth2Exception {
+        if (log.isDebugEnabled()) {
+            log.debug("Evaluating refresh token. Token value: " + tokenReq.getRefreshToken() + ", Token state: " +
+            validationDataBean.getRefreshTokenState());
+        }
+        if (!OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(validationDataBean.getRefreshTokenState())) {
+            // if refresh token is not in active state, check whether there is an access token
+            // issued with the same refresh token
+            List<AccessTokenDO> accessTokenBeans = getAccessTokenBeans(tokenReq, validationDataBean,
+                    getUserStoreDomain(validationDataBean));
+            for (AccessTokenDO token : accessTokenBeans) {
+                if (tokenReq.getRefreshToken().equals(token.getRefreshToken())
+                        && (OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(token.getTokenState())
+                        || OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(token.getTokenState()))) {
+                    return true;
+                }
+            }
             if (log.isDebugEnabled()) {
-                log.debug("Invalid Refresh Token provided for Client with " +
-                        "Client Id : " + tokenReqDTO.getClientId());
+                log.debug("Refresh token: " + tokenReq.getRefreshToken() + " is not the latest");
             }
+            removeIfCached(tokenReq, validationDataBean);
             return false;
         }
+        return true;
+    }
 
-        if (validationDataDO.getRefreshTokenState() != null &&
-                !OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(
-                        validationDataDO.getRefreshTokenState()) &&
-                !OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(
-                        validationDataDO.getRefreshTokenState())) {
-            if(log.isDebugEnabled()) {
-                log.debug("Access Token is not in 'ACTIVE' or 'EXPIRED' state for Client with " +
-                        "Client Id : " + tokenReqDTO.getClientId());
-            }
-            return false;
+    private void removeIfCached(OAuth2AccessTokenReqDTO tokenReq, RefreshTokenValidationDataDO validationDataBean) {
+        if (cacheEnabled) {
+            clearCache(tokenReq.getClientId(), validationDataBean.getAuthorizedUser().toString(),
+                    validationDataBean.getScope(), validationDataBean.getAccessToken());
         }
+    }
 
+    private List<AccessTokenDO> getAccessTokenBeans(OAuth2AccessTokenReqDTO tokenReq,
+                                                    RefreshTokenValidationDataDO validationDataBean,
+                                                    String userStoreDomain) throws IdentityOAuth2Exception {
+        List<AccessTokenDO> accessTokenBeans = tokenMgtDAO.retrieveLatestAccessTokens(tokenReq.getClientId(),
+                validationDataBean.getAuthorizedUser(), userStoreDomain,
+                OAuth2Util.buildScopeString(validationDataBean.getScope()), true, LAST_ACCESS_TOKEN_RETRIEVAL_LIMIT);
+        if (accessTokenBeans == null || accessTokenBeans.isEmpty()) {
+            if (log.isDebugEnabled()) {
+                log.debug("No previous access tokens found. User: " + validationDataBean.getAuthorizedUser() +
+                        ", client: " + tokenReq.getClientId() + ", scope: " +
+                        OAuth2Util.buildScopeString(validationDataBean.getScope()));
+            }
+            throw new IdentityOAuth2Exception("No previous access tokens found");
+        }
+        return accessTokenBeans;
+    }
+
+    private String getUserStoreDomain(RefreshTokenValidationDataDO validationDataBean) throws IdentityOAuth2Exception {
         String userStoreDomain = null;
         if (OAuth2Util.checkAccessTokenPartitioningEnabled() && OAuth2Util.checkUserNameAssertionEnabled()) {
             try {
-                userStoreDomain = OAuth2Util.getUserStoreForFederatedUser(validationDataDO.getAuthorizedUser());
+                userStoreDomain = OAuth2Util.getUserStoreForFederatedUser(validationDataBean.getAuthorizedUser());
             } catch (IdentityOAuth2Exception e) {
-                String errorMsg = "Error occurred while getting user store domain for User ID : " + validationDataDO.getAuthorizedUser();
+                String errorMsg = "Error occurred while getting user store domain for User ID : " +
+                        validationDataBean.getAuthorizedUser();
                 log.error(errorMsg, e);
                 throw new IdentityOAuth2Exception(errorMsg, e);
             }
         }
+        return userStoreDomain;
+    }
 
-        if (!OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(validationDataDO.getRefreshTokenState())) {
-            List<AccessTokenDO> accessTokenDOs = tokenMgtDAO.retrieveLatestAccessTokens(
-                    tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser(), userStoreDomain,
-                    OAuth2Util.buildScopeString(validationDataDO.getScope()), true, 10);
-            boolean isLatest = false;
-            if (accessTokenDOs == null || accessTokenDOs.isEmpty()) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Error while retrieving the latest refresh token");
-                }
-                if (cacheEnabled) {
-                    clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(),
-                               validationDataDO.getScope(), validationDataDO.getAccessToken());
-                }
-                return false;
-            } else {
-                for (AccessTokenDO token : accessTokenDOs) {
-                    if (refreshToken.equals(token.getRefreshToken())
-                            && (OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(token.getTokenState())
-                            || OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(token.getTokenState()))) {
-                        isLatest = true;
-                    }
-                }
+    private boolean validateRefreshTokenStatus(RefreshTokenValidationDataDO validationDataBean, String clientId)
+            throws IdentityOAuth2Exception {
+        String tokenState = validationDataBean.getRefreshTokenState();
+        if (tokenState != null && !OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(tokenState) &&
+                !OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED.equals(tokenState)) {
+            if(log.isDebugEnabled()) {
+                log.debug("Refresh Token state is " + tokenState + " for client: " + clientId + ". Expected 'Active' " +
+                        "or 'EXPIRED'");
             }
-            if (!isLatest) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Refresh token is not the latest.");
-                }
-                if (cacheEnabled) {
-                    clearCache(tokenReqDTO.getClientId(), validationDataDO.getAuthorizedUser().toString(),
-                            validationDataDO.getScope(), validationDataDO.getAccessToken());
-                }
-                return false;
-            }
-
-            if (log.isDebugEnabled()) {
-                log.debug("Refresh token validation successful for Client id : " + tokenReqDTO.getClientId() +
-                          ", Authorized User : " + validationDataDO.getAuthorizedUser() +
-                          ", Token Scope : " + OAuth2Util.buildScopeString(validationDataDO.getScope()));
-            }
+            throw new IdentityOAuth2Exception("Invalid refresh token state");
         }
+        return true;
+    }
 
-        tokReqMsgCtx.setAuthorizedUser(validationDataDO.getAuthorizedUser());
-        tokReqMsgCtx.setScope(validationDataDO.getScope());
-        // Store the old access token as a OAuthTokenReqMessageContext property, this is already
-        // a preprocessed token.
-        tokReqMsgCtx.addProperty(PREV_ACCESS_TOKEN, validationDataDO);
+    private boolean validatePersistedAccessToken(RefreshTokenValidationDataDO validationDataBean, String clientId)
+            throws IdentityOAuth2Exception {
+        if (validationDataBean.getAccessToken() == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("Invalid Refresh Token provided for Client with " +
+                        "Client Id : " + clientId);
+            }
+            throw new IdentityOAuth2Exception("Persisted access token data not found");
+        }
         return true;
     }
 

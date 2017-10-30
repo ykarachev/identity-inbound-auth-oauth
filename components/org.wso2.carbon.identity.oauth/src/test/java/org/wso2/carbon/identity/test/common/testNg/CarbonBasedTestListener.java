@@ -8,7 +8,9 @@ import org.testng.ITestClass;
 import org.testng.ITestContext;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.core.internal.IdentityCoreServiceComponent;
+import org.wso2.carbon.identity.oauth2.TestConstants;
 import org.wso2.carbon.utils.ConfigurationContextService;
 
 import java.lang.annotation.Annotation;
@@ -98,7 +100,10 @@ public class CarbonBasedTestListener implements ITestListener, IClassListener {
     public void onBeforeClass(ITestClass iTestClass, IMethodInstance iMethodInstance) {
         Class realClass = iTestClass.getRealClass();
         if (annotationPresent(realClass, WithCarbonHome.class)) {
-            System.setProperty("carbon.home", realClass.getResource("/").getFile());
+            System.setProperty(CarbonBaseConstants.CARBON_HOME, realClass.getResource("/").getFile());
+            System.setProperty(TestConstants.CARBON_PROTOCOL, TestConstants.CARBON_PROTOCOL_HTTPS);
+            System.setProperty(TestConstants.CARBON_HOST, TestConstants.CARBON_HOST_LOCALHOST);
+            System.setProperty(TestConstants.CARBON_MANAGEMENT_PORT, TestConstants.CARBON_DEFAULT_HTTPS_PORT);
         }
         if (annotationPresent(realClass, WithAxisConfiguration.class)) {
             AxisConfiguration axisConfiguration = new AxisConfiguration();

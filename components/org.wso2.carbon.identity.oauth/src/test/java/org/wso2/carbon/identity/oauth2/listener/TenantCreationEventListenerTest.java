@@ -17,14 +17,13 @@ package org.wso2.carbon.identity.oauth2.listener;
 
 import org.mockito.Mock;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityConfigParser;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth2.TestConstants;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
-import org.wso2.carbon.identity.oauth2.test.utils.CommonTestUtils;
+import org.wso2.carbon.identity.test.common.testNg.WithCarbonHome;
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.ResourceImpl;
@@ -37,6 +36,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@WithCarbonHome
 public class TenantCreationEventListenerTest extends PowerMockIdentityBaseTest {
 
     private TenantCreationEventListener tenantCreationEventListener = new TenantCreationEventListener();
@@ -49,13 +49,6 @@ public class TenantCreationEventListenerTest extends PowerMockIdentityBaseTest {
 
     @Mock
     private IdentityConfigParser identityConfigParser;
-
-
-    @BeforeClass
-    public void setUp() throws Exception {
-        String carbonHome = getClass().getResource("/").getFile();
-        CommonTestUtils.setOAuthServerConfigurationProperties(carbonHome);
-    }
 
     @BeforeMethod
     public void setUpRegistryService() {

@@ -17,7 +17,8 @@ package org.wso2.carbon.identity.oauth2.listener;
 
 import org.mockito.Mock;
 import org.testng.Assert;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.core.util.IdentityConfigParser;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
@@ -30,6 +31,7 @@ import org.wso2.carbon.registry.core.ResourceImpl;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.registry.core.session.UserRegistry;
 import org.wso2.carbon.stratos.common.beans.TenantInfoBean;
+import org.wso2.carbon.stratos.common.exception.StratosException;
 
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -49,10 +51,14 @@ public class TenantCreationEventListenerTest extends PowerMockIdentityBaseTest {
     private IdentityConfigParser identityConfigParser;
 
 
-    @BeforeTest
+    @BeforeClass
     public void setUp() throws Exception {
         String carbonHome = getClass().getResource("/").getFile();
         CommonTestUtils.setOAuthServerConfigurationProperties(carbonHome);
+    }
+
+    @BeforeMethod
+    public void setUpRegistryService() {
         OAuth2ServiceComponentHolder.setRegistryService(registryService);
     }
 
@@ -72,6 +78,32 @@ public class TenantCreationEventListenerTest extends PowerMockIdentityBaseTest {
     public void testGetListenerOrder() {
         int listenerOrder = tenantCreationEventListener.getListenerOrder();
         Assert.assertEquals(listenerOrder, 0, "Listener order is different from expected.");
+    }
+
+    /**
+     * Unit tests for empty methods
+     * @throws StratosException
+     */
+    @Test
+    public void testDummyMethod() throws StratosException {
+        TenantInfoBean tenantInfoBean = new TenantInfoBean();
+        tenantInfoBean.setTenantId(TestConstants.TENANT_ID);
+        boolean triggeredAllMethods = false;
+        try {
+            tenantCreationEventListener.onTenantUpdate(tenantInfoBean);
+            tenantCreationEventListener.onTenantDelete(TestConstants.TENANT_ID);
+            tenantCreationEventListener
+                    .onTenantRename(TestConstants.TENANT_ID, TestConstants.TENANT_DOMAIN, TestConstants.TENANT_DOMAIN);
+            tenantCreationEventListener.onTenantInitialActivation(TestConstants.TENANT_ID);
+            tenantCreationEventListener.onTenantActivation(TestConstants.TENANT_ID);
+            tenantCreationEventListener.onTenantDeactivation(TestConstants.TENANT_ID);
+            tenantCreationEventListener.onSubscriptionPlanChange(TestConstants.TENANT_ID, TestConstants.TENANT_DOMAIN,
+                                                                 TestConstants.TENANT_DOMAIN);
+            tenantCreationEventListener.onPreDelete(TestConstants.TENANT_ID);
+            triggeredAllMethods = true;
+        } finally {
+            Assert.assertTrue(triggeredAllMethods);
+        }
     }
 
 }

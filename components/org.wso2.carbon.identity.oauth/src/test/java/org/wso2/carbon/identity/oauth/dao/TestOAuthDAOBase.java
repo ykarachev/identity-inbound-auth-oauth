@@ -58,6 +58,14 @@ public class TestOAuthDAOBase extends PowerMockIdentityBaseTest {
         dataSourceMap.put(databaseName, dataSource);
     }
 
+
+    protected void closeH2Base(String databaseName) throws Exception {
+        BasicDataSource dataSource =  dataSourceMap.get(databaseName);
+        if(dataSource != null) {
+            dataSource.close();
+        }
+    }
+
     public static Connection getConnection(String database) throws SQLException {
         if (dataSourceMap.get(database) != null) {
             return dataSourceMap.get(database).getConnection();

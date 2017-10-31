@@ -203,7 +203,7 @@ public class OAuth2Util {
 
     private static Log log = LogFactory.getLog(OAuth2Util.class);
     private static long timestampSkew = OAuthServerConfiguration.getInstance().getTimeStampSkewInSeconds() * 1000;
-    private static ThreadLocal<Integer> clientTenatId = new ThreadLocal<>();
+    private static ThreadLocal<Integer> clientTenantId = new ThreadLocal<>();
     private static ThreadLocal<OAuthTokenReqMessageContext> tokenRequestContext = new ThreadLocal<>();
     private static ThreadLocal<OAuthAuthzReqMessageContext> authzRequestContext = new ThreadLocal<>();
     //Precompile PKCE Regex pattern for performance improvement
@@ -299,25 +299,25 @@ public class OAuth2Util {
      * @return
      */
     public static int getClientTenatId() {
-        if (clientTenatId.get() == null) {
+        if (clientTenantId.get() == null) {
             return -1;
         }
-        return clientTenatId.get().intValue();
+        return clientTenantId.get();
     }
 
     /**
      * @param tenantId
      */
     public static void setClientTenatId(int tenantId) {
-        Integer id = Integer.valueOf(tenantId);
-        clientTenatId.set(id);
+        Integer id = tenantId;
+        clientTenantId.set(id);
     }
 
     /**
      *
      */
     public static void clearClientTenantId() {
-        clientTenatId.remove();
+        clientTenantId.remove();
     }
 
     /**
@@ -1819,29 +1819,24 @@ public class OAuth2Util {
         return buf.toString();
     }
 
-    public static ArrayList<String> getEssentialClaims(String essentialClaims, String claimType) {
+    public static List<String> getEssentialClaims(String essentialClaims, String claimType) {
         JSONObject jsonObjectClaims = new JSONObject(essentialClaims);
-        String key;
-        ArrayList essentailClaimslist = new ArrayList();
-        if ((jsonObjectClaims != null) && jsonObjectClaims.toString().contains(claimType)) {
+        List<String> essentialClaimsList = new ArrayList<>();
+        if (jsonObjectClaims.toString().contains(claimType)) {
             JSONObject newJSON = jsonObjectClaims.getJSONObject(claimType);
             if (newJSON != null) {
                 Iterator<?> keys = newJSON.keys();
                 while (keys.hasNext()) {
-                    key = (String) keys.next();
+                    String key = (String) keys.next();
                     if (!newJSON.isNull(key)) {
-                        String value;
-                        value = newJSON.get(key).toString();
+                        String value = newJSON.get(key).toString();
                         JSONObject jsonObjectValues = new JSONObject(value);
-                        if (jsonObjectValues != null) {
-                            Iterator<?> claimKeyValues = jsonObjectValues.keys();
-                            while (claimKeyValues.hasNext()) {
-                                String claimKey = (String) claimKeyValues.next();
-                                String claimValue = jsonObjectValues.get(claimKey).toString();
-                                if (claimValue.equals("true") &&
-                                        claimKey.equals(OAuthConstants.OAuth20Params.ESSENTIAL)) {
-                                    essentailClaimslist.add(key);
-                                }
+                        Iterator<?> claimKeyValues = jsonObjectValues.keys();
+                        while (claimKeyValues.hasNext()) {
+                            String claimKey = (String) claimKeyValues.next();
+                            String claimValue = jsonObjectValues.get(claimKey).toString();
+                            if (Boolean.parseBoolean(claimValue) && claimKey.equals(OAuthConstants.OAuth20Params.ESSENTIAL)) {
+                                essentialClaimsList.add(key);
                             }
                         }
                     }
@@ -1849,7 +1844,7 @@ public class OAuth2Util {
             }
         }
 
-        return essentailClaimslist;
+        return essentialClaimsList;
     }
 
     /**

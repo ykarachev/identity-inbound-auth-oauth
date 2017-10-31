@@ -199,7 +199,7 @@ public class AuthorizationCodeGrantHandlerTest extends PowerMockTestCase {
                 {oAuthTokenReqMessageContext1, authzCodeDO2, CLIENT_ID_VALUE, true, 1000L, "Expired authorization code"},
                 {oAuthTokenReqMessageContext1, authzCodeDO2, CLIENT_ID_VALUE, true, System.currentTimeMillis(), "Callback url mismatch"},
                 {oAuthTokenReqMessageContext2, authzCodeDO2, CLIENT_ID_VALUE, false, System.currentTimeMillis(), "PKCE validation failed"},
-                {oAuthTokenReqMessageContext2, authzCodeDO2, INVALID_CLIENT, true, System.currentTimeMillis(), "Invalid OAuth client"},
+                {oAuthTokenReqMessageContext2, authzCodeDO2, INVALID_CLIENT, true, System.currentTimeMillis(), "Error while retrieving app information"},
         };
     }
 

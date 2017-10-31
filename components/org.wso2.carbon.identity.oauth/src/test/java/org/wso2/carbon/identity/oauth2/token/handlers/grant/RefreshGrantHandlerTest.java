@@ -276,6 +276,7 @@ public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
         }
         when(mockOAuthServerConfiguration.isRefreshTokenRenewalEnabled()).thenReturn(isRenew);
         when(IdentityUtil.isUserStoreInUsernameCaseSensitive(anyString())).thenReturn(isUsernameCaseSensitive);
+        when(IdentityUtil.isTokenLoggable(anyString())).thenReturn(true);
 
         System.setProperty(CarbonBaseConstants.CARBON_HOME, "");
         refreshGrantHandler = new RefreshGrantHandler();
@@ -293,6 +294,9 @@ public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
         tokenReqMessageContext.addProperty("previousAccessToken", oldAccessToken);
         tokenReqMessageContext.setAuthorizedUser(authenticatedUser);
         tokenReqMessageContext.setValidityPeriod(validityPeriod);
+
+        mockStatic(OAuthCache.class);
+        when(OAuthCache.getInstance()).thenReturn(mock(OAuthCache.class));
 
         OAuth2AccessTokenRespDTO actual = refreshGrantHandler.issue(tokenReqMessageContext);
         if (!actual.isError()) {

@@ -24,13 +24,11 @@ import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
-import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
@@ -357,18 +355,10 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
     }
 
     private OAuthAppDO getOAuthAppDO(String clientId) throws IdentityOAuth2Exception {
-        OAuthAppDO oAuthAppDO = AppInfoCache.getInstance().getValueFromCache(clientId);
-        if (oAuthAppDO == null) {
-            if (log.isDebugEnabled()) {
-                log.debug("App information not found in cache for client id: " + clientId);
-            }
-            try {
-                oAuthAppDO = new OAuthAppDAO().getAppInformation(clientId);
-            } catch (InvalidOAuthClientException e) {
-                throw new IdentityOAuth2Exception("Invalid OAuth client", e);
-            }
-            AppInfoCache.getInstance().addToCache(clientId, oAuthAppDO);
+        try {
+            return OAuth2Util.getAppInformationByClientId(clientId);
+        } catch (InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception("Error while retrieving app information for client: " + clientId);
         }
-        return oAuthAppDO;
     }
 }

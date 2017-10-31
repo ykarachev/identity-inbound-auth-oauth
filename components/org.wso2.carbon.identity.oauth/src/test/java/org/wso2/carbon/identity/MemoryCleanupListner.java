@@ -66,7 +66,6 @@ public class MemoryCleanupListner implements ITestListener {
     @Override
     public void onFinish(ITestContext iTestContext) {
         MockRepository.addAfterMethodRunner(new MockitoStateCleaner());
-        System.out.println("**********WE***************************************");
     }
 
     private static class MockitoStateCleaner implements Runnable {
@@ -80,7 +79,7 @@ public class MemoryCleanupListner implements ITestListener {
         }
 
         private void clearConfiguration() {
-           // clearThreadLocalIn(OAuthCache.class);
+            clearThreadLocalIn(OAuthCache.class);
         }
 
         private void clearThreadLocalIn(Class<?> cls) {

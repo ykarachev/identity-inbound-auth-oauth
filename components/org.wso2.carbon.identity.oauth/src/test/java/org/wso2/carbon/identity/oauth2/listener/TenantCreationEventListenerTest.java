@@ -19,7 +19,6 @@ import org.mockito.Mock;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.core.util.IdentityConfigParser;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth2.TestConstants;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
@@ -46,9 +45,6 @@ public class TenantCreationEventListenerTest extends PowerMockIdentityBaseTest {
 
     @Mock
     private UserRegistry registry;
-
-    @Mock
-    private IdentityConfigParser identityConfigParser;
 
     @BeforeMethod
     public void setUpRegistryService() {

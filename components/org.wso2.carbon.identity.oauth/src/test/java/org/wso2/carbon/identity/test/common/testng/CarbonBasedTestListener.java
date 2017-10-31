@@ -168,7 +168,7 @@ public class CarbonBasedTestListener implements ITestListener, IClassListener {
                 when(realmService.getBootstrapRealmConfiguration()).thenReturn(realmConfiguration);
                 when(tenantManager.getTenantId(anyString())).thenReturn(withRealmService.tenantId());
                 when(tenantManager.getDomain(anyInt())).thenReturn(withRealmService.tenantDomain());
-                boolean initRealmService = withRealmService.initRealmService();
+                boolean initRealmService = withRealmService.initUserStoreManager();
                 if (initRealmService) {
                     when(realmService.getTenantUserRealm(withRealmService.tenantId())).thenReturn(userRealm);
                     when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
@@ -187,7 +187,7 @@ public class CarbonBasedTestListener implements ITestListener, IClassListener {
 
     @Override
     public void onAfterClass(ITestClass iTestClass, IMethodInstance iMethodInstance) {
-
+        MockInitialContextFactory.destroy();
     }
 
 }

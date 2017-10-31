@@ -29,7 +29,7 @@ import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 @WithCarbonHome
 @WithH2Database(jndiName = "jdbc/WSO2IdentityDB", files = { "dbScripts/h2_with_application_and_token.sql" })
 @WithRealmService(tenantId = TestConstants.TENANT_ID, tenantDomain = TestConstants.TENANT_DOMAIN,
-        initRealmService = true)
+        initUserStoreManager = true)
 public class AuthorizationHandlerManagerTest extends PowerMockIdentityBaseTest {
 
     private AuthorizationHandlerManager authorizationHandlerManager;

@@ -82,15 +82,6 @@ public class AbstractResponseTypeHandlerTest extends PowerMockIdentityBaseTest {
         abstractResponseTypeHandler.init();
     }
 
-//    @Test
-//    public void testInit() throws Exception {
-//        Field field = abstractResponseTypeHandler
-//                .getClass().getSuperclass().getDeclaredField("cacheEnabled");
-//        abstractResponseTypeHandler.init();
-//        field.setAccessible(true);
-//        Assert.assertTrue(field.getBoolean(abstractResponseTypeHandler),
-//                "AbstractResponseTypeHandler not set");
-//    }
 
     @Test(dataProvider = "grantTypeProvider")
     public void testValidateAccessDelegation(String grantType, boolean result) throws Exception {

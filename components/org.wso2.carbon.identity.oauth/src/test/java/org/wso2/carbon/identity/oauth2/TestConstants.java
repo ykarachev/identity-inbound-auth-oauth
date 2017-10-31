@@ -48,6 +48,20 @@ public class TestConstants {
     public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_CODE = "code";
     public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_ID_TOKEN = "id_token";
 
+    public static final String CLIENT_ID = "ca19a540f544777860e44e75f605d927";
+    public static final String ACESS_TOKEN_ID = "2sa9a678f890877856y66e75f605d456";
+    public static final String SECRET = "87n9a540f544777860e44e75f605d435";
+    public static final String APP_NAME = "myApp";
+    public static final String USER_NAME = "user1";
+    public static final String APP_STATE = "ACTIVE";
+    public static final String CALLBACK = "http://localhost:8080/redirect";
+    public static final String USER_DOMAIN_PRIMARY = "PRIMARY";
+    public static final String SCOPE_STRING = "default";
+    public static final String GRANT_TYPES_STRING =
+            "refresh_token implicit password iwa:ntlm client_credentials authorization_code";
+    public static final String ACCESS_OKEN = "d43e8da324a33bdc941b9b95cad6a6a2";
+    public static final String REFRESH_OKEN = "2881c5a375d03dc0ba12787386451b29";
+
     public static final String DB_TYPE_H2_SQL = "h2.sql";
     public static final String DB_SCRIPTS_FOLDER_NAME = "dbScripts";
     public static final String JAVA_NAMING_FACTORY_INITIAL = "java.naming.factory.initial";

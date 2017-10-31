@@ -15,62 +15,43 @@
 */
 package org.wso2.carbon.identity.oauth2.authz;
 
-import org.apache.commons.lang.StringUtils;
-import org.mockito.Mock;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.oauth.dao.TestOAuthDAOBase;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.oauth2.TestConstants;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
-import org.wso2.carbon.user.core.service.RealmService;
-import org.wso2.carbon.user.core.tenant.TenantManager;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
+import org.wso2.carbon.identity.test.common.testng.WithCarbonHome;
+import org.wso2.carbon.identity.test.common.testng.WithH2Database;
+import org.wso2.carbon.identity.test.common.testng.WithRealmService;
+import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
-import java.nio.file.Paths;
-
-public class AuthorizationHandlerManagerTest extends TestOAuthDAOBase {
+@WithCarbonHome
+@WithH2Database(jndiName = "jdbc/WSO2IdentityDB", files = { "dbScripts/h2_with_application_and_token.sql" })
+@WithRealmService(tenantId = TestConstants.TENANT_ID, tenantDomain = TestConstants.TENANT_DOMAIN,
+        initUserStoreManager = true)
+public class AuthorizationHandlerManagerTest extends PowerMockIdentityBaseTest {
 
     private AuthorizationHandlerManager authorizationHandlerManager;
     private OAuth2AuthorizeReqDTO authzReqDTO = new OAuth2AuthorizeReqDTO();
-    private static final String carbonHome =
-            new AuthorizationHandlerManagerTest().getClass().getResource("/").getFile();
-    private static final String DB_NAME = "jdbc/WSO2IdentityDB";
-    private static final String CLIENT_ID = "ca19a540f544777860e44e75f605d927";
-    private static final String SECRET = "87n9a540f544777860e44e75f605d435";
-    private static final String APP_NAME = "myApp";
-    private static final String USER_NAME = "user1";
-    private static final String APP_STATE = "ACTIVE";
-    private static final String CALLBACK = "http://localhost:8080/redirect";
-    private static final String ACC_TOKEN = "fakeAccToken";
-    private static final String ACC_TOKEN_SECRET = "fakeTokenSecret";
-    private static final String REQ_TOKEN = "fakeReqToken";
-    private static final String REQ_TOKEN_SECRET = "fakeReqToken";
-    private static final String SCOPE = "openid";
-    private static final String AUTHZ_USER = "fakeAuthzUser";
-    private static final String OAUTH_VERIFIER = "fakeOauthVerifier";
-    private static final String NEW_SECRET = "a459a540f544777860e44e75f605d875";
 
-    @Mock
-    private RealmService realmService;
 
-    @Mock
-    private TenantManager tenantManager;
-
-    @BeforeTest
+    @BeforeClass
     public void setUp() throws Exception {
-
+        authorizationHandlerManager = AuthorizationHandlerManager.getInstance();
     }
 
     @Test
     public void testHandleAuthorizationIDTokenTokenResponseTypeCacheMiss() throws Exception {
-
-    }
-
-    public static String getFilePath(String fileName) {
-        if (StringUtils.isNotBlank(fileName)) {
-            return Paths.get(carbonHome, TestConstants.DB_SCRIPTS_FOLDER_NAME, fileName)
-                        .toString();
-        }
-        throw new IllegalArgumentException("DB Script file name cannot be empty.");
+        authzReqDTO.setResponseType(TestConstants.AUTHORIZATION_HANDLER_RESPONSE_TYPE_ID_TOKEN_TOKEN);
+        authzReqDTO.setConsumerKey(TestConstants.CLIENT_ID);
+        authzReqDTO.setScopes(TestConstants.SCOPE_STRING.split(" "));
+        AuthenticatedUser user = new AuthenticatedUser();
+        user.setUserName(TestConstants.USER_NAME);
+        user.setTenantDomain(TestConstants.TENANT_DOMAIN);
+        user.setUserStoreDomain(TestConstants.USER_DOMAIN_PRIMARY);
+        authzReqDTO.setUser(user);
+        OAuth2AuthorizeRespDTO respDTO = authorizationHandlerManager.handleAuthorization(authzReqDTO);
     }
 
 }

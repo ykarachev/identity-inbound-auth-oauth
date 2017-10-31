@@ -87,6 +87,7 @@
             <class name="org.wso2.carbon.identity.oauth2.validators.TokenValidationHandlerTest"/>
             <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest"/>
             <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.authz.AuthorizationHandlerManagerTest"/>
         </classes>
     </test>
 
@@ -159,6 +160,7 @@
             <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest"/>
             <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest"/>
             <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.authz.AuthorizationHandlerManagerTest"/>
         </classes>
     </test>
 </suite>

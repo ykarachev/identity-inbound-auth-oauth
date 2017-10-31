@@ -18,6 +18,8 @@
 
 package org.wso2.carbon.identity.test.common.testng;
 
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -26,5 +28,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface WithRealmService {
-    int tenantId();
+    int tenantId() default MultitenantConstants.SUPER_TENANT_ID;
+    String tenantDomain() default MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
+    boolean initUserStoreManager() default false;
 }

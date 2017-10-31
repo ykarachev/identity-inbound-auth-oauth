@@ -34,7 +34,9 @@ import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.TestConstants;
 import org.wso2.carbon.user.api.RealmConfiguration;
+import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
+import org.wso2.carbon.user.core.UserStoreManager;
 import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.tenant.TenantManager;
 import org.wso2.carbon.utils.ConfigurationContextService;
@@ -43,6 +45,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -159,9 +162,21 @@ public class CarbonBasedTestListener implements ITestListener, IClassListener {
                 RealmService realmService = mock(RealmService.class);
                 RealmConfiguration realmConfiguration = mock(RealmConfiguration.class);
                 TenantManager tenantManager = mock(TenantManager.class);
+                UserStoreManager userStoreManager = mock(UserStoreManager.class);
+                UserRealm userRealm = mock(UserRealm.class);
                 when(realmService.getTenantManager()).thenReturn(tenantManager);
                 when(realmService.getBootstrapRealmConfiguration()).thenReturn(realmConfiguration);
                 when(tenantManager.getTenantId(anyString())).thenReturn(withRealmService.tenantId());
+                when(tenantManager.getDomain(anyInt())).thenReturn(withRealmService.tenantDomain());
+                boolean initRealmService = withRealmService.initUserStoreManager();
+                if (initRealmService) {
+                    when(realmService.getTenantUserRealm(withRealmService.tenantId())).thenReturn(userRealm);
+                    when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
+                    when(userStoreManager.getSecondaryUserStoreManager()).thenReturn(userStoreManager);
+                    when(userStoreManager.getRealmConfiguration()).thenReturn(realmConfiguration);
+                    when(userStoreManager.getRealmConfiguration().getUserStoreProperty("CaseInsensitiveUsername"))
+                            .thenReturn(Boolean.TRUE.toString());
+                }
                 setInternalState(OAuthComponentServiceHolder.getInstance(), "realmService", realmService);
                 IdentityTenantUtil.setRealmService(realmService);
             } catch (UserStoreException e) {
@@ -172,7 +187,7 @@ public class CarbonBasedTestListener implements ITestListener, IClassListener {
 
     @Override
     public void onAfterClass(ITestClass iTestClass, IMethodInstance iMethodInstance) {
-
+        MockInitialContextFactory.destroy();
     }
 
 }

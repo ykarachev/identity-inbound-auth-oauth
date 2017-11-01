@@ -248,6 +248,12 @@
             <artifactId>org.wso2.carbon.tomcat.ext</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.identity</groupId>
+            <artifactId>org.wso2.carbon.identity.common.testng</artifactId>
+            <version>5.5.93-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 

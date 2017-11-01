@@ -67,22 +67,14 @@ import static org.wso2.carbon.identity.oauth.common.OAuthConstants.ACCESS_TOKEN;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.AUTHZ_CODE;
 
 /**
- * // TODO? Explain what is done by the class
- * Returns the claims of the SAML assertion
+ * Default implementation of {@link CustomClaimsCallbackHandler}. This callback handler populates available user
+ * claims after filtering them through requested scopes.
  */
-
 public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHandler {
 
     private final static Log log = LogFactory.getLog(DefaultOIDCClaimsCallbackHandler.class);
     private final static String INBOUND_AUTH2_TYPE = "oauth2";
     private final static String OIDC_DIALECT = "http://wso2.org/oidc/claim";
-    private static final String UPDATED_AT = "updated_at";
-    private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
-    private static final String EMAIL_VERIFIED = "email_verified";
-    private static final String ADDRESS_PREFIX = "address.";
-    private static final String ADDRESS = "address";
-    private static final String OIDC_SCOPE_CLAIM_SEPARATOR = ",";
-
     private static String userAttributeSeparator = FrameworkUtils.getMultiAttributeSeparator();
 
     @Override
@@ -124,8 +116,11 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
         // Map<(http://wso2.org/claims/email, email), "peter@example.com">
         Map<ClaimMapping, String> userAttributes = getUserAttributesCachedAgainstToken(getAccessToken(requestMsgCtx));
         if (isEmpty(userAttributes)) {
-            // TODO: add a log here
             userAttributes = getUserAttributesCachedAgainstAuthorizationCode(getAuthorizationCode(requestMsgCtx));
+            if (log.isDebugEnabled()) {
+                log.debug("Not claims cached against the access_token. Retrieving claims cached against the " +
+                        "authorization code.");
+            }
         }
         // Map<"email", "peter@example.com">
         Map<String, Object> claims = getClaimMapForUser(requestMsgCtx, userAttributes);
@@ -147,6 +142,10 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
         Map<String, Object> claimMap = Collections.emptyMap();
         if (isEmpty(userAttributes)) {
             if (!isFederatedUser(requestMsgCtx)) {
+                if (log.isDebugEnabled()) {
+                    log.debug("No user attributes found in cache for user: " + requestMsgCtx.getAuthorizedUser() + "." +
+                            " Retrieving claims from userstore.");
+                }
                 return retrieveClaimsForLocalUser(requestMsgCtx, claimMap);
             }
         }

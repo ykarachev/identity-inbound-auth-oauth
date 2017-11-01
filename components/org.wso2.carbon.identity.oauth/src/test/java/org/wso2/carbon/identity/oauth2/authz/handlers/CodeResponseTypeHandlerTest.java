@@ -34,6 +34,9 @@ import org.wso2.carbon.identity.test.common.testng.WithCarbonHome;
 import org.wso2.carbon.identity.test.common.testng.WithH2Database;
 import org.wso2.carbon.identity.test.common.testng.WithRealmService;
 
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * Test class covering CodeResponseTypeHandler
  */
@@ -46,7 +49,7 @@ import org.wso2.carbon.identity.test.common.testng.WithRealmService;
         initUserStoreManager = true)
 public class CodeResponseTypeHandlerTest {
 
-    private final String TEST_CONSUMER_KEY = "SDSDSDS23131231";
+    private final String TEST_CONSUMER_KEY =  UUID.randomUUID().toString();
     private final String TEST_CALLBACK_URL = "https://localhost:8000/callback";
 
     OAuthAuthzReqMessageContext authAuthzReqMessageContext;

@@ -28,5 +28,4 @@ public class SampleScopeValidator extends OAuth2ScopeValidator {
     public boolean validateScope(AccessTokenDO accessTokenDO, String resource) throws IdentityOAuth2Exception {
         return true;
     }
-
 }

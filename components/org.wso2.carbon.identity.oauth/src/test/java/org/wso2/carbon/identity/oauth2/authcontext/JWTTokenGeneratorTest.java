@@ -15,23 +15,45 @@
  */
 package org.wso2.carbon.identity.oauth2.authcontext;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import org.powermock.core.classloader.annotations.Mock;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.testng.PowerMockObjectFactory;
-import org.powermock.modules.testng.PowerMockTestCase;
 import org.testng.IObjectFactory;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
-import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
-import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.base.MultitenantConstants;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
+import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
+import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
+import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
+import org.wso2.carbon.identity.oauth2.TestConstants;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
+import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
+import org.wso2.carbon.identity.oauth2.validators.DefaultOAuth2TokenValidator;
+import org.wso2.carbon.identity.oauth2.validators.OAuth2TokenValidationMessageContext;
+import org.wso2.carbon.identity.test.common.testng.WithCarbonHome;
+import org.wso2.carbon.identity.test.common.testng.WithH2Database;
+import org.wso2.carbon.identity.test.common.testng.WithRealmService;
 
-import static org.mockito.Mockito.when;
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import java.sql.Timestamp;
 
-@PrepareForTest({OAuthServerConfiguration.class, OAuth2Util.class})
-public class JWTTokenGeneratorTest extends PowerMockTestCase {
+import static org.powermock.api.mockito.PowerMockito.mock;
+
+@WithCarbonHome
+@WithRealmService(tenantId = MultitenantConstants.SUPER_TENANT_ID,
+        tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME,
+        initUserStoreManager = true)
+@WithH2Database(jndiName = "jdbc/WSO2IdentityDB",
+        files = {"dbScripts/h2_with_application_and_token.sql", "dbScripts/identity.sql"})
+public class JWTTokenGeneratorTest {
+
+    private DefaultOAuth2TokenValidator defaultOAuth2TokenValidator;
+    private OAuth2TokenValidationRequestDTO oAuth2TokenValidationRequestDTO;
+    private OAuth2TokenValidationResponseDTO oAuth2TokenValidationResponseDTO;
+    private OAuth2TokenValidationMessageContext oAuth2TokenValidationMessageContext;
 
     private JWTTokenGenerator jwtTokenGenerator;
     private boolean includeClaims = true;
@@ -41,34 +63,96 @@ public class JWTTokenGeneratorTest extends PowerMockTestCase {
     private String signatureAlgorithm = "SHA256withRSA";
     private boolean useMultiValueSeparatorForAuthContextToken = true;
 
-    @Mock
-    private OAuthServerConfiguration mockedOAuthServerConfiguration;
 
     @BeforeTest
     public void setUp() throws Exception {
+
+        AuthenticatedUser user = new AuthenticatedUser();
+        user.setUserName("testUser");
+        user.setUserStoreDomain("PRIMARY");
+        user.setTenantDomain("carbon.super");
+        user.setFederatedUser(false);
+
+        defaultOAuth2TokenValidator = new DefaultOAuth2TokenValidator();
+        oAuth2TokenValidationRequestDTO = new OAuth2TokenValidationRequestDTO();
+        OAuth2TokenValidationRequestDTO.TokenValidationContextParam tokenValidationContextParam = mock(OAuth2TokenValidationRequestDTO.TokenValidationContextParam.class);
+        tokenValidationContextParam.setKey("sampleKey");
+        tokenValidationContextParam.setValue("sampleValue");
+
+        OAuth2TokenValidationRequestDTO.TokenValidationContextParam[]
+                tokenValidationContextParams = {tokenValidationContextParam};
+        oAuth2TokenValidationRequestDTO.setContext(tokenValidationContextParams);
+
+        oAuth2TokenValidationResponseDTO = new OAuth2TokenValidationResponseDTO();
+        oAuth2TokenValidationResponseDTO.setAuthorizedUser("testUser");
+        oAuth2TokenValidationMessageContext =
+                new OAuth2TokenValidationMessageContext
+                        (oAuth2TokenValidationRequestDTO, oAuth2TokenValidationResponseDTO);
+        AccessTokenDO accessTokenDO = new AccessTokenDO();
+        accessTokenDO.setScope(new String[]{"scope1", "scope2"});
+        accessTokenDO.setConsumerKey("sampleConsumerKey");
+        accessTokenDO.setIssuedTime(new Timestamp(System.currentTimeMillis()));
+
+        accessTokenDO.setAuthzUser(user);
+        accessTokenDO.setTenantID(MultitenantConstants.SUPER_TENANT_ID);
+
+        oAuth2TokenValidationMessageContext.addProperty("AccessTokenDO", accessTokenDO);
         jwtTokenGenerator = new JWTTokenGenerator();
         jwtTokenGenerator = new JWTTokenGenerator(includeClaims, enableSigning);
     }
 
+    @AfterTest
+    public void tearDown() throws Exception {
+    }
 
     @Test
     public void testInit() throws Exception {
-        mockStatic(OAuthServerConfiguration.class);
-        when(OAuthServerConfiguration.getInstance()).thenReturn(mockedOAuthServerConfiguration);
-        when(mockedOAuthServerConfiguration.getTimeStampSkewInSeconds()).thenReturn((long) 3);
-
-        mockStatic(OAuth2Util.class);
-        when(OAuth2Util.mapSignatureAlgorithmForJWSAlgorithm(signatureAlgorithm)).thenReturn(JWSAlgorithm.ES256);
-        when(mockedOAuthServerConfiguration.getClaimsRetrieverImplClass()).thenReturn(claimsRetrieverImplClass);
-        when(mockedOAuthServerConfiguration.getSignatureAlgorithm()).thenReturn(signatureAlgorithm);
-        when(mockedOAuthServerConfiguration.isUseMultiValueSeparatorForAuthContextToken()).thenReturn(useMultiValueSeparatorForAuthContextToken);
-        when(mockedOAuthServerConfiguration.getConsumerDialectURI()).thenReturn(consumerDialectURI);
-
         jwtTokenGenerator.init();
     }
+
+
+    @Test(dependsOnMethods = "testInit")
+    public void testGenerateToken() throws Exception {
+        //OAuthComponentServiceHolder.getInstance()
+        addSampleOauth2Application();
+        jwtTokenGenerator.generateToken(oAuth2TokenValidationMessageContext);
+    }
+
+    @Test
+    public void testSignJWTWithRSA() throws Exception {
+    }
+
+    @Test
+    public void testSignJWT() throws Exception {
+    }
+
+    @Test
+    public void testMapSignatureAlgorithm() throws Exception {
+    }
+
 
     @ObjectFactory
     public IObjectFactory getObjectFactory() {
         return new PowerMockObjectFactory();
+    }
+
+    private void addSampleOauth2Application() throws IdentityOAuthAdminException {
+
+        OAuthAppDO oAuthAppDO = new OAuthAppDO();
+        oAuthAppDO.setGrantTypes("implicit");
+        oAuthAppDO.setOauthConsumerKey("sampleConsumerKey");
+        oAuthAppDO.setApplicationName("sampleConsumerKey");
+        oAuthAppDO.setState("active");
+        AuthenticatedUser user = new AuthenticatedUser();
+        user.setUserStoreDomain("PRIMARY");
+        user.setUserName("testUser");
+
+        oAuthAppDO.setUser(user);
+        oAuthAppDO.setApplicationName("testApp");
+
+
+        OAuthAppDAO authAppDAO = new OAuthAppDAO();
+        // authAppDAO.addOAuthConsumer("testUser", -1234, "PRIMARY");
+        authAppDAO.addOAuthApplication(oAuthAppDO);
     }
 }

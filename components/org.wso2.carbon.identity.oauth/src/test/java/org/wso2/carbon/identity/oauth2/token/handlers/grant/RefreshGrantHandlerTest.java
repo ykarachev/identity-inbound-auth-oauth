@@ -22,6 +22,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.mockito.Mock;
 import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.reflect.internal.WhiteboxImpl;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -29,6 +30,7 @@ import org.testng.annotations.Test;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
@@ -45,7 +47,9 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
@@ -54,11 +58,13 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.MockitoAnnotations.initMocks;
 import static org.powermock.api.mockito.PowerMockito.doNothing;
+import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.spy;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.TOKEN_STATE_EXPIRED;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.TOKEN_STATE_INACTIVE;
@@ -68,7 +74,7 @@ import static org.wso2.carbon.identity.oauth.common.OAuthConstants.UNASSIGNED_VA
  * Test class for RefreshGrantHandler test cases.
  */
 @PrepareForTest({OAuthServerConfiguration.class, TokenMgtDAO.class, IdentityUtil.class, OAuth2Util.class,
-        AbstractAuthorizationGrantHandler.class})
+        AbstractAuthorizationGrantHandler.class, OAuthCache.class})
 public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
 
     @Mock
@@ -126,12 +132,22 @@ public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
         when(oauthTokenIssuer.refreshToken(any(OAuthTokenReqMessageContext.class))).thenReturn("refreshToken1");
     }
 
+    @DataProvider(name = "GetValidateGrantData")
+    public Object[][] validateGrantData() {
+
+        return new Object[][]{
+                {"clientId1", TOKEN_STATE_ACTIVE, false},
+                {"clientId2", TOKEN_STATE_EXPIRED, true},
+                {"clientId2", TOKEN_STATE_ACTIVE, true},
+        };
+    }
+
     @Test(dataProvider = "GetValidateGrantData")
-    public void testValidateGrant(String clientId, String refreshToken, String accessToken, String tokenState,
-                                  Boolean isUsernameCaseSensitive, Boolean expected) throws Exception {
+    public void testValidateGrant(String clientId, String tokenState, Boolean isUsernameCaseSensitive)
+            throws Exception {
 
         mockStatic(OAuth2Util.class);
-        RefreshTokenValidationDataDO validationDataDO = constructValidationDataDO(accessToken, tokenState,
+        RefreshTokenValidationDataDO validationDataDO = constructValidationDataDO("accessToken1", tokenState,
                 isUsernameCaseSensitive);
         when(mockTokenMgtDAO.validateRefreshToken(anyString(), anyString())).thenReturn(validationDataDO);
         when(IdentityUtil.isUserStoreInUsernameCaseSensitive(anyString())).thenReturn(isUsernameCaseSensitive);
@@ -161,40 +177,66 @@ public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
 
         OAuth2AccessTokenReqDTO tokenReqDTO = new OAuth2AccessTokenReqDTO();
         tokenReqDTO.setClientId(clientId);
-        tokenReqDTO.setRefreshToken(refreshToken);
+        tokenReqDTO.setRefreshToken("refreshToken1");
         OAuthTokenReqMessageContext tokenReqMessageContext = new OAuthTokenReqMessageContext(tokenReqDTO);
 
-        Boolean actual = refreshGrantHandler.validateGrant(tokenReqMessageContext);
-        if (expected) {
-            assertEquals(actual, expected, "Refresh token validation should be successful.");
-        } else {
-            assertEquals(actual, expected, "Refresh token validation should fail.");
-        }
+        Boolean isValid = refreshGrantHandler.validateGrant(tokenReqMessageContext);
+        assertTrue(isValid, "Refresh token validation should be successful.");
     }
 
-    @Test(expectedExceptions = IdentityOAuth2Exception.class)
-    public void testValidateGrantForException() throws Exception {
+    @DataProvider(name = "validateGrantExceptionData")
+    public Object[][] validateGrantExceptionData() {
 
+        List<AccessTokenDO> accessTokenDOS = new ArrayList<>();
+        AccessTokenDO accessTokenDO1 = new AccessTokenDO();
+        accessTokenDO1.setTokenState(TOKEN_STATE_ACTIVE);
+        accessTokenDO1.setRefreshToken("refreshToken1");
+
+        AccessTokenDO accessTokenDO2= new AccessTokenDO();
+        accessTokenDO2.setTokenState(TOKEN_STATE_EXPIRED);
+        accessTokenDO2.setRefreshToken("refreshToken2");
+
+        accessTokenDOS.add(accessTokenDO1);
+        accessTokenDOS.add(accessTokenDO2);
+
+        return new Object[][]{
+                {"clientId1", "refreshToken1", "accessToken1", TOKEN_STATE_INACTIVE, accessTokenDOS},
+                {"clientId1", "refreshToken3", "accessToken1", TOKEN_STATE_EXPIRED, accessTokenDOS},
+                {"clientId1", "refreshToken3", "accessToken1", TOKEN_STATE_EXPIRED, null},
+                {"clientId1", "refreshToken1", null, null, accessTokenDOS},
+        };
+    }
+
+    @Test(dataProvider = "validateGrantExceptionData", expectedExceptions = IdentityOAuth2Exception.class)
+    public void testValidateGrantForException(String clientId, String refreshToken, String accessToken,
+                                              String tokenState, Object accessTokenObj) throws Exception {
+
+        List<AccessTokenDO> accessTokenDOs = (ArrayList<AccessTokenDO>) accessTokenObj;
         mockStatic(OAuth2Util.class);
         when(OAuth2Util.checkAccessTokenPartitioningEnabled()).thenReturn(true);
         when(OAuth2Util.checkUserNameAssertionEnabled()).thenReturn(true);
+        when(OAuth2Util.getUserStoreForFederatedUser(any(AuthenticatedUser.class))).thenReturn("DOMAIN");
 
+        AuthenticatedUser user = new AuthenticatedUser();
+        user.setUserName("user1");
         RefreshTokenValidationDataDO validationDataDO = new RefreshTokenValidationDataDO();
-        validationDataDO.setAccessToken("accessToken1");
-        validationDataDO.setRefreshTokenState(TOKEN_STATE_EXPIRED);
+        validationDataDO.setAccessToken(accessToken);
+        validationDataDO.setRefreshTokenState(tokenState);
+        validationDataDO.setAuthorizedUser(user);
         when(mockTokenMgtDAO.validateRefreshToken(anyString(), anyString())).thenReturn(validationDataDO);
-
-        if (validationDataDO.getAuthorizedUser() == null) {
-            when(OAuth2Util.getUserStoreForFederatedUser(any(AuthenticatedUser.class))).thenThrow(new
-                    IdentityOAuth2Exception("Authenticated user cannot be null."));
-        }
+        when(mockTokenMgtDAO.retrieveLatestAccessTokens(anyString(), any(AuthenticatedUser.class), anyString(),
+                anyString(), anyBoolean(), anyInt())).thenReturn(accessTokenDOs);
 
         refreshGrantHandler = new RefreshGrantHandler();
         refreshGrantHandler.init();
 
+        mockStatic(OAuthCache.class);
+        when(OAuthCache.getInstance()).thenReturn(mock(OAuthCache.class));
+        WhiteboxImpl.setInternalState(refreshGrantHandler, "cacheEnabled", true);
+
         OAuth2AccessTokenReqDTO tokenReqDTO = new OAuth2AccessTokenReqDTO();
-        tokenReqDTO.setClientId("clientId");
-        tokenReqDTO.setRefreshToken("refreshToken1");
+        tokenReqDTO.setClientId(clientId);
+        tokenReqDTO.setRefreshToken(refreshToken);
         OAuthTokenReqMessageContext tokenReqMessageContext = new OAuthTokenReqMessageContext(tokenReqDTO);
 
         refreshGrantHandler.validateGrant(tokenReqMessageContext);
@@ -228,12 +270,13 @@ public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
                         any(AccessTokenDO.class), anyString());
 
         if (isValidToken) {
-            when(OAuth2Util.calculateValidityInMillis(anyLong(), anyLong())).thenReturn(new Long(5000));
+            when(OAuth2Util.getTimeToExpire(anyLong(), anyLong())).thenReturn(new Long(5000));
         } else {
-            when(OAuth2Util.calculateValidityInMillis(anyLong(), anyLong())).thenReturn(Long.valueOf(0));
+            when(OAuth2Util.getTimeToExpire(anyLong(), anyLong())).thenReturn(Long.valueOf(0));
         }
         when(mockOAuthServerConfiguration.isRefreshTokenRenewalEnabled()).thenReturn(isRenew);
         when(IdentityUtil.isUserStoreInUsernameCaseSensitive(anyString())).thenReturn(isUsernameCaseSensitive);
+        when(IdentityUtil.isTokenLoggable(anyString())).thenReturn(true);
 
         System.setProperty(CarbonBaseConstants.CARBON_HOME, "");
         refreshGrantHandler = new RefreshGrantHandler();
@@ -251,6 +294,9 @@ public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
         tokenReqMessageContext.addProperty("previousAccessToken", oldAccessToken);
         tokenReqMessageContext.setAuthorizedUser(authenticatedUser);
         tokenReqMessageContext.setValidityPeriod(validityPeriod);
+
+        mockStatic(OAuthCache.class);
+        when(OAuthCache.getInstance()).thenReturn(mock(OAuthCache.class));
 
         OAuth2AccessTokenRespDTO actual = refreshGrantHandler.issue(tokenReqMessageContext);
         if (!actual.isError()) {
@@ -279,22 +325,6 @@ public class RefreshGrantHandlerTest extends PowerMockIdentityBaseTest {
         refreshGrantHandler.init();
         Boolean actual = refreshGrantHandler.validateScope(tokenReqMessageContext);
         assertEquals(actual, expected, message);
-    }
-
-    @DataProvider(name = "GetValidateGrantData")
-    public Object[][] validateGrantData() {
-
-        return new Object[][]{
-                {"clientId1", "refreshToken1", "accessToken1", TOKEN_STATE_ACTIVE, false, true},
-                {"clientId1", "refreshToken1", "accessToken1", TOKEN_STATE_INACTIVE, false, false},
-                {"clientId1", "refreshToken1", "accessToken1", TOKEN_STATE_EXPIRED, false, false},
-                {"clientId1", "refreshToken1", "accessToken1", TOKEN_STATE_EXPIRED, true, false},
-                {"clientId2", "refreshToken1", "accessToken1", TOKEN_STATE_EXPIRED, true, true},
-                {"clientId2", "refreshToken1", "accessToken1", TOKEN_STATE_ACTIVE, true, true},
-                {"clientId2", "refreshToken2", "accessToken1", TOKEN_STATE_EXPIRED, true, false},
-                {"clientId1", "refreshToken1", null, null, false, false},
-                {"clientId1", "refreshToken1", "accessToken1", null, false, false}
-        };
     }
 
     @DataProvider(name = "GetTokenIssuerData")

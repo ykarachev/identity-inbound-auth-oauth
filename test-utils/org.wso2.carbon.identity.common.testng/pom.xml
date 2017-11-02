@@ -28,7 +28,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.carbon.identity</groupId>
     <artifactId>org.wso2.carbon.identity.common.testng</artifactId>
-    <version>5.5.96</version>
+    <version>5.5.97-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>WSO2 Carbon - Identity Common Test</name>
     <description>Common Test utilities for Identity Unit Tests</description>
@@ -92,9 +92,5 @@
             </plugin>
         </plugins>
     </build>
-
-  <scm>
-    <tag>v5.5.96</tag>
-  </scm>
 </project>
 

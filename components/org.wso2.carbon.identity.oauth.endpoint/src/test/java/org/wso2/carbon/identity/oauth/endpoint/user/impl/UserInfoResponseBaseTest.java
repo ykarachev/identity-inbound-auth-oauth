@@ -28,7 +28,6 @@ import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.ResourceImpl;
 import org.wso2.carbon.registry.core.service.RegistryService;
 import org.wso2.carbon.registry.core.session.UserRegistry;
-import org.wso2.carbon.user.core.UserCoreConstants;
 
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -59,6 +58,10 @@ public class UserInfoResponseBaseTest extends PowerMockTestCase {
     public static final String AUTHORIZED_USER_NAME = "peter";
     public static final String AUTHORIZED_USER_WITH_TENANT = "peter@tenant.com";
     public static final String AUTHORIZED_USER_WITH_DOMAIN = "JDBC/peter";
+
+    public static final String PRIMARY_USER_FULL_QUALIFIED = "PRIMARY/john@carbon.super";
+    public static final String PRIMARY_USER_NAME = "john";
+    public static final String PRIMARY_USER_WITH_TENANT = "john@carbon.super";
 
     public static final String SUBJECT_FULL_QUALIFIED = "JDBC/subject@tenant.com";
     public static final String SUBJECT = "subject";
@@ -196,11 +199,6 @@ public class UserInfoResponseBaseTest extends PowerMockTestCase {
         OAuth2ServiceComponentHolder.setApplicationMgtService(applicationManagementService);
     }
 
-    protected void prepareIdentityUtil() {
-        mockStatic(IdentityUtil.class);
-        when(IdentityUtil.extractDomainFromName(anyString())).thenReturn(UserCoreConstants.PRIMARY_DEFAULT_DOMAIN_NAME);
-    }
-
     protected void prepareUserInfoEndpointConfig() {
         UserInfoClaimRetriever claimsRetriever = mock(UserInfoClaimRetriever.class);
         mockStatic(UserInfoEndpointConfig.class);
@@ -230,16 +228,22 @@ public class UserInfoResponseBaseTest extends PowerMockTestCase {
 
         return new Object[][]{
                 // User claims, Append Tenant Domain, Append User Store Domain, Expected Subject Claim
-                {Collections.emptyMap(), true, true, AUTHORIZED_USER_FULL_QUALIFIED},
-                {Collections.emptyMap(), true, false, AUTHORIZED_USER_WITH_TENANT},
-                {Collections.emptyMap(), false, true, AUTHORIZED_USER_WITH_DOMAIN},
-                {Collections.emptyMap(), false, false, AUTHORIZED_USER_NAME},
+                {Collections.emptyMap(), AUTHORIZED_USER_FULL_QUALIFIED, true, true, AUTHORIZED_USER_FULL_QUALIFIED},
+                {Collections.emptyMap(), AUTHORIZED_USER_FULL_QUALIFIED, true, false, AUTHORIZED_USER_WITH_TENANT},
+                {Collections.emptyMap(), AUTHORIZED_USER_FULL_QUALIFIED, false, true, AUTHORIZED_USER_WITH_DOMAIN},
+                {Collections.emptyMap(), AUTHORIZED_USER_FULL_QUALIFIED, false, false, AUTHORIZED_USER_NAME},
+
+                // Authorized user is from PRIMARY userstore domain
+                {Collections.emptyMap(), PRIMARY_USER_FULL_QUALIFIED, true, true, PRIMARY_USER_WITH_TENANT},
+                {Collections.emptyMap(), PRIMARY_USER_FULL_QUALIFIED, true, false, PRIMARY_USER_WITH_TENANT},
+                {Collections.emptyMap(), PRIMARY_USER_FULL_QUALIFIED, false, true, PRIMARY_USER_NAME},
+                {Collections.emptyMap(), PRIMARY_USER_FULL_QUALIFIED, false, false, PRIMARY_USER_NAME},
 
                 // Subject claim is in user claims
-                {claimMapWithSubject, true, true, SUBJECT_FULL_QUALIFIED},
-                {claimMapWithSubject, true, false, SUBJECT_WITH_TENANT},
-                {claimMapWithSubject, false, true, SUBJECT_WITH_DOMAIN},
-                {claimMapWithSubject, false, false, SUBJECT},
+                {claimMapWithSubject, AUTHORIZED_USER_FULL_QUALIFIED, true, true, SUBJECT_FULL_QUALIFIED},
+                {claimMapWithSubject, AUTHORIZED_USER_FULL_QUALIFIED, true, false, SUBJECT_WITH_TENANT},
+                {claimMapWithSubject, AUTHORIZED_USER_FULL_QUALIFIED, false, true, SUBJECT_WITH_DOMAIN},
+                {claimMapWithSubject, AUTHORIZED_USER_FULL_QUALIFIED, false, false, SUBJECT},
         };
     }
 
@@ -254,7 +258,7 @@ public class UserInfoResponseBaseTest extends PowerMockTestCase {
         spy(OAuth2Util.class);
 
         prepareOAuth2Util();
-        prepareIdentityUtil();
+//        prepareIdentityUtil();
         prepareUserInfoEndpointConfig();
         prepareApplicationManagementService(appendTenantDomain, appendUserStoreDomain);
 
@@ -274,7 +278,7 @@ public class UserInfoResponseBaseTest extends PowerMockTestCase {
         spy(OAuth2Util.class);
 
         prepareOAuth2Util();
-        prepareIdentityUtil();
+//        prepareIdentityUtil();
         prepareUserInfoEndpointConfig();
         prepareApplicationManagementService(true, true);
 

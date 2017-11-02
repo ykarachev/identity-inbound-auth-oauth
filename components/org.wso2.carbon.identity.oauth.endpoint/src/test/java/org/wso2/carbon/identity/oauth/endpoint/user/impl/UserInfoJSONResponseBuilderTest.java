@@ -125,22 +125,22 @@ public class UserInfoJSONResponseBuilderTest extends UserInfoResponseBaseTest {
     @Test
     public void testUpdateAtClaim() throws Exception {
         String updateAtValue = "1509556412";
-        testLongClaim(UPDATED_AT, updateAtValue);
+        testLongClaimInUserInfoResponse(UPDATED_AT, updateAtValue);
     }
 
     @Test
     public void testEmailVerified() throws Exception {
         String emailVerifiedClaimValue = "true";
-        testBooleanClaim(EMAIL_VERIFIED, emailVerifiedClaimValue);
+        testBooleanClaimInUserInfoResponse(EMAIL_VERIFIED, emailVerifiedClaimValue);
     }
 
     @Test
     public void testPhoneNumberVerified() throws Exception {
         String phoneNumberVerifiedClaimValue = "true";
-        testBooleanClaim(PHONE_NUMBER_VERIFIED, phoneNumberVerifiedClaimValue);
+        testBooleanClaimInUserInfoResponse(PHONE_NUMBER_VERIFIED, phoneNumberVerifiedClaimValue);
     }
 
-    private void testBooleanClaim(String claimUri, String claimValue) throws Exception {
+    private void testBooleanClaimInUserInfoResponse(String claimUri, String claimValue) throws Exception {
         initSingleClaimTest(claimUri, claimValue);
         String responseString =
                 userInfoJSONResponseBuilder.getResponseString(getTokenResponseDTO(AUTHORIZED_USER_FULL_QUALIFIED));
@@ -152,7 +152,7 @@ public class UserInfoJSONResponseBuilderTest extends UserInfoResponseBaseTest {
         assertEquals(claimsInResponse.get(claimUri), Boolean.parseBoolean(claimValue));
     }
 
-    private void testLongClaim(String claimUri, String claimValue) throws Exception {
+    private void testLongClaimInUserInfoResponse(String claimUri, String claimValue) throws Exception {
         initSingleClaimTest(claimUri, claimValue);
         String responseString =
                 userInfoJSONResponseBuilder.getResponseString(getTokenResponseDTO(AUTHORIZED_USER_FULL_QUALIFIED));
@@ -170,13 +170,14 @@ public class UserInfoJSONResponseBuilderTest extends UserInfoResponseBaseTest {
 
     @Test(dataProvider = "subjectClaimDataProvider")
     public void testSubjectClaim(Map<String, Object> inputClaims,
+                                 String authorizedUsername,
                                  boolean appendTenantDomain,
                                  boolean appendUserStoreDomain,
                                  String expectedSubjectValue) throws Exception {
         try {
             prepareForSubjectClaimTest(inputClaims, appendTenantDomain, appendUserStoreDomain);
             String responseString =
-                    userInfoJSONResponseBuilder.getResponseString(getTokenResponseDTO(AUTHORIZED_USER_FULL_QUALIFIED));
+                    userInfoJSONResponseBuilder.getResponseString(getTokenResponseDTO(authorizedUsername));
 
             Map<String, Object> claimsInResponse = JSONUtils.parseJSON(responseString);
             assertSubjectClaimPresent(claimsInResponse);

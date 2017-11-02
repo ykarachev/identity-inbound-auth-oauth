@@ -26,7 +26,6 @@ import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.identity.application.authentication.framework.exception.FrameworkException;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
-import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
@@ -49,7 +48,6 @@ import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.user.api.RealmConfiguration;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
-import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.util.ArrayList;
@@ -63,6 +61,7 @@ import java.util.StringTokenizer;
 
 import static org.apache.commons.collections.MapUtils.isEmpty;
 import static org.apache.commons.collections.MapUtils.isNotEmpty;
+import static org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants.LOCAL_ROLE_CLAIM_URI;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.ACCESS_TOKEN;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.AUTHZ_CODE;
 
@@ -75,6 +74,7 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
     private final static Log log = LogFactory.getLog(DefaultOIDCClaimsCallbackHandler.class);
     private final static String INBOUND_AUTH2_TYPE = "oauth2";
     private final static String OIDC_DIALECT = "http://wso2.org/oidc/claim";
+    public static final String USER_NOT_FOUND_ERROR_MESSAGE = "UserNotFound";
     private static String userAttributeSeparator = FrameworkUtils.getMultiAttributeSeparator();
 
     @Override
@@ -194,15 +194,15 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
 
         Map<String, Object> claims = Collections.emptyMap();
         Map<ClaimMapping, String> userAttributes =
-                getUserAttributesCachedAgainstToken(getAuthorizationCode(authzReqMessageContext));
+                getUserAttributesCachedAgainstToken(getAccessToken(authzReqMessageContext));
 
-        if (isEmpty(userAttributes))
+        if (isEmpty(userAttributes)) {
             if (!isFederatedUser(authzReqMessageContext)) {
                 claims = getClaimsForLocalUser(authzReqMessageContext, claims);
             } else {
                 claims = getClaimsMap(userAttributes);
             }
-        else {
+        } else {
             claims = getClaimsMap(userAttributes);
         }
 
@@ -228,7 +228,7 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
         return authzReqMessageContext.getAuthorizationReqDTO().getUser().isFederatedUser();
     }
 
-    private String getAuthorizationCode(OAuthAuthzReqMessageContext authzReqMessageContext) {
+    private String getAccessToken(OAuthAuthzReqMessageContext authzReqMessageContext) {
         return (String) authzReqMessageContext.getProperty(ACCESS_TOKEN);
     }
 
@@ -252,30 +252,36 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
     /**
      * Get claims from user store
      *
-     * @param requestMsgCtx Token request message context
+     * @param tokenReqMessageContext Token request message context
      * @return Users claim map
      * @throws UserStoreException
      * @throws IdentityApplicationManagementException
      * @throws IdentityException
      */
-    private Map<String, Object> getClaimsFromUserStore(OAuthTokenReqMessageContext requestMsgCtx)
+    private Map<String, Object> getClaimsFromUserStore(OAuthTokenReqMessageContext tokenReqMessageContext)
             throws UserStoreException, IdentityApplicationManagementException, IdentityException {
 
         Map<String, Object> mappedAppClaims = new HashMap<>();
-        String spTenantDomain = getServiceProviderTenantDomain(requestMsgCtx);
-        ServiceProvider serviceProvider =
-                getServiceProvider(requestMsgCtx.getOauth2AccessTokenReqDTO().getClientId(), spTenantDomain);
+        String spTenantDomain = getServiceProviderTenantDomain(tokenReqMessageContext);
+
+        String clientId = tokenReqMessageContext.getOauth2AccessTokenReqDTO().getClientId();
+        ServiceProvider serviceProvider = getServiceProvider(clientId, spTenantDomain);
 
         if (serviceProvider == null) {
+            log.warn("Unable to find a service provider associated with client_id: " + clientId + ". Returning empty " +
+                    "claim map for user.");
             return mappedAppClaims;
         }
 
         ClaimMapping[] requestedLocalClaimMap = serviceProvider.getClaimConfig().getClaimMappings();
         if (ArrayUtils.isEmpty(requestedLocalClaimMap)) {
+            if (log.isDebugEnabled()) {
+                log.debug("No requested claims configured for service provider: " + serviceProvider.getApplicationName() + ".");
+            }
             return mappedAppClaims;
         }
 
-        AuthenticatedUser user = requestMsgCtx.getAuthorizedUser();
+        AuthenticatedUser user = tokenReqMessageContext.getAuthorizedUser();
         String userTenantDomain = user.getTenantDomain();
         String username = user.toString();
         UserRealm realm = IdentityTenantUtil.getRealm(userTenantDomain, username);
@@ -285,38 +291,32 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
             return mappedAppClaims;
         }
 
-        List<String> claimURIList = new ArrayList<>();
-        for (ClaimMapping mapping : requestedLocalClaimMap) {
-            if (mapping.isRequested()) {
-                claimURIList.add(mapping.getLocalClaim().getClaimUri());
-            }
-        }
+        List<String> claimURIList = getRequestedClaimUris(requestedLocalClaimMap);
         if (log.isDebugEnabled()) {
             log.debug("Requested number of local claims: " + claimURIList.size());
         }
 
-        String claimSeparator = FrameworkUtils.getMultiAttributeSeparator();
-        Map<String, String> userClaims =
-                getUserClaimsMap(serviceProvider, username, realm, claimURIList, claimSeparator);
+        Map<String, String> userClaims = getUserClaimsMap(username, realm, claimURIList);
+        if (isNotEmpty(userClaims)) {
+            handleServiceProviderRoleMappings(serviceProvider, userAttributeSeparator, userClaims);
 
-        addUserClaimsInOidcDialect(mappedAppClaims, spTenantDomain, username, userClaims);
-
-        if (StringUtils.isNotBlank(claimSeparator)) {
-            mappedAppClaims.put(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR, claimSeparator);
+            Map<String, Object> userClaimsInOIDCDialect = getUserClaimsInOIDCDialect(spTenantDomain, username, userClaims);
+            mappedAppClaims.putAll(userClaimsInOIDCDialect);
         }
 
+        mappedAppClaims.put(IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR, userAttributeSeparator);
         return mappedAppClaims;
     }
 
-    private void addUserClaimsInOidcDialect(Map<String, Object> mappedAppClaims,
-                                            String spTenantDomain,
-                                            String username,
-                                            Map<String, String> userClaims) throws ClaimMetadataException {
+    private Map<String, Object> getUserClaimsInOIDCDialect(String spTenantDomain,
+                                                           String username,
+                                                           Map<String, String> userClaims) throws ClaimMetadataException {
         if (isEmpty(userClaims)) {
             // User claims can be empty if user does not exist in user stores. Probably a federated user.
             if (log.isDebugEnabled()) {
                 log.debug("No claims found for " + username + " from user store.");
             }
+            return new HashMap<>();
         } else {
             // Retrieve OIDC to Local Claim Mappings.
             Map<String, String> oidcToLocalClaimMappings = ClaimMetadataHandler.getInstance()
@@ -325,27 +325,24 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
             if (log.isDebugEnabled()) {
                 log.debug("Number of user claims retrieved for " + username + " from user store: " + userClaims.size());
             }
-            // get user claims in OIDC dialect
-            mappedAppClaims.putAll(getUserClaimsInOidcDialect(oidcToLocalClaimMappings, userClaims));
+            // Get user claims in OIDC dialect
+            return getUserClaimsInOidcDialect(oidcToLocalClaimMappings, userClaims);
         }
     }
 
-    private Map<String, String> getUserClaimsMap(ServiceProvider serviceProvider,
-                                                 String username,
+    private Map<String, String> getUserClaimsMap(String username,
                                                  UserRealm realm,
-                                                 List<String> claimURIList,
-                                                 String claimSeparator) throws FrameworkException, UserStoreException {
-        Map<String, String> userClaims = null;
+                                                 List<String> claimURIList) throws FrameworkException, UserStoreException {
+        Map<String, String> userClaims = new HashMap<>();
         try {
             userClaims = realm.getUserStoreManager().getUserClaimValues(
                     MultitenantUtils.getTenantAwareUsername(username),
-                    claimURIList.toArray(new String[claimURIList.size()]), null);
-
-            setSpMappedRoleClaim(serviceProvider, claimSeparator, userClaims);
+                    claimURIList.toArray(new String[claimURIList.size()]),
+                    null);
         } catch (UserStoreException e) {
-            if (e.getMessage().contains("UserNotFound")) {
+            if (e.getMessage().contains(USER_NOT_FOUND_ERROR_MESSAGE)) {
                 if (log.isDebugEnabled()) {
-                    log.debug("User " + username + " not found in user store");
+                    log.debug("User " + username + " not found in user store.");
                 }
             } else {
                 throw e;
@@ -354,19 +351,25 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
         return userClaims;
     }
 
-    private void setSpMappedRoleClaim(ServiceProvider serviceProvider,
-                                      String claimSeparator,
-                                      Map<String, String> userClaims) throws FrameworkException {
+    private void handleServiceProviderRoleMappings(ServiceProvider serviceProvider,
+                                                   String claimSeparator,
+                                                   Map<String, String> userClaims) throws FrameworkException {
         //set local2sp role mappings
-        for (Map.Entry<String, String> claim : userClaims.entrySet()) {
-            if (FrameworkConstants.LOCAL_ROLE_CLAIM_URI.equals(claim.getKey())) {
-                String roleClaim = claim.getValue();
-                List<String> rolesList = new LinkedList<>(Arrays.asList(roleClaim.split(claimSeparator)));
+        String spMappedRoleClaim = getSpMappedRoleClaim(serviceProvider, userClaims, claimSeparator);
+        if (StringUtils.isNotBlank(spMappedRoleClaim)) {
+            userClaims.put(LOCAL_ROLE_CLAIM_URI, spMappedRoleClaim);
+        }
+    }
 
-                String roles = getServiceProviderMappedUserRoles(serviceProvider, rolesList, claimSeparator);
-                claim.setValue(roles);
-                break;
-            }
+    private String getSpMappedRoleClaim(ServiceProvider serviceProvider,
+                                        Map<String, String> userClaims,
+                                        String claimSeparator) throws FrameworkException {
+        if (isNotEmpty(userClaims) && userClaims.containsKey(LOCAL_ROLE_CLAIM_URI)) {
+            String roleClaim = userClaims.get(LOCAL_ROLE_CLAIM_URI);
+            List<String> rolesList = new LinkedList<>(Arrays.asList(roleClaim.split(claimSeparator)));
+            return getServiceProviderMappedUserRoles(serviceProvider, rolesList, claimSeparator);
+        } else {
+            return StringUtils.EMPTY;
         }
     }
 
@@ -377,14 +380,6 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
             spTenantDomain = requestMsgCtx.getOauth2AccessTokenReqDTO().getTenantDomain();
         }
         return spTenantDomain;
-    }
-
-    private ServiceProvider getServiceProvider(String clientId,
-                                               String spTenantDomain) throws IdentityApplicationManagementException {
-        ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
-        String spName =
-                applicationMgtService.getServiceProviderNameByClientId(clientId, INBOUND_AUTH2_TYPE, spTenantDomain);
-        return applicationMgtService.getApplicationExcludingFileBasedSPs(spName, spTenantDomain);
     }
 
     /**
@@ -428,17 +423,14 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
             spTenantDomain = requestMsgCtx.getAuthorizationReqDTO().getTenantDomain();
         }
 
-        ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
-        String spName = applicationMgtService
-                .getServiceProviderNameByClientId(requestMsgCtx.getAuthorizationReqDTO().getConsumerKey(),
-                        INBOUND_AUTH2_TYPE, spTenantDomain);
-        ServiceProvider serviceProvider = applicationMgtService.getApplicationExcludingFileBasedSPs(spName,
-                spTenantDomain);
+        String consumerKey = requestMsgCtx.getAuthorizationReqDTO().getConsumerKey();
+        ServiceProvider serviceProvider = getServiceProvider(spTenantDomain, consumerKey);
         if (serviceProvider == null) {
             return mappedAppClaims;
         }
+
         ClaimMapping[] requestedLocalClaimMap = serviceProvider.getClaimConfig().getClaimMappings();
-        if (requestedLocalClaimMap == null || !(requestedLocalClaimMap.length > 0)) {
+        if (ArrayUtils.isEmpty(requestedLocalClaimMap)) {
             return new HashMap<>();
         }
 
@@ -452,33 +444,13 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
             return new HashMap<>();
         }
 
-        List<String> claimURIList = new ArrayList<>();
-        for (ClaimMapping mapping : requestedLocalClaimMap) {
-            if (mapping.isRequested()) {
-                claimURIList.add(mapping.getLocalClaim().getClaimUri());
-            }
-        }
+        List<String> claimURIList = getRequestedClaimUris(requestedLocalClaimMap);
+
         if (log.isDebugEnabled()) {
             log.debug("Requested number of local claims: " + claimURIList.size());
         }
 
-        Map<String, String> spToLocalClaimMappings = ClaimMetadataHandler.getInstance().
-                getMappingsMapFromOtherDialectToCarbon(OIDC_DIALECT, null, spTenantDomain, false);
-
-        Map<String, String> userClaims = null;
-        try {
-            userClaims = realm.getUserStoreManager().getUserClaimValues(UserCoreUtil.addDomainToName(
-                    user.getUserName(), user.getUserStoreDomain()), claimURIList.toArray(
-                    new String[claimURIList.size()]), null);
-        } catch (UserStoreException e) {
-            if (e.getMessage().contains("UserNotFound")) {
-                if (log.isDebugEnabled()) {
-                    log.debug("User " + user + " not found in user store");
-                }
-            } else {
-                throw e;
-            }
-        }
+        Map<String, String> userClaims = getUserClaimsMap(username, realm, claimURIList);
 
         if (isEmpty(userClaims)) {
             // User claims can be empty if user does not exist in user stores. Probably a federated user.
@@ -490,7 +462,11 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
                 log.debug("Number of user claims retrieved from user store: " + userClaims.size());
             }
 
-            // get user claims in OIDC dialect
+            handleServiceProviderRoleMappings(serviceProvider, userAttributeSeparator, userClaims);
+
+            Map<String, String> spToLocalClaimMappings = ClaimMetadataHandler.getInstance().
+                    getMappingsMapFromOtherDialectToCarbon(OIDC_DIALECT, null, spTenantDomain, false);
+            // Get user claims in OIDC dialect
             mappedAppClaims.putAll(getUserClaimsInOidcDialect(spToLocalClaimMappings, userClaims));
         }
 
@@ -504,6 +480,25 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
         }
 
         return mappedAppClaims;
+    }
+
+    private List<String> getRequestedClaimUris(ClaimMapping[] requestedLocalClaimMap) {
+        List<String> claimURIList = new ArrayList<>();
+        for (ClaimMapping mapping : requestedLocalClaimMap) {
+            if (mapping.isRequested()) {
+                claimURIList.add(mapping.getLocalClaim().getClaimUri());
+            }
+        }
+        return claimURIList;
+    }
+
+    private ServiceProvider getServiceProvider(String spTenantDomain, String consumerKey) throws IdentityApplicationManagementException {
+        ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
+        String spName = applicationMgtService
+                .getServiceProviderNameByClientId(consumerKey,
+                        INBOUND_AUTH2_TYPE, spTenantDomain);
+        return applicationMgtService.getApplicationExcludingFileBasedSPs(spName,
+                spTenantDomain);
     }
 
     /**

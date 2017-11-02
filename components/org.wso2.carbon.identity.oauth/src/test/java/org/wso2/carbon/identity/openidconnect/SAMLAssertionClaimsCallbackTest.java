@@ -189,7 +189,7 @@ public class SAMLAssertionClaimsCallbackTest {
         };
     }
 
-    @Test(dataProvider = "provideSamlAttributeValues")
+    @Test(dataProvider = "samlAttributeValueProvider")
     public void testCustomClaimForOAuthTokenReqMessageContext(String[] attributeValues,
                                                               String expectedClaimValue) throws Exception {
 

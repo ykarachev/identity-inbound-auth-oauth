@@ -24,6 +24,7 @@ import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheKey;
@@ -76,7 +77,8 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
 
         String subjectClaim = (String) userClaims.get(OAuth2Util.SUB);
         if (StringUtils.isBlank(subjectClaim)) {
-            // We need to send the tenant aware and user store domain removed name.
+            // We need to send the tenant aware and user store domain removed name and then build the subject claim
+            // to honour the Local and Outbound Authentication Configuration preferences of the SP.
             String tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(tokenResponse.getAuthorizedUser());
             subjectClaim = UserCoreUtil.removeDomainFromName(tenantAwareUsername);
         }
@@ -91,7 +93,7 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
         ServiceProvider serviceProvider = getServiceProvider(tenantDomain, clientId);
 
         String userTenantDomain = MultitenantUtils.getTenantDomain(tokenResponse.getAuthorizedUser());
-        String userStoreDomain = UserCoreUtil.extractDomainFromName(tokenResponse.getAuthorizedUser());
+        String userStoreDomain = IdentityUtil.extractDomainFromName(tokenResponse.getAuthorizedUser());
 
         if (serviceProvider != null) {
             boolean isUseTenantDomainInLocalSubject = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
@@ -100,9 +102,9 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
                     .isUseUserstoreDomainInLocalSubjectIdentifier();
 
             if (StringUtils.isNotEmpty(sub)) {
-                // building subject in accordance with Local and Outbound Authentication Configuration preferences
+                // Build subject in accordance with Local and Outbound Authentication Configuration preferences
                 if (isUseUserStoreDomainInLocalSubject) {
-                    sub = UserCoreUtil.addDomainToName(sub, userStoreDomain);
+                    sub = IdentityUtil.addDomainToName(sub, userStoreDomain);
                 }
                 if (isUseTenantDomainInLocalSubject) {
                     sub = UserCoreUtil.addTenantDomainToEntry(sub, userTenantDomain);
@@ -113,21 +115,18 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
     }
 
     private String getClientId(OAuth2TokenValidationResponseDTO tokenResponse) throws UserInfoEndpointException {
-        String clientId;
         try {
-            clientId = OAuth2Util.getClientIdForAccessToken
-                    (tokenResponse.getAuthorizationContextToken().getTokenString());
+             return OAuth2Util.getClientIdForAccessToken(tokenResponse.getAuthorizationContextToken().getTokenString());
         } catch (IdentityOAuth2Exception e) {
             throw new UserInfoEndpointException("Error while obtaining the client_id from accessToken.", e);
         }
-        return clientId;
     }
 
     private ServiceProvider getServiceProvider(String tenantDomain, String clientId) throws UserInfoEndpointException {
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
         ServiceProvider serviceProvider;
         try {
-            //getting service provider
+            // Getting the Service Provider
             serviceProvider = applicationMgtService.getServiceProviderByClientId(
                     clientId, IdentityApplicationConstants.OAuth2.NAME, tenantDomain);
         } catch (IdentityApplicationManagementException e) {
@@ -159,7 +158,7 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
             int tenantId = OAuth2Util.getClientTenatId();
             return IdentityTenantUtil.getTenantDomain(tenantId);
         } finally {
-            // clear the thread local that contained the SP tenantId
+            // Clear the thread local that contained the SP tenantId
             OAuth2Util.clearClientTenantId();
         }
     }

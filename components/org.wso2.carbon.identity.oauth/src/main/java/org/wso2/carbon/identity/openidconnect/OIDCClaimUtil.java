@@ -47,6 +47,7 @@ public class OIDCClaimUtil {
     private static final String EMAIL_VERIFIED = "email_verified";
     private static final String ADDRESS_PREFIX = "address.";
     private static final String ADDRESS = "address";
+    public static final String ADDRESS_SCOPE = "address";
     private static final String OIDC_SCOPE_CLAIM_SEPARATOR = ",";
 
     private static final Log log = LogFactory.getLog(OIDCClaimUtil.class);
@@ -82,7 +83,7 @@ public class OIDCClaimUtil {
 
         // <"openid", "first_name,last_name,username">
         Properties properties = getOIDCScopes(spTenantDomain);
-        if (properties != null && !properties.isEmpty()) {
+        if (isNotEmpty(properties)) {
             List<String> claimUrisInAddressScope = getAddressScopeClaims(properties);
             // Iterate through scopes requested in the OAuth2/OIDC request to filter claims
             for (String requestedScope : requestedScopes) {
@@ -119,6 +120,10 @@ public class OIDCClaimUtil {
         return returnedClaims;
     }
 
+    protected static boolean isNotEmpty(Properties properties) {
+        return properties != null && !properties.isEmpty();
+    }
+
 
     private static void populateClaimsForAddressScope(String claimUri,
                                                       Object claimValue,
@@ -141,13 +146,7 @@ public class OIDCClaimUtil {
     }
 
     private static List<String> getAddressScopeClaims(Properties oidcProperties) {
-        String[] addressScopeClaims;
-        if (StringUtils.isBlank(oidcProperties.getProperty(ADDRESS))) {
-            addressScopeClaims = new String[0];
-        } else {
-            addressScopeClaims = oidcProperties.getProperty(ADDRESS).split(OIDC_SCOPE_CLAIM_SEPARATOR);
-        }
-        return Arrays.asList(addressScopeClaims);
+        return getClaimUrisInSupportedOidcScope(oidcProperties, ADDRESS_SCOPE);
     }
 
     private static boolean isAddressClaim(String claimUri, List<String> addressScopeClaims) {

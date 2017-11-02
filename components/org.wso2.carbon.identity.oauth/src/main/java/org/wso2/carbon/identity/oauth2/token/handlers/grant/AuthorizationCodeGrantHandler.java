@@ -185,13 +185,13 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
 
     @Override
     protected void storeAccessToken(OAuth2AccessTokenReqDTO oAuth2AccessTokenReqDTO, String userStoreDomain,
-                                    AccessTokenDO newAccessTokenDO, String newAccessToken, AccessTokenDO
-                                                existingAccessTokenDO)
+                                    AccessTokenDO newTokenBean, String newAccessToken, AccessTokenDO
+                                            existingTokenBean)
             throws IdentityOAuth2Exception {
         try {
-            newAccessTokenDO.setAuthorizationCode(oAuth2AccessTokenReqDTO.getAuthorizationCode());
+            newTokenBean.setAuthorizationCode(oAuth2AccessTokenReqDTO.getAuthorizationCode());
             tokenMgtDAO.storeAccessToken(newAccessToken, oAuth2AccessTokenReqDTO.getClientId(),
-                                         newAccessTokenDO, existingAccessTokenDO, userStoreDomain);
+                    newTokenBean, existingTokenBean, userStoreDomain);
         } catch (IdentityException e) {
             throw new IdentityOAuth2Exception(
                     "Error occurred while storing new access token", e);

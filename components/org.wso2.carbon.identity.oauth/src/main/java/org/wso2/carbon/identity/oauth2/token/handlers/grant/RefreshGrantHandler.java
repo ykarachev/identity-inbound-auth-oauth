@@ -24,7 +24,6 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
-import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
@@ -150,21 +149,6 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             throw new IdentityOAuth2Exception("No previous access tokens found");
         }
         return accessTokenBeans;
-    }
-
-    private String getUserStoreDomain(AuthenticatedUser authenticatedUser) throws IdentityOAuth2Exception {
-        String userStoreDomain = null;
-        if (OAuth2Util.checkAccessTokenPartitioningEnabled() && OAuth2Util.checkUserNameAssertionEnabled()) {
-            try {
-                userStoreDomain = OAuth2Util.getUserStoreForFederatedUser(authenticatedUser);
-            } catch (IdentityOAuth2Exception e) {
-                String errorMsg = "Error occurred while getting user store domain for User ID : " +
-                        authenticatedUser;
-                log.error(errorMsg, e);
-                throw new IdentityOAuth2Exception(errorMsg, e);
-            }
-        }
-        return userStoreDomain;
     }
 
     private boolean validateRefreshTokenStatus(RefreshTokenValidationDataDO validationBean, String clientId)
@@ -329,16 +313,6 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                     + oAuthAppDO.getRefreshTokenExpiryTime());
         }
         return oAuthAppDO;
-    }
-
-    private String getTokenType() throws IdentityOAuth2Exception {
-        String tokenType;
-        if (isOfTypeApplicationUser()) {
-            tokenType = OAuthConstants.UserType.APPLICATION_USER;
-        } else {
-            tokenType = OAuthConstants.UserType.APPLICATION;
-        }
-        return tokenType;
     }
 
     @Override

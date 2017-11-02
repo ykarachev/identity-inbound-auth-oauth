@@ -52,6 +52,8 @@ import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE;
+
 public abstract class AbstractAuthorizationGrantHandler implements AuthorizationGrantHandler {
 
     private static Log log = LogFactory.getLog(AbstractAuthorizationGrantHandler.class);
@@ -61,7 +63,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     protected boolean cacheEnabled;
     protected OAuthCache oauthCache;
     protected static final String EXISTING_TOKEN_ISSUED = "existingTokenUsed";
-    private static final int SECONDS_TO_MILI_SECONDS_FACTOR = 1000;
+    protected static final int SECONDS_TO_MILISECONDS_FACTOR = 1000;
 
     @Override
     public void init() throws IdentityOAuth2Exception {
@@ -90,6 +92,17 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     }
 
     @Override
+    public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
+            throws IdentityOAuth2Exception {
+        if (tokReqMsgCtx.getOauth2AccessTokenReqDTO() != null) {
+            return true;
+        } else {
+            throw new IdentityOAuth2Exception("Token request data not found in the request message context");
+        }
+
+    }
+
+    @Override
     public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
 
         String scope = OAuth2Util.buildScopeString(tokReqMsgCtx.getScope());
@@ -103,21 +116,149 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                 long expireTime = getAccessTokenExpiryTimeMillis(existingTokenBean);
                 if (isExistingTokenValid(existingTokenBean, expireTime)) {
                     tokReqMsgCtx.addProperty(EXISTING_TOKEN_ISSUED, true);
-                    return createResponseWithTokenBean(tokReqMsgCtx, existingTokenBean, expireTime, scope);
+                    return createResponseWithTokenBean(existingTokenBean, expireTime, scope);
                 }
             }
-            // issue a new access token.
+            // issuing new access token.
             if (log.isDebugEnabled()) {
                 log.debug("No active access token found for client Id: " + consumerKey +
                         ", user: " + authorizedUser + " and scope: " + scope +
                         ". Therefore issuing new token");
             }
-            return generateNewAccessToken(tokReqMsgCtx, scope, consumerKey, existingTokenBean);
+            return generateNewAccessTokenResponse(tokReqMsgCtx, scope, consumerKey, existingTokenBean);
         }
     }
 
-    private OAuth2AccessTokenRespDTO generateNewAccessToken(OAuthTokenReqMessageContext tokReqMsgCtx, String scope,
-                                                            String consumerKey, AccessTokenDO existingTokenBean)
+    @Override
+    public boolean isAuthorizedClient(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
+        OAuth2AccessTokenReqDTO tokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
+        String grantType = tokenReqDTO.getGrantType();
+
+        OAuthAppDO oAuthAppBean = (OAuthAppDO)tokReqMsgCtx.getProperty("OAuthAppDO");
+
+        if (oAuthAppBean == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("OAuthAppDO is not available in OAuthTokenReqMessageContext for client id: " + tokenReqDTO
+                        .getClientId());
+            }
+            return false;
+        }
+        if (StringUtils.isBlank(oAuthAppBean.getGrantTypes())) {
+            if (log.isDebugEnabled()) {
+                log.debug("Could not find authorized grant types for client id: " + tokenReqDTO.getClientId());
+            }
+            return false;
+        }
+
+        // If the application has defined a limited set of grant types, then check the grant
+        if (!oAuthAppBean.getGrantTypes().contains(grantType)) {
+            if (log.isDebugEnabled()) {
+                //Do not change this log format as these logs use by external applications
+                log.debug("Unsupported Grant Type : " + grantType + " for client id : " + tokenReqDTO.getClientId());
+            }
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public boolean validateScope(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
+        OAuthCallback scopeValidationCallback = new OAuthCallback(tokReqMsgCtx.getAuthorizedUser(),
+                tokReqMsgCtx.getOauth2AccessTokenReqDTO().getClientId(), OAuthCallback.OAuthCallbackType
+                .SCOPE_VALIDATION_TOKEN);
+        scopeValidationCallback.setRequestedScope(tokReqMsgCtx.getScope());
+        if (tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType().equals(
+                org.wso2.carbon.identity.oauth.common.GrantType.SAML20_BEARER.toString())) {
+            scopeValidationCallback.setCarbonGrantType(org.wso2.carbon.identity.oauth.common.GrantType.valueOf(
+                    OAuthConstants.OAUTH_SAML2_BEARER_GRANT_ENUM.toString()));
+        } else if (tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType().equals(
+                org.wso2.carbon.identity.oauth.common.GrantType.IWA_NTLM.toString())) {
+            scopeValidationCallback.setCarbonGrantType(org.wso2.carbon.identity.oauth.common.GrantType.valueOf(
+                    OAuthConstants.OAUTH_IWA_NTLM_GRANT_ENUM.toString()));
+        } else {
+            scopeValidationCallback.setGrantType(tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType());
+        }
+
+        callbackManager.handleCallback(scopeValidationCallback);
+        tokReqMsgCtx.setValidityPeriod(scopeValidationCallback.getValidityPeriod());
+        tokReqMsgCtx.setScope(scopeValidationCallback.getApprovedScope());
+
+        Set<OAuth2ScopeHandler> scopeHandlers = OAuthServerConfiguration.getInstance().getOAuth2ScopeHandlers();
+        boolean isValid = true;
+
+        for (OAuth2ScopeHandler scopeHandler: scopeHandlers) {
+            if (scopeHandler != null && scopeHandler.canHandle(tokReqMsgCtx)) {
+                isValid = scopeHandler.validateScope(tokReqMsgCtx);
+                if (log.isDebugEnabled()) {
+                    log.debug(String.format("ScopeHandler: %s validated to: %s", scopeHandler.getClass()
+                            .getCanonicalName(), isValid));
+                }
+                if (!isValid) {
+                    break;
+                }
+            }
+        }
+        return isValid && scopeValidationCallback.isValidScope();
+    }
+
+    @Override
+    public boolean authorizeAccessDelegation(OAuthTokenReqMessageContext tokReqMsgCtx)
+            throws IdentityOAuth2Exception {
+        OAuthCallback authzCallback = new OAuthCallback(tokReqMsgCtx.getAuthorizedUser(),
+                tokReqMsgCtx.getOauth2AccessTokenReqDTO().getClientId(),
+                OAuthCallback.OAuthCallbackType.ACCESS_DELEGATION_TOKEN);
+        authzCallback.setRequestedScope(tokReqMsgCtx.getScope());
+        if (tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType().equals(
+                org.wso2.carbon.identity.oauth.common.GrantType.SAML20_BEARER.toString())) {
+            authzCallback.setCarbonGrantType(org.wso2.carbon.identity.oauth.common.GrantType.valueOf(
+                    OAuthConstants.OAUTH_SAML2_BEARER_GRANT_ENUM));
+        } else if (tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType().equals(
+                org.wso2.carbon.identity.oauth.common.GrantType.IWA_NTLM.toString())) {
+            authzCallback.setCarbonGrantType(org.wso2.carbon.identity.oauth.common.GrantType.valueOf(
+                    OAuthConstants.OAUTH_IWA_NTLM_GRANT_ENUM));
+        } else {
+            authzCallback.setGrantType(tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType());
+        }
+        callbackManager.handleCallback(authzCallback);
+        tokReqMsgCtx.setValidityPeriod(authzCallback.getValidityPeriod());
+        return authzCallback.isAuthorized();
+    }
+
+    protected String getTokenType() throws IdentityOAuth2Exception {
+        return isOfTypeApplicationUser() ?
+                OAuthConstants.UserType.APPLICATION_USER : OAuthConstants.UserType.APPLICATION;
+    }
+
+    protected void storeAccessToken(OAuth2AccessTokenReqDTO oAuth2AccessTokenReqDTO, String userStoreDomain,
+                                    AccessTokenDO newTokenBean, String newAccessToken, AccessTokenDO
+                                            existingTokenBean) throws IdentityOAuth2Exception {
+        try {
+            tokenMgtDAO.storeAccessToken(newAccessToken, oAuth2AccessTokenReqDTO.getClientId(),
+                    newTokenBean, existingTokenBean, userStoreDomain);
+        } catch (IdentityException e) {
+            throw new IdentityOAuth2Exception(
+                    "Error occurred while storing new access token : " + newAccessToken, e);
+        }
+    }
+
+    protected String getUserStoreDomain(AuthenticatedUser authenticatedUser) throws IdentityOAuth2Exception {
+        String userStoreDomain = null;
+        if (OAuth2Util.checkAccessTokenPartitioningEnabled() && OAuth2Util.checkUserNameAssertionEnabled()) {
+            //select the user store domain when multiple user stores are configured.
+            try {
+                userStoreDomain = OAuth2Util.getUserStoreForFederatedUser(authenticatedUser);
+            } catch (IdentityOAuth2Exception e) {
+                String errorMsg = "Error occurred while getting user store domain for User ID : " +
+                        authenticatedUser;
+                log.error(errorMsg, e);
+                throw new IdentityOAuth2Exception(errorMsg, e);
+            }
+        }
+        return userStoreDomain;
+    }
+
+    private OAuth2AccessTokenRespDTO generateNewAccessTokenResponse(OAuthTokenReqMessageContext tokReqMsgCtx, String scope,
+                                                                    String consumerKey, AccessTokenDO existingTokenBean)
             throws IdentityOAuth2Exception {
         OAuthAppDO oAuthAppBean = getoAuthApp(consumerKey);
         Timestamp timestamp = new Timestamp(new Date().getTime());
@@ -130,11 +271,11 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                 newTokenBean.getAccessToken());
         //update cache with newly added token
         updateCacheIfEnabled(newTokenBean, OAuth2Util.buildScopeString(tokReqMsgCtx.getScope()));
-        return createResponseWithTokenBean(tokReqMsgCtx, newTokenBean, validityPeriodInMillis, scope);
+        return createResponseWithTokenBean(newTokenBean, validityPeriodInMillis, scope);
     }
 
     private boolean isExistingTokenValid(AccessTokenDO existingTokenBean, long expireTime) {
-        if(OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(existingTokenBean.getTokenState())
+        if(TOKEN_STATE_ACTIVE.equals(existingTokenBean.getTokenState())
                 && expireTime != 0) {
             return true;
         } else {
@@ -159,7 +300,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         validateGrantTypeParam(tokenReq);
 
         AccessTokenDO newTokenBean = new AccessTokenDO();
-        newTokenBean.setTokenState(OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
+        newTokenBean.setTokenState(TOKEN_STATE_ACTIVE);
         newTokenBean.setConsumerKey(tokenReq.getClientId());
         newTokenBean.setAuthzUser(tokReqMsgCtx.getAuthorizedUser());
         newTokenBean.setScope(tokReqMsgCtx.getScope());
@@ -170,7 +311,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         newTokenBean.setIssuedTime(timestamp);
         newTokenBean.setAccessToken(getNewAccessToken(tokReqMsgCtx));
         newTokenBean.setValidityPeriodInMillis(validityPeriodInMillis);
-        newTokenBean.setValidityPeriod(validityPeriodInMillis/ SECONDS_TO_MILI_SECONDS_FACTOR);
+        newTokenBean.setValidityPeriod(validityPeriodInMillis/ SECONDS_TO_MILISECONDS_FACTOR);
         setRefreshTokenDetails(tokReqMsgCtx, oAuthAppBean, existingTokenBean, timestamp, validityPeriodInMillis,
                 tokenReq, newTokenBean);
         return newTokenBean;
@@ -205,7 +346,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                     ", Timestamp: " + timestamp +
                     ", Validity period: " + newTokenBean.getValidityPeriod() + "s" +
                     ", Scope: " + OAuth2Util.buildScopeString(tokReqMsgCtx.getScope()) +
-                    " and Token State: " + OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE);
+                    " and Token State: " + TOKEN_STATE_ACTIVE);
         }
     }
 
@@ -244,9 +385,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     }
 
     private String getNewAccessToken(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
-        String newAccessToken;
         try {
-            newAccessToken = oauthIssuerImpl.accessToken(tokReqMsgCtx);
+            String newAccessToken = oauthIssuerImpl.accessToken(tokReqMsgCtx);
             if (OAuth2Util.checkUserNameAssertionEnabled()) {
                 newAccessToken = OAuth2Util.addUsernameToToken(tokReqMsgCtx.getAuthorizedUser(), newAccessToken);
             }
@@ -257,16 +397,15 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     }
 
     private String getRefreshToken(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
-        String refreshToken;
         try {
-            refreshToken = oauthIssuerImpl.refreshToken(tokReqMsgCtx);
+            String refreshToken = oauthIssuerImpl.refreshToken(tokReqMsgCtx);
             if (OAuth2Util.checkUserNameAssertionEnabled()) {
                 refreshToken = OAuth2Util.addUsernameToToken(tokReqMsgCtx.getAuthorizedUser(), refreshToken);
             }
+            return refreshToken;
         } catch (OAuthSystemException e) {
             throw new IdentityOAuth2Exception("Error while issueing refresh token");
         }
-        return refreshToken;
     }
 
     private void setRefreshTokenDetailsFromExistingToken(AccessTokenDO existingAccessTokenDO,
@@ -286,14 +425,14 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     private long getRefreshTokenValidityPeriod(String consumerKey, OAuthAppDO oAuthAppBean) {
         long refreshTokenValidityPeriodInMillis;
         if (oAuthAppBean.getRefreshTokenExpiryTime() != 0) {
-            refreshTokenValidityPeriodInMillis = oAuthAppBean.getRefreshTokenExpiryTime() * SECONDS_TO_MILI_SECONDS_FACTOR;
+            refreshTokenValidityPeriodInMillis = oAuthAppBean.getRefreshTokenExpiryTime() * SECONDS_TO_MILISECONDS_FACTOR;
             if (log.isDebugEnabled()) {
                 log.debug("OAuth application id : " + consumerKey + ", refresh token validity time " +
                         refreshTokenValidityPeriodInMillis + "ms");
             }
         } else {
             refreshTokenValidityPeriodInMillis = OAuthServerConfiguration.getInstance()
-                    .getRefreshTokenValidityPeriodInSeconds() * SECONDS_TO_MILI_SECONDS_FACTOR;
+                    .getRefreshTokenValidityPeriodInSeconds() * SECONDS_TO_MILISECONDS_FACTOR;
         }
         return refreshTokenValidityPeriodInMillis;
     }
@@ -315,8 +454,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         }
     }
 
-    private OAuth2AccessTokenRespDTO createResponseWithTokenBean(OAuthTokenReqMessageContext tokReqMsgCtx,
-                                                                 AccessTokenDO existingAccessTokenDO,
+    private OAuth2AccessTokenRespDTO createResponseWithTokenBean(AccessTokenDO existingAccessTokenDO,
                                                                  long expireTimeMillis, String scope)
             throws IdentityOAuth2Exception {
         OAuth2AccessTokenRespDTO tokenRespDTO = new OAuth2AccessTokenRespDTO();
@@ -328,10 +466,10 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
             tokenRespDTO.setRefreshToken(existingAccessTokenDO.getRefreshToken());
         }
         if (expireTimeMillis > 0) {
-            tokenRespDTO.setExpiresIn(expireTimeMillis / SECONDS_TO_MILI_SECONDS_FACTOR);
+            tokenRespDTO.setExpiresIn(expireTimeMillis / SECONDS_TO_MILISECONDS_FACTOR);
             tokenRespDTO.setExpiresInMillis(expireTimeMillis);
         } else {
-            tokenRespDTO.setExpiresIn(Long.MAX_VALUE / SECONDS_TO_MILI_SECONDS_FACTOR);
+            tokenRespDTO.setExpiresIn(Long.MAX_VALUE / SECONDS_TO_MILISECONDS_FACTOR);
             tokenRespDTO.setExpiresInMillis(Long.MAX_VALUE);
         }
         tokenRespDTO.setAuthorizedScopes(scope);
@@ -343,18 +481,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         return new OAuthCacheKey(cacheKeyString);
     }
 
-    protected String getTokenType() throws IdentityOAuth2Exception {
-        String tokenType;
-        if (isOfTypeApplicationUser()) {
-            tokenType = OAuthConstants.UserType.APPLICATION_USER;
-        } else {
-            tokenType = OAuthConstants.UserType.APPLICATION;
-        }
-        return tokenType;
-    }
-
     private OAuthAppDO getoAuthApp(String consumerKey) throws IdentityOAuth2Exception {
-        OAuthAppDO oAuthAppBean = null;
+        OAuthAppDO oAuthAppBean;
         try {
             oAuthAppBean = OAuth2Util.getAppInformationByClientId(consumerKey);
             if (log.isDebugEnabled()) {
@@ -441,7 +569,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                                                long validityPeriodInMillis) {
         long callbackValidityPeriod = tokReqMsgCtx.getValidityPeriod();
         if (callbackValidityPeriod != OAuthConstants.UNASSIGNED_VALIDITY_PERIOD) {
-            validityPeriodInMillis = callbackValidityPeriod * SECONDS_TO_MILI_SECONDS_FACTOR;
+            validityPeriodInMillis = callbackValidityPeriod * SECONDS_TO_MILISECONDS_FACTOR;
             if (log.isDebugEnabled()) {
                 log.debug("OAuth application id : " + consumerKey +
                         ", callback access token validity time in milliseconds : " + validityPeriodInMillis);
@@ -454,14 +582,14 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         long validityPeriodInMillis;// If the user is an application
         // Default Validity Period (in seconds)
         if (oAuthAppBean.getApplicationAccessTokenExpiryTime() != 0) {
-            validityPeriodInMillis = oAuthAppBean.getApplicationAccessTokenExpiryTime() * SECONDS_TO_MILI_SECONDS_FACTOR;
+            validityPeriodInMillis = oAuthAppBean.getApplicationAccessTokenExpiryTime() * SECONDS_TO_MILISECONDS_FACTOR;
             if (log.isDebugEnabled()) {
                 log.debug("OAuth application id : " + consumerKey + ", application access token validity time in " +
                         "milliseconds : " + validityPeriodInMillis);
             }
         } else {
             validityPeriodInMillis = OAuthServerConfiguration.getInstance()
-                    .getApplicationAccessTokenValidityPeriodInSeconds() * SECONDS_TO_MILI_SECONDS_FACTOR;
+                    .getApplicationAccessTokenValidityPeriodInSeconds() * SECONDS_TO_MILISECONDS_FACTOR;
         }
         return validityPeriodInMillis;
     }
@@ -469,135 +597,16 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     private long getValidityPeriodForApplicationUser(String consumerKey, OAuthAppDO oAuthAppBean) {
         long validityPeriodInMillis;// If the user is an application user
         if (oAuthAppBean.getUserAccessTokenExpiryTime() != 0) {
-            validityPeriodInMillis = oAuthAppBean.getUserAccessTokenExpiryTime() * SECONDS_TO_MILI_SECONDS_FACTOR;
+            validityPeriodInMillis = oAuthAppBean.getUserAccessTokenExpiryTime() * SECONDS_TO_MILISECONDS_FACTOR;
             if (log.isDebugEnabled()) {
                 log.debug("OAuth application id: " + consumerKey + ", user access token validity time " +
                         validityPeriodInMillis + "ms");
             }
         } else {
             validityPeriodInMillis = OAuthServerConfiguration.getInstance().
-                    getUserAccessTokenValidityPeriodInSeconds() * SECONDS_TO_MILI_SECONDS_FACTOR;
+                    getUserAccessTokenValidityPeriodInSeconds() * SECONDS_TO_MILISECONDS_FACTOR;
         }
         return validityPeriodInMillis;
-    }
-
-    protected void storeAccessToken(OAuth2AccessTokenReqDTO oAuth2AccessTokenReqDTO, String userStoreDomain,
-                                    AccessTokenDO newTokenBean, String newAccessToken, AccessTokenDO
-                                            existingTokenBean) throws IdentityOAuth2Exception {
-        try {
-            tokenMgtDAO.storeAccessToken(newAccessToken, oAuth2AccessTokenReqDTO.getClientId(),
-                                         newTokenBean, existingTokenBean, userStoreDomain);
-        } catch (IdentityException e) {
-            throw new IdentityOAuth2Exception(
-                    "Error occurred while storing new access token : " + newAccessToken, e);
-        }
-    }
-
-    @Override
-    public boolean authorizeAccessDelegation(OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
-        OAuthCallback authzCallback = new OAuthCallback(tokReqMsgCtx.getAuthorizedUser(),
-                tokReqMsgCtx.getOauth2AccessTokenReqDTO().getClientId(),
-                OAuthCallback.OAuthCallbackType.ACCESS_DELEGATION_TOKEN);
-        authzCallback.setRequestedScope(tokReqMsgCtx.getScope());
-        if (tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType().equals(
-                org.wso2.carbon.identity.oauth.common.GrantType.SAML20_BEARER.toString())) {
-            authzCallback.setCarbonGrantType(org.wso2.carbon.identity.oauth.common.GrantType.valueOf(
-                    OAuthConstants.OAUTH_SAML2_BEARER_GRANT_ENUM));
-        } else if (tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType().equals(
-                org.wso2.carbon.identity.oauth.common.GrantType.IWA_NTLM.toString())) {
-            authzCallback.setCarbonGrantType(org.wso2.carbon.identity.oauth.common.GrantType.valueOf(
-                    OAuthConstants.OAUTH_IWA_NTLM_GRANT_ENUM));
-        } else {
-            authzCallback.setGrantType(tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType());
-        }
-        callbackManager.handleCallback(authzCallback);
-        tokReqMsgCtx.setValidityPeriod(authzCallback.getValidityPeriod());
-        return authzCallback.isAuthorized();
-    }
-
-    @Override
-    public boolean validateScope(OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
-        OAuthCallback scopeValidationCallback = new OAuthCallback(tokReqMsgCtx.getAuthorizedUser(),
-                tokReqMsgCtx.getOauth2AccessTokenReqDTO().getClientId(), OAuthCallback.OAuthCallbackType
-                .SCOPE_VALIDATION_TOKEN);
-        scopeValidationCallback.setRequestedScope(tokReqMsgCtx.getScope());
-        if (tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType().equals(
-                org.wso2.carbon.identity.oauth.common.GrantType.SAML20_BEARER.toString())) {
-            scopeValidationCallback.setCarbonGrantType(org.wso2.carbon.identity.oauth.common.GrantType.valueOf(
-                    OAuthConstants.OAUTH_SAML2_BEARER_GRANT_ENUM.toString()));
-        } else if (tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType().equals(
-                org.wso2.carbon.identity.oauth.common.GrantType.IWA_NTLM.toString())) {
-            scopeValidationCallback.setCarbonGrantType(org.wso2.carbon.identity.oauth.common.GrantType.valueOf(
-                    OAuthConstants.OAUTH_IWA_NTLM_GRANT_ENUM.toString()));
-        } else {
-            scopeValidationCallback.setGrantType(tokReqMsgCtx.getOauth2AccessTokenReqDTO().getGrantType());
-        }
-
-        callbackManager.handleCallback(scopeValidationCallback);
-        tokReqMsgCtx.setValidityPeriod(scopeValidationCallback.getValidityPeriod());
-        tokReqMsgCtx.setScope(scopeValidationCallback.getApprovedScope());
-
-        Set<OAuth2ScopeHandler> scopeHandlers = OAuthServerConfiguration.getInstance().getOAuth2ScopeHandlers();
-        boolean isValid = true;
-
-        for (OAuth2ScopeHandler scopeHandler: scopeHandlers) {
-            if (scopeHandler != null && scopeHandler.canHandle(tokReqMsgCtx)) {
-                isValid = scopeHandler.validateScope(tokReqMsgCtx);
-                if (log.isDebugEnabled()) {
-                    log.debug(String.format("ScopeHandler: %s validated to: %s", scopeHandler.getClass()
-                                    .getCanonicalName(), isValid));
-                }
-                if (!isValid) {
-                    break;
-                }
-            }
-        }
-        return isValid && scopeValidationCallback.isValidScope();
-    }
-
-    @Override
-    public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
-        if (tokReqMsgCtx.getOauth2AccessTokenReqDTO() != null) {
-            return true;
-        } else {
-            throw new IdentityOAuth2Exception("Token request data not found in the request message context");
-        }
-
-    }
-
-    @Override
-    public boolean isAuthorizedClient(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
-        OAuth2AccessTokenReqDTO tokenReqDTO = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
-        String grantType = tokenReqDTO.getGrantType();
-
-        OAuthAppDO oAuthAppBean = (OAuthAppDO)tokReqMsgCtx.getProperty("OAuthAppDO");
-
-        if (oAuthAppBean == null) {
-            if (log.isDebugEnabled()) {
-                log.debug("OAuthAppDO is not available in OAuthTokenReqMessageContext for client id: " + tokenReqDTO
-                        .getClientId());
-            }
-            return false;
-        }
-        if (StringUtils.isBlank(oAuthAppBean.getGrantTypes())) {
-            if (log.isDebugEnabled()) {
-                log.debug("Could not find authorized grant types for client id: " + tokenReqDTO.getClientId());
-            }
-            return false;
-        }
-
-        // If the application has defined a limited set of grant types, then check the grant
-        if (!oAuthAppBean.getGrantTypes().contains(grantType)) {
-            if (log.isDebugEnabled()) {
-                //Do not change this log format as these logs use by external applications
-                log.debug("Unsupported Grant Type : " + grantType + " for client id : " + tokenReqDTO.getClientId());
-            }
-            return false;
-        }
-        return true;
     }
 
     private AccessTokenDO getExistingToken(OAuthTokenReqMessageContext tokenMsgCtx, OAuthCacheKey cacheKey)
@@ -635,7 +644,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                 }
             }
             long expireTime = getAccessTokenExpiryTimeMillis(existingToken);
-            if (OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(existingToken.getTokenState()) &&
+            if (TOKEN_STATE_ACTIVE.equals(existingToken.getTokenState()) &&
                     expireTime != 0) {
                 // Active token retrieved from db, adding to cache if cacheEnabled
                 addTokenToCache(cacheKey, existingToken);
@@ -650,8 +659,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         CacheEntry cacheEntry = oauthCache.getValueFromCache(cacheKey);
         if (cacheEntry != null && cacheEntry instanceof AccessTokenDO) {
             existingToken = (AccessTokenDO) cacheEntry;
-            if (log.isDebugEnabled()
-                    && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+            if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                 log.debug("Retrieved active access token(hashed): " + DigestUtils.sha256Hex
                         (existingToken.getAccessToken()) + " in the state: " + existingToken.getTokenState() +
                         " for client Id " + consumerKey + ", user " + authorizedUser +
@@ -682,7 +690,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     private boolean isRefreshTokenValid(AccessTokenDO existingAccessTokenDO, long validityPeriod, String consumerKey) {
         if (existingAccessTokenDO != null) {
             long refreshTokenExpireTime = OAuth2Util.getRefreshTokenExpireTimeMillis(existingAccessTokenDO);
-            if (OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE.equals(existingAccessTokenDO.getTokenState())) {
+            if (TOKEN_STATE_ACTIVE.equals(existingAccessTokenDO.getTokenState())) {
                 if (!isRefreshTokenExpired(validityPeriod, refreshTokenExpireTime)) {
                     if (log.isDebugEnabled()) {
                         if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
@@ -710,26 +718,6 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
             // refresh token has infinite validity
             return false;
         }
-        if (refreshTokenExpireTime > 0 && refreshTokenExpireTime > validityPeriod) {
-            // refresh time validity time is higher than the application validity time
-            return false;
-        }
-        return true;
-    }
-
-    protected String getUserStoreDomain(AuthenticatedUser authenticatedUser) throws IdentityOAuth2Exception {
-        String userStoreDomain = null;
-        if (OAuth2Util.checkAccessTokenPartitioningEnabled() && OAuth2Util.checkUserNameAssertionEnabled()) {
-            //select the user store domain when multiple user stores are configured.
-            try {
-                userStoreDomain = OAuth2Util.getUserStoreForFederatedUser(authenticatedUser);
-            } catch (IdentityOAuth2Exception e) {
-                String errorMsg = "Error occurred while getting user store domain for User ID : " +
-                        authenticatedUser;
-                log.error(errorMsg, e);
-                throw new IdentityOAuth2Exception(errorMsg, e);
-            }
-        }
-        return userStoreDomain;
+        return !(refreshTokenExpireTime > 0 && refreshTokenExpireTime > validityPeriod);
     }
 }

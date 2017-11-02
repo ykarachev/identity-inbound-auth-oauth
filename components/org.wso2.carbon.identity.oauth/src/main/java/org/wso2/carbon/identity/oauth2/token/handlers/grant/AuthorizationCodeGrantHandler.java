@@ -73,6 +73,17 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         return true;
     }
 
+    @Override
+    public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx)
+            throws IdentityOAuth2Exception {
+        OAuth2AccessTokenRespDTO tokenResp = super.issue(tokReqMsgCtx);
+        String authzCode = retrieveAuthzCode(tokReqMsgCtx);
+
+        deactivateAuthzCode(tokReqMsgCtx, tokenResp.getTokenId(), authzCode);
+        clearAuthzCodeCache(tokReqMsgCtx, authzCode);
+        return tokenResp;
+    }
+
     private void setPropertiesForTokenGeneration(OAuthTokenReqMessageContext tokReqMsgCtx,
                                                  OAuth2AccessTokenReqDTO tokenReq, AuthzCodeDO authzCodeBean) {
         tokReqMsgCtx.setAuthorizedUser(authzCodeBean.getAuthorizedUser());
@@ -97,17 +108,6 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
             throw new IdentityOAuth2Exception("Callback url mismatch");
         }
         return true;
-    }
-
-    @Override
-    public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
-        OAuth2AccessTokenRespDTO tokenResp = super.issue(tokReqMsgCtx);
-        String authzCode = retrieveAuthzCode(tokReqMsgCtx);
-
-        deactivateAuthzCode(tokReqMsgCtx, tokenResp.getTokenId(), authzCode);
-        clearAuthzCodeCache(tokReqMsgCtx, authzCode);
-        return tokenResp;
     }
 
     private void clearAuthzCodeCache(OAuthTokenReqMessageContext tokReqMsgCtx, String authzCode) {
@@ -260,7 +260,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
            throw new IdentityOAuth2Exception("Invalid authorization code received from token request");
         }
 
-        if (isIncativeAuthzCode(authzCodeBean)) {
+        if (isInactiveAuthzCode(authzCodeBean)) {
             clearTokenCache(authzCodeBean, clientId);
             throw new IdentityOAuth2Exception("Inactive authorization code received from token request");
         }
@@ -282,7 +282,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         }
     }
 
-    private boolean isIncativeAuthzCode(AuthzCodeDO authzCodeBean) {
+    private boolean isInactiveAuthzCode(AuthzCodeDO authzCodeBean) {
         if (OAuthConstants.AuthorizationCodeState.INACTIVE.equals(authzCodeBean.getState())) {
             if(log.isDebugEnabled()) {
                 log.debug("Invalid access token request with Client Id : " + authzCodeBean.getConsumerKey() +

@@ -79,6 +79,69 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         return true;
     }
 
+    @Override
+    public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx)
+            throws IdentityOAuth2Exception {
+
+        OAuth2AccessTokenReqDTO tokenReq = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
+        // an active or expired token will be returned. since we do the validation for active or expired token in
+        // validateGrant() no need to do it here again
+        RefreshTokenValidationDataDO validationBean = tokenMgtDAO.validateRefreshToken(
+                tokenReq.getClientId(), tokenReq.getRefreshToken());
+        if (isRefreshTokenExpired(validationBean)) {
+            return handleError(OAuth2ErrorCodes.INVALID_GRANT, "Refresh token is expired.", tokenReq);
+        }
+
+        AccessTokenDO accessTokenBean = createAccessTokenBean(tokReqMsgCtx, tokenReq, validationBean);
+        persistNewToken(tokReqMsgCtx, accessTokenBean, tokenReq.getClientId());
+        if (log.isDebugEnabled()) {
+            log.debug("Persisted an access token for the refresh token, " +
+                    "Client ID : " + tokenReq.getClientId() +
+                    "authorized user : " + tokReqMsgCtx.getAuthorizedUser() +
+                    "timestamp : " + accessTokenBean.getIssuedTime() +
+                    "validity period (s) : " + accessTokenBean.getValidityPeriod() +
+                    "scope : " + OAuth2Util.buildScopeString(tokReqMsgCtx.getScope()) +
+                    "Token State : " + OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE +
+                    "User Type : " + getTokenType());
+        }
+
+        setTokenDataToMessageContext(tokReqMsgCtx, accessTokenBean);
+        return buildTokenResponse(tokReqMsgCtx, accessTokenBean);
+    }
+
+    @Override
+    public boolean validateScope(OAuthTokenReqMessageContext tokReqMsgCtx)
+            throws IdentityOAuth2Exception {
+        if (!super.validateScope(tokReqMsgCtx)) {
+            return false;
+        }
+
+        /*
+          The requested scope MUST NOT include any scope
+          not originally granted by the resource owner, and if omitted is
+          treated as equal to the scope originally granted by the
+          resource owner
+         */
+        String[] requestedScopes = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getScope();
+        String[] grantedScopes = tokReqMsgCtx.getScope();
+        if (ArrayUtils.isNotEmpty(requestedScopes)) {
+            if (ArrayUtils.isEmpty(grantedScopes)) {
+                return false;
+            }
+            List<String> grantedScopeList = Arrays.asList(grantedScopes);
+            for (String scope : requestedScopes) {
+                if (!grantedScopeList.contains(scope)) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("scope: " + scope + "is not granted for this refresh token");
+                    }
+                    return false;
+                }
+            }
+            tokReqMsgCtx.setScope(requestedScopes);
+        }
+        return true;
+    }
+
     private void setPropertiesForTokenGeneration(OAuthTokenReqMessageContext tokReqMsgCtx,
                                                  RefreshTokenValidationDataDO validationBean) {
         tokReqMsgCtx.setAuthorizedUser(validationBean.getAuthorizedUser());
@@ -177,36 +240,6 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         return true;
     }
 
-    @Override
-    public OAuth2AccessTokenRespDTO issue(OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
-
-        OAuth2AccessTokenReqDTO tokenReq = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
-        // an active or expired token will be returned. since we do the validation for active or expired token in
-        // validateGrant() no need to do it here again
-        RefreshTokenValidationDataDO validationBean = tokenMgtDAO.validateRefreshToken(
-                tokenReq.getClientId(), tokenReq.getRefreshToken());
-        if (isRefreshTokenExpired(validationBean)) {
-            return handleError(OAuth2ErrorCodes.INVALID_GRANT, "Refresh token is expired.", tokenReq);
-        }
-
-        AccessTokenDO accessTokenBean = createAccessTokenBean(tokReqMsgCtx, tokenReq, validationBean);
-        persistNewToken(tokReqMsgCtx, accessTokenBean, tokenReq.getClientId());
-        if (log.isDebugEnabled()) {
-            log.debug("Persisted an access token for the refresh token, " +
-                    "Client ID : " + tokenReq.getClientId() +
-                    "authorized user : " + tokReqMsgCtx.getAuthorizedUser() +
-                    "timestamp : " + accessTokenBean.getIssuedTime() +
-                    "validity period (s) : " + accessTokenBean.getValidityPeriod() +
-                    "scope : " + OAuth2Util.buildScopeString(tokReqMsgCtx.getScope()) +
-                    "Token State : " + OAuthConstants.TokenStates.TOKEN_STATE_ACTIVE +
-                    "User Type : " + getTokenType());
-        }
-
-        setTokenDataToMessageContext(tokReqMsgCtx, accessTokenBean);
-        return buildTokenResponse(tokReqMsgCtx, accessTokenBean);
-    }
-
     private OAuth2AccessTokenRespDTO buildTokenResponse(OAuthTokenReqMessageContext tokReqMsgCtx,
                                                         AccessTokenDO accessTokenBean) {
         String scope = OAuth2Util.buildScopeString(tokReqMsgCtx.getScope());
@@ -298,7 +331,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     }
 
     private OAuthAppDO getOAuthApp(String clientId) throws IdentityOAuth2Exception {
-        OAuthAppDO oAuthAppDO = null;
+        OAuthAppDO oAuthAppDO;
         try {
             oAuthAppDO = OAuth2Util.getAppInformationByClientId(clientId);
         } catch (InvalidOAuthClientException e) {
@@ -313,39 +346,6 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                     + oAuthAppDO.getRefreshTokenExpiryTime());
         }
         return oAuthAppDO;
-    }
-
-    @Override
-    public boolean validateScope(OAuthTokenReqMessageContext tokReqMsgCtx)
-            throws IdentityOAuth2Exception {
-        if (!super.validateScope(tokReqMsgCtx)) {
-            return false;
-        }
-
-        /*
-          The requested scope MUST NOT include any scope
-          not originally granted by the resource owner, and if omitted is
-          treated as equal to the scope originally granted by the
-          resource owner
-         */
-        String[] requestedScopes = tokReqMsgCtx.getOauth2AccessTokenReqDTO().getScope();
-        String[] grantedScopes = tokReqMsgCtx.getScope();
-        if (ArrayUtils.isNotEmpty(requestedScopes)) {
-            if (ArrayUtils.isEmpty(grantedScopes)) {
-                return false;
-            }
-            List<String> grantedScopeList = Arrays.asList(grantedScopes);
-            for (String scope : requestedScopes) {
-                if (!grantedScopeList.contains(scope)) {
-                    if (log.isDebugEnabled()) {
-                        log.debug("scope: " + scope + "is not granted for this refresh token");
-                    }
-                    return false;
-                }
-            }
-            tokReqMsgCtx.setScope(requestedScopes);
-        }
-        return true;
     }
 
     private OAuth2AccessTokenRespDTO handleError(String errorCode, String errorMsg,
@@ -402,7 +402,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     private void setValidityPeriod(AccessTokenDO accessTokenDO, OAuthTokenReqMessageContext tokReqMsgCtx,
                                    OAuthAppDO oAuthAppDO) {
         long validityPeriodInMillis = getValidityPeriodInMillis(tokReqMsgCtx, oAuthAppDO);
-        accessTokenDO.setValidityPeriod(validityPeriodInMillis);
+        accessTokenDO.setValidityPeriod(validityPeriodInMillis / SECONDS_TO_MILISECONDS_FACTOR);
+        accessTokenDO.setValidityPeriodInMillis(validityPeriodInMillis);
     }
 
     private void createTokens(AccessTokenDO accessTokenDO, OAuthTokenReqMessageContext tokReqMsgCtx)
@@ -426,7 +427,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         }
     }
 
-    private void modifyTokensIfUsernameAssertionEnabled(AccessTokenDO accessTokenDO, OAuthTokenReqMessageContext tokReqMsgCtx) {
+    private void modifyTokensIfUsernameAssertionEnabled(AccessTokenDO accessTokenDO,
+                                                        OAuthTokenReqMessageContext tokReqMsgCtx) {
         if (OAuth2Util.checkUserNameAssertionEnabled()) {
             String accessToken = OAuth2Util.addUsernameToToken(
                     tokReqMsgCtx.getAuthorizedUser(), accessTokenDO.getAccessToken());
@@ -468,17 +470,17 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     }
 
     private long getValidityPeriodInMillis(OAuthTokenReqMessageContext tokReqMsgCtx, OAuthAppDO oAuthAppDO) {
-        long validityPeriodInMillis = 0;
+        long validityPeriodInMillis;
         if (oAuthAppDO.getUserAccessTokenExpiryTime() != 0) {
-            validityPeriodInMillis = oAuthAppDO.getUserAccessTokenExpiryTime() * 1000;
+            validityPeriodInMillis = oAuthAppDO.getUserAccessTokenExpiryTime() * SECONDS_TO_MILISECONDS_FACTOR;
         } else {
             validityPeriodInMillis = OAuthServerConfiguration.getInstance()
-                    .getUserAccessTokenValidityPeriodInSeconds() * 1000;
+                    .getUserAccessTokenValidityPeriodInSeconds() * SECONDS_TO_MILISECONDS_FACTOR;
         }
         // if a VALID validity period is set through the callback, then use it
         long callbackValidityPeriod = tokReqMsgCtx.getValidityPeriod();
         if (callbackValidityPeriod != OAuthConstants.UNASSIGNED_VALIDITY_PERIOD) {
-            validityPeriodInMillis = callbackValidityPeriod * 1000;
+            validityPeriodInMillis = callbackValidityPeriod * SECONDS_TO_MILISECONDS_FACTOR;
         }
         return validityPeriodInMillis;
     }
@@ -487,7 +489,7 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                                      OAuth2AccessTokenReqDTO tokenReq,
                                      RefreshTokenValidationDataDO validationBean,
                                      OAuthAppDO oAuthAppDO,
-                                     String refreshToken, Timestamp timestamp) throws IdentityOAuth2Exception {
+                                     String refreshToken, Timestamp timestamp) {
         Timestamp refreshTokenIssuedTime = null;
         long refreshTokenValidityPeriod = 0;
         boolean renew = OAuthServerConfiguration.getInstance().isRefreshTokenRenewalEnabled();
@@ -511,10 +513,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         // otherwise use existing refresh token's validity period
         if (refreshTokenValidityPeriod == 0) {
             if (oAuthAppDO.getRefreshTokenExpiryTime() != 0) {
-                refreshTokenValidityPeriod = oAuthAppDO.getRefreshTokenExpiryTime() * 1000;
+                refreshTokenValidityPeriod = oAuthAppDO.getRefreshTokenExpiryTime() * SECONDS_TO_MILISECONDS_FACTOR;
             } else {
                 refreshTokenValidityPeriod = OAuthServerConfiguration.getInstance()
-                        .getRefreshTokenValidityPeriodInSeconds() * 1000;
+                        .getRefreshTokenValidityPeriodInSeconds() * SECONDS_TO_MILISECONDS_FACTOR;
             }
         }
         return refreshTokenValidityPeriod;

@@ -52,7 +52,12 @@ public class PasswordGrantHandler extends AbstractAuthorizationGrantHandler {
 
     private static Log log = LogFactory.getLog(PasswordGrantHandler.class);
 
-    private static final String DEFAULT_SP_NAME = "default";
+    @Override
+    public boolean issueRefreshToken() throws IdentityOAuth2Exception {
+
+        return OAuthServerConfiguration.getInstance()
+                .getValueForIsRefreshTokenAllowed(OAuthConstants.GrantTypes.PASSWORD);
+    }
 
     @Override
     public boolean validateGrant(OAuthTokenReqMessageContext tokReqMsgCtx)
@@ -112,13 +117,6 @@ public class PasswordGrantHandler extends AbstractAuthorizationGrantHandler {
         }
 
         return serviceProvider;
-    }
-
-    @Override
-    public boolean issueRefreshToken() throws IdentityOAuth2Exception {
-
-        return OAuthServerConfiguration.getInstance()
-                .getValueForIsRefreshTokenAllowed(OAuthConstants.GrantTypes.PASSWORD);
     }
 
     private boolean validateUserCredentials(OAuth2AccessTokenReqDTO tokenReq) throws IdentityOAuth2Exception {

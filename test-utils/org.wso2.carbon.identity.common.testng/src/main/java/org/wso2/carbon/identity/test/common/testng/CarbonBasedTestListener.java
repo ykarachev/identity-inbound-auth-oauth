@@ -184,10 +184,26 @@ public class CarbonBasedTestListener implements ITestListener, IClassListener {
                 setInternalState(OAuthComponentServiceHolder.getInstance(), "realmService", realmService);
                 IdentityTenantUtil.setRealmService(realmService);
 
+                Class[] singletonClasses = withRealmService.injectToSingletons();
+                for (Class singletonClass : singletonClasses) {
+                    for (Field field1 : singletonClass.getDeclaredFields()) {
+                        if (field1.getType().isAssignableFrom(RealmService.class)) {
+                            field1.setAccessible(true);
+                            try {
+                                field1.set(null, realmService);
+                            } catch (IllegalAccessException e) {
+                                log.error("Could not set the realm service in class : " + singletonClass + " field : "
+                                        + field1.getName(), e);
+                            }
+                        }
+                    }
+                }
             } catch (UserStoreException e) {
                 log.error("Error in getting the tenant id.", e);
             }
         }
+        Field[] fields = realClass.getDeclaredFields();
+        processFields(fields, iMethodInstance.getInstance());
     }
 
     @Override
@@ -195,4 +211,32 @@ public class CarbonBasedTestListener implements ITestListener, IClassListener {
         MockInitialContextFactory.destroy();
     }
 
+    private void processFields(Field[] fields, Object realInstance) {
+        for (Field field : fields) {
+            if (annotationPresent(field, WithRealmService.class)) {
+                field.setAccessible(true);
+                Annotation annotation = field.getAnnotation(WithRealmService.class);
+                WithRealmService withRealmService = (WithRealmService) annotation;
+                try {
+                    RealmService realmService = mock(RealmService.class);
+                    RealmConfiguration realmConfiguration = mock(RealmConfiguration.class);
+                    TenantManager tenantManager = mock(TenantManager.class);
+                    when(realmService.getTenantManager()).thenReturn(tenantManager);
+                    when(realmService.getBootstrapRealmConfiguration()).thenReturn(realmConfiguration);
+                    when(tenantManager.getTenantId(anyString())).thenReturn(withRealmService.tenantId());
+                    field.set(realInstance, realmService);
+                    setInternalState(OAuthComponentServiceHolder.getInstance(), "realmService", realmService);
+                    IdentityTenantUtil.setRealmService(realmService);
+
+                } catch (IllegalAccessException e) {
+                    log.error("Error in setting field value: " + field.getName() + ", Class: " + field
+                            .getDeclaringClass(), e);
+                } catch (UserStoreException e) {
+                    log.error("Error in setting user store value: " + field.getName() + ", Class: " + field
+                            .getDeclaringClass(), e);
+                }
+
+            }
+        }
+    }
 }

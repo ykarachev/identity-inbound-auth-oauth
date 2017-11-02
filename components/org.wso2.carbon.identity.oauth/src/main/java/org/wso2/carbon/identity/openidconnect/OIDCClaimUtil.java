@@ -168,7 +168,7 @@ public class OIDCClaimUtil {
     private static void handleUpdateAtClaim(Map<String, Object> returnClaims) {
         if (returnClaims.containsKey(UPDATED_AT) && returnClaims.get(UPDATED_AT) != null) {
             if (returnClaims.get(UPDATED_AT) instanceof String) {
-                returnClaims.put(UPDATED_AT, Integer.parseInt((String) (returnClaims.get(UPDATED_AT))));
+                returnClaims.put(UPDATED_AT, Long.parseLong((String) (returnClaims.get(UPDATED_AT))));
             }
         }
     }

@@ -122,6 +122,47 @@ public class UserInfoJSONResponseBuilderTest extends UserInfoResponseBaseTest {
         assertEquals(claimsInResponse.get(EMAIL), EMAIL_VALUE);
     }
 
+    @Test
+    public void testUpdateAtClaim() throws Exception {
+        String updateAtValue = "1509556412";
+        testLongClaim(UPDATED_AT, updateAtValue);
+    }
+
+    @Test
+    public void testEmailVerified() throws Exception {
+        String emailVerifiedClaimValue = "true";
+        testBooleanClaim(EMAIL_VERIFIED, emailVerifiedClaimValue);
+    }
+
+    @Test
+    public void testPhoneNumberVerified() throws Exception {
+        String phoneNumberVerifiedClaimValue = "true";
+        testBooleanClaim(PHONE_NUMBER_VERIFIED, phoneNumberVerifiedClaimValue);
+    }
+
+    private void testBooleanClaim(String claimUri, String claimValue) throws Exception {
+        initSingleClaimTest(claimUri, claimValue);
+        String responseString =
+                userInfoJSONResponseBuilder.getResponseString(getTokenResponseDTO(AUTHORIZED_USER_FULL_QUALIFIED));
+
+        Map<String, Object> claimsInResponse = JSONUtils.parseJSON(responseString);
+        assertSubjectClaimPresent(claimsInResponse);
+        assertNotNull(claimsInResponse.get(claimUri));
+        // Assert whether the returned claim is of Boolean type
+        assertEquals(claimsInResponse.get(claimUri), Boolean.parseBoolean(claimValue));
+    }
+
+    private void testLongClaim(String claimUri, String claimValue) throws Exception {
+        initSingleClaimTest(claimUri, claimValue);
+        String responseString =
+                userInfoJSONResponseBuilder.getResponseString(getTokenResponseDTO(AUTHORIZED_USER_FULL_QUALIFIED));
+
+        Map<String, Object> claimsInResponse = JSONUtils.parseJSON(responseString);
+        assertSubjectClaimPresent(claimsInResponse);
+        assertNotNull(claimsInResponse.get(claimUri));
+        assertTrue(claimsInResponse.get(claimUri) instanceof Integer || claimsInResponse.get(claimUri) instanceof Long);
+    }
+
     @DataProvider(name = "subjectClaimDataProvider")
     public Object[][] provideSubjectData() {
         return getSubjectClaimTestData();
@@ -137,11 +178,9 @@ public class UserInfoJSONResponseBuilderTest extends UserInfoResponseBaseTest {
             String responseString =
                     userInfoJSONResponseBuilder.getResponseString(getTokenResponseDTO(AUTHORIZED_USER_FULL_QUALIFIED));
 
-            Map<String, Object> stringObjectMap = JSONUtils.parseJSON(responseString);
-            assertNotNull(stringObjectMap);
-            assertFalse(stringObjectMap.isEmpty());
-            assertNotNull(stringObjectMap.get(SUB));
-            assertEquals(stringObjectMap.get(SUB), expectedSubjectValue);
+            Map<String, Object> claimsInResponse = JSONUtils.parseJSON(responseString);
+            assertSubjectClaimPresent(claimsInResponse);
+            assertEquals(claimsInResponse.get(SUB), expectedSubjectValue);
         } finally {
             PrivilegedCarbonContext.endTenantFlow();
         }

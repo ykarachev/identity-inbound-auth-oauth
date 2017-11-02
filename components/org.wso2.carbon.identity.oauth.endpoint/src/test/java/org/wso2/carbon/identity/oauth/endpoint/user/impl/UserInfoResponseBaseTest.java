@@ -44,6 +44,8 @@ import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.spy;
 import static org.powermock.api.mockito.PowerMockito.when;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotNull;
 import static org.wso2.carbon.base.MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
 
 /**
@@ -333,5 +335,20 @@ public class UserInfoResponseBaseTest extends PowerMockTestCase {
         };
     }
 
+    protected void initSingleClaimTest(String claimUri, String claimValue) throws Exception {
+        final Map<String, Object> inputClaims = new HashMap<>();
+        inputClaims.put(claimUri, claimValue);
+
+        final Map<String, List<String>> oidcScopeMap = new HashMap<>();
+        oidcScopeMap.put(OIDC_SCOPE, Collections.singletonList(claimUri));
+
+        prepareForResponseClaimTest(inputClaims, oidcScopeMap, false);
+    }
+
+    protected void assertSubjectClaimPresent(Map<String, Object> claimsInResponse) {
+        assertNotNull(claimsInResponse);
+        assertFalse(claimsInResponse.isEmpty());
+        assertNotNull(claimsInResponse.get(SUB));
+    }
 }
 

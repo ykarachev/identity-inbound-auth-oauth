@@ -27,18 +27,12 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
-import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.Matchers.anyString;
-import static org.powermock.api.mockito.PowerMockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
-import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
 /**
@@ -80,43 +74,51 @@ public class UserInfoJWTResponseTest extends UserInfoResponseBaseTest {
     }
 
     @Test
-    public void testEssentialClaims() throws Exception {
+    public void testUpdateAtClaim() throws Exception {
+        String updateAtValue = "1509556412";
+        testLongClaim(UPDATED_AT, updateAtValue);
+    }
 
-        final Map<String, Object> inputClaims = new HashMap<>();
-        inputClaims.put(FIRST_NAME, FIRST_NAME_VALUE);
-        inputClaims.put(LAST_NAME, LAST_NAME_VALUE);
-        inputClaims.put(EMAIL, EMAIL_VALUE);
+    @Test
+    public void testEmailVerified() throws Exception {
+        String emailVerifiedClaimValue = "true";
+        testBooleanClaim(EMAIL_VERIFIED, emailVerifiedClaimValue);
+    }
 
-        final Map<String, List<String>> oidcScopeMap = new HashMap<>();
-        oidcScopeMap.put(OIDC_SCOPE, Collections.singletonList(FIRST_NAME));
+    @Test
+    public void testPhoneNumberVerified() throws Exception {
+        String phoneNumberVerifiedClaimValue = "true";
+        testBooleanClaim(PHONE_NUMBER_VERIFIED, phoneNumberVerifiedClaimValue);
+    }
 
-        List<String> essentialClaims = Collections.singletonList(EMAIL);
-        prepareForResponseClaimTest(inputClaims, oidcScopeMap, false);
-
-        // Mock for essential claims.
-        when(OAuth2Util.getEssentialClaims(anyString(), anyString())).thenReturn(essentialClaims);
-        when(authorizationGrantCacheEntry.getEssentialClaims()).thenReturn("ESSENTIAL_CLAIM_JSON");
-
+    private void testBooleanClaim(String claimUri, String claimValue) throws Exception {
+        initSingleClaimTest(claimUri, claimValue);
         String responseString =
                 userInfoJWTResponse.getResponseString(getTokenResponseDTO(AUTHORIZED_USER_FULL_QUALIFIED));
 
         JWT jwt = JWTParser.parse(responseString);
+        assertNotNull(jwt);
         assertNotNull(jwt.getJWTClaimsSet());
 
-        ReadOnlyJWTClaimsSet jwtClaimsSet = jwt.getJWTClaimsSet();
-        assertNotNull(jwtClaimsSet);
-        assertNotNull(jwtClaimsSet.getSubject());
+        Map<String, Object> claimsInResponse = jwt.getJWTClaimsSet().getAllClaims();
+        assertSubjectClaimPresent(claimsInResponse);
+        assertNotNull(claimsInResponse.get(claimUri));
+        assertEquals(claimsInResponse.get(claimUri), Boolean.parseBoolean(claimValue));
+    }
 
-        // Assert that claims not in scope were not sent
-        assertNull(jwtClaimsSet.getClaim(LAST_NAME));
+    private void testLongClaim(String claimUri, String claimValue) throws Exception {
+        initSingleClaimTest(claimUri, claimValue);
+        String responseString =
+                userInfoJWTResponse.getResponseString(getTokenResponseDTO(AUTHORIZED_USER_FULL_QUALIFIED));
 
-        // Assert claim in scope was sent
-        assertNotNull(jwtClaimsSet.getClaim(FIRST_NAME));
-        assertEquals(jwtClaimsSet.getClaim(FIRST_NAME), FIRST_NAME_VALUE);
+        JWT jwt = JWTParser.parse(responseString);
+        assertNotNull(jwt);
+        assertNotNull(jwt.getJWTClaimsSet());
 
-        // Assert whether essential claims are available even though they were not in requested scope.
-        assertNotNull(jwtClaimsSet.getClaim(EMAIL));
-        assertEquals(jwtClaimsSet.getClaim(EMAIL), EMAIL_VALUE);
+        Map<String, Object> claimsInResponse = jwt.getJWTClaimsSet().getAllClaims();
+        assertSubjectClaimPresent(claimsInResponse);
+        assertNotNull(claimsInResponse.get(claimUri));
+        assertTrue(claimsInResponse.get(claimUri) instanceof Integer || claimsInResponse.get(claimUri) instanceof Long);
     }
 
     @DataProvider(name = "responseStringInputs")

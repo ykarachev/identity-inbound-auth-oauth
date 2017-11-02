@@ -31,7 +31,6 @@ import org.testng.ITestResult;
 import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.core.internal.IdentityCoreServiceComponent;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.user.api.RealmConfiguration;
 import org.wso2.carbon.user.api.UserRealm;
@@ -44,8 +43,6 @@ import org.wso2.carbon.utils.ConfigurationContextService;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashSet;
-import java.util.Set;
 
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;

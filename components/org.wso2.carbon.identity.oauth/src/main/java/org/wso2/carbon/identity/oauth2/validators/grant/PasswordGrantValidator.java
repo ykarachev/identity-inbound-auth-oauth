@@ -19,7 +19,7 @@ package org.wso2.carbon.identity.oauth2.validators.grant;
 import org.apache.oltu.oauth2.as.validator.PasswordValidator;
 
 /**
- * Grant validator for Resource Owner Password Grant Type
+ * Grant validator for Resource Owner Password Grant Type.
  */
 public class PasswordGrantValidator extends PasswordValidator {
 

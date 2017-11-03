@@ -1198,8 +1198,7 @@ public class OAuth2Util {
                 Resource resource = registry.newResource();
                 if (scopes.size() > 0) {
                     for (Map.Entry<String, String> entry : scopes.entrySet()) {
-                        String valueStr = entry.getValue().toString();
-                        resource.setProperty(entry.getKey(), valueStr);
+                        resource.setProperty(entry.getKey(), entry.getValue());
                     }
                 }
 
@@ -1220,7 +1219,7 @@ public class OAuth2Util {
                 Resource resource = registry.get(OAuthConstants.SCOPE_RESOURCE_PATH);
                 Properties properties = resource.getProperties();
                 Enumeration e = properties.propertyNames();
-                List<String> scopes = new ArrayList();
+                List<String> scopes = new ArrayList<>();
                 while (e.hasMoreElements()) {
                     scopes.add((String) e.nextElement());
                 }

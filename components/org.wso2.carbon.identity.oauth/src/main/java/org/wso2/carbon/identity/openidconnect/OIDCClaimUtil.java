@@ -38,7 +38,7 @@ import java.util.Properties;
 import static org.apache.commons.collections.MapUtils.isEmpty;
 
 /**
- * Utility to handle OIDC Claim related functions.
+ * Utility to handle OIDC Claim related functionality.
  */
 public class OIDCClaimUtil {
 
@@ -47,7 +47,7 @@ public class OIDCClaimUtil {
     private static final String EMAIL_VERIFIED = "email_verified";
     private static final String ADDRESS_PREFIX = "address.";
     private static final String ADDRESS = "address";
-    public static final String ADDRESS_SCOPE = "address";
+    private static final String ADDRESS_SCOPE = "address";
     private static final String OIDC_SCOPE_CLAIM_SEPARATOR = ",";
 
     private static final Log log = LogFactory.getLog(OIDCClaimUtil.class);
@@ -71,59 +71,74 @@ public class OIDCClaimUtil {
     public static Map<String, Object> getClaimsFilteredByOIDCScopes(String spTenantDomain,
                                                                     String[] requestedScopes,
                                                                     Map<String, Object> userClaims) {
-
         if (isEmpty(userClaims)) {
             // No user claims to filter.
+            if (log.isDebugEnabled()) {
+                log.debug("No user claims to filter. Returning an empty map of filtered claims.");
+            }
             return new HashMap<>();
         }
 
-        List<String> claimUrisInRequestedScope;
-        Map<String, Object> returnedClaims = new HashMap<>();
-        Map<String, Object> claimValuesForAddressScope = new HashMap<>();
+        Map<String, Object> claimsToBeReturned = new HashMap<>();
+        Map<String, Object> addressScopeClaims = new HashMap<>();
 
         // <"openid", "first_name,last_name,username">
-        Properties properties = getOIDCScopes(spTenantDomain);
-        if (isNotEmpty(properties)) {
-            List<String> claimUrisInAddressScope = getAddressScopeClaims(properties);
+        Properties oidcScopeProperties = getOIDCScopeProperties(spTenantDomain);
+        if (isNotEmpty(oidcScopeProperties)) {
+            List<String> addressScopeClaimUris = getAddressScopeClaims(oidcScopeProperties);
             // Iterate through scopes requested in the OAuth2/OIDC request to filter claims
             for (String requestedScope : requestedScopes) {
                 // Check if requested scope is a supported OIDC scope value
-                if (properties.containsKey(requestedScope)) {
-                    // Requested scope is an registered OIDC scope. Get the claims belonging to the scope.
-                    claimUrisInRequestedScope = getClaimUrisInSupportedOidcScope(properties, requestedScope);
-                    // Iterate the user claims and pick ones that are supported by the OIDC scope.
-                    for (Map.Entry<String, Object> claimMapEntry : userClaims.entrySet()) {
-                        String claimUri = claimMapEntry.getKey();
-                        Object claimValue = claimMapEntry.getValue();
-
-                        if (claimUrisInRequestedScope.contains(claimUri)) {
-                            // User claim is supported by the requested oidc scope.
-                            if (isAddressClaim(claimUri, claimUrisInAddressScope)) {
-                                // Handle Address Claims
-                                populateClaimsForAddressScope(claimUri, claimValue,
-                                        claimUrisInAddressScope, claimValuesForAddressScope);
-                            } else {
-                                returnedClaims.put(claimMapEntry.getKey(), userClaims.get(claimMapEntry.getKey()));
-                            }
-                        }
+                if (oidcScopeProperties.containsKey(requestedScope)) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Requested scope: " + requestedScope + " is a defined OIDC Scope in tenantDomain: " +
+                                spTenantDomain + ". Filtering claims based on the permitted claims in the scope.");
                     }
+                    // Requested scope is an registered OIDC scope. Filter and return the claims belonging to the scope.
+                    Map<String, Object> filteredClaims =
+                            handleRequestedOIDCSCope(userClaims, addressScopeClaims, oidcScopeProperties,
+                                    addressScopeClaimUris, requestedScope);
+                    claimsToBeReturned.putAll(filteredClaims);
                 }
             }
         }
 
         // Some OIDC claims need special formatting etc. These are handled below.
-        handleAddressClaim(returnedClaims, claimValuesForAddressScope);
-        handleUpdateAtClaim(returnedClaims);
-        handlePhoneNumberVerifiedClaim(returnedClaims);
-        handleEmailVerifiedClaim(returnedClaims);
+        handleAddressClaim(claimsToBeReturned, addressScopeClaims);
+        handleUpdateAtClaim(claimsToBeReturned);
+        handlePhoneNumberVerifiedClaim(claimsToBeReturned);
+        handleEmailVerifiedClaim(claimsToBeReturned);
 
+        return claimsToBeReturned;
+    }
+
+    private static Map<String, Object> handleRequestedOIDCSCope(Map<String, Object> userClaims,
+                                                                Map<String, Object> addressScopeClaims,
+                                                                Properties oidcScopeProperties,
+                                                                List<String> addressScopeClaimUris,
+                                                                String oidcScope) {
+        Map<String, Object> returnedClaims = new HashMap<>();
+        List<String> claimUrisInRequestedScope = getClaimUrisInSupportedOidcScope(oidcScopeProperties, oidcScope);
+        // Iterate the user claims and pick ones that are supported by the OIDC scope.
+        for (Map.Entry<String, Object> claimMapEntry : userClaims.entrySet()) {
+            String claimUri = claimMapEntry.getKey();
+            Object claimValue = claimMapEntry.getValue();
+            if (claimUrisInRequestedScope.contains(claimUri)) {
+                // User claim is supported by the requested oidc scope.
+                if (isAddressClaim(claimUri, addressScopeClaimUris)) {
+                    // Handle Address Claims
+                    populateClaimsForAddressScope(claimUri, claimValue, addressScopeClaimUris, addressScopeClaims);
+                } else {
+                    returnedClaims.put(claimMapEntry.getKey(), userClaims.get(claimMapEntry.getKey()));
+                }
+            }
+        }
         return returnedClaims;
     }
 
     protected static boolean isNotEmpty(Properties properties) {
         return properties != null && !properties.isEmpty();
     }
-
 
     private static void populateClaimsForAddressScope(String claimUri,
                                                       Object claimValue,
@@ -190,7 +205,7 @@ public class OIDCClaimUtil {
         }
     }
 
-    private static Properties getOIDCScopes(String tenantDomain) {
+    private static Properties getOIDCScopeProperties(String tenantDomain) {
         Resource oidcScopesResource = null;
         try {
             int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);

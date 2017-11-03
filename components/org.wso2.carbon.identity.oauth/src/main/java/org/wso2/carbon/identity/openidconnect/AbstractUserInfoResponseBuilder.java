@@ -82,12 +82,12 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
             String tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(tokenResponse.getAuthorizedUser());
             subjectClaim = UserCoreUtil.removeDomainFromName(tenantAwareUsername);
         }
-        return returnSubjectClaim(subjectClaim, spTenantDomain, tokenResponse);
+        return buildSubjectClaim(subjectClaim, spTenantDomain, tokenResponse);
     }
 
-    private String returnSubjectClaim(String sub,
-                                      String tenantDomain,
-                                      OAuth2TokenValidationResponseDTO tokenResponse) throws UserInfoEndpointException {
+    private String buildSubjectClaim(String sub,
+                                     String tenantDomain,
+                                     OAuth2TokenValidationResponseDTO tokenResponse) throws UserInfoEndpointException {
 
         String clientId = getClientId(tokenResponse);
         ServiceProvider serviceProvider = getServiceProvider(tenantDomain, clientId);
@@ -116,7 +116,7 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
 
     private String getClientId(OAuth2TokenValidationResponseDTO tokenResponse) throws UserInfoEndpointException {
         try {
-             return OAuth2Util.getClientIdForAccessToken(tokenResponse.getAuthorizationContextToken().getTokenString());
+            return OAuth2Util.getClientIdForAccessToken(tokenResponse.getAuthorizationContextToken().getTokenString());
         } catch (IdentityOAuth2Exception e) {
             throw new UserInfoEndpointException("Error while obtaining the client_id from accessToken.", e);
         }
@@ -179,7 +179,6 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
 
     private List<String> getEssentialClaimUris(OAuth2TokenValidationResponseDTO tokenResponse) {
 
-        List<String> essentialClaims = Collections.emptyList();
         AuthorizationGrantCacheKey cacheKey =
                 new AuthorizationGrantCacheKey(tokenResponse.getAuthorizationContextToken().getTokenString());
 
@@ -188,15 +187,23 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
 
         if (cacheEntry != null) {
             if (StringUtils.isNotEmpty(cacheEntry.getEssentialClaims())) {
-                essentialClaims = OAuth2Util.getEssentialClaims(cacheEntry.getEssentialClaims(), USERINFO);
-            } else {
-                essentialClaims = new ArrayList<>();
+                return OAuth2Util.getEssentialClaims(cacheEntry.getEssentialClaims(), USERINFO);
             }
         }
-        return essentialClaims;
+        return Collections.emptyList();
     }
 
+    /**
+     * Build UserInfo response to be sent back to the client.
+     *
+     * @param tokenResponse      {@link OAuth2TokenValidationResponseDTO} Token Validation reponse containing metadata
+     *                           about the access_token used for userinfo call.
+     * @param spTenantDomain     Service Provider tenant domain.
+     * @param filteredUserClaims Filtered user claims based on the requested scopes
+     * @return
+     * @throws UserInfoEndpointException
+     */
     protected abstract String buildResponse(OAuth2TokenValidationResponseDTO tokenResponse,
                                             String spTenantDomain,
-                                            Map<String, Object> userClaimsToBuildTheResponse) throws UserInfoEndpointException;
+                                            Map<String, Object> filteredUserClaims) throws UserInfoEndpointException;
 }

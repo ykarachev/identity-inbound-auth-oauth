@@ -43,10 +43,10 @@ public class UserInfoJWTResponse extends UserInfoJSONResponseBuilder {
     @Override
     protected String buildResponse(OAuth2TokenValidationResponseDTO tokenResponse,
                                    String spTenantDomain,
-                                   Map<String, Object> userClaimsToBuildTheResponse) throws UserInfoEndpointException {
+                                   Map<String, Object> filteredUserClaims) throws UserInfoEndpointException {
 
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
-        jwtClaimsSet.setAllClaims(userClaimsToBuildTheResponse);
+        jwtClaimsSet.setAllClaims(filteredUserClaims);
         return buildJWTResponse(tokenResponse, spTenantDomain, jwtClaimsSet);
     }
 

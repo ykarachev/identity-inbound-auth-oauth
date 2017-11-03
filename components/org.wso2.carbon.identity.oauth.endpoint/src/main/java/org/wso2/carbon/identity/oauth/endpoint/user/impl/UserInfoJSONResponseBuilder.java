@@ -69,8 +69,8 @@ public class UserInfoJSONResponseBuilder extends AbstractUserInfoResponseBuilder
     @Override
     protected String buildResponse(OAuth2TokenValidationResponseDTO tokenResponse,
                                    String spTenantDomain,
-                                   Map<String, Object> userClaimsToBuildTheResponse) throws UserInfoEndpointException {
-        return JSONUtils.buildJSON(userClaimsToBuildTheResponse);
+                                   Map<String, Object> filteredUserClaims) throws UserInfoEndpointException {
+        return JSONUtils.buildJSON(filteredUserClaims);
     }
 
     private Map<ClaimMapping, String> getUserAttributesFromCache(OAuth2TokenValidationResponseDTO tokenResponse) {

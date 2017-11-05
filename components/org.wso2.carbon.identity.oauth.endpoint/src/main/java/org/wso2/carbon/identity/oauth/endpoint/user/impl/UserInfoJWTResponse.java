@@ -35,6 +35,9 @@ import java.util.Map;
 
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
+/**
+ * Builds user info response as a JWT according to http://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse
+ */
 public class UserInfoJWTResponse extends UserInfoJSONResponseBuilder {
 
     private static final Log log = LogFactory.getLog(UserInfoJWTResponse.class);

@@ -36,7 +36,8 @@ import java.util.Map;
 import static org.apache.commons.collections.MapUtils.isEmpty;
 
 /**
- *
+ * Builds user info response as a JSON string according to
+ * http://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse
  */
 public class UserInfoJSONResponseBuilder extends AbstractUserInfoResponseBuilder {
 

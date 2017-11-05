@@ -36,6 +36,7 @@ import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.claim.metadata.mgt.ClaimMetadataHandler;
 import org.wso2.carbon.identity.claim.metadata.mgt.exception.ClaimMetadataException;
+import org.wso2.carbon.identity.core.util.IdentityCoreConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
@@ -72,7 +73,6 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
     private final static Log log = LogFactory.getLog(DefaultOIDCClaimsCallbackHandler.class);
     private final static String OAUTH2 = "oauth2";
     private final static String OIDC_DIALECT = "http://wso2.org/oidc/claim";
-    private static final String USER_NOT_FOUND_ERROR_MESSAGE = "UserNotFound";
     private final static String ATTRIBUTE_SEPARATOR = FrameworkUtils.getMultiAttributeSeparator();
 
     @Override
@@ -149,7 +149,7 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
 
     private Map<String, Object> retrieveClaimsForLocalUser(OAuthTokenReqMessageContext requestMsgCtx) {
         try {
-            return getClaimsForLocalUser(requestMsgCtx);
+            return getClaimsForLocalUserInOIDCDialect(requestMsgCtx);
         } catch (UserStoreException | IdentityApplicationManagementException | IdentityException e) {
             log.error("Error occurred while getting claims for user: " + requestMsgCtx.getAuthorizedUser() +
                     " from userstore.", e);
@@ -248,7 +248,7 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
      * @throws IdentityApplicationManagementException
      * @throws IdentityException
      */
-    private Map<String, Object> getClaimsForLocalUser(OAuthTokenReqMessageContext tokenReqMessageContext)
+    private Map<String, Object> getClaimsForLocalUserInOIDCDialect(OAuthTokenReqMessageContext tokenReqMessageContext)
             throws UserStoreException, IdentityApplicationManagementException, IdentityException {
 
         String spTenantDomain = getServiceProviderTenantDomain(tokenReqMessageContext);
@@ -289,8 +289,8 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
             return userClaimsMappedToOIDCDialect;
         }
 
-        List<String> claimURIList = getRequestedClaimUris(requestClaimMappings);
-        Map<String, String> userClaims = getUserClaimsInLocalDialect(username, realm, claimURIList);
+        List<String> requestedClaimUris = getRequestedClaimUris(requestClaimMappings);
+        Map<String, String> userClaims = getUserClaimsInLocalDialect(username, realm, requestedClaimUris);
 
         if (isEmpty(userClaims)) {
             // User claims can be empty if user does not exist in user stores. Probably a federated user.
@@ -337,7 +337,7 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
                     MultitenantUtils.getTenantAwareUsername(username),
                     claimURIList.toArray(new String[claimURIList.size()]), null);
         } catch (UserStoreException e) {
-            if (e.getMessage().contains(USER_NOT_FOUND_ERROR_MESSAGE)) {
+            if (e.getMessage().contains(IdentityCoreConstants.USER_NOT_FOUND)) {
                 if (log.isDebugEnabled()) {
                     log.debug("User: " + username + " not found in user store.");
                 }
@@ -450,13 +450,15 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
 
         Map<String, Object> userClaimsInOidcDialect = new HashMap<>();
         if (isNotEmpty(userClaims)) {
+            // Map<"email", "http://wso2.org/claims/emailaddress">
             for (Map.Entry<String, String> claimMapping : oidcToLocalClaimMappings.entrySet()) {
-                String value = userClaims.get(claimMapping.getValue());
-                if (value != null) {
-                    userClaimsInOidcDialect.put(claimMapping.getKey(), value);
+                String claimValue = userClaims.get(claimMapping.getValue());
+                if (claimValue != null) {
+                    String oidcClaimUri = claimMapping.getKey();
+                    userClaimsInOidcDialect.put(oidcClaimUri, claimValue);
                     if (log.isDebugEnabled() &&
                             IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_CLAIMS)) {
-                        log.debug("Mapped claim: key - " + claimMapping.getKey() + " value - " + value);
+                        log.debug("Mapped claim: key - " + oidcClaimUri + " value - " + claimValue);
                     }
                 }
             }

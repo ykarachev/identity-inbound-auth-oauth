@@ -23,7 +23,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
-import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.registry.api.RegistryException;
 import org.wso2.carbon.registry.api.Resource;
@@ -36,6 +35,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import static org.apache.commons.collections.MapUtils.isEmpty;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.SCOPE_RESOURCE_PATH;
 
 /**
  * Utility to handle OIDC Claim related functionality.
@@ -99,17 +99,33 @@ public class OIDCClaimUtil {
                             handleRequestedOIDCSCope(userClaims, addressScopeClaims, oidcScopeProperties,
                                     addressScopeClaimUris, requestedScope);
                     claimsToBeReturned.putAll(filteredClaims);
+                } else {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Requested scope: " + requestedScope + " is not a defined OIDC Scope in " +
+                                "tenantDomain: " + spTenantDomain + ".");
+                    }
                 }
+            }
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("No OIDC scopes defined for tenantDomain: " + spTenantDomain + ". Cannot proceed with " +
+                        "filtering user claims therefore returning an empty claim map.");
             }
         }
 
-        // Some OIDC claims need special formatting etc. These are handled below.
-        handleAddressClaim(claimsToBeReturned, addressScopeClaims);
-        handleUpdateAtClaim(claimsToBeReturned);
-        handlePhoneNumberVerifiedClaim(claimsToBeReturned);
-        handleEmailVerifiedClaim(claimsToBeReturned);
+        if (isNotEmpty(claimsToBeReturned)) {
+            // Some OIDC claims need special formatting etc. These are handled below.
+            handleAddressClaim(claimsToBeReturned, addressScopeClaims);
+            handleUpdateAtClaim(claimsToBeReturned);
+            handlePhoneNumberVerifiedClaim(claimsToBeReturned);
+            handleEmailVerifiedClaim(claimsToBeReturned);
+        }
 
         return claimsToBeReturned;
+    }
+
+    private static boolean isNotEmpty(Map<String, Object> claimsToBeReturned) {
+        return claimsToBeReturned != null && !claimsToBeReturned.isEmpty();
     }
 
     private static Map<String, Object> handleRequestedOIDCSCope(Map<String, Object> userClaims,
@@ -205,15 +221,21 @@ public class OIDCClaimUtil {
         }
     }
 
-    private static Properties getOIDCScopeProperties(String tenantDomain) {
+    private static Properties getOIDCScopeProperties(String spTenantDomain) {
         Resource oidcScopesResource = null;
         try {
-            int tenantId = IdentityTenantUtil.getTenantId(tenantDomain);
-            startTenantFlow(tenantDomain, tenantId);
-            RegistryService registry = OAuth2ServiceComponentHolder.getRegistryService();
-            oidcScopesResource = registry.getConfigSystemRegistry(tenantId).get(OAuthConstants.SCOPE_RESOURCE_PATH);
+            int tenantId = IdentityTenantUtil.getTenantId(spTenantDomain);
+            startTenantFlow(spTenantDomain, tenantId);
+
+            RegistryService registryService = OAuth2ServiceComponentHolder.getRegistryService();
+            if (registryService == null) {
+                throw new RegistryException("Registry Service not set in OAuth2 Component. Component may not have " +
+                        "initialized correctly.");
+            }
+
+            oidcScopesResource = registryService.getConfigSystemRegistry(tenantId).get(SCOPE_RESOURCE_PATH);
         } catch (RegistryException e) {
-            log.error("Error while obtaining registry collection from :" + OAuthConstants.SCOPE_RESOURCE_PATH, e);
+            log.error("Error while obtaining registry collection from registry path:" + SCOPE_RESOURCE_PATH, e);
         } finally {
             PrivilegedCarbonContext.endTenantFlow();
         }
@@ -224,6 +246,9 @@ public class OIDCClaimUtil {
                 String propertyKey = (String) scopeProperty;
                 propertiesToReturn.setProperty(propertyKey, oidcScopesResource.getProperty(propertyKey));
             }
+        } else {
+            log.error("OIDC scope resource cannot be found at " + SCOPE_RESOURCE_PATH + " for tenantDomain: "
+                    + spTenantDomain);
         }
         return propertiesToReturn;
     }

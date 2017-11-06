@@ -16,7 +16,6 @@
 
 package org.wso2.carbon.identity.openidconnect;
 
-import edu.emory.mathcs.backport.java.util.Arrays;
 import net.minidev.json.JSONObject;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -29,6 +28,7 @@ import org.wso2.carbon.registry.api.RegistryException;
 import org.wso2.carbon.registry.api.Resource;
 import org.wso2.carbon.registry.core.service.RegistryService;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

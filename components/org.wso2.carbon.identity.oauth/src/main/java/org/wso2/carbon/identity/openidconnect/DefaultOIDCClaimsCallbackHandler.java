@@ -330,7 +330,9 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
         return getUserClaimsInOidcDialect(oidcToLocalClaimMappings, userClaims);
     }
 
-    private Map<String, String> getUserClaimsInLocalDialect(String username, UserRealm realm, List<String> claimURIList)
+    private Map<String, String> getUserClaimsInLocalDialect(String username,
+                                                            UserRealm realm,
+                                                            List<String> claimURIList)
             throws FrameworkException, UserStoreException {
         Map<String, String> userClaims = new HashMap<>();
         try {

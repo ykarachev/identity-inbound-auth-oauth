@@ -153,6 +153,15 @@ public class OIDCClaimUtil {
         return filteredClaims;
     }
 
+    /**
+     * There can be situations where we have added a scope prefix to identify special claims.
+     * <p>
+     * For example, claims belonging to address can be prefixed as address.country, address.street. But when
+     * returning we need to remove the prefix.
+     *
+     * @param scopeClaim claim uri defined in the OIDC Scope
+     * @return Scope prefix removed claim URI
+     */
     private static String getOIDCClaimUri(String scopeClaim) {
         return StringUtils.contains(scopeClaim, SCOPE_CLAIM_PREFIX) ?
                 StringUtils.substringAfterLast(scopeClaim, SCOPE_CLAIM_PREFIX) :

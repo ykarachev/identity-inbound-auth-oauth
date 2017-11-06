@@ -282,25 +282,26 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
         }
 
         String userTenantDomain = authenticatedUser.getTenantDomain();
-        String username = getUsername(authenticatedUser);
-        UserRealm realm = IdentityTenantUtil.getRealm(userTenantDomain, username);
+        String fullQualifiedUsername = authenticatedUser.getFullQualifiedUsername();
+        UserRealm realm = IdentityTenantUtil.getRealm(userTenantDomain, fullQualifiedUsername);
         if (realm == null) {
-            log.warn("Invalid tenant domain: " + userTenantDomain + " provided. Cannot get claims for user: " + username);
+            log.warn("Invalid tenant domain: " + userTenantDomain + " provided. Cannot get claims for user: "
+                    + fullQualifiedUsername);
             return userClaimsMappedToOIDCDialect;
         }
 
         List<String> requestedClaimUris = getRequestedClaimUris(requestClaimMappings);
-        Map<String, String> userClaims = getUserClaimsInLocalDialect(username, realm, requestedClaimUris);
+        Map<String, String> userClaims = getUserClaimsInLocalDialect(fullQualifiedUsername, realm, requestedClaimUris);
 
         if (isEmpty(userClaims)) {
             // User claims can be empty if user does not exist in user stores. Probably a federated user.
             if (log.isDebugEnabled()) {
-                log.debug("No claims found for " + username + " from user store.");
+                log.debug("No claims found for " + fullQualifiedUsername + " from user store.");
             }
             return userClaimsMappedToOIDCDialect;
         } else {
             if (log.isDebugEnabled()) {
-                log.debug("Number of user claims retrieved for " + username + " from user store: " + userClaims.size());
+                log.debug("Number of user claims retrieved for " + fullQualifiedUsername + " from user store: " + userClaims.size());
             }
             // Map the local roles to SP defined roles.
             handleServiceProviderRoleMappings(serviceProvider, ATTRIBUTE_SEPARATOR, userClaims);
@@ -402,10 +403,6 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
         }
 
         return StringUtils.join(locallyMappedUserRoles, claimSeparator);
-    }
-
-    private String getUsername(AuthenticatedUser user) {
-        return user.toString();
     }
 
     private String getServiceProviderTenantDomain(OAuthAuthzReqMessageContext requestMsgCtx) {
@@ -547,9 +544,9 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
      * @param userClaims                  Map of user claims
      * @return
      */
-    private Map<String, Object> filterClaimsByScope(String[] requestedScopes,
-                                                    String serviceProviderTenantDomain,
-                                                    Map<String, Object> userClaims) {
+    protected Map<String, Object> filterClaimsByScope(String[] requestedScopes,
+                                                      String serviceProviderTenantDomain,
+                                                      Map<String, Object> userClaims) {
         return OIDCClaimUtil.getClaimsFilteredByOIDCScopes(serviceProviderTenantDomain, requestedScopes, userClaims);
     }
 }

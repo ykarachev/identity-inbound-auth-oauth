@@ -47,6 +47,7 @@ public class TestConstants {
     public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_TOKEN = "token";
     public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_CODE = "code";
     public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_ID_TOKEN = "id_token";
+    public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_INVALID = "invalid";
 
     //Authorized Client
     public static final String CLIENT_ID = "ca19a540f544777860e44e75f605d927";

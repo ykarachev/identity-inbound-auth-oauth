@@ -15,6 +15,7 @@
 */
 package org.wso2.carbon.identity.oauth2.authz;
 
+import org.apache.oltu.oauth2.common.error.OAuthError;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
@@ -176,6 +177,17 @@ public class AuthorizationHandlerManagerTest extends PowerMockIdentityBaseTest {
         Assert.assertNotNull(respDTO.getErrorCode(), "Error code returned is null");
         Assert.assertEquals(errorCode, TestConstants.UNAUTHORIZED_CLIENT_ERROR_CODE,
                             "Expected unauthorized_client error code but found : " + errorCode);
+    }
+
+    @Test
+    public void testHandleInvalidResponseType() throws Exception {
+        authzReqDTO.setResponseType(TestConstants.AUTHORIZATION_HANDLER_RESPONSE_TYPE_INVALID);
+        OAuth2AuthorizeRespDTO respDTO = authorizationHandlerManager.handleAuthorization(authzReqDTO);
+        String errorCode = respDTO.getErrorCode();
+        Assert.assertNotNull(respDTO, "Response is null");
+        Assert.assertNotNull(respDTO.getErrorCode(), "Error code returned is null");
+        Assert.assertEquals(errorCode, OAuthError.CodeResponse.UNSUPPORTED_RESPONSE_TYPE,
+                            "Expected unsupported_response_type error code but found : " + errorCode);
     }
 
 }

@@ -19,12 +19,16 @@ package org.wso2.carbon.identity.openidconnect.internal;
 import edu.emory.mathcs.backport.java.util.Collections;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.osgi.framework.BundleContext;
+import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.component.annotations.ReferenceCardinality;
 import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.identity.core.util.IdentityCoreInitializedEvent;
+import org.wso2.carbon.identity.openidconnect.ClaimProvider;
 import org.wso2.carbon.identity.openidconnect.OpenIDConnectClaimFilter;
+import org.wso2.carbon.identity.openidconnect.OpenIDConnectSystemClaimImpl;
 
 import java.util.Comparator;
 
@@ -35,6 +39,16 @@ import java.util.Comparator;
 public class OpenIDConnectServiceComponent {
 
     private Log log = LogFactory.getLog(OpenIDConnectServiceComponent.class);
+    private BundleContext bundleContext;
+
+    protected void activate(ComponentContext context) {
+        try {
+            bundleContext = context.getBundleContext();
+            bundleContext.registerService(ClaimProvider.class.getName(), new OpenIDConnectSystemClaimImpl(), null);
+        } catch (Throwable e) {
+        log.error("Error while activating OpenIDConnectServiceComponent.", e);
+        }
+    }
 
     /**
      * Set {@link OpenIDConnectClaimFilter} implementation
@@ -93,5 +107,25 @@ public class OpenIDConnectServiceComponent {
     protected void unsetIdentityCoreInitializedEventService(IdentityCoreInitializedEvent identityCoreInitializedEvent) {
         /* reference IdentityCoreInitializedEvent service to guarantee that this component will wait until identity core
          is started */
+    }
+    @Reference(
+            name = "ClaimProvider",
+            service = ClaimProvider.class,
+            cardinality = ReferenceCardinality.OPTIONAL,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetClaimProvider"
+    )
+    protected void setClaimProvider(ClaimProvider claimProvider) {
+        if (log.isDebugEnabled()) {
+            log.debug("Setting ClaimProvider Service");
+        }
+        OpenIDConnectServiceComponentHolder.getClaimProviders().add(claimProvider);
+    }
+
+    protected void unsetClaimProvider(ClaimProvider claimProvider) {
+        if (log.isDebugEnabled()) {
+            log.debug("Unsetting ClaimProvider Service");
+        }
+        OpenIDConnectServiceComponentHolder.getClaimProviders().remove(claimProvider);
     }
 }

@@ -81,6 +81,7 @@
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.RefreshGrantHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML2BearerGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML1BearerGrantHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.JWTTokenIssuerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.OauthTokenIssuerImplTest"/>
             <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest"/>
@@ -160,6 +161,7 @@
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.PasswordGrantHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.RefreshGrantHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML2BearerGrantHandlerTest"/>
+            <class name="org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML1BearerGrantHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.JWTTokenIssuerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.token.OauthTokenIssuerImplTest"/>
             <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest"/>

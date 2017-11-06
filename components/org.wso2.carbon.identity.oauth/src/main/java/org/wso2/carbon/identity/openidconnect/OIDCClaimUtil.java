@@ -16,6 +16,7 @@
 
 package org.wso2.carbon.identity.openidconnect;
 
+import edu.emory.mathcs.backport.java.util.Arrays;
 import net.minidev.json.JSONObject;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
@@ -28,13 +29,16 @@ import org.wso2.carbon.registry.api.RegistryException;
 import org.wso2.carbon.registry.api.Resource;
 import org.wso2.carbon.registry.core.service.RegistryService;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import static org.apache.commons.collections.MapUtils.isEmpty;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCClaims.ADDRESS;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCClaims.EMAIL_VERIFIED;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCClaims.PHONE_NUMBER_VERIFIED;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCClaims.UPDATED_AT;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.SCOPE_RESOURCE_PATH;
 
 /**
@@ -42,15 +46,12 @@ import static org.wso2.carbon.identity.oauth.common.OAuthConstants.SCOPE_RESOURC
  */
 public class OIDCClaimUtil {
 
-    private static final String UPDATED_AT = "updated_at";
-    private static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
-    private static final String EMAIL_VERIFIED = "email_verified";
     private static final String ADDRESS_PREFIX = "address.";
-    private static final String ADDRESS = "address";
     private static final String ADDRESS_SCOPE = "address";
     private static final String OIDC_SCOPE_CLAIM_SEPARATOR = ",";
 
     private static final Log log = LogFactory.getLog(OIDCClaimUtil.class);
+    private static final String SCOPE_CLAIM_PREFIX = ".";
 
     private OIDCClaimUtil() {
     }
@@ -82,10 +83,10 @@ public class OIDCClaimUtil {
         Map<String, Object> claimsToBeReturned = new HashMap<>();
         Map<String, Object> addressScopeClaims = new HashMap<>();
 
-        // <"openid", "first_name,last_name,username">
+        // Map<"openid", "first_name,last_name,username">
         Properties oidcScopeProperties = getOIDCScopeProperties(spTenantDomain);
         if (isNotEmpty(oidcScopeProperties)) {
-            List<String> addressScopeClaimUris = getAddressScopeClaims(oidcScopeProperties);
+            List<String> addressScopeClaimUris = getAddressScopeClaimUris(oidcScopeProperties);
             // Iterate through scopes requested in the OAuth2/OIDC request to filter claims
             for (String requestedScope : requestedScopes) {
                 // Check if requested scope is a supported OIDC scope value
@@ -113,13 +114,14 @@ public class OIDCClaimUtil {
             }
         }
 
-        if (isNotEmpty(claimsToBeReturned)) {
-            // Some OIDC claims need special formatting etc. These are handled below.
+        // Some OIDC claims need special formatting etc. These are handled below.
+        if (isNotEmpty(addressScopeClaims)) {
             handleAddressClaim(claimsToBeReturned, addressScopeClaims);
-            handleUpdateAtClaim(claimsToBeReturned);
-            handlePhoneNumberVerifiedClaim(claimsToBeReturned);
-            handleEmailVerifiedClaim(claimsToBeReturned);
         }
+
+        handleUpdateAtClaim(claimsToBeReturned);
+        handlePhoneNumberVerifiedClaim(claimsToBeReturned);
+        handleEmailVerifiedClaim(claimsToBeReturned);
 
         return claimsToBeReturned;
     }
@@ -128,61 +130,56 @@ public class OIDCClaimUtil {
         return claimsToBeReturned != null && !claimsToBeReturned.isEmpty();
     }
 
-    private static Map<String, Object> handleRequestedOIDCSCope(Map<String, Object> userClaims,
+    private static Map<String, Object> handleRequestedOIDCSCope(Map<String, Object> userClaimsInOIDCDialect,
                                                                 Map<String, Object> addressScopeClaims,
                                                                 Properties oidcScopeProperties,
                                                                 List<String> addressScopeClaimUris,
                                                                 String oidcScope) {
-        Map<String, Object> returnedClaims = new HashMap<>();
+        Map<String, Object> filteredClaims = new HashMap<>();
         List<String> claimUrisInRequestedScope = getClaimUrisInSupportedOidcScope(oidcScopeProperties, oidcScope);
-        // Iterate the user claims and pick ones that are supported by the OIDC scope.
-        for (Map.Entry<String, Object> claimMapEntry : userClaims.entrySet()) {
-            String claimUri = claimMapEntry.getKey();
-            Object claimValue = claimMapEntry.getValue();
-            if (claimUrisInRequestedScope.contains(claimUri)) {
-                // User claim is supported by the requested oidc scope.
-                if (isAddressClaim(claimUri, addressScopeClaimUris)) {
-                    // Handle Address Claims
-                    populateClaimsForAddressScope(claimUri, claimValue, addressScopeClaimUris, addressScopeClaims);
+        for (String scopeClaim : claimUrisInRequestedScope) {
+            String oidcClaimUri = getOIDCClaimUri(scopeClaim);
+            // Check whether the user claims contain the permitted claim uri
+            if (userClaimsInOIDCDialect.containsKey(oidcClaimUri)) {
+                Object claimValue = userClaimsInOIDCDialect.get(oidcClaimUri);
+                // User claim is allowed for this scope.
+                if (isAddressClaim(scopeClaim, addressScopeClaimUris)) {
+                    addressScopeClaims.put(oidcClaimUri, claimValue);
                 } else {
-                    returnedClaims.put(claimMapEntry.getKey(), userClaims.get(claimMapEntry.getKey()));
+                    filteredClaims.put(oidcClaimUri, claimValue);
                 }
             }
         }
-        return returnedClaims;
+        return filteredClaims;
+    }
+
+    private static String getOIDCClaimUri(String scopeClaim) {
+        return StringUtils.contains(scopeClaim, SCOPE_CLAIM_PREFIX) ?
+                StringUtils.substringAfterLast(scopeClaim, SCOPE_CLAIM_PREFIX) :
+                StringUtils.substringBefore(scopeClaim, SCOPE_CLAIM_PREFIX);
     }
 
     protected static boolean isNotEmpty(Properties properties) {
         return properties != null && !properties.isEmpty();
     }
 
-    private static void populateClaimsForAddressScope(String claimUri,
-                                                      Object claimValue,
-                                                      List<String> addressScopeClaims,
-                                                      Map<String, Object> claimsforAddressScope) {
-        if (claimUri.contains(ADDRESS_PREFIX)) {
-            claimsforAddressScope.put(claimUri.substring(ADDRESS_PREFIX.length()), claimValue);
-        } else if (addressScopeClaims.contains(claimUri)) {
-            claimsforAddressScope.put(claimUri, claimValue);
-        }
-    }
-
     private static void handleAddressClaim(Map<String, Object> returnedClaims,
                                            Map<String, Object> claimsforAddressScope) {
         if (MapUtils.isNotEmpty(claimsforAddressScope)) {
             final JSONObject jsonObject = new JSONObject();
-            claimsforAddressScope.forEach(jsonObject::put);
+            for (Map.Entry<String, Object> addressScopeClaimEntry : claimsforAddressScope.entrySet()) {
+                jsonObject.put(addressScopeClaimEntry.getKey(), addressScopeClaimEntry.getValue());
+            }
             returnedClaims.put(ADDRESS, jsonObject);
         }
     }
 
-    private static List<String> getAddressScopeClaims(Properties oidcProperties) {
+    private static List<String> getAddressScopeClaimUris(Properties oidcProperties) {
         return getClaimUrisInSupportedOidcScope(oidcProperties, ADDRESS_SCOPE);
     }
 
-    private static boolean isAddressClaim(String claimUri, List<String> addressScopeClaims) {
-        return StringUtils.isNotBlank(claimUri) &&
-                (claimUri.contains(ADDRESS_PREFIX) || addressScopeClaims.contains(claimUri));
+    private static boolean isAddressClaim(String scopeClaim, List<String> addressScopeClaims) {
+        return StringUtils.startsWith(scopeClaim, ADDRESS_PREFIX) || addressScopeClaims.contains(scopeClaim);
     }
 
     private static List<String> getClaimUrisInSupportedOidcScope(Properties properties, String requestedScope) {

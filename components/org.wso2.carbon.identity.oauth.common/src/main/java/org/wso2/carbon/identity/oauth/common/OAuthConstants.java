@@ -284,6 +284,15 @@ public final class OAuthConstants {
         }
     }
 
+    public static class OIDCClaims {
+        public static final String UPDATED_AT = "updated_at";
+        public static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
+        public static final String EMAIL_VERIFIED = "email_verified";
+        public static final String ADDRESS = "address";
+
+        private OIDCClaims() {}
+    }
+
     private OAuthConstants() {
 
     }

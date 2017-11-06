@@ -18,6 +18,8 @@
 package org.wso2.carbon.identity.openidconnect;
 
 import com.nimbusds.jwt.JWTClaimsSet;
+import net.minidev.json.JSONArray;
+import org.apache.commons.lang.StringUtils;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.opensaml.saml2.core.Assertion;
@@ -44,7 +46,9 @@ import org.wso2.carbon.identity.application.authentication.framework.model.Authe
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkUtils;
 import org.wso2.carbon.identity.application.common.model.ClaimConfig;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.application.common.model.LocalRole;
 import org.wso2.carbon.identity.application.common.model.PermissionsAndRoleConfig;
+import org.wso2.carbon.identity.application.common.model.RoleMapping;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.base.IdentityException;
@@ -77,6 +81,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
@@ -90,9 +95,14 @@ import static org.powermock.api.mockito.PowerMockito.when;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 import static org.wso2.carbon.identity.core.util.IdentityCoreConstants.MULTI_ATTRIBUTE_SEPARATOR_DEFAULT;
 import static org.wso2.carbon.identity.core.util.IdentityCoreConstants.USER_NOT_FOUND;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCClaims.ADDRESS;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCClaims.EMAIL_VERIFIED;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCClaims.PHONE_NUMBER_VERIFIED;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OIDCClaims.UPDATED_AT;
 import static org.wso2.carbon.user.core.UserCoreConstants.DOMAIN_SEPARATOR;
 
 /**
@@ -143,7 +153,8 @@ public class SAMLAssertionClaimsCallbackTest {
     private static final String CARBON_HOME =
             Paths.get(System.getProperty("user.dir"), "src", "test", "resources").toString();
 
-    private static final String[] APPROVED_SCOPES = {"openid", "testScope1", "testScope2"};
+    private static final String OIDC_SCOPE = "openid";
+    private static final String[] APPROVED_SCOPES = {OIDC_SCOPE, "testScope1", "testScope2"};
 
     private static final String USER_NAME = "peter";
 
@@ -156,25 +167,44 @@ public class SAMLAssertionClaimsCallbackTest {
     private static final String LOCAL_EMAIL_CLAIM_URI = "http://wso2.org/claims/email";
     private static final String LOCAL_USERNAME_CLAIM_URI = "http://wso2.org/claims/username";
     private static final String LOCAL_ROLE_CLAIM_URI = "http://wso2.org/claims/role";
+    private static final String LOCAL_UPDATED_AT_CLAIM_URI = "http://wso2.org/claims/update_at";
+    private static final String LOCAL_EMAIL_VERIFIED_CLAIM_URI = "http://wso2.org/claims/email_verified";
+    private static final String LOCAL_PHONE_VERIFIED_CLAIM_URI = "http://wso2.org/claims/phone_verified";
+    private static final String LOCAL_COUNTRY_CLAIM_URI = "http://wso2.org/claims/country";
+    private static final String LOCAL_STREET_CLAIM_URI = "http://wso2.org/claims/street";
+    private static final String LOCAL_PROVINCE_CLAIM_URI = "http://wso2.org/claims/province";
 
-    private static final String OIDC_EMAIL_CLAIM_URI = "email";
-    private static final String OIDC_USERNAME_CLAIM_URI = "username";
-    private static final String OIDC_ROLE_CLAIM_URI = "role";
+    // OIDC Claims
+    private static final String EMAIL = "email";
+    private static final String USERNAME = "username";
+    private static final String ROLE = "role";
+
+    private static final String ADDRESS_COUNTRY = "address.country";
+    private static final String ADDRESS_STREET = "address.street";
+    private static final String ADDRESS_PROVINCE = "address.province";
+
+    private static final String COUNTRY = "country";
+    private static final String STREET = "street";
+    private static final String PROVINCE = "province";
 
     private static final String ROLE1 = "role1";
     private static final String ROLE2 = "role2";
     private static final String ROLE3 = "role3";
+    private static final String ROLE_CLAIM_DEFAULT_VALUE =
+            ROLE1 + MULTI_ATTRIBUTE_SEPARATOR_DEFAULT + ROLE2 + MULTI_ATTRIBUTE_SEPARATOR_DEFAULT + ROLE3;
 
-    private static final ClaimMapping[] REQUESTED_LOCAL_CLAIM_MAP = {
-            ClaimMapping.build(LOCAL_EMAIL_CLAIM_URI, OIDC_EMAIL_CLAIM_URI, "", true),
-            ClaimMapping.build(LOCAL_USERNAME_CLAIM_URI, OIDC_USERNAME_CLAIM_URI, "", true),
-            ClaimMapping.build(LOCAL_ROLE_CLAIM_URI, OIDC_ROLE_CLAIM_URI, "", true)
+    private static final String SP_ROLE_2 = "SP_ROLE2";
+
+    private static final ClaimMapping[] DEFAULT_REQUESTED_CLAIMS = {
+            ClaimMapping.build(LOCAL_EMAIL_CLAIM_URI, EMAIL, "", true),
+            ClaimMapping.build(LOCAL_USERNAME_CLAIM_URI, USERNAME, "", true),
+            ClaimMapping.build(LOCAL_ROLE_CLAIM_URI, ROLE, "", true)
     };
+
     private static final Map<String, String> USER_CLAIMS_MAP = new HashMap<String, String>() {{
         put(LOCAL_EMAIL_CLAIM_URI, "peter@example.com");
         put(LOCAL_USERNAME_CLAIM_URI, USER_NAME);
-        put(LOCAL_ROLE_CLAIM_URI,
-                ROLE1 + MULTI_ATTRIBUTE_SEPARATOR_DEFAULT + ROLE2 + MULTI_ATTRIBUTE_SEPARATOR_DEFAULT + ROLE3);
+        put(LOCAL_ROLE_CLAIM_URI, ROLE_CLAIM_DEFAULT_VALUE);
     }};
 
     @BeforeClass
@@ -248,7 +278,7 @@ public class SAMLAssertionClaimsCallbackTest {
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
 
-        ServiceProvider serviceProvider = getServiceProviderWithRequestedClaimsAndMappings();
+        ServiceProvider serviceProvider = getSpWithDefaultRequestedClaimsMappings();
         mockApplicationManagementService(serviceProvider);
 
         samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, requestMsgCtx);
@@ -256,12 +286,16 @@ public class SAMLAssertionClaimsCallbackTest {
         assertTrue(jwtClaimsSet.getCustomClaims().isEmpty());
     }
 
-    private ServiceProvider getServiceProviderWithRequestedClaimsAndMappings() {
+    private ServiceProvider getSpWithDefaultRequestedClaimsMappings() {
+        return getSpWithRequestedClaimsMappings(DEFAULT_REQUESTED_CLAIMS);
+    }
+
+    private ServiceProvider getSpWithRequestedClaimsMappings(ClaimMapping[] claimMappings) {
         ServiceProvider serviceProvider = new ServiceProvider();
         serviceProvider.setApplicationName(SERVICE_PROVIDER_NAME);
 
         ClaimConfig claimConfig = new ClaimConfig();
-        claimConfig.setClaimMappings(REQUESTED_LOCAL_CLAIM_MAP);
+        claimConfig.setClaimMappings(claimMappings);
         serviceProvider.setClaimConfig(claimConfig);
 
         PermissionsAndRoleConfig permissionsAndRoleConfig = new PermissionsAndRoleConfig();
@@ -289,7 +323,7 @@ public class SAMLAssertionClaimsCallbackTest {
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
 
-        ServiceProvider serviceProvider = getServiceProviderWithRequestedClaimsAndMappings();
+        ServiceProvider serviceProvider = getSpWithDefaultRequestedClaimsMappings();
         mockApplicationManagementService(serviceProvider);
 
         UserRealm userRealm = mock(UserRealm.class);
@@ -307,7 +341,7 @@ public class SAMLAssertionClaimsCallbackTest {
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
 
-        ServiceProvider serviceProvider = getServiceProviderWithRequestedClaimsAndMappings();
+        ServiceProvider serviceProvider = getSpWithDefaultRequestedClaimsMappings();
         mockApplicationManagementService(serviceProvider);
 
         UserRealm userRealm = getExceptionThrowingUserRealm(new UserStoreException(USER_NOT_FOUND));
@@ -323,7 +357,7 @@ public class SAMLAssertionClaimsCallbackTest {
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
 
-        ServiceProvider serviceProvider = getServiceProviderWithRequestedClaimsAndMappings();
+        ServiceProvider serviceProvider = getSpWithDefaultRequestedClaimsMappings();
         mockApplicationManagementService(serviceProvider);
 
         UserRealm userRealm = getExceptionThrowingUserRealm(new UserStoreException(""));
@@ -339,7 +373,7 @@ public class SAMLAssertionClaimsCallbackTest {
         JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
         OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
 
-        ServiceProvider serviceProvider = getServiceProviderWithRequestedClaimsAndMappings();
+        ServiceProvider serviceProvider = getSpWithDefaultRequestedClaimsMappings();
         mockApplicationManagementService(serviceProvider);
 
         UserRealm userRealm = getUserRealmWithUserClaims(Collections.emptyMap());
@@ -357,7 +391,7 @@ public class SAMLAssertionClaimsCallbackTest {
             JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
             OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
 
-            ServiceProvider serviceProvider = getServiceProviderWithRequestedClaimsAndMappings();
+            ServiceProvider serviceProvider = getSpWithDefaultRequestedClaimsMappings();
             mockApplicationManagementService(serviceProvider);
 
             UserRealm userRealm = getUserRealmWithUserClaims(USER_CLAIMS_MAP);
@@ -374,13 +408,13 @@ public class SAMLAssertionClaimsCallbackTest {
     }
 
     @Test
-    public void testHandleCustomClaimsWithOAuthTokenReqMsgCtxtNoOIDCResource() throws Exception {
+    public void testHandleCustomClaimsWithOAuthTokenReqMsgCtxtNoOIDCScopes() throws Exception {
         try {
             PrivilegedCarbonContext.startTenantFlow();
             JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
             OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
 
-            ServiceProvider serviceProvider = getServiceProviderWithRequestedClaimsAndMappings();
+            ServiceProvider serviceProvider = getSpWithDefaultRequestedClaimsMappings();
             mockApplicationManagementService(serviceProvider);
 
             UserRealm userRealm = getUserRealmWithUserClaims(USER_CLAIMS_MAP);
@@ -397,12 +431,208 @@ public class SAMLAssertionClaimsCallbackTest {
         }
     }
 
+    @Test
+    public void testHandleCustomClaimsWithOAuthTokenReqMsgCtxtWithOIDCScopes() throws Exception {
+        try {
+            PrivilegedCarbonContext.startTenantFlow();
+            JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
+            OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
+
+            ServiceProvider serviceProvider = getSpWithDefaultRequestedClaimsMappings();
+            mockApplicationManagementService(serviceProvider);
+
+            UserRealm userRealm = getUserRealmWithUserClaims(USER_CLAIMS_MAP);
+            mockUserRealm(requestMsgCtx.getAuthorizedUser().toString(), userRealm);
+
+            mockClaimHandler();
+
+            Properties oidcProperties = new Properties();
+            String[] oidcScopeClaims = new String[]{ROLE, USERNAME};
+            oidcProperties.setProperty(OIDC_SCOPE, StringUtils.join(oidcScopeClaims, ","));
+            mockOIDCScopeResource(oidcProperties);
+
+            samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, requestMsgCtx);
+            assertNotNull(jwtClaimsSet);
+            assertNull(jwtClaimsSet.getCustomClaim(EMAIL));
+
+            assertNotNull(jwtClaimsSet.getCustomClaim(USERNAME));
+            assertEquals(jwtClaimsSet.getCustomClaim(USERNAME), USER_NAME);
+
+            assertNotNull(jwtClaimsSet.getCustomClaim(ROLE));
+            JSONArray jsonArray = (JSONArray) jwtClaimsSet.getCustomClaim(ROLE);
+            String[] expectedRoles = new String[]{ROLE1, ROLE2, ROLE3};
+            for (String role : expectedRoles) {
+                assertTrue(jsonArray.contains(role));
+            }
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
+        }
+    }
+
+    @Test
+    public void testHandleCustomClaimsWithOAuthTokenReqMsgCtxtWithSpRoleMappings() throws Exception {
+        try {
+            PrivilegedCarbonContext.startTenantFlow();
+            JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
+            OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
+
+            ServiceProvider serviceProvider = getSpWithDefaultRequestedClaimsMappings();
+            // Add a SP role mapping
+            RoleMapping[] roleMappings = new RoleMapping[]{
+                    new RoleMapping(new LocalRole(USER_STORE_DOMAIN, ROLE2), SP_ROLE_2),
+            };
+            serviceProvider.getPermissionAndRoleConfig().setRoleMappings(roleMappings);
+            mockApplicationManagementService(serviceProvider);
+
+            UserRealm userRealm = getUserRealmWithUserClaims(USER_CLAIMS_MAP);
+            mockUserRealm(requestMsgCtx.getAuthorizedUser().toString(), userRealm);
+
+            mockClaimHandler();
+
+            // Define OIDC Scope property
+            Properties oidcProperties = new Properties();
+            String[] oidcScopeClaims = new String[]{ROLE, USERNAME};
+            oidcProperties.setProperty(OIDC_SCOPE, StringUtils.join(oidcScopeClaims, ","));
+            mockOIDCScopeResource(oidcProperties);
+
+            samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, requestMsgCtx);
+
+            assertNotNull(jwtClaimsSet);
+            assertNull(jwtClaimsSet.getCustomClaim(EMAIL));
+            assertNotNull(jwtClaimsSet.getCustomClaim(USERNAME));
+            assertEquals(jwtClaimsSet.getCustomClaim(USERNAME), USER_NAME);
+
+            assertNotNull(jwtClaimsSet.getCustomClaim(ROLE));
+            JSONArray jsonArray = (JSONArray) jwtClaimsSet.getCustomClaim(ROLE);
+            String[] expectedRoles = new String[]{ROLE1, SP_ROLE_2, ROLE3};
+            for (String role : expectedRoles) {
+                assertTrue(jsonArray.contains(role));
+            }
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
+        }
+    }
+
+    @Test
+    public void testHandleCustomClaimsWithOAuthTokenReqMsgCtxtWithSpecialFormattedClaims() throws Exception {
+        try {
+            PrivilegedCarbonContext.startTenantFlow();
+            JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
+            OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
+            requestMsgCtx.setScope(new String[]{OIDC_SCOPE});
+
+            ClaimMapping claimMappings[] = new ClaimMapping[]{
+                    ClaimMapping.build(LOCAL_UPDATED_AT_CLAIM_URI, UPDATED_AT, "", true),
+                    ClaimMapping.build(LOCAL_EMAIL_VERIFIED_CLAIM_URI, EMAIL_VERIFIED, "", true),
+                    ClaimMapping.build(LOCAL_PHONE_VERIFIED_CLAIM_URI, PHONE_NUMBER_VERIFIED, "", true),
+                    ClaimMapping.build(LOCAL_COUNTRY_CLAIM_URI, ADDRESS_COUNTRY, "", true),
+                    ClaimMapping.build(LOCAL_STREET_CLAIM_URI, ADDRESS_STREET, "", true),
+                    ClaimMapping.build(LOCAL_PROVINCE_CLAIM_URI, ADDRESS_PROVINCE, "", true),
+            };
+
+            ServiceProvider serviceProvider = getSpWithRequestedClaimsMappings(claimMappings);
+            mockApplicationManagementService(serviceProvider);
+
+            Map<String, String> userClaims = new HashMap<>();
+            userClaims.put(LOCAL_UPDATED_AT_CLAIM_URI, "12343454");
+            userClaims.put(LOCAL_EMAIL_VERIFIED_CLAIM_URI, "false");
+            userClaims.put(LOCAL_PHONE_VERIFIED_CLAIM_URI, "true");
+
+            UserRealm userRealm = getUserRealmWithUserClaims(userClaims);
+            mockUserRealm(requestMsgCtx.getAuthorizedUser().toString(), userRealm);
+
+            mockClaimHandler();
+
+            // Define OIDC Scope properties
+            Properties oidcProperties = new Properties();
+            String[] oidcScopeClaims = new String[]{UPDATED_AT, PHONE_NUMBER_VERIFIED, EMAIL_VERIFIED};
+            oidcProperties.setProperty(OIDC_SCOPE, StringUtils.join(oidcScopeClaims, ","));
+            mockOIDCScopeResource(oidcProperties);
+
+            samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, requestMsgCtx);
+
+            assertNotNull(jwtClaimsSet);
+            assertNotNull(jwtClaimsSet.getCustomClaim(UPDATED_AT));
+            assertTrue(jwtClaimsSet.getCustomClaim(UPDATED_AT) instanceof Integer ||
+                    jwtClaimsSet.getCustomClaim(UPDATED_AT) instanceof Long);
+
+            assertNotNull(jwtClaimsSet.getCustomClaim(PHONE_NUMBER_VERIFIED));
+            assertTrue(jwtClaimsSet.getCustomClaim(PHONE_NUMBER_VERIFIED) instanceof Boolean);
+
+            assertNotNull(jwtClaimsSet.getCustomClaim(EMAIL_VERIFIED));
+            assertTrue(jwtClaimsSet.getCustomClaim(EMAIL_VERIFIED) instanceof Boolean);
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
+        }
+    }
+
+    @DataProvider(name = "addressClaimData")
+    public Object[][] provideAddressClaimData() {
+        Properties oidcProperties = new Properties();
+        String[] oidcScopeClaims = new String[]{
+                ADDRESS_COUNTRY, ADDRESS_PROVINCE, ADDRESS_STREET
+        };
+
+        oidcProperties.setProperty(OIDC_SCOPE, StringUtils.join(oidcScopeClaims, ","));
+
+        Properties oidcPropertiesWithAddressScope = new Properties();
+        String[] addressScopeClaims = new String[]{COUNTRY, PROVINCE, STREET};
+        oidcPropertiesWithAddressScope.setProperty(OIDC_SCOPE, StringUtils.join(addressScopeClaims, ","));
+        oidcPropertiesWithAddressScope.setProperty(ADDRESS, StringUtils.join(addressScopeClaims, ","));
+
+        return new Object[][]{{oidcProperties}, {oidcPropertiesWithAddressScope}};
+    }
+
+    @Test(dataProvider = "addressClaimData")
+    public void testHandleCustomClaimsWithOAuthTokenReqMsgCtxtAddressClaim(Properties oidcProperties) throws Exception {
+        try {
+            PrivilegedCarbonContext.startTenantFlow();
+            JWTClaimsSet jwtClaimsSet = new JWTClaimsSet();
+            OAuthTokenReqMessageContext requestMsgCtx = getTokenReqMessageContextForLocalUser();
+
+            ClaimMapping claimMappings[] = new ClaimMapping[]{
+                    ClaimMapping.build(LOCAL_COUNTRY_CLAIM_URI, ADDRESS, "", true),
+                    ClaimMapping.build(LOCAL_STREET_CLAIM_URI, STREET, "", true),
+                    ClaimMapping.build(LOCAL_PROVINCE_CLAIM_URI, PROVINCE, "", true),
+            };
+
+            ServiceProvider serviceProvider = getSpWithRequestedClaimsMappings(claimMappings);
+            mockApplicationManagementService(serviceProvider);
+
+
+            Map<String, String> userClaims = new HashMap<>();
+            userClaims.put(LOCAL_COUNTRY_CLAIM_URI, "Sri Lanka");
+            userClaims.put(LOCAL_STREET_CLAIM_URI, "Lily Avenue");
+            userClaims.put(LOCAL_PROVINCE_CLAIM_URI, "Western");
+
+            UserRealm userRealm = getUserRealmWithUserClaims(userClaims);
+            mockUserRealm(requestMsgCtx.getAuthorizedUser().toString(), userRealm);
+            mockOIDCScopeResource(oidcProperties);
+            mockClaimHandler();
+
+            samlAssertionClaimsCallback.handleCustomClaims(jwtClaimsSet, requestMsgCtx);
+
+            assertNotNull(jwtClaimsSet);
+            assertNotNull(jwtClaimsSet.getCustomClaim(ADDRESS));
+
+        } finally {
+            PrivilegedCarbonContext.endTenantFlow();
+        }
+    }
+
+
     private void mockClaimHandler() throws Exception {
 
         Map<String, String> claimMappings = new HashMap<>();
-        claimMappings.put(OIDC_EMAIL_CLAIM_URI, LOCAL_EMAIL_CLAIM_URI);
-        claimMappings.put(OIDC_USERNAME_CLAIM_URI, LOCAL_USERNAME_CLAIM_URI);
-        claimMappings.put(OIDC_ROLE_CLAIM_URI, LOCAL_ROLE_CLAIM_URI);
+        claimMappings.put(EMAIL, LOCAL_EMAIL_CLAIM_URI);
+        claimMappings.put(USERNAME, LOCAL_USERNAME_CLAIM_URI);
+        claimMappings.put(ROLE, LOCAL_ROLE_CLAIM_URI);
+        claimMappings.put(UPDATED_AT, LOCAL_UPDATED_AT_CLAIM_URI);
+        claimMappings.put(EMAIL_VERIFIED, LOCAL_EMAIL_VERIFIED_CLAIM_URI);
+        claimMappings.put(PHONE_NUMBER_VERIFIED, LOCAL_PHONE_VERIFIED_CLAIM_URI);
+        claimMappings.put(STREET, LOCAL_STREET_CLAIM_URI);
+        claimMappings.put(PROVINCE, LOCAL_PROVINCE_CLAIM_URI);
+        claimMappings.put(COUNTRY, LOCAL_COUNTRY_CLAIM_URI);
 
         ClaimMetadataHandler claimMetadataHandler = spy(ClaimMetadataHandler.class);
         doReturn(claimMappings).when(claimMetadataHandler).getMappingsMapFromOtherDialectToCarbon(OIDC_DIALECT, null,
@@ -506,9 +736,20 @@ public class SAMLAssertionClaimsCallbackTest {
         setRegistryMockService(registryService);
     }
 
-    private void setRegistryMockService(RegistryService registryMockService)
-            throws NoSuchFieldException, IllegalAccessException {
-        setStaticField(OAuth2ServiceComponentHolder.class, "registryService", registryService);
+    private void mockOIDCScopeResource(Properties properties) throws Exception {
+        when(registryService.getConfigSystemRegistry(TENANT_ID)).thenReturn(userRegistry);
+        Resource resource = spy(new ResourceImpl());
+        for (Map.Entry<Object, Object> propertyEntry : properties.entrySet()) {
+            resource.setProperty((String) propertyEntry.getKey(), (String) propertyEntry.getValue());
+        }
+
+        when(userRegistry.get(OAuthConstants.SCOPE_RESOURCE_PATH)).thenReturn(resource);
+        setRegistryMockService(registryService);
+    }
+
+
+    private void setRegistryMockService(RegistryService registryMockService) throws Exception {
+        setStaticField(OAuth2ServiceComponentHolder.class, "registryService", registryMockService);
     }
 
     @Test

@@ -187,7 +187,8 @@ public class AuthorizationHandlerManagerTest extends PowerMockIdentityBaseTest {
         Assert.assertNotNull(respDTO, "Response is null");
         Assert.assertNotNull(respDTO.getErrorCode(), "Error code returned is null");
         Assert.assertEquals(errorCode, OAuthError.CodeResponse.UNSUPPORTED_RESPONSE_TYPE,
-                            "Expected unsupported_response_type error code but found : " + errorCode);
+                            "Expected " + OAuthError.CodeResponse.UNSUPPORTED_RESPONSE_TYPE +
+                            " error code but found : " + errorCode);
     }
 
     @Test
@@ -204,6 +205,46 @@ public class AuthorizationHandlerManagerTest extends PowerMockIdentityBaseTest {
         OAuth2AuthorizeRespDTO respDTO = authorizationHandlerManager.handleAuthorization(authzReqDTO);
         Assert.assertNotNull(respDTO, "Response is null");
         Assert.assertNotNull(respDTO.getAccessToken(), "Access token returned is null");
+    }
+
+    @Test
+    public void testHandleAuthorizationTokenResponseUnauthorizedAccess() throws Exception {
+        authorizationHandlerManager = AuthorizationHandlerManager.getInstance();
+        authzReqDTO.setResponseType(TestConstants.AUTHORIZATION_HANDLER_RESPONSE_TYPE_TOKEN);
+        authzReqDTO.setConsumerKey(TestConstants.CLIENT_ID);
+        authzReqDTO.setScopes(TestConstants.SCOPE_UNAUTHORIZED_ACCESS.split(" "));
+        AuthenticatedUser user = new AuthenticatedUser();
+        user.setUserName(TestConstants.USER_NAME);
+        user.setTenantDomain(TestConstants.TENANT_DOMAIN);
+        user.setUserStoreDomain(TestConstants.USER_DOMAIN_PRIMARY);
+        authzReqDTO.setUser(user);
+        OAuth2AuthorizeRespDTO respDTO = authorizationHandlerManager.handleAuthorization(authzReqDTO);
+        String errorCode = respDTO.getErrorCode();
+        Assert.assertNotNull(respDTO, "Response is null");
+        Assert.assertNotNull(respDTO.getErrorCode(), "Error code returned is null");
+        Assert.assertEquals(errorCode, OAuthError.CodeResponse.UNAUTHORIZED_CLIENT,
+                            "Expected " + OAuthError.CodeResponse.UNAUTHORIZED_CLIENT + " error code but found : " +
+                            errorCode);
+    }
+
+    @Test
+    public void testHandleAuthorizationTokenResponseUnauthorizedScope() throws Exception {
+        authorizationHandlerManager = AuthorizationHandlerManager.getInstance();
+        authzReqDTO.setResponseType(TestConstants.AUTHORIZATION_HANDLER_RESPONSE_TYPE_TOKEN);
+        authzReqDTO.setConsumerKey(TestConstants.CLIENT_ID);
+        authzReqDTO.setScopes(TestConstants.SCOPE_UNAUTHORIZED_SCOPE.split(" "));
+        AuthenticatedUser user = new AuthenticatedUser();
+        user.setUserName(TestConstants.USER_NAME);
+        user.setTenantDomain(TestConstants.TENANT_DOMAIN);
+        user.setUserStoreDomain(TestConstants.USER_DOMAIN_PRIMARY);
+        authzReqDTO.setUser(user);
+        OAuth2AuthorizeRespDTO respDTO = authorizationHandlerManager.handleAuthorization(authzReqDTO);
+        String errorCode = respDTO.getErrorCode();
+        Assert.assertNotNull(respDTO, "Response is null");
+        Assert.assertNotNull(respDTO.getErrorCode(), "Error code returned is null");
+        Assert.assertEquals(errorCode, OAuthError.CodeResponse.INVALID_SCOPE,
+                            "Expected " + OAuthError.CodeResponse.INVALID_SCOPE + " error code but found : " +
+                            errorCode);
     }
 
 }

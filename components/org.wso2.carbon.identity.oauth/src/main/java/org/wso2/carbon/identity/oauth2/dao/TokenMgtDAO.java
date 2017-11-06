@@ -1482,7 +1482,7 @@ public class TokenMgtDAO {
                 long issuedTimeInMillis = timeCreated.getTime();
 
                 // if authorization code is not expired.
-                if (OAuth2Util.calculateValidityInMillis(issuedTimeInMillis, validityPeriodInMillis) > 1000) {
+                if (OAuth2Util.getTimeToExpire(issuedTimeInMillis, validityPeriodInMillis) > 1000) {
                     authorizationCodes.add(persistenceProcessor.getPreprocessedAuthzCode(rs.getString(1)));
                 }
             }

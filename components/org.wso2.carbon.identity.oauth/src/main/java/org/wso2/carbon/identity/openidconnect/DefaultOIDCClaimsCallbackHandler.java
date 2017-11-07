@@ -282,7 +282,7 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
         }
 
         String userTenantDomain = authenticatedUser.getTenantDomain();
-        String fullQualifiedUsername = authenticatedUser.getFullQualifiedUsername();
+        String fullQualifiedUsername = authenticatedUser.toFullQualifiedUsername();
         UserRealm realm = IdentityTenantUtil.getRealm(userTenantDomain, fullQualifiedUsername);
         if (realm == null) {
             log.warn("Invalid tenant domain: " + userTenantDomain + " provided. Cannot get claims for user: "

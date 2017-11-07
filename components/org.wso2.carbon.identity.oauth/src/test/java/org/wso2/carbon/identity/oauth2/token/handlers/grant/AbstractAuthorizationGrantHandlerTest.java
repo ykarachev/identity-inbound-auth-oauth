@@ -240,7 +240,7 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
         when(OAuth2Util.checkUserNameAssertionEnabled()).thenReturn(false);
 
         when(OAuth2Util.buildScopeString(any(String[].class))).thenCallRealMethod();
-        when(OAuth2Util.calculateValidityInMillis(anyLong(), anyLong())).thenCallRealMethod();
+        when(OAuth2Util.getTimeToExpire(anyLong(), anyLong())).thenCallRealMethod();
         when(OAuth2Util.getTokenExpireTimeMillis(any(AccessTokenDO.class))).thenCallRealMethod();
         when(OAuth2Util.getRefreshTokenExpireTimeMillis(any(AccessTokenDO.class))).thenCallRealMethod();
         when(OAuth2Util.getAccessTokenExpireMillis(any(AccessTokenDO.class))).thenCallRealMethod();
@@ -250,6 +250,8 @@ public class AbstractAuthorizationGrantHandlerTest extends PowerMockIdentityBase
         when(IdentityUtil.isTokenLoggable(anyString())).thenReturn(tokenLoggable);
 
         when(oauthIssuer.accessToken(any(OAuthTokenReqMessageContext.class))).thenReturn(accessToken);
+        when(oAuthAppDO.getApplicationAccessTokenExpiryTime()).thenReturn(3600L);
+        when(oAuthAppDO.getUserAccessTokenExpiryTime()).thenReturn(3600L);
 
         if (dbEntryAvailable) {
             when(tokenMgtDAO.retrieveLatestAccessToken(anyString(), any(AuthenticatedUser.class), anyString(),

@@ -99,15 +99,13 @@ public class InvalidRequestExceptionMapper implements ExceptionMapper<InvalidReq
                             .setError(OAuth2ErrorCodes.INVALID_REQUEST).setErrorDescription(exception.getMessage())
                             .buildJSONMessage();
                     return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
-
                 }
 
                 OAuthResponse res = OAuthASResponse
-                        .errorResponse(HttpServletResponse.SC_BAD_REQUEST).error((OAuthProblemException) exception.getCause())
+                        .errorResponse(HttpServletResponse.SC_BAD_REQUEST)
+                        .error((OAuthProblemException) exception.getCause())
                         .buildJSONMessage();
                 return Response.status(res.getResponseStatus()).entity(res.getBody()).build();
-
-
             } catch (OAuthSystemException e) {
                 if (log.isDebugEnabled()) {
                     log.debug("OAuth System error while token invoking token endpoint", e);

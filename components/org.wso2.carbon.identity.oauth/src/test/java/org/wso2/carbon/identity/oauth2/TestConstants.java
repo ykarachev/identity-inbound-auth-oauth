@@ -47,6 +47,7 @@ public class TestConstants {
     public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_TOKEN = "token";
     public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_CODE = "code";
     public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_ID_TOKEN = "id_token";
+    public static final String AUTHORIZATION_HANDLER_RESPONSE_TYPE_INVALID = "invalid";
 
     //Authorized Client
     public static final String CLIENT_ID = "ca19a540f544777860e44e75f605d927";
@@ -66,7 +67,8 @@ public class TestConstants {
     //UnAuthorized Client for Implicit Grant
     public static final String CLIENT_ID_UNAUTHORIZED_CLIENT = "dabfba9390aa423f8b04332794d83614";
     public static final String SECRET_UNAUTHORIZED_CLIENT = "5dcae004fba64e3a8a7cbebfdf02fcde";
-    public static final String SCOPE_UNAUTHORIZED_STRING = "abc xyz";
+    public static final String SCOPE_UNAUTHORIZED_SCOPE = "unauthorized_scope";
+    public static final String SCOPE_UNAUTHORIZED_ACCESS = "unauthorized_access_delegation";
 
     public static final String DB_TYPE_H2_SQL = "h2.sql";
     public static final String DB_SCRIPTS_FOLDER_NAME = "dbScripts";

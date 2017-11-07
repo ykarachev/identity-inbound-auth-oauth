@@ -21,14 +21,18 @@ package org.wso2.carbon.identity.oauth.endpoint.expmapper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.as.response.OAuthASResponse;
+import org.apache.oltu.oauth2.common.exception.OAuthProblemException;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.apache.oltu.oauth2.common.message.OAuthResponse;
 import org.wso2.carbon.identity.oauth.common.OAuth2ErrorCodes;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.endpoint.exception.AccessDeniedException;
 import org.wso2.carbon.identity.oauth.endpoint.exception.BadRequestException;
 import org.wso2.carbon.identity.oauth.endpoint.exception.InvalidApplicationClientException;
 import org.wso2.carbon.identity.oauth.endpoint.exception.InvalidRequestException;
 import org.wso2.carbon.identity.oauth.endpoint.exception.InvalidRequestParentException;
+import org.wso2.carbon.identity.oauth.endpoint.exception.TokenEndpointAccessDeniedException;
+import org.wso2.carbon.identity.oauth.endpoint.exception.TokenEndpointBadRequestException;
 import org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil;
 
 
@@ -85,6 +89,43 @@ public class InvalidRequestExceptionMapper implements ExceptionMapper<InvalidReq
             } catch (URISyntaxException e) {
                 if (log.isDebugEnabled()) {
                     log.debug("Error while getting endpoint error page URL", e);
+                }
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            }
+        } else if (exception instanceof TokenEndpointBadRequestException) {
+            try {
+                if (exception.getMessage() != null) {
+                    OAuthResponse oAuthResponse = OAuthASResponse.errorResponse(HttpServletResponse.SC_BAD_REQUEST)
+                            .setError(OAuth2ErrorCodes.INVALID_REQUEST).setErrorDescription(exception.getMessage())
+                            .buildJSONMessage();
+                    return Response.status(oAuthResponse.getResponseStatus()).entity(oAuthResponse.getBody()).build();
+
+                }
+
+                OAuthResponse res = OAuthASResponse
+                        .errorResponse(HttpServletResponse.SC_BAD_REQUEST).error((OAuthProblemException) exception.getCause())
+                        .buildJSONMessage();
+                return Response.status(res.getResponseStatus()).entity(res.getBody()).build();
+
+
+            } catch (OAuthSystemException e) {
+                if (log.isDebugEnabled()) {
+                    log.debug("OAuth System error while token invoking token endpoint", e);
+                }
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
+            }
+
+        } else if (exception instanceof TokenEndpointAccessDeniedException) {
+            try {
+                OAuthResponse response = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
+                        .setError(OAuth2ErrorCodes.INVALID_CLIENT)
+                        .setErrorDescription(exception.getMessage()).buildJSONMessage();
+                return Response.status(response.getResponseStatus())
+                        .header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE, EndpointUtil.getRealmInfo())
+                        .entity(response.getBody()).build();
+            } catch (OAuthSystemException e) {
+                if (log.isDebugEnabled()) {
+                    log.debug("OAuth System error while token invoking token endpoint", e);
                 }
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR).build();
             }

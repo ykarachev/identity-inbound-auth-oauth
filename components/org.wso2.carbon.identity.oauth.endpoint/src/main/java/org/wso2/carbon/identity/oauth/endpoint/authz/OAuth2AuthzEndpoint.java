@@ -141,7 +141,7 @@ public class OAuth2AuthzEndpoint {
     public Response authorize(@Context HttpServletRequest request, @Context HttpServletResponse response)
             throws URISyntaxException, InvalidRequestParentException {
 
-        startSuperTenantFlow();
+        EndpointUtil.startSuperTenantFlow();
         OAuthMessage oAuthMessage = buildOAuthMessage(request, response);
         try {
             if (isPassthroughToFramework(oAuthMessage)) {
@@ -229,13 +229,6 @@ public class OAuth2AuthzEndpoint {
                 .setRequest(request)
                 .setResponse(response)
                 .build();
-    }
-
-    private void startSuperTenantFlow() {
-        PrivilegedCarbonContext.startTenantFlow();
-        PrivilegedCarbonContext carbonContext = PrivilegedCarbonContext.getThreadLocalCarbonContext();
-        carbonContext.setTenantId(MultitenantConstants.SUPER_TENANT_ID);
-        carbonContext.setTenantDomain(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME);
     }
 
     private Response handleOAuthSystemException(SessionDataCacheEntry sessionDataCacheEntry, OAuthSystemException e) throws URISyntaxException {

@@ -44,6 +44,7 @@ import org.wso2.carbon.identity.oauth.cache.SessionDataCacheKey;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.OAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
+import org.wso2.carbon.identity.oauth.endpoint.exception.InvalidApplicationClientException;
 import org.wso2.carbon.identity.oauth.endpoint.message.OAuthMessage;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.OAuth2Service;
@@ -52,6 +53,7 @@ import org.wso2.carbon.identity.oauth2.model.OAuth2Parameters;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.webfinger.DefaultWebFingerProcessor;
 import org.wso2.carbon.identity.webfinger.WebFingerProcessor;
+import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -63,6 +65,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
+
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OauthAppStates.APP_STATE_ACTIVE;
 
 public class EndpointUtil {
 
@@ -510,5 +514,46 @@ public class EndpointUtil {
             }
         }
         return true;
+    }
+
+    /**
+     * This method will start a super tenant flow
+     */
+    public static void startSuperTenantFlow() {
+
+        PrivilegedCarbonContext.startTenantFlow();
+        PrivilegedCarbonContext carbonContext = PrivilegedCarbonContext.getThreadLocalCarbonContext();
+        carbonContext.setTenantId(MultitenantConstants.SUPER_TENANT_ID);
+        carbonContext.setTenantDomain(MultitenantConstants.SUPER_TENANT_DOMAIN_NAME);
+    }
+
+    /**
+     * This API validate the oauth application. Check whether an application exits for given cosumerKey and check
+     * it's status
+     * @param consumerKey clientId
+     * @throws InvalidApplicationClientException
+     */
+    public static void validateOauthApplication(String consumerKey) throws InvalidApplicationClientException {
+
+        String appState = EndpointUtil.getOAuth2Service().getOauthApplicationState(consumerKey);
+
+        if (StringUtils.isEmpty(appState)) {
+            if (log.isDebugEnabled()) {
+                log.debug("A valid OAuth client could not be found for client_id: " + consumerKey);
+            }
+
+            throw new InvalidApplicationClientException("A valid OAuth client could not be found for client_id: " + consumerKey);
+        }
+
+        if (!APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Oauth App is not in active state for client ID : " + consumerKey);
+            }
+            throw new InvalidApplicationClientException("Oauth application is not in active state");
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Oauth App validation success for consumer key: " + consumerKey);
+        }
     }
 }

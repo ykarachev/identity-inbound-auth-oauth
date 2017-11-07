@@ -124,24 +124,7 @@ public class OAuthRequestStateValidator {
     private void validateOauthApplication(OAuthMessage oAuthMessage) throws InvalidRequestParentException {
 
         if (StringUtils.isNotBlank(oAuthMessage.getClientId())) {
-            String appState = EndpointUtil.getOAuth2Service().getOauthApplicationState(oAuthMessage.getClientId());
-
-            if (StringUtils.isEmpty(appState)) {
-                if (log.isDebugEnabled()) {
-                    log.debug("A valid OAuth client could not be found for client_id: " + oAuthMessage.getClientId());
-                }
-
-                throw new InvalidApplicationClientException("A valid OAuth client could not be found for client_id: "
-                        + oAuthMessage.getClientId());
-            }
-
-            if (!OAuthConstants.OauthAppStates.APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Oauth App is not in active state for client ID : " + oAuthMessage.getClientId());
-                }
-
-                throw new InvalidApplicationClientException("Oauth application is not in active state");
-            }
+            EndpointUtil.validateOauthApplication(oAuthMessage.getClientId());
         }
     }
 

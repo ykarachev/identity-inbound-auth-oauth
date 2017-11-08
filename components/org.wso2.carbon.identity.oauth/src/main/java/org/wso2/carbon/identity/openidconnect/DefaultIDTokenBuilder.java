@@ -389,14 +389,16 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         return new String(Base64.encodeBase64URLSafe(leftmost), Charsets.UTF_8);
     }
 
-    protected ServiceProvider getServiceProvider(String tenantDomain, String clientId) throws IdentityOAuth2Exception {
+    protected ServiceProvider getServiceProvider(String spTenantDomain,
+                                                 String clientId) throws IdentityOAuth2Exception {
         ApplicationManagementService applicationMgtService = OAuth2ServiceComponentHolder.getApplicationMgtService();
         try {
             String spName =
-                    applicationMgtService.getServiceProviderNameByClientId(clientId, INBOUND_AUTH2_TYPE, tenantDomain);
-            return applicationMgtService.getApplicationExcludingFileBasedSPs(spName, tenantDomain);
+                    applicationMgtService.getServiceProviderNameByClientId(clientId, INBOUND_AUTH2_TYPE, spTenantDomain);
+            return applicationMgtService.getApplicationExcludingFileBasedSPs(spName, spTenantDomain);
         } catch (IdentityApplicationManagementException e) {
-            throw new IdentityOAuth2Exception("Error while getting service provider information.", e);
+            throw new IdentityOAuth2Exception("Error while getting service provider information for client_id: "
+                    + clientId + " tenantDomain: " + spTenantDomain, e);
         }
     }
 

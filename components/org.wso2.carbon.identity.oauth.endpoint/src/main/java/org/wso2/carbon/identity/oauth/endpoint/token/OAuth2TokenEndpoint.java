@@ -34,6 +34,8 @@ import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.common.exception.OAuthClientException;
 import org.wso2.carbon.identity.oauth.endpoint.OAuthRequestWrapper;
 import org.wso2.carbon.identity.oauth.endpoint.exception.InvalidApplicationClientException;
+import org.wso2.carbon.identity.oauth.endpoint.exception.InvalidRequestException;
+import org.wso2.carbon.identity.oauth.endpoint.exception.InvalidRequestParentException;
 import org.wso2.carbon.identity.oauth.endpoint.exception.TokenEndpointAccessDeniedException;
 import org.wso2.carbon.identity.oauth.endpoint.exception.TokenEndpointBadRequestException;
 import org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil;
@@ -71,8 +73,8 @@ public class OAuth2TokenEndpoint {
     @Consumes("application/x-www-form-urlencoded")
     @Produces("application/json")
     public Response issueAccessToken(@Context HttpServletRequest request,
-                                     MultivaluedMap<String, String> paramMap) throws OAuthSystemException,
-            InvalidApplicationClientException, TokenEndpointBadRequestException, TokenEndpointAccessDeniedException {
+                                     MultivaluedMap<String, String> paramMap)
+            throws OAuthSystemException, InvalidRequestParentException{
 
         try {
             startSuperTenantFlow();

@@ -216,9 +216,9 @@ public class EndpointUtil {
      * Returns the error page URL. If appName is not <code>null</code> it will be added as query parameter
      * to be displayed to the user. If redirect_uri is <code>null</code> the common error page URL will be returned.
      *
-     * @param errorCode errorCode
-     * @param errorMessage errorMessage
-     * @param appName appName
+     * @param errorCode : Error Code
+     * @param errorMessage : Error Message
+     * @param appName : Application Name
      * @return ErrorPageURL
      */
     public static String getErrorPageURL(String errorCode, String errorMessage, String appName) {
@@ -286,9 +286,9 @@ public class EndpointUtil {
     /**
      * Returns the login page URL.
      *
-     * @param checkAuthentication checkAuthentication
-     * @param forceAuthenticate forceAuthenticate
-     * @param scopes
+     * @param checkAuthentication : True if Passive Authentication
+     * @param forceAuthenticate : True if need to authenticate forcefully
+     * @param scopes : Scopes set
      * @return LoginPageURL
      */
     public static String getLoginPageURL(String clientId, String sessionDataKey,

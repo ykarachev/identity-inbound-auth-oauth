@@ -174,11 +174,11 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         tokenReqMsgCtxt.addProperty(OAuthConstants.ACCESS_TOKEN, accessToken);
         tokenReqMsgCtxt.addProperty(MultitenantConstants.TENANT_DOMAIN, getSpTenantDomain(tokenReqMsgCtxt));
 
-        handleOIDCClaims(tokenReqMsgCtxt, jwtClaimsSet);
+        handleOIDCCustomClaims(tokenReqMsgCtxt, jwtClaimsSet);
         jwtClaimsSet.setSubject(subjectClaim);
 
         if (isInvalidToken(jwtClaimsSet)) {
-            throw new IDTokenValidationFailureException("Error while validating JWT token for required claims");
+            throw new IDTokenValidationFailureException("Error while validating ID Token token for required claims");
         }
 
         if (isIDTokenNotSigned()) {
@@ -250,7 +250,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         return tokReqMsgCtx.getOauth2AccessTokenReqDTO().getTenantDomain();
     }
 
-    private void handleOIDCClaims(OAuthTokenReqMessageContext tokReqMsgCtx, JWTClaimsSet jwtClaimsSet) {
+    private void handleOIDCCustomClaims(OAuthTokenReqMessageContext tokReqMsgCtx, JWTClaimsSet jwtClaimsSet) {
         CustomClaimsCallbackHandler claimsCallBackHandler =
                 OAuthServerConfiguration.getInstance().getOpenIDConnectCustomClaimsCallbackHandler();
         claimsCallBackHandler.handleCustomClaims(jwtClaimsSet, tokReqMsgCtx);
@@ -287,7 +287,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         } else {
             subject = getFormattedSubjectClaim(serviceProvider, username, userStoreDomain, userTenantDomain);
             if (log.isDebugEnabled()) {
-                log.debug("No subject claim uri defined at service provider: " + serviceProvider.getApplicationName()
+                log.debug("No subject claim defined for service provider: " + serviceProvider.getApplicationName()
                         + ". Using username as the subject claim.");
             }
         }
@@ -308,6 +308,14 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
     private String getSubjectClaimUriInLocalDialect(ServiceProvider serviceProvider) {
         String subjectClaimUri = serviceProvider.getLocalAndOutBoundAuthenticationConfig().getSubjectClaimUri();
+        if (log.isDebugEnabled()) {
+            if (StringUtils.isNotBlank(subjectClaimUri)) {
+                log.debug(subjectClaimUri + " is defined as subject claim for service provider: " +
+                        serviceProvider.getApplicationName());
+            } else {
+                log.debug("No subject claim defined for service provider: " + serviceProvider.getApplicationName());
+            }
+        }
         // Get the local subject claim URI, if subject claim was a SP mapped one
         return getSubjectClaimUriInLocalDialect(serviceProvider, subjectClaimUri);
     }
@@ -343,15 +351,16 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
     }
 
     private String getSubjectClaimUriInLocalDialect(ServiceProvider serviceProvider, String subjectClaimUri) {
-        ClaimConfig claimConfig = serviceProvider.getClaimConfig();
-        if (claimConfig != null) {
-            boolean isLocalClaimDialect = claimConfig.isLocalClaimDialect();
-            ClaimMapping[] claimMappings = claimConfig.getClaimMappings();
-            if (!isLocalClaimDialect && ArrayUtils.isNotEmpty(claimMappings)) {
-                for (ClaimMapping claimMapping : claimMappings) {
-                    if (StringUtils.isNotBlank(subjectClaimUri) &&
-                            StringUtils.equals(claimMapping.getRemoteClaim().getClaimUri(), subjectClaimUri)) {
-                        return claimMapping.getLocalClaim().getClaimUri();
+        if (StringUtils.isNotBlank(subjectClaimUri)) {
+            ClaimConfig claimConfig = serviceProvider.getClaimConfig();
+            if (claimConfig != null) {
+                boolean isLocalClaimDialect = claimConfig.isLocalClaimDialect();
+                ClaimMapping[] claimMappings = claimConfig.getClaimMappings();
+                if (!isLocalClaimDialect && ArrayUtils.isNotEmpty(claimMappings)) {
+                    for (ClaimMapping claimMapping : claimMappings) {
+                        if (StringUtils.equals(claimMapping.getRemoteClaim().getClaimUri(), subjectClaimUri)) {
+                            return claimMapping.getLocalClaim().getClaimUri();
+                        }
                     }
                 }
             }

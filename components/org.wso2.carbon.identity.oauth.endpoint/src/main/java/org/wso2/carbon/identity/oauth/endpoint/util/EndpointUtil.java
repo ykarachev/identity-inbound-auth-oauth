@@ -54,7 +54,6 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.webfinger.DefaultWebFingerProcessor;
 import org.wso2.carbon.identity.webfinger.WebFingerProcessor;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
-
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.List;
@@ -75,6 +74,7 @@ public class EndpointUtil {
     public static final String OPENID = "openid";
     public static final String OIDC = "oidc";
     public static final String OAUTH2_AUTHORIZE = "/oauth2/authorize";
+    public static final String UTF_8 = "UTF-8";
 
     private EndpointUtil() {
 
@@ -83,37 +83,37 @@ public class EndpointUtil {
     /**
      * Returns the {@code DefaultWebFingerProcessor} instance
      *
-     * @return
+     * @return DefaultWebFingerProcessor
      */
     public static DefaultWebFingerProcessor getWebFingerService() {
         return (DefaultWebFingerProcessor) PrivilegedCarbonContext.getThreadLocalCarbonContext().getOSGiService
-                (WebFingerProcessor.class);
+                (WebFingerProcessor.class, null);
     }
 
     /**
      * Returns the {@code OIDCProviderRequestBuilder} instance
      *
-     * @return
+     * @return DefaultOIDCProviderRequestBuilder
      */
     public static DefaultOIDCProviderRequestBuilder getOIDProviderRequestValidator() {
         return (DefaultOIDCProviderRequestBuilder) PrivilegedCarbonContext.getThreadLocalCarbonContext().getOSGiService
-                (OIDCProviderRequestBuilder.class);
+                (OIDCProviderRequestBuilder.class, null);
     }
 
     /**
      * Returns the {@code DefaultOIDCProcessor} instance
      *
-     * @return
+     * @return DefaultOIDCProcessor
      */
     public static DefaultOIDCProcessor getOIDCService() {
         return (DefaultOIDCProcessor) PrivilegedCarbonContext.getThreadLocalCarbonContext().getOSGiService
-                (OIDCProcessor.class);
+                (OIDCProcessor.class, null);
     }
 
     /**
      * Returns the {@code OAuth2Service} instance
      *
-     * @return
+     * @return OAuth2Service
      */
     public static OAuth2Service getOAuth2Service() {
         return (OAuth2Service) PrivilegedCarbonContext.getThreadLocalCarbonContext()
@@ -123,7 +123,7 @@ public class EndpointUtil {
     /**
      * Returns the {@code OAuthServerConfiguration} instance
      *
-     * @return
+     * @return OAuthServerConfiguration
      */
     public static OAuthServerConfiguration getOAuthServerConfiguration() {
         return (OAuthServerConfiguration) PrivilegedCarbonContext.getThreadLocalCarbonContext()
@@ -133,7 +133,7 @@ public class EndpointUtil {
     /**
      * Returns the {@code OAuthServerConfiguration} instance
      *
-     * @return
+     * @return OAuth2TokenValidationService
      */
     public static OAuth2TokenValidationService getOAuth2TokenValidationService() {
         return (OAuth2TokenValidationService) PrivilegedCarbonContext.getThreadLocalCarbonContext()
@@ -143,8 +143,7 @@ public class EndpointUtil {
     /**
      * Returns the request validator class name
      *
-     * @return
-     * @throws OAuthSystemException
+     * @return UserInfoEndpointRequestValidator
      */
     public static String getUserInfoRequestValidator() throws OAuthSystemException {
         return getOAuthServerConfiguration().getOpenIDConnectUserInfoEndpointRequestValidator();
@@ -153,7 +152,7 @@ public class EndpointUtil {
     /**
      * Returns the access token validator class name
      *
-     * @return
+     * @return AccessTokenValidator
      */
     public static String getAccessTokenValidator() {
         return getOAuthServerConfiguration().getOpenIDConnectUserInfoEndpointAccessTokenValidator();
@@ -162,7 +161,7 @@ public class EndpointUtil {
     /**
      * Returns the response builder class name
      *
-     * @return
+     * @return UserInfoResponseBuilder
      */
     public static String getUserInfoResponseBuilder() {
         return getOAuthServerConfiguration().getOpenIDConnectUserInfoEndpointResponseBuilder();
@@ -171,7 +170,7 @@ public class EndpointUtil {
     /**
      * Returns the claim retriever class name
      *
-     * @return
+     * @return UserInfoClaimRetriever
      */
     public static String getUserInfoClaimRetriever() {
         return getOAuthServerConfiguration().getOpenIDConnectUserInfoEndpointClaimRetriever();
@@ -180,7 +179,7 @@ public class EndpointUtil {
     /**
      * Return the claim dialect for the claim retriever
      *
-     * @return
+     * @return UserInfoClaimDialect
      */
     public static String getUserInfoClaimDialect() {
         return getOAuthServerConfiguration().getOpenIDConnectUserInfoEndpointClaimDialect();
@@ -191,7 +190,7 @@ public class EndpointUtil {
      *
      * @param authorizationHeader "Basic " + base64encode(username + ":" + password)
      * @return String array with client id and client secret.
-     * @throws org.wso2.carbon.identity.base.IdentityException If the decoded data is null.
+     * @throws OAuthClientException If the decoded data is null.
      */
     public static String[] extractCredentialsFromAuthzHeader(String authorizationHeader)
             throws OAuthClientException {
@@ -217,17 +216,17 @@ public class EndpointUtil {
      * Returns the error page URL. If appName is not <code>null</code> it will be added as query parameter
      * to be displayed to the user. If redirect_uri is <code>null</code> the common error page URL will be returned.
      *
-     * @param errorCode
-     * @param errorMessage
-     * @param appName
-     * @return
+     * @param errorCode errorCode
+     * @param errorMessage errorMessage
+     * @param appName appName
+     * @return ErrorPageURL
      */
     public static String getErrorPageURL(String errorCode, String errorMessage, String appName) {
 
         String errorPageUrl = OAuth2Util.OAuthURL.getOAuth2ErrorPageUrl();
         try {
-            errorPageUrl += "?" + OAuthConstants.OAUTH_ERROR_CODE + "=" + URLEncoder.encode(errorCode, "UTF-8") +
-                    "&" + OAuthConstants.OAUTH_ERROR_MESSAGE + "=" + URLEncoder.encode(errorMessage, "UTF-8");
+            errorPageUrl += "?" + OAuthConstants.OAUTH_ERROR_CODE + "=" + URLEncoder.encode(errorCode, UTF_8) +
+                    "&" + OAuthConstants.OAUTH_ERROR_MESSAGE + "=" + URLEncoder.encode(errorMessage, UTF_8);
         } catch (UnsupportedEncodingException e) {
             //ignore
             if (log.isDebugEnabled()){
@@ -287,10 +286,10 @@ public class EndpointUtil {
     /**
      * Returns the login page URL.
      *
-     * @param checkAuthentication
-     * @param forceAuthenticate
+     * @param checkAuthentication checkAuthentication
+     * @param forceAuthenticate forceAuthenticate
      * @param scopes
-     * @return
+     * @return LoginPageURL
      */
     public static String getLoginPageURL(String clientId, String sessionDataKey,
                                          boolean forceAuthenticate, boolean checkAuthentication, Set<String> scopes)
@@ -316,7 +315,7 @@ public class EndpointUtil {
      * @param forceAuthenticate
      * @param checkAuthentication
      * @param scopes
-     * @return
+     * @return LoginPageURL
      * @throws java.io.UnsupportedEncodingException
      */
     public static String getLoginPageURL(String clientId, String sessionDataKey,
@@ -482,6 +481,9 @@ public class EndpointUtil {
         if (paramMap != null) {
             for (Map.Entry<String, List<String>> paramEntry : paramMap.entrySet()) {
                 if (paramEntry.getValue().size() > 1) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Repeated param found:" + paramEntry.getKey());
+                    }
                     return false;
                 }
             }
@@ -490,6 +492,9 @@ public class EndpointUtil {
             Map<String, String[]> map = request.getParameterMap();
             for (Map.Entry<String, String[]> entry : map.entrySet()) {
                 if (entry.getValue().length > 1) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Repeated param found:" + entry.getKey());
+                    }
                     return false;
                 }
             }
@@ -498,22 +503,7 @@ public class EndpointUtil {
     }
 
     public static boolean validateParams(OAuthMessage oAuthMessage, MultivaluedMap<String, String> paramMap) {
-        if (paramMap != null) {
-            for (Map.Entry<String, List<String>> paramEntry : paramMap.entrySet()) {
-                if (paramEntry.getValue().size() > 1) {
-                    return false;
-                }
-            }
-        }
-        if (oAuthMessage.getRequest().getParameterMap() != null) {
-            Map<String, String[]> map = oAuthMessage.getRequest().getParameterMap();
-            for (Map.Entry<String, String[]> entry : map.entrySet()) {
-                if (entry.getValue().length > 1) {
-                    return false;
-                }
-            }
-        }
-        return true;
+        return validateParams(oAuthMessage.getRequest(), paramMap);
     }
 
     /**
@@ -545,9 +535,9 @@ public class EndpointUtil {
             throw new InvalidApplicationClientException("A valid OAuth client could not be found for client_id: " + consumerKey);
         }
 
-        if (!APP_STATE_ACTIVE.equalsIgnoreCase(appState)) {
+        if (isNotActiveState(appState)) {
             if (log.isDebugEnabled()) {
-                log.debug("Oauth App is not in active state for client ID : " + consumerKey);
+                log.debug("App is not in active state in client ID: " + consumerKey + ". App state is:" + appState);
             }
             throw new InvalidApplicationClientException("Oauth application is not in active state");
         }
@@ -555,5 +545,9 @@ public class EndpointUtil {
         if (log.isDebugEnabled()) {
             log.debug("Oauth App validation success for consumer key: " + consumerKey);
         }
+    }
+
+    private static boolean isNotActiveState(String appState) {
+        return !APP_STATE_ACTIVE.equalsIgnoreCase(appState);
     }
 }

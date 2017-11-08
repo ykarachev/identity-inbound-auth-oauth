@@ -23,6 +23,10 @@ public class TokenEndpointBadRequestException extends InvalidRequestParentExcept
         super(message);
     }
 
+    public TokenEndpointBadRequestException(Throwable cause) {
+        super(cause);
+    }
+
     public TokenEndpointBadRequestException(String message, String errorCode) {
         super(message);
         this.errorCode = errorCode;

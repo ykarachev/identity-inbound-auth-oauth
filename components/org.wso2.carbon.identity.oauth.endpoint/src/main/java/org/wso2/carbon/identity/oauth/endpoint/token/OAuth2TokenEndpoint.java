@@ -54,7 +54,7 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
-import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.apache.commons.lang.StringUtils.isNotBlank;
 import static org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil.startSuperTenantFlow;
 import static org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil.validateOauthApplication;
 import static org.wso2.carbon.identity.oauth.endpoint.util.EndpointUtil.validateParams;
@@ -83,7 +83,8 @@ public class OAuth2TokenEndpoint {
             }
 
             HttpServletRequestWrapper httpRequest = new OAuthRequestWrapper(request, paramMap);
-            validateOAuthApplication(httpRequest);
+            String consumerKey = getConsumerKey(httpRequest);
+            validateOAuthApplication(consumerKey);
 
             CarbonOAuthTokenRequest oauthRequest = buildCarbonOAuthTokenRequest(httpRequest);
             OAuth2AccessTokenRespDTO oauth2AccessTokenResp = issueAccessToken(oauthRequest);
@@ -111,20 +112,22 @@ public class OAuth2TokenEndpoint {
 
     private CarbonOAuthTokenRequest handleInvalidRequest(OAuthProblemException e) throws TokenEndpointBadRequestException {
 
-        /*Since oltu library sends OAthProblemException upon real exception and input errors we need to show
-            input errors when debugging and need to show the error logs when real exception thrown
-        */
-        if (OAuthError.TokenResponse.INVALID_REQUEST.equalsIgnoreCase(e.getError()) ||
-                OAuthError.TokenResponse.UNSUPPORTED_GRANT_TYPE.equalsIgnoreCase(e.getError())) {
+        if (isInvalidRequest(e) || isUnsupportedGrantType(e)) {
             if (log.isDebugEnabled()) {
-                log.debug("Invalid request or unsupported grant type: " + e.getError() + ", description: " +
-                        e.getDescription());
+                log.debug("Error: " + e.getError() + ", description: " + e.getDescription());
             }
         } else {
             log.error("Error while creating the Carbon OAuth token request", e);
         }
+        throw new TokenEndpointBadRequestException(e);
+    }
 
-        throw new TokenEndpointBadRequestException(null, null, e);
+    private boolean isUnsupportedGrantType(OAuthProblemException e) {
+        return OAuthError.TokenResponse.UNSUPPORTED_GRANT_TYPE.equalsIgnoreCase(e.getError());
+    }
+
+    private boolean isInvalidRequest(OAuthProblemException e) {
+        return OAuthError.TokenResponse.INVALID_REQUEST.equalsIgnoreCase(e.getError());
     }
 
     private void validateRepeatedParams(HttpServletRequest request, MultivaluedMap<String, String> paramMap)
@@ -135,15 +138,16 @@ public class OAuth2TokenEndpoint {
         }
     }
 
-    private void validateOAuthApplication(HttpServletRequestWrapper httpRequest) throws InvalidApplicationClientException,
+    private void validateOAuthApplication(String consumerKey) throws InvalidApplicationClientException,
             TokenEndpointBadRequestException {
 
-        String consumerKey = getConsumerKey(httpRequest);
-
-        if (isNotEmpty(consumerKey)) {
+        if (isNotBlank(consumerKey)) {
             validateOauthApplication(consumerKey);
         } else {
-            throw new TokenEndpointBadRequestException("Missing parameters: client_id");
+            if (log.isDebugEnabled()) {
+                log.debug("Missing parameters on the request: client_id");
+            }
+            throw new TokenEndpointBadRequestException("Missing parameters on the request: client_id");
         }
     }
 
@@ -157,11 +161,10 @@ public class OAuth2TokenEndpoint {
                 .setTokenType(BEARER);
         oAuthRespBuilder.setScope(oauth2AccessTokenResp.getAuthorizedScopes());
 
-        // OpenID Connect ID token
         if (oauth2AccessTokenResp.getIDToken() != null) {
-            oAuthRespBuilder.setParam(OAuthConstants.ID_TOKEN,
-                    oauth2AccessTokenResp.getIDToken());
+            oAuthRespBuilder.setParam(OAuthConstants.ID_TOKEN, oauth2AccessTokenResp.getIDToken());
         }
+
         OAuthResponse response = oAuthRespBuilder.buildJSONMessage();
         ResponseHeader[] headers = oauth2AccessTokenResp.getResponseHeaders();
         ResponseBuilder respBuilder = Response
@@ -171,10 +174,10 @@ public class OAuth2TokenEndpoint {
                 .header(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
                         OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
 
-        if (headers != null && headers.length > 0) {
-            for (int i = 0; i < headers.length; i++) {
-                if (headers[i] != null) {
-                    respBuilder.header(headers[i].getKey(), headers[i].getValue());
+        if (headers != null) {
+            for (ResponseHeader header : headers) {
+                if (header != null) {
+                    respBuilder.header(header.getKey(), header.getValue());
                 }
             }
         }
@@ -193,40 +196,43 @@ public class OAuth2TokenEndpoint {
             return handleServerError();
         } else {
             // Otherwise send back HTTP 400 Status Code
-            OAuthResponse.OAuthErrorResponseBuilder oAuthErrorResponseBuilder = OAuthASResponse
+            OAuthResponse response = OAuthASResponse
                     .errorResponse(HttpServletResponse.SC_BAD_REQUEST)
                     .setError(oauth2AccessTokenResp.getErrorCode())
-                    .setErrorDescription(oauth2AccessTokenResp.getErrorMsg());
-            OAuthResponse response = oAuthErrorResponseBuilder.buildJSONMessage();
+                    .setErrorDescription(oauth2AccessTokenResp.getErrorMsg())
+                    .buildJSONMessage();
 
             ResponseHeader[] headers = oauth2AccessTokenResp.getResponseHeaders();
-            ResponseBuilder respBuilder = Response
-                    .status(response.getResponseStatus());
+            ResponseBuilder respBuilder = Response.status(response.getResponseStatus());
 
             if (headers != null) {
-                for (int i = 0; i < headers.length; i++) {
-                    if (headers[i] != null) {
-                        respBuilder.header(headers[i].getKey(), headers[i].getValue());
+                for (ResponseHeader header : headers) {
+                    if (header != null) {
+                        respBuilder.header(header.getKey(), header.getValue());
                     }
                 }
             }
-
             return respBuilder.entity(response.getBody()).build();
         }
     }
 
     private String getConsumerKey(HttpServletRequestWrapper httpRequest) {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Consumer key:" + httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID));
+        }
         return httpRequest.getParameter(OAuth.OAUTH_CLIENT_ID);
     }
 
     private void validateAuthorizationHeader(HttpServletRequest request, MultivaluedMap<String, String> paramMap)
-            throws OAuthSystemException, TokenEndpointAccessDeniedException {
+            throws TokenEndpointAccessDeniedException {
 
         try {
             // The client MUST NOT use more than one authentication method in each request
             if (isClientCredentialsExistsAsParams(paramMap)) {
                 if (log.isDebugEnabled()) {
-                    log.debug("Used more than one authentication method ");
+                    log.debug("Client Id and Client Secret found in request body and Authorization header" +
+                            ". Credentials should be sent in either request body or Authorization header, not both");
                 }
                 throw new TokenEndpointAccessDeniedException("Client Authentication failed");
             }
@@ -235,10 +241,17 @@ public class OAuth2TokenEndpoint {
             paramMap.add(OAuth.OAUTH_CLIENT_ID, credentials[0]);
             paramMap.add(OAuth.OAUTH_CLIENT_SECRET, credentials[1]);
 
+            if (log.isDebugEnabled()) {
+                log.debug("Client credentials extracted from the Authorization Header");
+            }
+
         } catch (OAuthClientException e) {
             // malformed credential string is considered as an auth failure.
-            log.error("Error while extracting credentials from authorization header", e);
-            throw new TokenEndpointAccessDeniedException("Client Authentication failed");
+            if (log.isDebugEnabled()) {
+                log.error("Error while extracting credentials from authorization header", e);
+            }
+
+            throw new TokenEndpointAccessDeniedException("Client Authentication failed. Invalid Authorization Header");
         }
     }
 

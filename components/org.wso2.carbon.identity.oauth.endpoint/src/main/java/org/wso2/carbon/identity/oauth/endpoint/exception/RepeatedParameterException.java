@@ -17,35 +17,25 @@
  */
 package org.wso2.carbon.identity.oauth.endpoint.exception;
 
-public class InvalidRequestParentException extends Exception {
+import java.util.List;
 
-    protected String errorCode = null;
-    protected String errorMessage = null;
+public class RepeatedParameterException extends Exception {
 
-
-    public InvalidRequestParentException(String message) {
+    List<String> repeatedParameter;
+    public RepeatedParameterException(String message) {
         super(message);
     }
 
-    public InvalidRequestParentException(Throwable cause) {
-        super(cause);
-    }
-
-    public InvalidRequestParentException(String message, String errorCode) {
+    public RepeatedParameterException(String message, List<String> repeatedParameter) {
         super(message);
-        this.errorCode = errorCode;
+        this.repeatedParameter = repeatedParameter;
     }
 
-    public InvalidRequestParentException(String message, String errorCode, Throwable cause) {
+    public RepeatedParameterException(String message, Throwable cause) {
         super(message, cause);
-        this.errorCode = errorCode;
     }
 
-    public String getErrorCode() {
-        return errorCode;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
+    public List<String> getRepeatedParameter() {
+        return repeatedParameter;
     }
 }

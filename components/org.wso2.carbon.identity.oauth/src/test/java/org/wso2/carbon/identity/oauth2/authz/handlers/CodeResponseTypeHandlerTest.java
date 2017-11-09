@@ -43,13 +43,13 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @WithCarbonHome
 @WithH2Database(jndiName = "jdbc/WSO2IdentityDB",
-        files = {"dbScripts/h2_with_application_and_token.sql", "dbScripts/identity.sql"})
+        files = {"dbScripts/h2.sql", "dbScripts/identity.sql"})
 @WithRealmService(tenantId = TestConstants.TENANT_ID,
         tenantDomain = TestConstants.TENANT_DOMAIN,
         initUserStoreManager = true)
 public class CodeResponseTypeHandlerTest {
 
-    private final String TEST_CONSUMER_KEY =  UUID.randomUUID().toString();
+    private final String TEST_CONSUMER_KEY =  "testconsumenrkey";
     private final String TEST_CALLBACK_URL = "https://localhost:8000/callback";
 
     OAuthAuthzReqMessageContext authAuthzReqMessageContext;

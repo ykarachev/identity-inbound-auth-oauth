@@ -23,7 +23,6 @@ import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -83,11 +82,11 @@ public class AbstractResponseTypeHandlerTest extends PowerMockIdentityBaseTest {
     }
 
 
-    @Test(dataProvider = "grantTypeProvider")
-    public void testValidateAccessDelegation(String grantType, boolean result) throws Exception {
+    @Test
+    public void testValidateAccessDelegation() throws Exception {
         Assert.assertEquals(abstractResponseTypeHandler.
-                        validateAccessDelegation(this.setSampleOAuthReqMessageContext(grantType)),
-                result, "Access Delegation not set");
+                        validateAccessDelegation(this.setSampleOAuthReqMessageContext("authorization_code")),
+                true, "Access Delegation not set");
     }
 
     @Test
@@ -97,25 +96,17 @@ public class AbstractResponseTypeHandlerTest extends PowerMockIdentityBaseTest {
                 "Validate scope returns wrong value");
     }
 
-    @Test(dataProvider = "grantTypeProvider2")
+    @Test(dataProvider = "grantTypeProvider")
     public void testIsAuthorizedClient(String grantType, boolean result) throws Exception {
         Assert.assertEquals(abstractResponseTypeHandler
                 .isAuthorizedClient(this.setSampleOAuthReqMessageContext(grantType)), result);
     }
 
     @DataProvider(name = "grantTypeProvider")
-    public static Object[][] grantTypes() {
-        return new Object[][]{{null, true},
-                {"authorization_code", true},
-                {"dummy_code", false},
-                {"implicit", true},
-                {"dummy_code_2", false}};
-    }
-
-    @DataProvider(name = "grantTypeProvider2")
     public static Object[][] grantTypes2() {
         return new Object[][]{{null, false},
                 {"authorization_code", true},
+                {"implicit", true},
                 {"dummy_code", false}};
     }
 

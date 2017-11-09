@@ -57,8 +57,7 @@ public class OpenIDConnectUserEndpoint {
     @Path("/")
     @Produces("application/json")
     public Response getUserClaims(@Context HttpServletRequest request) throws OAuthSystemException {
-
-        String response = null;
+        String userInfoResponse;
         try {
             // validate the request
             UserInfoRequestValidator requestValidator = UserInfoEndpointConfig.getInstance().getUserInfoRequestValidator();
@@ -75,19 +74,23 @@ public class OpenIDConnectUserEndpoint {
                contextual information that could be used to derive the tenantId of the SP. Therefore we are setting
                the tenantId in a thread local variable.
              */
-            setServiceProviderTenantId(accessToken);
+            setServiceProviderTenantIdInThreadLocal(accessToken);
 
             // build the claims
             //ToDO - Validate the grant type to be implicit or authorization_code before retrieving claims
             UserInfoResponseBuilder userInfoResponseBuilder =
                     UserInfoEndpointConfig.getInstance().getUserInfoResponseBuilder();
-            response = userInfoResponseBuilder.getResponseString(tokenResponse);
+            userInfoResponse = userInfoResponseBuilder.getResponseString(tokenResponse);
 
         } catch (UserInfoEndpointException e) {
             return handleError(e);
         } catch (OAuthSystemException e) {
             log.error("UserInfoEndpoint Failed", e);
             throw new OAuthSystemException("UserInfoEndpoint Failed");
+        } finally {
+            // Remove the thread local set to pass the Service Provider tenantID to downstream user info response
+            // builders.
+            OAuth2Util.clearClientTenantId();
         }
 
         ResponseBuilder respBuilder =
@@ -97,8 +100,8 @@ public class OpenIDConnectUserEndpoint {
                         .header(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
                                 OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
 
-        if(response != null) {
-            return respBuilder.entity(response).build();
+        if (userInfoResponse != null) {
+            return respBuilder.entity(userInfoResponse).build();
         }
         return respBuilder.build();
     }
@@ -119,53 +122,53 @@ public class OpenIDConnectUserEndpoint {
      * @throws OAuthSystemException
      */
     private Response handleError(UserInfoEndpointException e) throws OAuthSystemException {
-        log.debug(e);
-        OAuthResponse res;
+        if (log.isDebugEnabled()) {
+            log.debug("Error while building user info response.", e);
+        }
         try {
             if (OAuthError.ResourceResponse.INSUFFICIENT_SCOPE.equals(e.getErrorCode())) {
-                res = OAuthASResponse.errorResponse(HttpServletResponse.SC_FORBIDDEN)
-                        .setError(e.getErrorCode()).setErrorDescription(e.getErrorMessage())
-                        .buildJSONMessage();
-                return Response.status(res.getResponseStatus())
-                        .header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE,
-                                "Bearer error=\"" + e.getErrorCode() + "\"")
-                        .entity(res.getBody())
-                        .build();
+                return getErrorResponseWithAuthenticateHeader(e, HttpServletResponse.SC_FORBIDDEN);
             } else if (OAuthError.ResourceResponse.INVALID_TOKEN.equals(e.getErrorCode())) {
-                res = OAuthASResponse.errorResponse(HttpServletResponse.SC_UNAUTHORIZED)
-                        .setError(e.getErrorCode()).setErrorDescription(e.getErrorMessage())
-                        .buildJSONMessage();
-                return Response.status(res.getResponseStatus())
-                        .header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE,
-                                "Bearer error=\"" + e.getErrorCode() + "\"")
-                        .entity(res.getBody())
-                        .build();
+                return getErrorResponseWithAuthenticateHeader(e, HttpServletResponse.SC_UNAUTHORIZED);
             } else if (OAuthError.ResourceResponse.INVALID_REQUEST.equals(e.getErrorCode())) {
-                res = OAuthASResponse.errorResponse(HttpServletResponse.SC_BAD_REQUEST)
-                        .setError(e.getErrorCode()).setErrorDescription(e.getErrorMessage())
-                        .buildJSONMessage();
-                return Response.status(res.getResponseStatus())
-                        .header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE,
-                                "Bearer error=\"" + e.getErrorCode() + "\"")
-                        .entity(res.getBody())
-                        .build();
+                return getErrorResponseWithAuthenticateHeader(e, HttpServletResponse.SC_BAD_REQUEST);
             } else {
-                res = OAuthASResponse.errorResponse(HttpServletResponse.SC_BAD_REQUEST)
-                        .setError(e.getErrorCode()).setErrorDescription(e.getErrorMessage())
-                        .buildJSONMessage();
-                return Response.status(res.getResponseStatus())
-                        .entity(res.getBody())
-                        .build();
+                return buildBadRequestErrorResponse(e, HttpServletResponse.SC_BAD_REQUEST);
             }
-
         } catch (OAuthSystemException e1) {
             log.error("Error while building the JSON message", e1);
-            OAuthResponse response =
-                    OAuthASResponse.errorResponse(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                            .setError(OAuth2ErrorCodes.SERVER_ERROR)
-                            .setErrorDescription(e1.getMessage()).buildJSONMessage();
-            return Response.status(response.getResponseStatus()).entity(response.getBody()).build();
+            return buildServerErrorResponse(e1, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private Response buildServerErrorResponse(OAuthSystemException ex, int statusCode) throws OAuthSystemException {
+        OAuthResponse response = OAuthASResponse.errorResponse(statusCode)
+                        .setError(OAuth2ErrorCodes.SERVER_ERROR)
+                        .setErrorDescription(ex.getMessage()).buildJSONMessage();
+        return Response.status(response.getResponseStatus()).entity(response.getBody()).build();
+    }
+
+    private Response buildBadRequestErrorResponse(UserInfoEndpointException ex,
+                                                  int statusCode) throws OAuthSystemException {
+        OAuthResponse res = OAuthASResponse.errorResponse(statusCode)
+                .setError(ex.getErrorCode())
+                .setErrorDescription(ex.getErrorMessage())
+                .buildJSONMessage();
+
+        return Response.status(res.getResponseStatus()).entity(res.getBody()).build();
+    }
+
+    private Response getErrorResponseWithAuthenticateHeader(UserInfoEndpointException ex,
+                                                            int statusCode) throws OAuthSystemException {
+        OAuthResponse res = OAuthASResponse.errorResponse(statusCode)
+                .setError(ex.getErrorCode())
+                .setErrorDescription(ex.getErrorMessage())
+                .buildJSONMessage();
+
+        return Response.status(res.getResponseStatus())
+                .header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE, "Bearer error=\"" + ex.getErrorCode() + "\"")
+                .entity(res.getBody())
+                .build();
     }
 
     /**
@@ -175,7 +178,7 @@ public class OpenIDConnectUserEndpoint {
      * @param accessToken
      * @throws OAuthSystemException
      */
-    private void setServiceProviderTenantId(String accessToken) throws OAuthSystemException {
+    private void setServiceProviderTenantIdInThreadLocal(String accessToken) throws OAuthSystemException {
         try {
             // get client id of OAuth app from the introspection
             String clientId = OAuth2Util.getClientIdForAccessToken(accessToken);

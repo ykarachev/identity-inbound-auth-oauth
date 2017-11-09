@@ -48,6 +48,11 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.HTTP_RESP_HEADER_PRAGMA;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE;
+import static org.wso2.carbon.identity.oauth.common.OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE;
+
 @Path("/userinfo")
 public class OpenIDConnectUserEndpoint {
 
@@ -91,15 +96,12 @@ public class OpenIDConnectUserEndpoint {
             // Remove the thread local set to pass the Service Provider tenantID to downstream user info response
             // builders.
             OAuth2Util.clearClientTenantId();
+            if (log.isDebugEnabled()) {
+                log.debug("Service Provider tenantID thread local variable cleared.");
+            }
         }
 
-        ResponseBuilder respBuilder =
-                Response.status(HttpServletResponse.SC_OK)
-                        .header(OAuthConstants.HTTP_RESP_HEADER_CACHE_CONTROL,
-                                OAuthConstants.HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE)
-                        .header(OAuthConstants.HTTP_RESP_HEADER_PRAGMA,
-                                OAuthConstants.HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
-
+        ResponseBuilder respBuilder = getResponseBuilderWithCacheControlHeaders();
         if (userInfoResponse != null) {
             return respBuilder.entity(userInfoResponse).build();
         }
@@ -111,6 +113,12 @@ public class OpenIDConnectUserEndpoint {
     @Produces("application/json")
     public Response getUserClaimsPost(@Context HttpServletRequest request) throws OAuthSystemException {
         return getUserClaims(request);
+    }
+
+    private ResponseBuilder getResponseBuilderWithCacheControlHeaders() {
+        return Response.status(HttpServletResponse.SC_OK)
+                .header(HTTP_RESP_HEADER_CACHE_CONTROL, HTTP_RESP_HEADER_VAL_CACHE_CONTROL_NO_STORE)
+                .header(HTTP_RESP_HEADER_PRAGMA, HTTP_RESP_HEADER_VAL_PRAGMA_NO_CACHE);
     }
 
 
@@ -154,7 +162,6 @@ public class OpenIDConnectUserEndpoint {
                 .setError(ex.getErrorCode())
                 .setErrorDescription(ex.getErrorMessage())
                 .buildJSONMessage();
-
         return Response.status(res.getResponseStatus()).entity(res.getBody()).build();
     }
 
@@ -164,7 +171,6 @@ public class OpenIDConnectUserEndpoint {
                 .setError(ex.getErrorCode())
                 .setErrorDescription(ex.getErrorMessage())
                 .buildJSONMessage();
-
         return Response.status(res.getResponseStatus())
                 .header(OAuthConstants.HTTP_RESP_HEADER_AUTHENTICATE, "Bearer error=\"" + ex.getErrorCode() + "\"")
                 .entity(res.getBody())
@@ -175,20 +181,23 @@ public class OpenIDConnectUserEndpoint {
      * Derive the tenantId of the SP from the accessToken identifier and set a threadLocal variable to be used by
      * the UserInfoResponseBuilder.
      *
-     * @param accessToken
+     * @param accessToken Access Token used in the user info call
      * @throws OAuthSystemException
      */
     private void setServiceProviderTenantIdInThreadLocal(String accessToken) throws OAuthSystemException {
         try {
-            // get client id of OAuth app from the introspection
+            // Get client id of OAuth app from the introspection.
             String clientId = OAuth2Util.getClientIdForAccessToken(accessToken);
             if (StringUtils.isBlank(clientId)) {
                 throw new OAuthSystemException("Cannot find the clientID of the SP that issued the token.");
             }
             OAuthAppDO appDO = OAuth2Util.getAppInformationByClientId(clientId);
             int spTenantId = OAuth2Util.getTenantId(OAuth2Util.getTenantDomainOfOauthApp(appDO));
-            // set the tenant id in the thread local variable
+            // Set the tenant id in the thread local variable.
             OAuth2Util.setClientTenatId(spTenantId);
+            if (log.isDebugEnabled()) {
+                log.debug("Service Provider tenantID: " + spTenantId + " set in the thread local variable.");
+            }
         } catch (IdentityOAuth2Exception | InvalidOAuthClientException e) {
             throw new OAuthSystemException("Error when obtaining the tenant information of SP.", e);
         }

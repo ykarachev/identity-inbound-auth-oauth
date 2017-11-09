@@ -223,14 +223,11 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         }
 
         String responseType = authzReqMessageContext.getAuthorizationReqDTO().getResponseType();
-        String atHash = null;
         if (isIDTokenSigned() && isAccessTokenHashApplicable(responseType)) {
-            atHash = getAtHash(accessToken);
-        }
-
-        if (atHash != null) {
+            String atHash = getAtHash(accessToken);
             jwtClaimsSet.setClaim(AT_HASH, atHash);
         }
+
         if (nonceValue != null) {
             jwtClaimsSet.setClaim(OAuthConstants.OIDCClaims.NONCE, nonceValue);
         }

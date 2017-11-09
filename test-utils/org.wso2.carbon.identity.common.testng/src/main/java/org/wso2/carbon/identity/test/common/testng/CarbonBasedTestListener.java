@@ -22,6 +22,7 @@ import org.apache.axis2.context.ConfigurationContext;
 import org.apache.axis2.engine.AxisConfiguration;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.powermock.api.support.membermodification.MemberModifier;
 import org.testng.IClassListener;
 import org.testng.IMethodInstance;
 import org.testng.ITestClass;
@@ -32,6 +33,9 @@ import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.core.internal.IdentityCoreServiceComponent;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
+import org.wso2.carbon.user.api.Claim;
+import org.wso2.carbon.user.api.ClaimManager;
+import org.wso2.carbon.user.api.ClaimMapping;
 import org.wso2.carbon.user.api.RealmConfiguration;
 import org.wso2.carbon.user.api.UserRealm;
 import org.wso2.carbon.user.api.UserStoreException;
@@ -168,6 +172,16 @@ public class CarbonBasedTestListener implements ITestListener, IClassListener {
                 TenantManager tenantManager = mock(TenantManager.class);
                 UserStoreManager userStoreManager = mock(UserStoreManager.class);
                 UserRealm userRealm = mock(UserRealm.class);
+                ClaimManager claimManager = mock(ClaimManager.class);
+                ClaimMapping claimMapping = new ClaimMapping();
+                claimMapping.setMappedAttribute("test1");
+                claimMapping.setMappedAttribute("test2");
+                claimMapping.setMappedAttribute("test3");
+                Claim claim = new Claim();
+                claim.setClaimUri("http://wso2.org/claims");
+                claim.setValue("testClaim");
+                claimMapping.setClaim(claim);
+                claimManager.addNewClaimMapping(claimMapping);
                 when(realmService.getTenantManager()).thenReturn(tenantManager);
                 when(realmService.getBootstrapRealmConfiguration()).thenReturn(realmConfiguration);
                 when(tenantManager.getTenantId(anyString())).thenReturn(withRealmService.tenantId());
@@ -176,13 +190,26 @@ public class CarbonBasedTestListener implements ITestListener, IClassListener {
                 if (initRealmService) {
                     when(realmService.getTenantUserRealm(withRealmService.tenantId())).thenReturn(userRealm);
                     when(userRealm.getUserStoreManager()).thenReturn(userStoreManager);
+                    when(userStoreManager.isExistingUser(anyString())).thenReturn(true);
                     when(userStoreManager.getSecondaryUserStoreManager()).thenReturn(userStoreManager);
+                    when(userStoreManager.getSecondaryUserStoreManager(anyString())).thenReturn(userStoreManager);
                     when(userStoreManager.getRealmConfiguration()).thenReturn(realmConfiguration);
                     when(userStoreManager.getRealmConfiguration().getUserStoreProperty("CaseInsensitiveUsername"))
                             .thenReturn(Boolean.TRUE.toString());
+                    when(userRealm.getClaimManager()).thenReturn(claimManager);
+                    when(claimManager.getAllClaimMappings(anyString())).thenReturn(new ClaimMapping[]{claimMapping});
                 }
                 setInternalState(OAuthComponentServiceHolder.getInstance(), "realmService", realmService);
                 IdentityTenantUtil.setRealmService(realmService);
+
+                OAuthComponentServiceHolder oAuthComponentServiceHolder = OAuthComponentServiceHolder.getInstance();
+                try {
+                    MemberModifier
+                            .field(OAuthComponentServiceHolder.class, "realmService")
+                            .set(oAuthComponentServiceHolder, realmService);
+                } catch (IllegalAccessException e) {
+                    log.error("Error in setting realm service.", e);
+                }
 
                 Class[] singletonClasses = withRealmService.injectToSingletons();
                 for (Class singletonClass : singletonClasses) {

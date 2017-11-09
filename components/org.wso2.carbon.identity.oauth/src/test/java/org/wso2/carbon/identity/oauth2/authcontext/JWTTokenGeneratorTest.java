@@ -15,30 +15,40 @@
  */
 package org.wso2.carbon.identity.oauth2.authcontext;
 
-import org.powermock.modules.testng.PowerMockObjectFactory;
-import org.testng.IObjectFactory;
+
+import org.powermock.api.support.membermodification.MemberModifier;
+import org.powermock.reflect.Whitebox;
+import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
-import org.testng.annotations.ObjectFactory;
 import org.testng.annotations.Test;
 import org.wso2.carbon.base.MultitenantConstants;
+import org.wso2.carbon.base.api.ServerConfigurationService;
+import org.wso2.carbon.core.internal.CarbonCoreDataHolder;
+import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
-import org.wso2.carbon.identity.oauth.cache.AppInfoCache;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDAO;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
-import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
-import org.wso2.carbon.identity.oauth2.TestConstants;
+import org.wso2.carbon.identity.oauth.util.ClaimCache;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.oauth2.validators.DefaultOAuth2TokenValidator;
 import org.wso2.carbon.identity.oauth2.validators.OAuth2TokenValidationMessageContext;
 import org.wso2.carbon.identity.test.common.testng.WithCarbonHome;
 import org.wso2.carbon.identity.test.common.testng.WithH2Database;
 import org.wso2.carbon.identity.test.common.testng.WithRealmService;
+import org.wso2.carbon.identity.test.common.testng.utils.ReadCertStoreSampleUtil;
+import org.wso2.carbon.registry.core.service.RegistryService;
 
+import java.security.Key;
+import java.security.cert.Certificate;
 import java.sql.Timestamp;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.powermock.api.mockito.PowerMockito.mock;
 
@@ -58,11 +68,6 @@ public class JWTTokenGeneratorTest {
     private JWTTokenGenerator jwtTokenGenerator;
     private boolean includeClaims = true;
     private boolean enableSigning = true;
-    private String consumerDialectURI = "http://wso2.org/claims";
-    private String claimsRetrieverImplClass = "org.wso2.carbon.identity.oauth2.authcontext.DefaultClaimsRetriever";
-    private String signatureAlgorithm = "SHA256withRSA";
-    private boolean useMultiValueSeparatorForAuthContextToken = true;
-
 
     @BeforeTest
     public void setUp() throws Exception {
@@ -108,32 +113,56 @@ public class JWTTokenGeneratorTest {
     @Test
     public void testInit() throws Exception {
         jwtTokenGenerator.init();
+        Assert.assertNotNull((ClaimsRetriever)
+                (MemberModifier.field(JWTTokenGenerator.class,
+                        "claimsRetriever").get(jwtTokenGenerator)), "Init method invoked");
     }
-
 
     @Test(dependsOnMethods = "testInit")
     public void testGenerateToken() throws Exception {
-        //OAuthComponentServiceHolder.getInstance()
+        Whitebox.setInternalState(JWTTokenGenerator.class, "ttl", 15L);
         addSampleOauth2Application();
+        KeyStoreManager keyStoreManager = mock(KeyStoreManager.class);
+        ServerConfigurationService serverConfigurationService = mock(ServerConfigurationService.class);
+        RegistryService registryService = mock(RegistryService.class);
+        keyStoreManager.updateKeyStore("-1234", ReadCertStoreSampleUtil.createKeyStore(getClass()));
+
+        ConcurrentHashMap<String, KeyStoreManager> mtKeyStoreManagers = new ConcurrentHashMap();
+        mtKeyStoreManagers.put("-1234", keyStoreManager);
+        Whitebox.setInternalState(KeyStoreManager.class, "mtKeyStoreManagers", mtKeyStoreManagers);
+        MemberModifier
+                .field(KeyStoreManager.class, "primaryKeyStore")
+                .set(keyStoreManager, ReadCertStoreSampleUtil.createKeyStore(getClass()));
+        MemberModifier
+                .field(KeyStoreManager.class, "registryKeyStore")
+                .set(keyStoreManager, ReadCertStoreSampleUtil.createKeyStore(getClass()));
+        Map<Integer, Certificate> publicCerts = new ConcurrentHashMap<Integer, Certificate>();
+        publicCerts.put(-1234, ReadCertStoreSampleUtil.createKeyStore(getClass())
+                .getCertificate("wso2carbon"));
+        Whitebox.setInternalState(OAuth2Util.class, "publicCerts", publicCerts);
+        Map<Integer, Key> privateKeys = new ConcurrentHashMap<Integer, Key>();
+        privateKeys.put(-1234, ReadCertStoreSampleUtil.createKeyStore(getClass())
+                .getKey("wso2carbon", "wso2carbon".toCharArray()));
+        Whitebox.setInternalState(OAuth2Util.class, "privateKeys", privateKeys);
+        ClaimCache claimsLocalCache = ClaimCache.getInstance();
+        MemberModifier
+                .field(JWTTokenGenerator.class, "claimsLocalCache")
+                .set(jwtTokenGenerator, claimsLocalCache);
+
+        CarbonCoreDataHolder carbonCoreDataHolder = mock(CarbonCoreDataHolder.class);
+
+        CarbonCoreDataHolder.getInstance().setRegistryService(registryService);
+        CarbonCoreDataHolder.getInstance().setServerConfigurationService(serverConfigurationService);
+
+        carbonCoreDataHolder.setServerConfigurationService(serverConfigurationService);
+        carbonCoreDataHolder.setRegistryService(registryService);
         jwtTokenGenerator.generateToken(oAuth2TokenValidationMessageContext);
-    }
 
-    @Test
-    public void testSignJWTWithRSA() throws Exception {
-    }
+        MemberModifier.method(JWTTokenGenerator.class, "generateToken",
+                OAuth2TokenValidationMessageContext.class);
+        Assert.assertNotNull(oAuth2TokenValidationMessageContext.getResponseDTO().getAuthorizationContextToken().getTokenString(), "JWT Token not set");
+        Assert.assertEquals(oAuth2TokenValidationMessageContext.getResponseDTO().getAuthorizationContextToken().getTokenType(), "JWT");
 
-    @Test
-    public void testSignJWT() throws Exception {
-    }
-
-    @Test
-    public void testMapSignatureAlgorithm() throws Exception {
-    }
-
-
-    @ObjectFactory
-    public IObjectFactory getObjectFactory() {
-        return new PowerMockObjectFactory();
     }
 
     private void addSampleOauth2Application() throws IdentityOAuthAdminException {
@@ -141,18 +170,18 @@ public class JWTTokenGeneratorTest {
         OAuthAppDO oAuthAppDO = new OAuthAppDO();
         oAuthAppDO.setGrantTypes("implicit");
         oAuthAppDO.setOauthConsumerKey("sampleConsumerKey");
-        oAuthAppDO.setApplicationName("sampleConsumerKey");
         oAuthAppDO.setState("active");
+        oAuthAppDO.setCallbackUrl("https://localhost:8080/playground2/oauth2client");
         AuthenticatedUser user = new AuthenticatedUser();
         user.setUserStoreDomain("PRIMARY");
         user.setUserName("testUser");
-
         oAuthAppDO.setUser(user);
-        oAuthAppDO.setApplicationName("testApp");
-
+        oAuthAppDO.setApplicationName("testApp" + new Random(4));
+        oAuthAppDO.setOauthVersion("2.0");
 
         OAuthAppDAO authAppDAO = new OAuthAppDAO();
-        // authAppDAO.addOAuthConsumer("testUser", -1234, "PRIMARY");
+        authAppDAO.addOAuthConsumer("testUser", -1234, "PRIMARY");
         authAppDAO.addOAuthApplication(oAuthAppDO);
+        authAppDAO.getConsumerAppState("sampleConsumerKey");
     }
 }

@@ -255,7 +255,7 @@
             <ClaimsRetrieverImplClass>org.wso2.carbon.identity.oauth2.authcontext.DefaultClaimsRetriever</ClaimsRetrieverImplClass>
             <ConsumerDialectURI>http://wso2.org/claims</ConsumerDialectURI>
             <SignatureAlgorithm>SHA256withRSA</SignatureAlgorithm>
-            <AuthorizationContextTTL>15</AuthorizationContextTTL>
+            <AuthorizationContextTTL>10</AuthorizationContextTTL>
         </AuthorizationContextTokenGeneration>
         <SAML2Grant>
             <!--SAML2TokenHandler></SAML2TokenHandler-->

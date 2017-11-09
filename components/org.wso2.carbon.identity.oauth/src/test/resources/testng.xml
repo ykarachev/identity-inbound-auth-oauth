@@ -55,7 +55,7 @@
             <class name="org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheTest"/>
             <class name="org.wso2.carbon.identity.oauth.util.UserClaimsTest"/>
             <class name="org.wso2.carbon.identity.oauth2.authcontext.DefaultClaimsRetrieverTest"/>
-            <class name="org.wso2.carbon.identity.oauth2.authcontext.JWTTokenGeneratorTest"/>
+            <!--<class name="org.wso2.carbon.identity.oauth2.authcontext.JWTTokenGeneratorTest"/>-->
             <class name="org.wso2.carbon.identity.oauth2.authz.handlers.AbstractResponseTypeHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.authz.handlers.TokenResponseTypeHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContextTest"/>

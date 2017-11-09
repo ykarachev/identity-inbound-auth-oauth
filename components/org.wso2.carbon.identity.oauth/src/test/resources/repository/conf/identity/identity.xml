@@ -482,6 +482,7 @@
             <Cache name="IdPCacheByAuthProperty" enable="true" timeout="1" capacity="5000" isDistributed="false"/>
             <Cache name="IdPCacheByHRI" enable="true" timeout="1" capacity="5000" isDistributed="false"/>
             <Cache name="IdPCacheByName" enable="true" timeout="1" capacity="5000" isDistributed="false"/>
+            <Cache name="OAuthScopeCache" enable="true" timeout="1" capacity="5000" isDistributed="false"/>
         </CacheManager>
     </CacheConfig>
 

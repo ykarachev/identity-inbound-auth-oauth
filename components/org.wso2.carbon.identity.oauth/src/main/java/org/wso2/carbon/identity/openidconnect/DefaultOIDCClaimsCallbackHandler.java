@@ -99,6 +99,20 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
     }
 
     /**
+     * Filter user claims based on the OIDC Scopes defined at server level.
+     *
+     * @param requestedScopes             Requested Scopes in the OIDC Request
+     * @param serviceProviderTenantDomain Tenant domain of the service provider
+     * @param userClaims                  Map of user claims
+     * @return
+     */
+    protected Map<String, Object> filterClaimsByScope(String[] requestedScopes,
+                                                      String serviceProviderTenantDomain,
+                                                      Map<String, Object> userClaims) {
+        return OIDCClaimUtil.getClaimsFilteredByOIDCScopes(serviceProviderTenantDomain, requestedScopes, userClaims);
+    }
+
+    /**
      * Get response map
      *
      * @param requestMsgCtx Token request message context
@@ -536,19 +550,5 @@ public class DefaultOIDCClaimsCallbackHandler implements CustomClaimsCallbackHan
 
     private boolean isMultiValuedAttribute(String claimValue) {
         return StringUtils.contains(claimValue, ATTRIBUTE_SEPARATOR);
-    }
-
-    /**
-     * Filter user claims based on the OIDC Scopes defined at server level.
-     *
-     * @param requestedScopes             Requested Scopes in the OIDC Request
-     * @param serviceProviderTenantDomain Tenant domain of the service provider
-     * @param userClaims                  Map of user claims
-     * @return
-     */
-    protected Map<String, Object> filterClaimsByScope(String[] requestedScopes,
-                                                      String serviceProviderTenantDomain,
-                                                      Map<String, Object> userClaims) {
-        return OIDCClaimUtil.getClaimsFilteredByOIDCScopes(serviceProviderTenantDomain, requestedScopes, userClaims);
     }
 }

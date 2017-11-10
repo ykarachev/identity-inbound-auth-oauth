@@ -95,5 +95,4 @@ public class DefaultOAuth2TokenValidatorTest {
         Class clazz = Thread.currentThread().getContextClassLoader().loadClass(scopeValidatorClazz);
         return type.cast(clazz.newInstance());
     }
-
 }

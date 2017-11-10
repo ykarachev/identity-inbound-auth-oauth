@@ -37,6 +37,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.wso2.carbon.base.CarbonBaseConstants;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.Claim;
@@ -63,6 +64,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
 import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
+import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuerImpl;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.identity.sso.saml.SSOServiceProviderConfigManager;
 import org.wso2.carbon.identity.sso.saml.dto.SAMLSSOAuthnReqDTO;
@@ -78,7 +80,7 @@ import org.wso2.carbon.user.core.tenant.TenantManager;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.lang.reflect.Field;
-import java.security.cert.Certificate;
+import java.nio.file.Paths;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
@@ -117,9 +119,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
     private FederatedAuthenticatorConfig federatedAuthenticatorConfig;
     private OAuthTokenReqMessageContext tokReqMsgCtx;
     private OAuth2AccessTokenReqDTO oAuth2AccessTokenReqDTO;
-
-    @Mock
     private OauthTokenIssuer oauthIssuer;
+
     @Mock
     private OAuthComponentServiceHolder oAuthComponentServiceHolder;
     @Mock
@@ -150,6 +151,10 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
     @BeforeMethod
     public void setUp() throws Exception {
 
+        System.setProperty(
+                CarbonBaseConstants.CARBON_HOME,
+                Paths.get(System.getProperty("user.dir"), "src", "test", "resources").toString()
+        );
         mockStatic(OAuthServerConfiguration.class);
         mockStatic(IdentityUtil.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(oAuthServerConfiguration);
@@ -162,6 +167,7 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         oAuth2AccessTokenReqDTO.setScope(SCOPE_ARRAY);
         tokReqMsgCtx = new OAuthTokenReqMessageContext(oAuth2AccessTokenReqDTO);
         tokReqMsgCtx.setTenantID(-1234);
+        oauthIssuer = new OauthTokenIssuerImpl();
     }
 
     @DataProvider (name = "provideValidData")
@@ -227,7 +233,6 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
                 { validOnOrAfter, null, true, true, TestConstants.OAUTH2_TOKEN_EP, TestConstants.LOACALHOST_DOMAIN, null, "Identity provider is null"},
                 { expiredOnOrAfter, "LOCAL", true, true, TestConstants.OAUTH2_TOKEN_EP, TestConstants.LOACALHOST_DOMAIN, null, "Assertion is not valid"},
                 { null, "LOCAL", true, true, TestConstants.OAUTH2_TOKEN_EP, TestConstants.LOACALHOST_DOMAIN, null, "Cannot find valid NotOnOrAfter"},
-
         };
     }
 
@@ -459,9 +464,8 @@ public class SAML2BearerGrantHandlerTest extends PowerMockIdentityBaseTest {
         field.setAccessible(false);
         doNothing().when(profileValidator).validate(any(Signature.class));
 
-        Certificate certificate = x509Certificate;
         when(IdentityApplicationManagementUtil.decodeCertificate(anyString()))
-                .thenReturn(certificate);
+                .thenReturn(x509Certificate);
         whenNew(SignatureValidator.class).withArguments(any(X509Credential.class)).thenReturn(signatureValidator);
         doNothing().when(signatureValidator).validate(any(Signature.class));
     }

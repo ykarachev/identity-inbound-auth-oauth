@@ -330,7 +330,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         }
     }
 
-    private void validateSignatureAgainstIdpCertificate(Assertion assertion, String tenantDomain,
+    protected void validateSignatureAgainstIdpCertificate(Assertion assertion, String tenantDomain,
                                                         IdentityProvider identityProvider) throws IdentityOAuth2Exception {
         X509Certificate x509Certificate = getIdpCertificate(tenantDomain, identityProvider);
         try {

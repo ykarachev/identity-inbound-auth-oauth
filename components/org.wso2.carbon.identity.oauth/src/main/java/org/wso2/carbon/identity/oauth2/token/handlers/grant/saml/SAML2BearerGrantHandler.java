@@ -165,6 +165,13 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         return true;
     }
 
+    @Override
+    public boolean issueRefreshToken() throws IdentityOAuth2Exception {
+
+        return OAuthServerConfiguration.getInstance()
+                .getValueForIsRefreshTokenAllowed(OAuthConstants.OAUTH_SAML2_BEARER_METHOD);
+    }
+
     /**
      * The authorization server MUST verify that the NotOnOrAfter instant has not passed, subject to allowable
      * clock skew between systems.  An invalid NotOnOrAfter instant on the <Conditions> element invalidates the
@@ -364,7 +371,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         try {
             profileValidator.validate(assertion.getSignature());
         } catch (ValidationException e) {
-            throw new IdentityOAuth2Exception("Signature do not confirm to SAML signature profile.", e);
+            throw new IdentityOAuth2Exception("Signature do not adhere to the SAML signature profile.", e);
         }
     }
 
@@ -413,7 +420,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             }
             return false;
         }
-        if (isEarlyTimeStamp(notBeforeConditions, timestampSkewInMillis)) {
+        if (isBeforeValidPeriod(notBeforeConditions, timestampSkewInMillis)) {
             // notBefore is an early timestamp
             if (log.isDebugEnabled()) {
                 log.debug("NotBefore :" + notBeforeConditions + ". Assertion is not valid during this time");
@@ -423,7 +430,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
         return true;
     }
 
-    private boolean isEarlyTimeStamp(DateTime notBeforeConditions, long timestampSkewInMillis) {
+    private boolean isBeforeValidPeriod(DateTime notBeforeConditions, long timestampSkewInMillis) {
         return notBeforeConditions != null && notBeforeConditions.minus(timestampSkewInMillis).isAfterNow();
     }
 
@@ -691,7 +698,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             validateNameId(tokReqMsgCtx, assertion);
         } else {
             if (log.isDebugEnabled()) {
-                log.debug("Cannot find a Subject in the Assertion. Token request for user : " +
+                log.debug("Cannot find a Subject in the Assertion. Token request for the user : " +
                         tokReqMsgCtx.getAuthorizedUser());
             }
             throw new IdentityOAuth2Exception("Cannot find a Subject in the Assertion");
@@ -703,15 +710,19 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             throws IdentityOAuth2Exception {
         if (StringUtils.isBlank(getNameIdValue(assertion))) {
             if (log.isDebugEnabled()){
-                log.debug("NameID in Assertion is empty in subject. Token request for user : " +
+                log.debug("NameID in Assertion is not found in subject. Token request for the user : " +
                         tokReqMsgCtx.getAuthorizedUser());
             }
             throw new IdentityOAuth2Exception("NameID in Assertion cannot be empty");
         }
     }
 
-    private String getNameIdValue(Assertion assertion) {
-        return assertion.getSubject().getNameID().getValue();
+    private String getNameIdValue(Assertion assertion) throws IdentityOAuth2Exception {
+        if (assertion.getSubject().getNameID() != null) {
+            return assertion.getSubject().getNameID().getValue();
+        } else {
+            throw new IdentityOAuth2Exception("NameID value is null. Cannot proceed");
+        }
     }
 
     private Assertion getAssertionObject(OAuthTokenReqMessageContext tokReqMsgCtx) throws IdentityOAuth2Exception {
@@ -751,13 +762,6 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
             tenantDomain = MultitenantConstants.SUPER_TENANT_DOMAIN_NAME;
         }
         return tenantDomain;
-    }
-
-    @Override
-    public boolean issueRefreshToken() throws IdentityOAuth2Exception {
-
-        return OAuthServerConfiguration.getInstance()
-                .getValueForIsRefreshTokenAllowed(OAuthConstants.OAUTH_SAML2_BEARER_METHOD);
     }
 
     /**
@@ -803,7 +807,7 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
      * @param tenantDomain Tenant Domain.
      */
     protected void setFederatedUser(OAuthTokenReqMessageContext tokReqMsgCtx, Assertion assertion, String
-            tenantDomain) {
+            tenantDomain) throws IdentityOAuth2Exception {
 
         String subjectIdentifier = getNameIdValue(assertion);
         if (log.isDebugEnabled()) {
@@ -887,7 +891,8 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
      * @return Authenticated User
      */
     protected AuthenticatedUser buildLocalUser(OAuthTokenReqMessageContext tokReqMsgCtx, Assertion assertion,
-                                               ServiceProvider serviceProvider, String spTenantDomain) {
+                                               ServiceProvider serviceProvider, String spTenantDomain)
+            throws IdentityOAuth2Exception {
 
         AuthenticatedUser authenticatedUser = new AuthenticatedUser();
         String subjectIdentifier = getNameIdValue(assertion);
@@ -916,7 +921,8 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
      * @param tokReqMsgCtx Token request message context.
      * @param assertion    SAML2 Assertion.
      */
-    protected void createLegacyUser(OAuthTokenReqMessageContext tokReqMsgCtx, Assertion assertion) {
+    protected void createLegacyUser(OAuthTokenReqMessageContext tokReqMsgCtx, Assertion assertion)
+            throws IdentityOAuth2Exception {
         //Check whether NameID value is null before call this method.
         String resourceOwnerUserName = getNameIdValue(assertion);
         AuthenticatedUser user = OAuth2Util.getUserFromUserName(resourceOwnerUserName);

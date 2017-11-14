@@ -38,6 +38,7 @@ import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.service.RealmService;
+import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
 import java.sql.Connection;
@@ -67,13 +68,14 @@ public class OAuthAppDAO {
     }
 
     public void addOAuthApplication(OAuthAppDO consumerAppDO) throws IdentityOAuthAdminException {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = null;
         PreparedStatement prepStmt = null;
 
         if (!isDuplicateApplication(consumerAppDO.getUser().getUserName(), IdentityTenantUtil.getTenantId(consumerAppDO
                 .getUser().getTenantDomain()), consumerAppDO.getUser().getUserStoreDomain(), consumerAppDO)) {
 
             try {
+                connection = IdentityDatabaseUtil.getDBConnection();
                 if(OAuth2ServiceComponentHolder.isPkceEnabled()) {
                     prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_APP_WITH_PKCE);
                     prepStmt.setString(1, persistenceProcessor.getProcessedClientId(consumerAppDO.getOauthConsumerKey()));
@@ -126,9 +128,6 @@ public class OAuthAppDAO {
     }
 
     public String[] addOAuthConsumer(String username, int tenantId, String userDomain) throws IdentityOAuthAdminException {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
-        PreparedStatement prepStmt = null;
-        String sqlStmt = null;
         String consumerKey;
         String consumerSecret = OAuthUtil.getRandomNumber();
         long userAccessTokenExpireTime = OAuthServerConfiguration.getInstance()
@@ -143,9 +142,8 @@ public class OAuthAppDAO {
         }
         while (isDuplicateConsumer(consumerKey));
 
-        try {
-            sqlStmt = SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_CONSUMER;
-            prepStmt = connection.prepareStatement(sqlStmt);
+        try(Connection connection = IdentityDatabaseUtil.getDBConnection();
+            PreparedStatement prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_CONSUMER)) {
             prepStmt.setString(1, consumerKey);
             prepStmt.setString(2, consumerSecret);
             prepStmt.setString(3, username);
@@ -161,28 +159,28 @@ public class OAuthAppDAO {
             connection.commit();
 
         } catch (SQLException e) {
+            String sqlStmt = SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_CONSUMER;
             throw new IdentityOAuthAdminException("Error when executing the SQL : " + sqlStmt, e);
-        } finally {
-            IdentityDatabaseUtil.closeAllConnections(connection, null, prepStmt);
         }
         return new String[]{consumerKey, consumerSecret};
     }
 
     public OAuthAppDO[] getOAuthConsumerAppsOfUser(String username, int tenantId) throws IdentityOAuthAdminException {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
         PreparedStatement prepStmt = null;
         ResultSet rSet = null;
         OAuthAppDO[] oauthAppsOfUser;
+        Connection connection = null;
 
         try {
+            connection = IdentityDatabaseUtil.getDBConnection();
             RealmService realmService = OAuthComponentServiceHolder.getInstance().getRealmService();
             String tenantDomain = realmService.getTenantManager().getDomain(tenantId);
             String tenantAwareUserName = MultitenantUtils.getTenantAwareUsername(username);
-            String tenantUnawareUserName = tenantAwareUserName + "@" + tenantDomain;
-            boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(tenantUnawareUserName);
+            String usernameWithTenantDomain = tenantAwareUserName + "@" + tenantDomain;
+            boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(usernameWithTenantDomain);
             boolean isPKCESupportEnabled = OAuth2ServiceComponentHolder.isPkceEnabled();
 
-            String sql = null;
+            String sql;
             if(isPKCESupportEnabled) {
                 sql = SQLQueries.OAuthAppDAOSQLQueries.GET_APPS_OF_USER_WITH_TENANTAWARE_OR_TENANTUNAWARE_USERNAME_WITH_PKCE;
             } else {
@@ -194,11 +192,11 @@ public class OAuthAppDAO {
             }
             prepStmt = connection.prepareStatement(sql);
             if (isUsernameCaseSensitive) {
-                prepStmt.setString(1, tenantAwareUserName);
-                prepStmt.setString(2, tenantUnawareUserName);
+                prepStmt.setString(1, UserCoreUtil.removeDomainFromName(tenantAwareUserName));
+                prepStmt.setString(2, UserCoreUtil.removeDomainFromName(usernameWithTenantDomain));
             } else {
-                prepStmt.setString(1, tenantAwareUserName.toLowerCase());
-                prepStmt.setString(2, tenantUnawareUserName.toLowerCase());
+                prepStmt.setString(1, UserCoreUtil.removeDomainFromName(tenantAwareUserName.toLowerCase()));
+                prepStmt.setString(2, UserCoreUtil.removeDomainFromName(usernameWithTenantDomain.toLowerCase()));
             }
 
             prepStmt.setInt(3, tenantId);
@@ -220,8 +218,8 @@ public class OAuthAppDAO {
                     authenticatedUser.setTenantDomain(IdentityTenantUtil.getTenantDomain(rSet.getInt(9)));
                     authenticatedUser.setUserStoreDomain(rSet.getString(10));
                     if(isPKCESupportEnabled) {
-                        oauthApp.setPkceMandatory("0".equals(rSet.getString(11)) ? false : true);
-                        oauthApp.setPkceSupportPlain("0".equals(rSet.getString(12)) ? false : true);
+                        oauthApp.setPkceMandatory(!"0".equals(rSet.getString(11)));
+                        oauthApp.setPkceSupportPlain(!"0".equals(rSet.getString(12)));
                         oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(13));
                         oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(14));
                         oauthApp.setRefreshTokenExpiryTime(rSet.getLong(15));
@@ -250,12 +248,13 @@ public class OAuthAppDAO {
     }
 
     public OAuthAppDO getAppInformation(String consumerKey) throws InvalidOAuthClientException, IdentityOAuth2Exception {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = null;
         PreparedStatement prepStmt = null;
         ResultSet rSet = null;
         OAuthAppDO oauthApp = null;
         boolean isPKCESupportEnabled = OAuth2ServiceComponentHolder.isPkceEnabled();
         try {
+            connection = IdentityDatabaseUtil.getDBConnection();
             if (isPKCESupportEnabled) {
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_APP_INFO_WITH_PKCE);
             } else {
@@ -289,8 +288,8 @@ public class OAuthAppDAO {
                     oauthApp.setGrantTypes(rSet.getString(8));
                     oauthApp.setId(rSet.getInt(9));
                     if (isPKCESupportEnabled) {
-                        oauthApp.setPkceMandatory("0".equals(rSet.getString(10)) ? false : true);
-                        oauthApp.setPkceSupportPlain("0".equals(rSet.getString(11)) ? false : true);
+                        oauthApp.setPkceMandatory(!"0".equals(rSet.getString(10)));
+                        oauthApp.setPkceSupportPlain(!"0".equals(rSet.getString(11)));
                         oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(12));
                         oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(13));
                         oauthApp.setRefreshTokenExpiryTime(rSet.getLong(14));
@@ -308,7 +307,11 @@ public class OAuthAppDAO {
                  * a null values not supported error when it tries to cache this info
                  */
 
-                throw new InvalidOAuthClientException("Cannot find an application associated with the given consumer key : " + consumerKey);
+                String message = "Cannot find an application associated with the given consumer key : " + consumerKey;
+                if (log.isDebugEnabled()) {
+                    log.debug(message);
+                }
+                throw new InvalidOAuthClientException(message);
             }
             connection.commit();
         } catch (SQLException e) {
@@ -320,12 +323,13 @@ public class OAuthAppDAO {
     }
 
     public OAuthAppDO getAppInformationByAppName(String appName) throws InvalidOAuthClientException, IdentityOAuth2Exception {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = null;
         PreparedStatement prepStmt = null;
         ResultSet rSet = null;
         OAuthAppDO oauthApp = null;
         boolean isPKCESupportEnabled = OAuth2ServiceComponentHolder.isPkceEnabled();
         try {
+            connection = IdentityDatabaseUtil.getDBConnection();
             int tenantID = CarbonContext.getThreadLocalCarbonContext().getTenantId();
             if (isPKCESupportEnabled) {
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_APP_INFO_BY_APP_NAME_WITH_PKCE);
@@ -361,8 +365,8 @@ public class OAuthAppDAO {
                     oauthApp.setGrantTypes(rSet.getString(7));
                     oauthApp.setId(rSet.getInt(8));
                     if(isPKCESupportEnabled) {
-                        oauthApp.setPkceMandatory("0".equals(rSet.getString(9)) ? false : true);
-                        oauthApp.setPkceSupportPlain("0".equals(rSet.getString(10)) ? false : true);
+                        oauthApp.setPkceMandatory(!"0".equals(rSet.getString(9)));
+                        oauthApp.setPkceSupportPlain(!"0".equals(rSet.getString(10)));
                         oauthApp.setUserAccessTokenExpiryTime(rSet.getLong(11));
                         oauthApp.setApplicationAccessTokenExpiryTime(rSet.getLong(12));
                         oauthApp.setRefreshTokenExpiryTime(rSet.getLong(13));
@@ -396,10 +400,11 @@ public class OAuthAppDAO {
     }
 
     public void updateConsumerApplication(OAuthAppDO oauthAppDO) throws IdentityOAuthAdminException {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = null;
         PreparedStatement prepStmt = null;
 
         try {
+            connection = IdentityDatabaseUtil.getDBConnection();
             if (OAuth2ServiceComponentHolder.isPkceEnabled()) {
                 prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.UPDATE_CONSUMER_APP_WITH_PKCE);
             } else {
@@ -443,17 +448,18 @@ public class OAuthAppDAO {
     }
 
     public void removeConsumerApplication(String consumerKey) throws IdentityOAuthAdminException {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = null;
         PreparedStatement prepStmt = null;
 
         try {
+            connection = IdentityDatabaseUtil.getDBConnection();
             prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.REMOVE_APPLICATION);
             prepStmt.setString(1, consumerKey);
 
             prepStmt.execute();
             connection.commit();
 
-        } catch (SQLException e) {;
+        } catch (SQLException e) {
             throw new IdentityOAuthAdminException("Error when executing the SQL : " + SQLQueries.OAuthAppDAOSQLQueries.REMOVE_APPLICATION, e);
         } finally {
             IdentityDatabaseUtil.closeAllConnections(connection, null, prepStmt);
@@ -490,7 +496,7 @@ public class OAuthAppDAO {
     public String getConsumerAppState(String consumerKey) throws IdentityOAuthAdminException {
         PreparedStatement prepStmt = null;
         Connection connection = null;
-        ResultSet rSet = null;
+        ResultSet rSet;
         String consumerAppState = null;
 
         try {
@@ -498,8 +504,12 @@ public class OAuthAppDAO {
             prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.GET_APPLICATION_STATE);
             prepStmt.setString(1, consumerKey);
             rSet = prepStmt.executeQuery();
-            if(rSet != null && rSet.next()) {
+            if (rSet != null && rSet.next()) {
                 consumerAppState = rSet.getString("APP_STATE");
+            } else {
+                if (log.isDebugEnabled()) {
+                    log.debug("No App found for the consumerKey: " + consumerKey);
+                }
             }
             connection.commit();
         } catch (SQLException e) {
@@ -530,7 +540,7 @@ public class OAuthAppDAO {
 
     private boolean isDuplicateApplication(String username, int tenantId, String userDomain, OAuthAppDO consumerAppDTO)
             throws IdentityOAuthAdminException {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = null;
         PreparedStatement prepStmt = null;
         ResultSet rSet = null;
 
@@ -538,6 +548,7 @@ public class OAuthAppDAO {
         boolean isUsernameCaseSensitive = IdentityUtil.isUserStoreInUsernameCaseSensitive(username, tenantId);
 
         try {
+            connection = IdentityDatabaseUtil.getDBConnection();
             String sql = SQLQueries.OAuthAppDAOSQLQueries.CHECK_EXISTING_APPLICATION;
             if (!isUsernameCaseSensitive) {
                 sql = sql.replace("USERNAME", "LOWER(USERNAME)");
@@ -566,13 +577,14 @@ public class OAuthAppDAO {
     }
 
     private boolean isDuplicateConsumer(String consumerKey) throws IdentityOAuthAdminException {
-        Connection connection = IdentityDatabaseUtil.getDBConnection();
+        Connection connection = null;
         PreparedStatement prepStmt = null;
         ResultSet rSet = null;
 
         boolean isDuplicateConsumer = false;
 
         try {
+            connection = IdentityDatabaseUtil.getDBConnection();
             prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.CHECK_EXISTING_CONSUMER);
             prepStmt.setString(1, persistenceProcessor.getProcessedClientId(consumerKey));
 

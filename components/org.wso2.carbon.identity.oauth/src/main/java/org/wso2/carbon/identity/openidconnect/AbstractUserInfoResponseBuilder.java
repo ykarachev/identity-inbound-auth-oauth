@@ -16,8 +16,8 @@
 
 package org.wso2.carbon.identity.openidconnect;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
@@ -37,15 +37,19 @@ import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.commons.collections.CollectionUtils.isNotEmpty;
+import static org.apache.commons.lang.StringUtils.isBlank;
+import static org.apache.commons.lang.StringUtils.isNotEmpty;
 import static org.wso2.carbon.identity.oauth.common.OAuthConstants.OAuth20Params.USERINFO;
 
 public abstract class AbstractUserInfoResponseBuilder implements UserInfoResponseBuilder {
+
+    private static final Log log = LogFactory.getLog(AbstractUserInfoResponseBuilder.class);
 
     @Override
     public final String getResponseString(OAuth2TokenValidationResponseDTO tokenResponse)
@@ -70,20 +74,72 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
         return buildResponse(tokenResponse, spTenantDomain, filteredUserClaims);
     }
 
-
     protected String getSubjectClaim(Map<String, Object> userClaims,
                                      String spTenantDomain,
                                      OAuth2TokenValidationResponseDTO tokenResponse) throws UserInfoEndpointException {
 
         String subjectClaim = (String) userClaims.get(OAuth2Util.SUB);
-        if (StringUtils.isBlank(subjectClaim)) {
+        if (isBlank(subjectClaim)) {
             // We need to send the tenant aware and user store domain removed name and then build the subject claim
             // to honour the Local and Outbound Authentication Configuration preferences of the SP.
             String tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(tokenResponse.getAuthorizedUser());
             subjectClaim = UserCoreUtil.removeDomainFromName(tenantAwareUsername);
+            if (log.isDebugEnabled()) {
+                log.debug("Subject claim not found among user claims. Defaulting to username: " + subjectClaim + " as" +
+                        " the subject claim to be sent in the userinfo response.");
+            }
         }
         return buildSubjectClaim(subjectClaim, spTenantDomain, tokenResponse);
     }
+
+    protected Map<String, Object> getUserClaimsFilteredByScope(String[] requestedScopes,
+                                                               String tenantDomain,
+                                                               Map<String, Object> userClaims) {
+
+        return OIDCClaimUtil.getClaimsFilteredByOIDCScopes(tenantDomain, requestedScopes, userClaims);
+    }
+
+    protected String getServiceProviderTenantDomain(OAuth2TokenValidationResponseDTO tokenResponse)
+            throws UserInfoEndpointException {
+        /*
+           We can't get any information related to SP tenantDomain using the tokenResponse directly or indirectly.
+           Therefore we make use of the thread local variable set at the UserInfo endpoint to get the tenantId
+           of the service provider
+        */
+        int tenantId = OAuth2Util.getClientTenatId();
+        return IdentityTenantUtil.getTenantDomain(tenantId);
+
+    }
+
+    protected Map<String, Object> getEssentialClaims(OAuth2TokenValidationResponseDTO tokenResponse,
+                                                     Map<String, Object> claims) throws UserInfoEndpointException {
+
+        Map<String, Object> essentialClaimMap = new HashMap<>();
+        List<String> essentialClaims = getEssentialClaimUris(tokenResponse);
+        if (isNotEmpty(essentialClaims)) {
+            for (String key : essentialClaims) {
+                essentialClaimMap.put(key, claims.get(key));
+            }
+        }
+        return essentialClaimMap;
+    }
+
+    protected abstract Map<String, Object> retrieveUserClaims(OAuth2TokenValidationResponseDTO tokenValidationResponse)
+            throws UserInfoEndpointException;
+
+    /**
+     * Build UserInfo response to be sent back to the client.
+     *
+     * @param tokenResponse      {@link OAuth2TokenValidationResponseDTO} Token Validation response containing metadata
+     *                           about the access token used for user info call.
+     * @param spTenantDomain     Service Provider tenant domain.
+     * @param filteredUserClaims Filtered user claims based on the requested scopes.
+     * @return                   UserInfo Response String to be sent in the response.
+     * @throws UserInfoEndpointException
+     */
+    protected abstract String buildResponse(OAuth2TokenValidationResponseDTO tokenResponse,
+                                            String spTenantDomain,
+                                            Map<String, Object> filteredUserClaims) throws UserInfoEndpointException;
 
     private String buildSubjectClaim(String sub,
                                      String tenantDomain,
@@ -101,7 +157,7 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
             boolean isUseUserStoreDomainInLocalSubject = serviceProvider.getLocalAndOutBoundAuthenticationConfig()
                     .isUseUserstoreDomainInLocalSubjectIdentifier();
 
-            if (StringUtils.isNotEmpty(sub)) {
+            if (isNotEmpty(sub)) {
                 // Build subject in accordance with Local and Outbound Authentication Configuration preferences
                 if (isUseUserStoreDomainInLocalSubject) {
                     sub = IdentityUtil.addDomainToName(sub, userStoreDomain);
@@ -135,48 +191,6 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
         return serviceProvider;
     }
 
-    protected abstract Map<String, Object> retrieveUserClaims(OAuth2TokenValidationResponseDTO tokenValidationResponse)
-            throws UserInfoEndpointException;
-
-
-    protected Map<String, Object> getUserClaimsFilteredByScope(String[] requestedScopes,
-                                                               String tenantDomain,
-                                                               Map<String, Object> userClaims) {
-
-        return OIDCClaimUtil.getClaimsFilteredByOIDCScopes(tenantDomain, requestedScopes, userClaims);
-    }
-
-
-    protected String getServiceProviderTenantDomain(OAuth2TokenValidationResponseDTO tokenResponse)
-            throws UserInfoEndpointException {
-        try {
-            /*
-                We can't get any information related to SP tenantDomain using the tokenResponse directly or indirectly.
-                Therefore we make use of the thread local variable set at the UserInfo endpoint to get the tenantId
-                of the service provider
-             */
-            int tenantId = OAuth2Util.getClientTenatId();
-            return IdentityTenantUtil.getTenantDomain(tenantId);
-        } finally {
-            // Clear the thread local that contained the SP tenantId
-            OAuth2Util.clearClientTenantId();
-        }
-    }
-
-
-    protected Map<String, Object> getEssentialClaims(OAuth2TokenValidationResponseDTO tokenResponse,
-                                                     Map<String, Object> claims) throws UserInfoEndpointException {
-
-        Map<String, Object> essentialClaimMap = new HashMap<>();
-        List<String> essentialClaims = getEssentialClaimUris(tokenResponse);
-        if (CollectionUtils.isNotEmpty(essentialClaims)) {
-            for (String key : essentialClaims) {
-                essentialClaimMap.put(key, claims.get(key));
-            }
-        }
-        return essentialClaimMap;
-    }
-
     private List<String> getEssentialClaimUris(OAuth2TokenValidationResponseDTO tokenResponse) {
 
         AuthorizationGrantCacheKey cacheKey =
@@ -186,24 +200,10 @@ public abstract class AbstractUserInfoResponseBuilder implements UserInfoRespons
                 .getValueFromCacheByToken(cacheKey);
 
         if (cacheEntry != null) {
-            if (StringUtils.isNotEmpty(cacheEntry.getEssentialClaims())) {
+            if (isNotEmpty(cacheEntry.getEssentialClaims())) {
                 return OAuth2Util.getEssentialClaims(cacheEntry.getEssentialClaims(), USERINFO);
             }
         }
         return Collections.emptyList();
     }
-
-    /**
-     * Build UserInfo response to be sent back to the client.
-     *
-     * @param tokenResponse      {@link OAuth2TokenValidationResponseDTO} Token Validation reponse containing metadata
-     *                           about the access_token used for userinfo call.
-     * @param spTenantDomain     Service Provider tenant domain.
-     * @param filteredUserClaims Filtered user claims based on the requested scopes
-     * @return
-     * @throws UserInfoEndpointException
-     */
-    protected abstract String buildResponse(OAuth2TokenValidationResponseDTO tokenResponse,
-                                            String spTenantDomain,
-                                            Map<String, Object> filteredUserClaims) throws UserInfoEndpointException;
 }

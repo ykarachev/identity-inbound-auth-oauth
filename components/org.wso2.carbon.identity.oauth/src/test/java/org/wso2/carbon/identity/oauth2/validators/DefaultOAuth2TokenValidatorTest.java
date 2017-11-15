@@ -22,10 +22,10 @@ import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+import org.wso2.carbon.identity.common.testng.WithCarbonHome;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
-import org.wso2.carbon.identity.test.common.testng.WithCarbonHome;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -95,5 +95,4 @@ public class DefaultOAuth2TokenValidatorTest {
         Class clazz = Thread.currentThread().getContextClassLoader().loadClass(scopeValidatorClazz);
         return type.cast(clazz.newInstance());
     }
-
 }

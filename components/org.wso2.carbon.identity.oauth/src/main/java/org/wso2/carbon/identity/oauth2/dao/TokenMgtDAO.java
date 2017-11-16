@@ -2727,7 +2727,7 @@ public class TokenMgtDAO {
                 updateStateStatement = connection.prepareStatement
                         (org.wso2.carbon.identity.oauth.dao.SQLQueries.OAuthAppDAOSQLQueries.UPDATE_OAUTH_SECRET_KEY);
                 updateStateStatement.setString(1, persistenceProcessor.getProcessedClientSecret(newSecretKey));
-                updateStateStatement.setString(2, persistenceProcessor.getProcessedClientSecret(consumerKey));
+                updateStateStatement.setString(2, persistenceProcessor.getProcessedClientId(consumerKey));
                 updateStateStatement.execute();
             }
 

@@ -257,7 +257,7 @@ public class OAuthAdminService extends AbstractAdmin {
                                     " as registrant name");
                         }
                     } catch (UserStoreException e) {
-                        throw handleError("Error while retrieving the user store manager", e);
+                        throw handleError("Error while retrieving the user store manager for user: "+ applicationUser, e);
                     }
 
                 }

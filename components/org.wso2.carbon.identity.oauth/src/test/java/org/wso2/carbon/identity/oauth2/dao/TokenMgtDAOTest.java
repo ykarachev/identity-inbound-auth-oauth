@@ -89,7 +89,7 @@ public class TokenMgtDAOTest extends IdentityBaseTest {
 
     private static final String INVALID_SCOPE = "INVALID_SCOPE";
 
-    private static final String BACKCHANNEL_LOGOUT="https://localhost:8090/playground2/bclogout";
+    private static final String BACKCHANNEL_LOGOUT = "https://localhost:8090/playground2/backChannelLogout";
 
     private TokenMgtDAO tokenMgtDAO;
 

@@ -19,9 +19,10 @@
 package org.wso2.carbon.identity.oauth2.internal;
 
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
-import org.wso2.carbon.identity.openidconnect.ClaimAdder;
+import org.wso2.carbon.identity.openidconnect.ClaimProvider;
 import org.wso2.carbon.registry.core.service.RegistryService;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,7 +33,7 @@ public class OAuth2ServiceComponentHolder {
     private static ApplicationManagementService applicationMgtService;
     private static boolean pkceEnabled = false;
     private static RegistryService registryService;
-    private static List<ClaimAdder> claimAdder;
+    private static List<ClaimProvider> claimProviders = new ArrayList<>();
     private OAuth2ServiceComponentHolder(){
 
     }
@@ -72,20 +73,30 @@ public class OAuth2ServiceComponentHolder {
     }
 
     /**
-     * Get ClaimAdderService
+     * Get ClaimProvider Service
      *
      * @return all ID token claims
      */
-    public static List<ClaimAdder> getClaimAdders() {
-        return claimAdder;
+    public static List<ClaimProvider> getClaimProviders() {
+        return claimProviders;
     }
 
     /**
-     * Set ClaimAdder Service
+     * Set ClaimProvider Service
      *
-     * @param claimAdder
+     * @param claimProvider
      */
-    public static void setClaimAdders(List<ClaimAdder> claimAdder) {
-        OAuth2ServiceComponentHolder.claimAdder = claimAdder;
+    public static void setClaimProvider(ClaimProvider claimProvider) {
+        OAuth2ServiceComponentHolder.claimProviders.add(claimProvider);
     }
+
+    /**
+     * Unregister the particular claimProvider
+     *
+     * @param claimProvider
+     */
+    public static void unregisterClaimProvider(ClaimProvider claimProvider) {
+        claimProviders.remove(claimProvider);
+    }
+
 }

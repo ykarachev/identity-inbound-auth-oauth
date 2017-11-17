@@ -102,7 +102,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
     private static final String COUNT_APPS = "SELECT count(*) FROM IDN_OAUTH_CONSUMER_APPS WHERE APP_NAME=? and " +
             "TENANT_ID=?";
 
-    private static final String BACKCHANNEL_LOGOUT="https://localhost:8090/playground2/bclogout";
+    private static final String BACKCHANNEL_LOGOUT="https://localhost:8090/playground2/backChannelLogout";
 
     @Mock
     private TenantManager mockedTenantManager;
@@ -237,7 +237,7 @@ public class OAuthAppDAOTest extends TestOAuthDAOBase {
         final long MODIFIED_APPLICATION_ACCESS_TOKEN_EXPIRY_TIME = 1000;
         final long MODIFIED_USER_ACCESS_TOKEN_EXPIRY_TIME = 8000;
         final long MODIFIED_REFRESH_TOKEN_EXPIRY_TIME = 18000;
-        final String MODIFIED_BACKCHANNEL_LOGOUT = "http://idp.wso2.com/bclogout";
+        final String MODIFIED_BACKCHANNEL_LOGOUT = "http://idp.wso2.com/backChannelLogout";
 
         final String GET_APP_FIELDS = "SELECT APP_NAME,GRANT_TYPES,CALLBACK_URL," +
                 "APP_ACCESS_TOKEN_EXPIRE_TIME,USER_ACCESS_TOKEN_EXPIRE_TIME,REFRESH_TOKEN_EXPIRE_TIME, " +

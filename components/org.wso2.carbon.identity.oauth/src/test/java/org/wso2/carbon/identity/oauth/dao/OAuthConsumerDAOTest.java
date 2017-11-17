@@ -63,7 +63,7 @@ public class OAuthConsumerDAOTest extends TestOAuthDAOBase {
     private static final String OAUTH_VERIFIER = "fakeOauthVerifier";
     private static final String NEW_SECRET = "a459a540f544777860e44e75f605d875";
     private static final String DB_NAME = "testOAuthConsumerDAO";
-    private static final String BACKCHANNELLOGOUT_URL = "http://localhost:8080/bclogout";
+    private static final String BACKCHANNELLOGOUT_URL = "http://localhost:8080/backChannelLogout";
 
     @Mock
     private OAuthServerConfiguration mockedServerConfig;

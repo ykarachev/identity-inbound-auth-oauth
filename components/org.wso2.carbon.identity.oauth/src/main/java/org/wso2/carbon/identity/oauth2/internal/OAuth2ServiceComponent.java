@@ -40,6 +40,7 @@ import org.wso2.carbon.identity.oauth2.OAuth2TokenValidationService;
 import org.wso2.carbon.identity.oauth2.dao.SQLQueries;
 import org.wso2.carbon.identity.oauth2.listener.TenantCreationEventListener;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.identity.openidconnect.ClaimProvider;
 import org.wso2.carbon.identity.openidconnect.OpenIDConnectClaimFilter;
 import org.wso2.carbon.identity.openidconnect.OpenIDConnectClaimFilterImpl;
 import org.wso2.carbon.identity.user.store.configuration.listener.UserStoreConfigListener;
@@ -238,4 +239,26 @@ public class OAuth2ServiceComponent {
         }
         OAuth2ServiceComponentHolder.setRegistryService(null);
     }
+
+    @Reference(
+            name = "ClaimProvider",
+            service = ClaimProvider.class,
+            cardinality = ReferenceCardinality.OPTIONAL,
+            policy = ReferencePolicy.DYNAMIC,
+            unbind = "unsetClaimProvider"
+    )
+    protected void setClaimProvider(ClaimProvider claimProvider) {
+        if (log.isDebugEnabled()) {
+            log.debug("Setting ClaimProvider Service");
+        }
+        OAuth2ServiceComponentHolder.setClaimProvider(claimProvider);
+    }
+
+    protected void unsetClaimProvider(ClaimProvider claimProvider) {
+        if (log.isDebugEnabled()) {
+            log.debug("Unsetting ClaimProvider Service");
+        }
+        OAuth2ServiceComponentHolder.unregisterClaimProvider(claimProvider);
+    }
+
 }

@@ -48,6 +48,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.wso2.carbon.identity.oauth.OAuthUtil.handleError;
+
 /**
  * JDBC Based data access layer for OAuth Consumer Applications.
  */
@@ -113,15 +115,14 @@ public class OAuthAppDAO {
                     }
                 }
             } catch (SQLException e) {
-                throw new IdentityOAuthAdminException("Error when executing the SQL : " +
-                        SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_APP, e);
+                throw handleError("Error when executing the SQL : " + SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_APP, e);
             } catch (IdentityOAuth2Exception e) {
-                throw new IdentityOAuthAdminException("Error occurred while processing the client id and client " +
-                        "secret by TokenPersistenceProcessor");
+                throw handleError("Error occurred while processing the client id and client secret by " +
+                        "TokenPersistenceProcessor", null);
             }
         } else {
-            throw new IdentityOAuthAdminException("Error when adding the consumer application. " +
-                    "An application with the same name already exists.");
+            String message = "Error when adding the application. An application with the same name already exists.";
+            throw handleError(message, null);
         }
     }
 
@@ -158,7 +159,7 @@ public class OAuthAppDAO {
 
         } catch (SQLException e) {
             String sqlStmt = SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_CONSUMER;
-            throw new IdentityOAuthAdminException("Error when executing the SQL : " + sqlStmt, e);
+            throw handleError("Error when executing the SQL : " + sqlStmt, e);
         }
         return new String[]{consumerKey, consumerSecret};
     }
@@ -225,11 +226,11 @@ public class OAuthAppDAO {
                 }
             }
         } catch (SQLException e) {
-            throw new IdentityOAuthAdminException("Error occurred while retrieving OAuth consumer apps of user", e);
+            throw handleError("Error occurred while retrieving OAuth consumer apps of user", e);
         } catch (UserStoreException e) {
-            throw new IdentityOAuthAdminException("Error while retrieving Tenant Domain for tenant ID : " + tenantId, e);
+            throw handleError("Error while retrieving Tenant Domain for tenant ID : " + tenantId, e);
         } catch (IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error occurred while processing client id and client secret by " +
+            throw handleError("Error occurred while processing client id and client secret by " +
                     "TokenPersistenceProcessor", e);
         }
         return oauthAppsOfUser;
@@ -423,10 +424,9 @@ public class OAuthAppDAO {
                 connection.commit();
             }
         } catch (SQLException e) {
-            throw new IdentityOAuthAdminException("Error when updating OAuth application", e);
+            throw handleError("Error when updating OAuth application", e);
         } catch (IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error occurred while processing client id and client secret by " +
-                    "TokenPersistenceProcessor", e);
+            throw handleError("Error occurred while processing client id and client secret by TokenPersistenceProcessor", e);
         }
     }
 
@@ -438,7 +438,7 @@ public class OAuthAppDAO {
             prepStmt.execute();
             connection.commit();
         } catch (SQLException e) {
-            throw new IdentityOAuthAdminException("Error when executing the SQL : " + SQLQueries.OAuthAppDAOSQLQueries.REMOVE_APPLICATION, e);
+            throw  handleError("Error when executing the SQL : " + SQLQueries.OAuthAppDAOSQLQueries.REMOVE_APPLICATION, e);
         }
     }
 
@@ -481,7 +481,7 @@ public class OAuthAppDAO {
                 connection.commit();
             }
         } catch (SQLException e) {
-            throw new IdentityOAuthAdminException("Error while executing the SQL prepStmt.", e);
+            throw handleError("Error while executing the SQL prepStmt.", e);
         }
         return consumerAppState;
     }
@@ -528,7 +528,7 @@ public class OAuthAppDAO {
                 }
             }
         } catch (SQLException e) {
-            throw new IdentityOAuthAdminException("Error when executing the SQL : " + SQLQueries.OAuthAppDAOSQLQueries.CHECK_EXISTING_APPLICATION, e);
+            throw handleError("Error when executing the SQL : " + SQLQueries.OAuthAppDAOSQLQueries.CHECK_EXISTING_APPLICATION, e);
         }
         return isDuplicateApp;
     }
@@ -548,10 +548,9 @@ public class OAuthAppDAO {
                 connection.commit();
             }
         } catch (IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error occurred while processing the client id by TokenPersistenceProcessor");
+            throw handleError("Error occurred while processing the client id by TokenPersistenceProcessor", null);
         } catch (SQLException e) {
-            throw new IdentityOAuthAdminException("Error when executing the SQL : " + SQLQueries
-                    .OAuthAppDAOSQLQueries.CHECK_EXISTING_CONSUMER, e);
+            throw handleError("Error when executing the SQL: " + SQLQueries.OAuthAppDAOSQLQueries.CHECK_EXISTING_CONSUMER, e);
         }
         return isDuplicateConsumer;
     }
@@ -559,5 +558,4 @@ public class OAuthAppDAO {
     private boolean isUsernameCaseSensitive(String tenantQualifiedUsername) {
         return IdentityUtil.isUserStoreInUsernameCaseSensitive(tenantQualifiedUsername);
     }
-
 }

@@ -1031,4 +1031,35 @@ public class OAuth2UtilTest extends PowerMockIdentityBaseTest {
         return codeVerifier.toString();
     }
 
+    @DataProvider(name="authzUserProvider")
+    public Object[][] providerAuthzUser() {
+        AuthenticatedUser federatedDomainUser = new AuthenticatedUser();
+        federatedDomainUser.setUserStoreDomain("FEDERATED");
+
+        AuthenticatedUser localUser = new AuthenticatedUser();
+        localUser.setFederatedUser(false);
+
+        return new Object[][] {
+                // Authenticated User, isMapFederatedUserToLocal, expectedIsFederatedValue
+                {AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier("DUMMY"), false, true},
+                {AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier("DUMMY"), true, false},
+                {federatedDomainUser, false, true},
+                {federatedDomainUser, true, false},
+                {localUser, false, false},
+                {localUser, true, false}
+        };
+    }
+
+    @Test(dataProvider = "authzUserProvider")
+    public void testGetAuthenticatedUser(Object authenticatedUser,
+                                         boolean mapFederatedUserToLocal,
+                                         boolean expectedIsFederatedValue) throws Exception {
+        AccessTokenDO accessTokenDO = new AccessTokenDO();
+        accessTokenDO.setAuthzUser((AuthenticatedUser) authenticatedUser);
+
+        when(oauthServerConfigurationMock.isMapFederatedUsersToLocal()).thenReturn(mapFederatedUserToLocal);
+
+        AuthenticatedUser authzUser = OAuth2Util.getAuthenticatedUser(accessTokenDO);
+        assertEquals(authzUser.isFederatedUser(), expectedIsFederatedValue);
+    }
 }

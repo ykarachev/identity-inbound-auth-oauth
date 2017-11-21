@@ -20,7 +20,9 @@ package org.wso2.carbon.identity.oauth2.validators;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.identity.application.common.model.User;
+import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
@@ -31,9 +33,9 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2IntrospectionResponseDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
+import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.user.core.util.UserCoreUtil;
-
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -47,6 +49,8 @@ public class TokenValidationHandler {
     AuthorizationContextTokenGenerator tokenGenerator = null;
     private Log log = LogFactory.getLog(TokenValidationHandler.class);
     private Map<String, OAuth2TokenValidator> tokenValidators = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    private OauthTokenIssuer oauthIssuerImpl = OAuthServerConfiguration.getInstance().getIdentityOauthTokenIssuer();
+    private boolean usePersistAccessTokenHash = OAuthServerConfiguration.getInstance().usePersistAccessTokenHash();
 
     private TokenValidationHandler() {
         tokenValidators.put(DefaultOAuth2TokenValidator.TOKEN_TYPE, new DefaultOAuth2TokenValidator());
@@ -457,7 +461,22 @@ public class TokenValidationHandler {
      * @throws IdentityOAuth2Exception
      */
     private AccessTokenDO findAccessToken(String tokenIdentifier) throws IdentityOAuth2Exception {
-        return OAuth2Util.getAccessTokenDOfromTokenIdentifier(tokenIdentifier);
+        try {
+            if (usePersistAccessTokenHash) {
+                return OAuth2Util.getAccessTokenDOfromTokenIdentifier(oauthIssuerImpl.getAccessTokenHash(tokenIdentifier));
+            } else {
+                return OAuth2Util.getAccessTokenDOfromTokenIdentifier(tokenIdentifier);
+            }
+        } catch (OAuthSystemException e) {
+            if (log.isDebugEnabled()) {
+                if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                    log.debug("Error while getting access token hash from token: " + tokenIdentifier, e);
+                } else {
+                    log.debug("Error while getting access token hash.", e);
+                }
+            }
+            throw new IdentityOAuth2Exception("Error while getting access token hash.", e);
+        }
     }
 
 }

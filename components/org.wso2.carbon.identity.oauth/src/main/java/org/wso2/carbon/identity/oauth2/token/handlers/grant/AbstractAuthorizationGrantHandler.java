@@ -112,18 +112,21 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         synchronized ((consumerKey + ":" + authorizedUser + ":" + scope).intern()) {
             AccessTokenDO existingTokenBean = getExistingToken(tokReqMsgCtx,
                     getOAuthCacheKey(scope, consumerKey, authorizedUser));
-            if (existingTokenBean != null) {
-                long expireTime = getAccessTokenExpiryTimeMillis(existingTokenBean);
-                if (isExistingTokenValid(existingTokenBean, expireTime)) {
-                    tokReqMsgCtx.addProperty(EXISTING_TOKEN_ISSUED, true);
-                    return createResponseWithTokenBean(existingTokenBean, expireTime, scope);
+            // Return a new access token in each request when JWTTokenIssuer is used.
+            if (accessTokenNotRenewedPerRequest()) {
+                if (existingTokenBean != null) {
+                    long expireTime = getAccessTokenExpiryTimeMillis(existingTokenBean);
+                    if (isExistingTokenValid(existingTokenBean, expireTime)) {
+                        tokReqMsgCtx.addProperty(EXISTING_TOKEN_ISSUED, true);
+                        return createResponseWithTokenBean(existingTokenBean, expireTime, scope);
+                    }
                 }
-            }
-            // issuing new access token.
-            if (log.isDebugEnabled()) {
-                log.debug("No active access token found for client Id: " + consumerKey +
-                        ", user: " + authorizedUser + " and scope: " + scope +
-                        ". Therefore issuing new token");
+                // Issuing new access token.
+                if (log.isDebugEnabled()) {
+                    log.debug("No active access token found for client Id: " + consumerKey +
+                            ", user: " + authorizedUser + " and scope: " + scope +
+                            ". Therefore issuing new token");
+                }
             }
             return generateNewAccessTokenResponse(tokReqMsgCtx, scope, consumerKey, existingTokenBean);
         }
@@ -719,5 +722,13 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
             return false;
         }
         return !(refreshTokenExpireTime > 0 && refreshTokenExpireTime > validityPeriod);
+    }
+
+    private boolean accessTokenNotRenewedPerRequest() {
+        boolean isRenew = oauthIssuerImpl.renewAccessTokenPerRequest();
+        if (log.isDebugEnabled()) {
+            log.debug("Enable Access Token renew per request: " + isRenew);
+        }
+        return !isRenew;
     }
 }

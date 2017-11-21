@@ -24,7 +24,9 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
 import com.nimbusds.jwt.PlainJWT;
 import com.nimbusds.jwt.SignedJWT;
 import org.apache.commons.lang.StringUtils;
@@ -34,7 +36,9 @@ import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
 import org.wso2.carbon.base.MultitenantConstants;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
@@ -46,6 +50,7 @@ import org.wso2.carbon.identity.openidconnect.CustomClaimsCallbackHandler;
 
 import java.security.Key;
 import java.security.interfaces.RSAPrivateKey;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
@@ -122,6 +127,24 @@ public class JWTTokenIssuer extends OauthTokenIssuerImpl {
         } catch (IdentityOAuth2Exception e) {
             throw new OAuthSystemException(e);
         }
+    }
+
+    @Override
+    public String getAccessTokenHash(String accessToken) throws OAuthSystemException {
+        try {
+            JWT parse = JWTParser.parse(accessToken);
+            return parse.getJWTClaimsSet().getJWTID();
+        } catch (ParseException e) {
+            if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
+                log.debug("Error while getting JWTID from token: " + accessToken);
+            }
+            throw new OAuthSystemException("Error while getting access token hash", e);
+        }
+    }
+
+    @Override
+    public boolean renewAccessTokenPerRequest() {
+        return true;
     }
 
     /**

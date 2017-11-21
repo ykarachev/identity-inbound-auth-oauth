@@ -116,6 +116,7 @@ public class OAuthServerConfiguration {
     private String oauthTokenGeneratorClassName;
     private OAuthIssuer oauthTokenGenerator;
     private String oauthIdentityTokenGeneratorClassName;
+    private String persistAccessTokenAlias;
     private OauthTokenIssuer oauthIdentityTokenGenerator;
     private boolean cacheEnabled = false;
     private boolean isRefreshTokenRenewalEnabled = true;
@@ -296,6 +297,9 @@ public class OAuthServerConfiguration {
         // parse identity OAuth 2.0 token generator
         parseOAuthTokenIssuerConfig(oauthElem);
 
+        // Parse Persist Access Token Alias element.
+        parsePersistAccessTokenAliasConfig(oauthElem);
+
         // Parse token value generator class name.
         parseOAuthTokenValueGenerator(oauthElem);
 
@@ -462,6 +466,10 @@ public class OAuthServerConfiguration {
             }
         }
         return oauthIdentityTokenGenerator;
+    }
+
+    public boolean usePersistAccessTokenHash() {
+        return persistAccessTokenAlias != null ? Boolean.TRUE.toString().equalsIgnoreCase(persistAccessTokenAlias) : true;
     }
 
     public String getOIDCConsentPageUrl() {
@@ -1512,6 +1520,22 @@ public class OAuthServerConfiguration {
         }
     }
 
+    private void parsePersistAccessTokenAliasConfig(OMElement oauthConfigElem) {
+
+        OMElement tokenIssuerClassConfigElem = oauthConfigElem
+                .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.IDENTITY_OAUTH_PERSIST_TOKEN_ALIAS));
+        if (tokenIssuerClassConfigElem != null && !"".equals(tokenIssuerClassConfigElem.getText().trim())) {
+            persistAccessTokenAlias = tokenIssuerClassConfigElem.getText().trim();
+            if (log.isDebugEnabled()) {
+                log.debug("Identity OAuth persist access token alias is set to : " + persistAccessTokenAlias);
+            }
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("PersistAccessTokenAlias is not defiled. Default config will be used.");
+            }
+        }
+    }
+
     private void parseSupportedGrantTypesConfig(OMElement oauthConfigElem) {
 
         OMElement supportedGrantTypesElem =
@@ -2058,6 +2082,9 @@ public class OAuthServerConfiguration {
         // Token issuer generator.
         private static final String OAUTH_TOKEN_GENERATOR = "OAuthTokenGenerator";
         private static final String IDENTITY_OAUTH_TOKEN_GENERATOR = "IdentityOAuthTokenGenerator";
+
+        // Persist token alias
+        private static final String IDENTITY_OAUTH_PERSIST_TOKEN_ALIAS = "PersistAccessTokenAlias";
 
         // Supported Grant Types
         private static final String SUPPORTED_GRANT_TYPES = "SupportedGrantTypes";

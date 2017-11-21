@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.oauth.cache;
 
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.openidconnect.model.RequestObject;
 
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -47,6 +48,16 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
     private String essentialClaims;
 
     private long authTime;
+
+    private RequestObject requestObject;
+
+    public RequestObject getRequestObject() {
+        return requestObject;
+    }
+
+    public void setRequestObject(RequestObject requestObject) {
+        this.requestObject = requestObject;
+    }
 
     public String getEssentialClaims() {
         return essentialClaims;

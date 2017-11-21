@@ -40,6 +40,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
@@ -68,6 +69,7 @@ import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.identity.openidconnect.model.Claim;
 import org.wso2.carbon.registry.core.Registry;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
@@ -123,6 +125,7 @@ public class OAuth2Util {
     public static final String JWT_ACCESS_TOKEN = "JWT_ACCESS_TOKEN";
     public static final String ACCESS_TOKEN_DO = "AccessTokenDo";
     public static final String OAUTH2_VALIDATION_MESSAGE_CONTEXT = "OAuth2TokenValidationMessageContext";
+    private static final String ESSENTAIL = "essential";
 
     private static final String ALGORITHM_NONE = "NONE";
     /*
@@ -1914,4 +1917,46 @@ public class OAuth2Util {
         return Base64Utils.encode(tokenStrToEncode.getBytes(Charsets.UTF_8));
     }
 
+    /**
+     * Validates the json provided.
+     *
+     * @param redirectURL
+     * @return true if a valid json
+     */
+    public static boolean isValidJson(String redirectURL) {
+        try {
+            new JSONObject(redirectURL);
+        } catch (JSONException ex) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * This method returns essential:true claims list from the request parameter of OIDC authorization request
+     *
+     * @param claimRequestor                  claimrequestor is either id_token or  userinfo
+     * @param requestedClaimsFromRequestParam claims defined in the value of the request parameter
+     * @return the claim list which have attribute vale essentail :true
+     */
+    public static List<String> essentialClaimsFromRequestParam(String claimRequestor, Map<String, List<Claim>>
+            requestedClaimsFromRequestParam) {
+        String attributeValue = null;
+        List<String> essentialClaimsfromRequestParam = new ArrayList<>();
+        List<Claim> claimsforClaimRequestor = requestedClaimsFromRequestParam.get(claimRequestor);
+        for (Claim claimforClaimRequestor : claimsforClaimRequestor) {
+            String claim = claimforClaimRequestor.getName();
+            Map<String, String> attributesMap = claimforClaimRequestor.getClaimAttributesMap();
+            if (attributesMap != null) {
+                for (Map.Entry<String, String> attributesEntryMap : attributesMap.entrySet()) {
+                    attributeValue = attributesMap.get(attributesEntryMap.getKey());
+
+                    if (ESSENTAIL.equals(attributesEntryMap.getKey()) && Boolean.parseBoolean(attributeValue)) {
+                        essentialClaimsfromRequestParam.add(claim);
+                    }
+                }
+            }
+        }
+        return essentialClaimsfromRequestParam;
+    }
 }

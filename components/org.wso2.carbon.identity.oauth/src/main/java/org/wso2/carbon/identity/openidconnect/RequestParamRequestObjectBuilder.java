@@ -40,7 +40,6 @@ import java.util.ArrayList;
  * This class is used to build request object parameter value which comes with the OIDC authorization request as an optional
  * parameter
  */
-
 public class RequestParamRequestObjectBuilder implements RequestObjectBuilder {
 
     private static final String CLIENT_ID = "client_id";
@@ -68,6 +67,7 @@ public class RequestParamRequestObjectBuilder implements RequestObjectBuilder {
     @Override
     public void buildRequestObject(String requestObject, OAuth2Parameters oAuth2Parameters,
                                    RequestObject requestObjectInstance) throws RequestObjectException {
+
         JSONParser parser = new JSONParser();
         try {
             OAuthServerConfiguration.getInstance().getRequestObjectValidator().validateRequestObject(requestObject,
@@ -86,6 +86,7 @@ public class RequestParamRequestObjectBuilder implements RequestObjectBuilder {
 
     private void processClaims(JSONObject jsonObjectRequestedClaims, RequestObject requestObjectInstance)
             throws RequestObjectException {
+
         //To process the basic claims which comes with the request parameter.
         processBasicClaims(jsonObjectRequestedClaims, requestObjectInstance);
         try {
@@ -104,6 +105,7 @@ public class RequestParamRequestObjectBuilder implements RequestObjectBuilder {
      * @param requestObjectInstance     instance of request object
      */
     private void processBasicClaims(JSONObject jsonObjectRequestedClaims, RequestObject requestObjectInstance) {
+
         if (jsonObjectRequestedClaims.get(CLIENT_ID) != null) {
             requestObjectInstance.setClientId(jsonObjectRequestedClaims.get(CLIENT_ID).toString());
         }
@@ -141,6 +143,7 @@ public class RequestParamRequestObjectBuilder implements RequestObjectBuilder {
      */
     private void processClaimObject(JSONObject jsonObjectRequestedClaims, RequestObject requestObjectInstance)
             throws ParseException {
+
         if (jsonObjectRequestedClaims.get(CLAIMS) != null) {
             String allRequestedClaims = null;
             String claimAttributeValue = null;
@@ -183,9 +186,11 @@ public class RequestParamRequestObjectBuilder implements RequestObjectBuilder {
 
     private void addClaimAttributes(String claimAttributeValue, List<Claim> essentialClaimsRequestParam,
                                     JSONObject jsonObjectClaimAttributes, String claimName) {
+
         Claim claim = new Claim();
         claim.setName(claimName);
         if (jsonObjectClaimAttributes != null) {
+
             //To iterate claim attributes object to fetch the attribute key and value for the fetched
             // requested claim in the fetched claim requestor
             for (Map.Entry<String, Object> claimAttributes : jsonObjectClaimAttributes.entrySet()) {

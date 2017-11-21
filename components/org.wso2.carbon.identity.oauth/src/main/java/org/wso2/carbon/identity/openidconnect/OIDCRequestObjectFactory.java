@@ -45,7 +45,8 @@ public class OIDCRequestObjectFactory {
      * @throws RequestObjectException
      */
     public static void buildRequestObject(OAuthAuthzRequest oauthRequest, OAuth2Parameters oAuth2Parameters,
-                                          +RequestObject requestObject) throws RequestObjectException {
+                                          RequestObject requestObject) throws RequestObjectException {
+
         /**
          * So that the request is a valid OAuth 2.0 Authorization Request, values for the response_type and client_id
          * parameters MUST be included using the OAuth 2.0 request syntax, since they are REQUIRED by OAuth 2.0.
@@ -65,6 +66,7 @@ public class OIDCRequestObjectFactory {
 
     private static void validateClientIdAndResponseType(OAuthAuthzRequest oauthRequest, RequestObject requestObject)
             throws RequestObjectException {
+
         if (!oauthRequest.getParam(CLIENT_ID).equals(requestObject.getClientId()) ||
                 !oauthRequest.getParam(RESPONSE_TYPE).equals(requestObject.getResponseType())) {
             throw new RequestObjectException(RequestObjectException.ERROR_CODE_INVALID_REQUEST, "Request Object and " +
@@ -73,14 +75,17 @@ public class OIDCRequestObjectFactory {
     }
 
     private static RequestObjectBuilder getBuildRequestObject(String requestParamValueBuilder) {
+
         return OAuthServerConfiguration.getInstance().getRequestObjectBuilders().get(requestParamValueBuilder);
     }
 
     private static boolean isRequestUri(String param) {
+
         return StringUtils.isNotBlank(param);
     }
 
     private static boolean isRequestParameter(String param) {
+
         return StringUtils.isNotBlank(param);
     }
 }

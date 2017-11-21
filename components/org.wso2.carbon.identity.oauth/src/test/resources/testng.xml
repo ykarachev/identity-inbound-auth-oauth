@@ -34,6 +34,8 @@
             <class name="org.wso2.carbon.identity.oauth2.authz.handlers.TokenResponseTypeHandlerTest"/>
             <class name="org.wso2.carbon.identity.oauth2.authcontext.JWTTokenGeneratorTest"/>
             <class name="org.wso2.carbon.identity.openidconnect.RememberMeStoreTest"/>
+            <class name="org.wso2.carbon.identity.openidconnect.RequestObjectValidatorImplTest"/>
+            <class name="org.wso2.carbon.identity.openidconnect.RequestParamRequestObjectBuilderTest"/>
         </classes>
     </test>
     <test name="oauth.tests.with.debug.disabled" preserve-order="false" parallel="false">
@@ -100,7 +102,7 @@
             <class name="org.wso2.carbon.identity.oauth2.token.OauthTokenIssuerImplTest"/>
             <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest"/>
             <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest"/>
-            <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest"/>
+            <class name="org.wso2.carbon.identity.openidconnect.DefaultOIDCClaimsCallbackHandlerTest"/>
         </classes>
     </test>
 
@@ -168,7 +170,7 @@
             <class name="org.wso2.carbon.identity.oauth2.token.OauthTokenIssuerImplTest"/>
             <class name="org.wso2.carbon.identity.oauth2.util.OAuth2UtilTest"/>
             <class name="org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilderTest"/>
-            <class name="org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallbackTest"/>
+            <class name="org.wso2.carbon.identity.openidconnect.DefaultOIDCClaimsCallbackHandlerTest"/>
         </classes>
     </test>
 </suite>

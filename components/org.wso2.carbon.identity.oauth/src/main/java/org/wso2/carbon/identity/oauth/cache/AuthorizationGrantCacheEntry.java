@@ -51,6 +51,20 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     private RequestObject requestObject;
 
+    /*
+        OIDC sub claim. This should be formatted based on the Service Provider configurations to append
+        userStoreDomain and tenantDomain.
+     */
+    private String subjectClaim;
+
+    public String getSubjectClaim() {
+        return subjectClaim;
+    }
+
+    public void setSubjectClaim(String subjectClaim) {
+        this.subjectClaim = subjectClaim;
+    }
+
     public RequestObject getRequestObject() {
         return requestObject;
     }

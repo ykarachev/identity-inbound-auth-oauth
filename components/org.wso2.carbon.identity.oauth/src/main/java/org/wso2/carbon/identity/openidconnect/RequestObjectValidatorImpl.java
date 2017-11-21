@@ -93,6 +93,7 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
 
     @Override
     public void validateSignature(String requestObject) throws RequestObjectException {
+
         String thumbPrint;
         // The public key corresponding to the key used to sign the message can be any of these header elements:
         // jku, jwk, kid, x5u, x5c, x5t and x5t#s256
@@ -120,7 +121,8 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
                     "header is null. Hence signature validation failed.");
         }
         if (log.isDebugEnabled()) {
-            log.debug("The certificate thumbPrint value for the certificate is: " + thumbPrint);
+            log.debug("The certificate thumbPrint value for the certificate is: " + thumbPrint + "with the header:" +
+                    headerValue);
         }
         verifyJWTSignature(thumbPrint, requestObject);
     }
@@ -132,17 +134,13 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
      * @param oAuth2Parameters oAuth2Parameters
      * @throws RequestObjectException
      */
-    +
-
     @Override
     public void decrypt(String requestObject, OAuth2Parameters oAuth2Parameters) throws RequestObjectException {
+
         EncryptedJWT encryptedJWT;
         try {
             encryptedJWT = EncryptedJWT.parse(requestObject);
-            String tenantDomain = getTenantDomainForDecryption(oAuth2Parameters);
-            int tenantId = OAuth2Util.getTenantId(tenantDomain);
-            Key key = OAuth2Util.getPrivateKey(tenantDomain, tenantId);
-            RSAPrivateKey rsaPrivateKey = (RSAPrivateKey) key;
+            RSAPrivateKey rsaPrivateKey = getRsaPrivateKey(oAuth2Parameters);
             RSADecrypter decrypter = new RSADecrypter(rsaPrivateKey);
             encryptedJWT.decrypt(decrypter);
             if (encryptedJWT != null && encryptedJWT.getCipherText() != null) {
@@ -162,6 +160,13 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
         }
     }
 
+    private RSAPrivateKey getRsaPrivateKey(OAuth2Parameters oAuth2Parameters) throws IdentityOAuth2Exception {
+        String tenantDomain = getTenantDomainForDecryption(oAuth2Parameters);
+        int tenantId = OAuth2Util.getTenantId(tenantDomain);
+        Key key = OAuth2Util.getPrivateKey(tenantDomain, tenantId);
+        return (RSAPrivateKey) key;
+    }
+
     /**
      * Decide whether this request object is a signed object encrypted object or a nested object.
      *
@@ -172,6 +177,7 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
     @Override
     public void validateRequestObject(String requestObject, OAuth2Parameters oAuth2Parameters)
             throws RequestObjectException {
+
         if (!OAuth2Util.isValidJson(requestObject)) {
             String[] jwtTokenValues = requestObject.split("\\.");
             if (jwtTokenValues.length == NUMBER_OF_PARTS_IN_JWS) {
@@ -184,6 +190,7 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
     }
 
     private void processRequestObject(String[] jwtTokenValues) {
+
         headerValue = new String(base64Url.decode(jwtTokenValues[0].getBytes()));
         jwtSignature = base64Url.decode(jwtTokenValues[2].getBytes());
         jwtAssertion = jwtTokenValues[0] + "." + jwtTokenValues[1];
@@ -197,10 +204,12 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
      * @return Tenant domain
      */
     private String getTenantDomainForDecryption(OAuth2Parameters oAuth2Parameters) {
+
         return oAuth2Parameters.getTenantDomain();
     }
 
     private void verifyJWTSignature(String thumbPrint, String requestObject) throws RequestObjectException {
+
         if (jwtAssertion != null && jwtSignature != null) {
             try {
                 KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
@@ -226,6 +235,7 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
     private void verifySignature(String requestObject, KeyStore keyStore
             , String alias) throws KeyStoreException, NoSuchAlgorithmException, InvalidKeyException, SignatureException,
             JOSEException, java.text.ParseException, RequestObjectException {
+
         Certificate certificate = keyStore.getCertificate(alias);
         // Get public key
         RSAPublicKey publicKey = (RSAPublicKey) certificate.getPublicKey();
@@ -237,6 +247,7 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
     }
 
     private JSONObject getJsonHeaderObject() throws RequestObjectException {
+
         JSONParser parser = new JSONParser();
         JSONObject jsonHeaderObject;
         try {
@@ -256,6 +267,7 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
      * @return Absolute file path
      */
     private static String buildFilePath(String path) {
+
         if (StringUtils.isNotEmpty(path) && path.startsWith(".")) {
             // Relative file path is given
             File currentDirectory = new File(new File(".")
@@ -280,6 +292,7 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
      * @return Property value
      */
     private static String getPropertyValue(String key) throws IOException {
+
         if (properties == null) {
             properties = new Properties();
             String configFilePath = buildFilePath(OAuthConstants.CONFIG_RELATIVE_PATH);
@@ -291,6 +304,7 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
     }
 
     private static String getAliasForX509CertThumb(byte[] thumb, KeyStore keyStore) throws RequestObjectException {
+
         Certificate cert;
         MessageDigest sha;
         String alias = null;
@@ -321,6 +335,7 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
     }
 
     private static String hexify(byte bytes[]) {
+
         char[] hexDigits =
                 {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
         StringBuilder buf = new StringBuilder(bytes.length * 2);
@@ -331,3 +346,4 @@ public class RequestObjectValidatorImpl implements RequestObjectValidator {
         return buf.toString();
     }
 }
+

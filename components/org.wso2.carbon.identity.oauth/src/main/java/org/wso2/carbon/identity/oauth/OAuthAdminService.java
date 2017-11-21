@@ -63,6 +63,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import static org.wso2.carbon.identity.oauth.OAuthUtil.handleError;
+
 public class OAuthAdminService extends AbstractAdmin {
 
     public static final String IMPLICIT = "implicit";
@@ -172,8 +174,7 @@ public class OAuthAdminService extends AbstractAdmin {
             }
             return dto;
         } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error while retrieving the app information using consumerKey: " +
-                    consumerKey, e);
+            throw handleError("Error while retrieving the app information using consumerKey: " + consumerKey, e);
         }
 
     }
@@ -206,8 +207,7 @@ public class OAuthAdminService extends AbstractAdmin {
             }
             return dto;
         } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error while retrieving the app information by app name: " +
-                    appName, e);
+            throw handleError("Error while retrieving the app information by app name: " + appName, e);
         }
     }
 
@@ -257,7 +257,7 @@ public class OAuthAdminService extends AbstractAdmin {
                                     " as registrant name");
                         }
                     } catch (UserStoreException e) {
-                        throw new IdentityOAuthAdminException("Error while retrieving the user store manager", e);
+                        throw handleError("Error while retrieving the user store manager for user: "+ applicationUser, e);
                     }
 
                 }
@@ -399,8 +399,7 @@ public class OAuthAdminService extends AbstractAdmin {
             }
 
         } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
-            throw new IdentityOAuthAdminException("Error while updating state of OAuth app with consumerKey: " +
-                    consumerKey, e);
+            throw handleError("Error while updating state of OAuth app with consumerKey: " + consumerKey, e);
         }
     }
 
@@ -469,7 +468,7 @@ public class OAuthAdminService extends AbstractAdmin {
                     accessTokens);
 
         } catch (IdentityOAuth2Exception | IdentityApplicationManagementException e) {
-            throw new IdentityOAuthAdminException("Error in updating oauth app & revoking access tokens and authz " +
+            throw handleError("Error in updating oauth app & revoking access tokens and authz " +
                     "codes for OAuth App with consumerKey: " + consumerKey, e);
         }
     }
@@ -517,8 +516,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 userStoreDomain = OAuth2Util.getUserStoreForFederatedUser(authenticatedUser);
             } catch (IdentityOAuth2Exception e) {
                 String errorMsg = "Error occurred while getting user store domain for User ID : " + authenticatedUser;
-                log.error(errorMsg, e);
-                throw new IdentityOAuthAdminException(errorMsg, e);
+                throw handleError(errorMsg, e);
             }
         }
 
@@ -527,10 +525,9 @@ public class OAuthAdminService extends AbstractAdmin {
             clientIds = tokenMgtDAO.getAllTimeAuthorizedClientIds(authenticatedUser);
         } catch (IdentityOAuth2Exception e) {
             String errorMsg = "Error occurred while retrieving apps authorized by User ID : " + username;
-            log.error(errorMsg, e);
-            throw new IdentityOAuthAdminException(errorMsg, e);
+            throw handleError(errorMsg, e);
         }
-        Set<OAuthConsumerAppDTO> appDTOs = new HashSet<OAuthConsumerAppDTO>();
+        Set<OAuthConsumerAppDTO> appDTOs = new HashSet<>();
         for (String clientId : clientIds) {
             Set<AccessTokenDO> accessTokenDOs;
             try {
@@ -538,11 +535,10 @@ public class OAuthAdminService extends AbstractAdmin {
             } catch (IdentityOAuth2Exception e) {
                 String errorMsg = "Error occurred while retrieving access tokens issued for " +
                         "Client ID : " + clientId + ", User ID : " + username;
-                log.error(errorMsg, e);
-                throw new IdentityOAuthAdminException(errorMsg, e);
+                throw handleError(errorMsg, e);
             }
             if (!accessTokenDOs.isEmpty()) {
-                Set<String> distinctClientUserScopeCombo = new HashSet<String>();
+                Set<String> distinctClientUserScopeCombo = new HashSet<>();
                 for (AccessTokenDO accessTokenDO : accessTokenDOs) {
                     AccessTokenDO scopedToken;
                     String scopeString = OAuth2Util.buildScopeString(accessTokenDO.getScope());
@@ -582,8 +578,7 @@ public class OAuthAdminService extends AbstractAdmin {
                     } catch (IdentityOAuth2Exception e) {
                         String errorMsg = "Error occurred while retrieving latest access token issued for Client ID :" +
                                 " " + clientId + ", User ID : " + username + " and Scope : " + scopeString;
-                        log.error(errorMsg, e);
-                        throw new IdentityOAuthAdminException(errorMsg, e);
+                        throw handleError(errorMsg, e);
                     }
                 }
             }
@@ -616,8 +611,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 try {
                     userStoreDomain = OAuth2Util.getUserStoreForFederatedUser(user);
                 } catch (IdentityOAuth2Exception e) {
-                    throw new IdentityOAuthAdminException(
-                            "Error occurred while getting user store domain from User ID : " + user, e);
+                    throw handleError("Error occurred while getting user store domain from User ID : " + user, e);
                 }
             }
             OAuthConsumerAppDTO[] appDTOs = getAppsAuthorizedByUser();
@@ -632,8 +626,7 @@ public class OAuthAdminService extends AbstractAdmin {
                         } catch (IdentityOAuth2Exception e) {
                             String errorMsg = "Error occurred while retrieving access tokens issued for " +
                                     "Client ID : " + appDTO.getOauthConsumerKey() + ", User ID : " + userName;
-                            log.error(errorMsg, e);
-                            throw new IdentityOAuthAdminException(errorMsg, e);
+                            throw handleError(errorMsg, e);
                         }
                         User authzUser;
                         for (AccessTokenDO accessTokenDO : accessTokenDOs) {
@@ -655,8 +648,7 @@ public class OAuthAdminService extends AbstractAdmin {
                                         "access token issued for Client ID : " +
                                         appDTO.getOauthConsumerKey() + ", User ID : " + userName +
                                         " and Scope : " + OAuth2Util.buildScopeString(accessTokenDO.getScope());
-                                log.error(errorMsg, e);
-                                throw new IdentityOAuthAdminException(errorMsg, e);
+                                throw handleError(errorMsg, e);
                             }
                             if (scopedToken != null) {
                                 //Revoking token from database
@@ -665,8 +657,7 @@ public class OAuthAdminService extends AbstractAdmin {
                                 } catch (IdentityOAuth2Exception e) {
                                     String errorMsg = "Error occurred while revoking " + "Access Token : " +
                                             scopedToken.getAccessToken();
-                                    log.error(errorMsg, e);
-                                    throw new IdentityOAuthAdminException(errorMsg, e);
+                                    throw handleError(errorMsg, e);
                                 }
                                 //Revoking the oauth consent from database.
                                 try {
@@ -675,8 +666,7 @@ public class OAuthAdminService extends AbstractAdmin {
                                 } catch (IdentityOAuth2Exception e) {
                                     String errorMsg = "Error occurred while removing OAuth Consent of Application " + appName +
                                             " of user " + userName;
-                                    log.error(errorMsg, e);
-                                    throw new IdentityOAuthAdminException(errorMsg, e);
+                                    throw handleError(errorMsg, e);
                                 }
                             }
                             triggerPostRevokeListeners(revokeRequestDTO, new OAuthRevocationResponseDTO
@@ -735,7 +725,7 @@ public class OAuthAdminService extends AbstractAdmin {
                 Map<String, Object> paramMap = new HashMap<>();
                 oAuthEventInterceptorProxy.onPreTokenRevocationByResourceOwner(revokeRequestDTO, paramMap);
             } catch (IdentityOAuth2Exception e) {
-                throw new IdentityOAuthAdminException("Error occurred with Oauth pre-revoke listener ", e);
+                throw handleError("Error occurred with Oauth pre-revoke listener ", e);
             }
         }
     }

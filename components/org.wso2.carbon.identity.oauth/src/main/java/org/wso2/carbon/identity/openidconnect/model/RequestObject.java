@@ -24,8 +24,8 @@ import java.util.Map;
  *  This class is used to model the request object which comes as a parameter of the OIDC authorization request
  *
  */
-
 public class RequestObject {
+
     private String clientId;
     private String redirectUri;
     private String[] scopes;
@@ -37,8 +37,9 @@ public class RequestObject {
     private String maxAge;
     private boolean isSignatureValid = true;
     private boolean isValidRequestURI = true;
-    //This is used for extensions
+    // This is used for extensions.
     private Map<String, Object> properties = new HashMap<String, Object>();
+
     //To store the claims requestor and the the requested claim list. claim requestor can be either userinfo or id token
     // or any custom member. Sample set of values that can be exist in this map is as below.
     //Map<"id_token", ("username, firstname, lastname")>

@@ -49,6 +49,7 @@ import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.application.common.model.ServiceProviderProperty;
 import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
+import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCache;
 import org.wso2.carbon.identity.oauth.cache.AuthorizationGrantCacheEntry;
@@ -804,7 +805,10 @@ public class OAuth2AuthzEndpoint {
             sub = sessionDataCacheEntry.getLoggedInUser().getAuthenticatedSubjectIdentifier();
         }
         if (StringUtils.isNotBlank(sub)) {
-            sessionDataCacheEntry.getLoggedInUser().getUserAttributes().put(key, sub);
+            if (log.isDebugEnabled() && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.USER_CLAIMS)) {
+                log.debug("Setting subject: " + sub + " as the sub claim in cache against the authorization code.");
+            }
+            authorizationGrantCacheEntry.setSubjectClaim(sub);
         }
         //PKCE
         String[] pkceCodeChallengeArray = sessionDataCacheEntry.getParamMap().get(
@@ -1092,6 +1096,7 @@ public class OAuth2AuthzEndpoint {
 
     private void handleOIDCRequestObject(OAuthAuthzRequest oauthRequest, OAuth2Parameters parameters)
             throws RequestObjectException {
+
         validateRequestObject(oauthRequest);
         if (isRequestUri(oauthRequest.getParam(REQUEST_URI))) {
             handleRequestObject(oauthRequest, parameters, oauthRequest.getParam(REQUEST_URI));
@@ -1101,6 +1106,7 @@ public class OAuth2AuthzEndpoint {
     }
 
     private void validateRequestObject(OAuthAuthzRequest oauthRequest) throws RequestObjectException {
+
         // With in the same request it can not be used both request parameter and request_uri parameter.
         if (StringUtils.isNotEmpty(oauthRequest.getParam(REQUEST)) && StringUtils.isNotEmpty(oauthRequest.getParam
                 (REQUEST_URI))) {
@@ -1111,6 +1117,7 @@ public class OAuth2AuthzEndpoint {
 
     private void handleRequestObject(OAuthAuthzRequest oauthRequest, OAuth2Parameters parameters,
                                      String requestParameterValue) throws RequestObjectException {
+
         if (StringUtils.isNotBlank(requestParameterValue)) {
             RequestObject requestObject = getRequestObject(oauthRequest, parameters);
             if (requestObject == null) {
@@ -1129,6 +1136,7 @@ public class OAuth2AuthzEndpoint {
 
     private void validateSignatureAndContent(OAuth2Parameters params, RequestObject requestObject) throws
             RequestObjectException {
+
         if (requestObject.isSignatureValid()) {
             params.setRequestObject(requestObject);
             if (log.isDebugEnabled()) {
@@ -1145,6 +1153,7 @@ public class OAuth2AuthzEndpoint {
 
     private RequestObject getRequestObject(OAuthAuthzRequest oauthRequest, OAuth2Parameters parameters)
             throws RequestObjectException {
+
         RequestObject requestObject = new RequestObject();
         OIDCRequestObjectFactory.buildRequestObject(oauthRequest, parameters, requestObject);
         return requestObject;
@@ -1152,6 +1161,7 @@ public class OAuth2AuthzEndpoint {
 
     private void overrideAuthzParameters(OAuth2Parameters params, String requestParameterValue,
                                          String requestURIParameterValue, RequestObject requestObject) {
+
         if (StringUtils.isNotBlank(requestParameterValue) || StringUtils.isNotBlank(requestURIParameterValue)) {
             if (StringUtils.isNotBlank(requestObject.getRedirectUri())) {
                 params.setRedirectURI(requestObject.getRedirectUri());

@@ -1254,7 +1254,8 @@ public class OAuth2Util {
         }
 
         if (accessTokenDO == null) {
-            throw new IllegalArgumentException("Invalid access token");
+            // this means the token is not active so we can't proceed further
+            throw new IllegalArgumentException("Invalid Access Token. Access token is not ACTIVE.");
         }
 
         // add the token back to the cache in the case of a cache miss
@@ -1696,7 +1697,7 @@ public class OAuth2Util {
         }
     }
 
-    private static Key getPrivateKey(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
+    public static Key getPrivateKey(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
         Key privateKey;
         if (!(privateKeys.containsKey(tenantId))) {
 
@@ -1905,8 +1906,7 @@ public class OAuth2Util {
         }
 
         String usernameForToken = authenticatedUser.toString();
-        if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && authenticatedUser.
-                isFederatedUser()) {
+        if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && authenticatedUser.isFederatedUser()) {
             usernameForToken = OAuth2Util.getFederatedUserDomain(authenticatedUser.getFederatedIdPName());
             usernameForToken = usernameForToken + UserCoreConstants.DOMAIN_SEPARATOR + authenticatedUser.
                     getAuthenticatedSubjectIdentifier();
@@ -1920,7 +1920,7 @@ public class OAuth2Util {
     /**
      * Validates the json provided.
      *
-     * @param redirectURL
+     * @param redirectURL redirect url
      * @return true if a valid json
      */
     public static boolean isValidJson(String redirectURL) {
@@ -1941,6 +1941,7 @@ public class OAuth2Util {
      */
     public static List<String> essentialClaimsFromRequestParam(String claimRequestor, Map<String, List<Claim>>
             requestedClaimsFromRequestParam) {
+
         String attributeValue = null;
         List<String> essentialClaimsfromRequestParam = new ArrayList<>();
         List<Claim> claimsforClaimRequestor = requestedClaimsFromRequestParam.get(claimRequestor);
@@ -1958,5 +1959,41 @@ public class OAuth2Util {
             }
         }
         return essentialClaimsfromRequestParam;
+    }
+
+    /* Get authorized user from the {@link AccessTokenDO}. When getting authorized user we also make sure flag to
+    * determine whether the user is federated or not is set.
+    *
+    * @param accessTokenDO accessTokenDO
+    * @return user
+    */
+    public static AuthenticatedUser getAuthenticatedUser(AccessTokenDO accessTokenDO) {
+        AuthenticatedUser authenticatedUser = accessTokenDO.getAuthzUser();
+        if (authenticatedUser != null) {
+            authenticatedUser.setFederatedUser(isFederatedUser(authenticatedUser));
+        }
+        return authenticatedUser;
+    }
+
+    /**
+     * Determine whether the user represented by {@link AuthenticatedUser} object is a federated user.
+     *
+     * @param authenticatedUser
+     * @return true if user is federated, false otherwise.
+     */
+    public static boolean isFederatedUser(AuthenticatedUser authenticatedUser) {
+        String userStoreDomain = authenticatedUser.getUserStoreDomain();
+
+        // We consider a user federated if the flag for federated user is set or the user store domain contain the
+        // federated user store domain prefix.
+        boolean isExplicitlyFederatedUser =
+                StringUtils.startsWith(userStoreDomain, OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX) ||
+                authenticatedUser.isFederatedUser();
+
+        // Flag to make sure federated user is not mapped to local users.
+        boolean isFederatedUserNotMappedToLocalUser =
+                !OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal();
+
+        return isExplicitlyFederatedUser && isFederatedUserNotMappedToLocalUser;
     }
 }

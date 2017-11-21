@@ -27,11 +27,8 @@ import org.apache.oltu.oauth2.as.issuer.OAuthIssuer;
 import org.apache.oltu.oauth2.as.issuer.OAuthIssuerImpl;
 import org.apache.oltu.oauth2.as.issuer.UUIDValueGenerator;
 import org.apache.oltu.oauth2.as.issuer.ValueGenerator;
-import org.apache.oltu.oauth2.as.validator.AuthorizationCodeValidator;
 import org.apache.oltu.oauth2.as.validator.ClientCredentialValidator;
 import org.apache.oltu.oauth2.as.validator.CodeValidator;
-import org.apache.oltu.oauth2.as.validator.PasswordValidator;
-import org.apache.oltu.oauth2.as.validator.RefreshTokenValidator;
 import org.apache.oltu.oauth2.as.validator.TokenValidator;
 import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
@@ -53,8 +50,11 @@ import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuerImpl;
 import org.wso2.carbon.identity.oauth2.token.handlers.clientauth.ClientAuthenticationHandler;
 import org.wso2.carbon.identity.oauth2.token.handlers.grant.AuthorizationGrantHandler;
 import org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML2TokenCallbackHandler;
+import org.wso2.carbon.identity.oauth2.validators.grant.AuthorizationCodeGrantValidator;
 import org.wso2.carbon.identity.oauth2.validators.OAuth2ScopeHandler;
 import org.wso2.carbon.identity.oauth2.validators.OAuth2ScopeValidator;
+import org.wso2.carbon.identity.oauth2.validators.grant.PasswordGrantValidator;
+import org.wso2.carbon.identity.oauth2.validators.grant.RefreshTokenGrantValidator;
 import org.wso2.carbon.identity.openidconnect.CustomClaimsCallbackHandler;
 import org.wso2.carbon.identity.openidconnect.IDTokenBuilder;
 import org.wso2.carbon.identity.openidconnect.RequestObjectBuilder;
@@ -169,7 +169,7 @@ public class OAuthServerConfiguration {
     private String openIDConnectIDTokenCustomClaimsHanlderClassName = "org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallback";
     private IDTokenBuilder openIDConnectIDTokenBuilder = null;
     private Map<String, String> requestObjectBuilderClassNames = new HashMap<>();
-    private RequestObjectValidator requestObjectValidator = null;
+    private volatile RequestObjectValidator requestObjectValidator = null;
     private CustomClaimsCallbackHandler openidConnectIDTokenCustomClaimsCallbackHandler = null;
     private String openIDConnectIDTokenIssuerIdentifier = null;
     private String openIDConnectIDTokenSubClaim = "http://wso2.org/claims/fullname";
@@ -273,9 +273,6 @@ public class OAuthServerConfiguration {
 
         // read supported grant types
         parseSupportedGrantTypesConfig(oauthElem);
-
-        // Read request object builder classes
-        parseRequestObjectConfig(oauthElem);
 
         // read supported response types
         parseSupportedResponseTypesConfig(oauthElem);
@@ -576,13 +573,13 @@ public class OAuthServerConfiguration {
                             new Hashtable<>();
                     // Load default grant type validators
                     supportedGrantTypeValidatorsTemp
-                            .put(GrantType.PASSWORD.toString(), PasswordValidator.class);
+                            .put(GrantType.PASSWORD.toString(), PasswordGrantValidator.class);
                     supportedGrantTypeValidatorsTemp.put(GrantType.CLIENT_CREDENTIALS.toString(),
                             ClientCredentialValidator.class);
                     supportedGrantTypeValidatorsTemp.put(GrantType.AUTHORIZATION_CODE.toString(),
-                            AuthorizationCodeValidator.class);
+                            AuthorizationCodeGrantValidator.class);
                     supportedGrantTypeValidatorsTemp.put(GrantType.REFRESH_TOKEN.toString(),
-                            RefreshTokenValidator.class);
+                            RefreshTokenGrantValidator.class);
                     supportedGrantTypeValidatorsTemp.put(
                             org.wso2.carbon.identity.oauth.common.GrantType.SAML20_BEARER
                                     .toString(), SAML2GrantValidator.class);
@@ -684,10 +681,7 @@ public class OAuthServerConfiguration {
         return supportedResponseTypes;
     }
 
-    private void parseRequestObjectConfig(OMElement oauthConfigElem) {
-
-        OMElement requestObjectBuildersElem =
-                oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.REQUEST_OBJECT_BUILDERS));
+    private void parseRequestObjectConfig(OMElement requestObjectBuildersElem) {
 
         if (requestObjectBuildersElem != null) {
             Iterator<OMElement> iterator = requestObjectBuildersElem
@@ -711,7 +705,7 @@ public class OAuthServerConfiguration {
             }
         } else {
             // if this element is not present, assume the default case.
-            log.warn("\'RequestObjectBuilders\' element not configured in identity.xml. " +
+            log.info("\'RequestObjectBuilders\' element not configured in identity.xml. " +
                     "Therefore instantiating default request object builders");
 
             Map<String, String> defaultRequestObjectBuilders = new HashMap<>();
@@ -734,6 +728,7 @@ public class OAuthServerConfiguration {
      * @return instance of RequestObjectValidator
      */
     public RequestObjectValidator getRequestObjectValidator() {
+
         if (requestObjectValidator == null) {
             synchronized (RequestObjectValidator.class) {
                 if (requestObjectValidator == null) {
@@ -1948,6 +1943,7 @@ public class OAuthServerConfiguration {
                 oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT));
 
         if (openIDConnectConfigElem != null) {
+            parseRequestObjectConfig(oauthConfigElem);
             if (openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.
                     REQUEST_OBJECT_VALIDATOR)) != null) {
                 defaultRequestValidatorClassName =

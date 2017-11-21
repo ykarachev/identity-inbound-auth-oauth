@@ -297,7 +297,7 @@ public class TokenMgtDAO {
                         IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.ACCESS_TOKEN)) {
                     log.debug("Error while getting access token hash for token: " + accessToken);
                 }
-                throw new IdentityOAuth2Exception("Error while getting access token hash");
+                throw new IdentityOAuth2Exception("Error while getting access token hash.");
             }
         }
 

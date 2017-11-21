@@ -297,7 +297,7 @@ public class OAuthServerConfiguration {
         // parse identity OAuth 2.0 token generator
         parseOAuthTokenIssuerConfig(oauthElem);
 
-        // parse Persist Access Token Alias element
+        // Parse Persist Access Token Alias element.
         parsePersistAccessTokenAliasConfig(oauthElem);
 
         // Parse token value generator class name.
@@ -1531,7 +1531,7 @@ public class OAuthServerConfiguration {
             }
         } else {
             if (log.isDebugEnabled()) {
-                log.debug("PersistAccessTokenAlias is not defiled. Default config will be used");
+                log.debug("PersistAccessTokenAlias is not defiled. Default config will be used.");
             }
         }
     }

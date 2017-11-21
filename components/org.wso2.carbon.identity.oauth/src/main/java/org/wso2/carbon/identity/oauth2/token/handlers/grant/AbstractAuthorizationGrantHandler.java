@@ -113,7 +113,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
             AccessTokenDO existingTokenBean = getExistingToken(tokReqMsgCtx,
                     getOAuthCacheKey(scope, consumerKey, authorizedUser));
             // Return a new access token in each request when JWTTokenIssuer is used.
-            if (accessTokenNotRenewPerRequest()) {
+            if (accessTokenNotRenewedPerRequest()) {
                 if (existingTokenBean != null) {
                     long expireTime = getAccessTokenExpiryTimeMillis(existingTokenBean);
                     if (isExistingTokenValid(existingTokenBean, expireTime)) {
@@ -121,7 +121,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                         return createResponseWithTokenBean(existingTokenBean, expireTime, scope);
                     }
                 }
-                // issuing new access token.
+                // Issuing new access token.
                 if (log.isDebugEnabled()) {
                     log.debug("No active access token found for client Id: " + consumerKey +
                             ", user: " + authorizedUser + " and scope: " + scope +
@@ -724,7 +724,7 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
         return !(refreshTokenExpireTime > 0 && refreshTokenExpireTime > validityPeriod);
     }
 
-    private boolean accessTokenNotRenewPerRequest() {
+    private boolean accessTokenNotRenewedPerRequest() {
         boolean isRenew = oauthIssuerImpl.renewAccessTokenPerRequest();
         if (log.isDebugEnabled()) {
             log.debug("Enable Access Token renew per request: " + isRenew);

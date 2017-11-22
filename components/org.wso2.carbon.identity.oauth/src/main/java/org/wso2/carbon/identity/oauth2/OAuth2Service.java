@@ -25,6 +25,7 @@ import org.apache.oltu.oauth2.common.message.types.GrantType;
 import org.wso2.carbon.core.AbstractAdmin;
 import org.wso2.carbon.identity.base.IdentityException;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.OAuthUtil;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
@@ -288,7 +289,7 @@ public class OAuth2Service extends AbstractAdmin {
                     StringUtils.isNotEmpty(revokeRequestDTO.getToken())) {
 
                 boolean refreshTokenFirst = false;
-                if (StringUtils.equals(GrantType.REFRESH_TOKEN.toString(), revokeRequestDTO.getToken_type())) {
+                if (isRefreshTokenType(revokeRequestDTO)) {
                     refreshTokenFirst = true;
                 }
 
@@ -419,6 +420,10 @@ public class OAuth2Service extends AbstractAdmin {
             invokePostRevocationListeners(revokeRequestDTO, revokeResponseDTO, accessTokenDO, refreshTokenDO);
             return revokeRespDTO;
         }
+    }
+
+    private boolean isRefreshTokenType(OAuthRevocationRequestDTO revokeRequestDTO) {
+        return StringUtils.equals(GrantType.REFRESH_TOKEN.toString(), revokeRequestDTO.getTokenType());
     }
 
     private void invokePostRevocationListeners(OAuthRevocationRequestDTO revokeRequestDTO, OAuthRevocationResponseDTO
@@ -559,6 +564,17 @@ public class OAuth2Service extends AbstractAdmin {
             allClaims[i] = claimsList.get(i);
         }
         return allClaims;
+    }
+
+    public String getOauthApplicationState(String consumerKey) {
+
+        OAuthAppDAO oAuthAppDAO = new OAuthAppDAO();
+        try {
+            return oAuthAppDAO.getConsumerAppState(consumerKey);
+        } catch (IdentityOAuthAdminException e) {
+            log.error("Error while getting oauth app state", e);
+            return null;
+        }
     }
 
     public boolean isPKCESupportEnabled() {

@@ -90,6 +90,7 @@ public final class OAuthConstants {
     public static final String OAUTH_PKCE_PLAIN_CHALLENGE = "plain";
     //Response types
     public static final String NONE = "none";
+    public static final String TOKEN = "token";
 
     //Constants used for OAuth/OpenID Connect Configuration UI
     public static final String CALLBACK_URL_REGEXP_PREFIX = "regexp=";
@@ -282,6 +283,38 @@ public final class OAuthConstants {
         private UserType() {
 
         }
+    }
+
+    public static class OIDCClaims {
+        public static final String UPDATED_AT = "updated_at";
+        public static final String PHONE_NUMBER_VERIFIED = "phone_number_verified";
+        public static final String EMAIL_VERIFIED = "email_verified";
+        public static final String ADDRESS = "address";
+        public static final String AZP = "azp";
+        public static final String AUTH_TIME = "auth_time";
+        public static final String AT_HASH = "at_hash";
+        public static final String NONCE = "nonce";
+        public static final String ACR = "acr";
+
+        private OIDCClaims() {}
+    }
+
+    public static class SignatureAlgorithms {
+        public static final String NONE = "NONE";
+        public static final String SHA256_WITH_RSA = "SHA256withRSA";
+        public static final String SHA384_WITH_RSA = "SHA384withRSA";
+        public static final String SHA512_WITH_RSA = "SHA512withRSA";
+        public static final String SHA256_WITH_HMAC = "SHA256withHMAC";
+        public static final String SHA384_WITH_HMAC = "SHA384withHMAC";
+        public static final String SHA512_WITH_HMAC = "SHA512withHMAC";
+        public static final String SHA256_WITH_EC = "SHA256withEC";
+        public static final String SHA384_WITH_EC = "SHA384withEC";
+        public static final String SHA512_WITH_EC = "SHA512withEC";
+        public static final String SHA256 = "SHA-256";
+        public static final String SHA384 = "SHA-384";
+        public static final String SHA512 = "SHA-512";
+
+        private SignatureAlgorithms() {}
     }
 
     private OAuthConstants() {

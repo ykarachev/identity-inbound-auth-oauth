@@ -29,7 +29,13 @@ import org.wso2.carbon.identity.oauth2.model.RefreshTokenValidationDataDO;
 import java.util.Properties;
 import java.util.Set;
 
-
+/*
+NOTE
+This is the very first step of moving to simplified architecture for token persistence. New set of DAO classes  for
+each purpose  and factory class to get instance of each DAO classes were introduced  during  this step. Further methods
+ on org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO were distributed among new set of classes, each of these method
+ need to be reviewed  and refactored  during next step.
+ */
 public interface TokenManagementDAO {
 
     RefreshTokenValidationDataDO validateRefreshToken(String consumerKey, String refreshToken)

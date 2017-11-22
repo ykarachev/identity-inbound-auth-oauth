@@ -318,17 +318,41 @@ public class OAuthAdminService extends AbstractAdmin {
      */
     public void updateConsumerApplication(OAuthConsumerAppDTO consumerAppDTO) throws IdentityOAuthAdminException {
 
+        String errorMessage = "Error while updating the app information.";
+        if (StringUtils.isEmpty(consumerAppDTO.getOauthConsumerKey()) || StringUtils.isEmpty(consumerAppDTO
+                .getOauthConsumerSecret())) {
+            errorMessage = "OauthConsumerKey or OauthConsumerSecret is not provided for " +
+                    "updating the OAuth application.";
+            if (log.isDebugEnabled()) {
+                log.debug(errorMessage);
+            }
+            throw new IdentityOAuthAdminException(errorMessage);
+        }
         String userName = CarbonContext.getThreadLocalCarbonContext().getUsername();
         String tenantAwareUsername = MultitenantUtils.getTenantAwareUsername(userName);
         String tenantDomain = CarbonContext.getThreadLocalCarbonContext().getTenantDomain();
 
         OAuthAppDAO dao = new OAuthAppDAO();
-        OAuthAppDO oauthappdo = new OAuthAppDO();
-        AuthenticatedUser user = new AuthenticatedUser();
-        user.setUserName(UserCoreUtil.removeDomainFromName(tenantAwareUsername));
-        user.setTenantDomain(tenantDomain);
-        user.setUserStoreDomain(IdentityUtil.extractDomainFromName(userName));
-        oauthappdo.setUser(user);
+        OAuthAppDO oauthappdo = null;
+        try {
+            oauthappdo = dao.getAppInformation(consumerAppDTO.getOauthConsumerKey());
+            if (oauthappdo == null) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Error while retrieving the app information using " +
+                            "provided OauthConsumerKey: " + consumerAppDTO.getOauthConsumerKey());
+                }
+                throw new IdentityOAuthAdminException(errorMessage);
+            }
+            if (!consumerAppDTO.getOauthConsumerSecret().equals(oauthappdo.getOauthConsumerSecret())) {
+                if (log.isDebugEnabled()) {
+                    log.debug("Invalid oauthConsumerSecret is provided for updating the OAuth" +
+                            " application with ConsumerKey: " + consumerAppDTO.getOauthConsumerKey());
+                }
+                throw new IdentityOAuthAdminException(errorMessage);
+            }
+        } catch (InvalidOAuthClientException | IdentityOAuth2Exception e) {
+            throw new IdentityOAuthAdminException("Error while updating the app information.", e);
+        }
 
         String consumerKey = consumerAppDTO.getOauthConsumerKey();
         oauthappdo.setOauthConsumerKey(consumerKey);

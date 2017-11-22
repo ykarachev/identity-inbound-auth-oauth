@@ -50,7 +50,7 @@ public class TokenValidationHandler {
     private Log log = LogFactory.getLog(TokenValidationHandler.class);
     private Map<String, OAuth2TokenValidator> tokenValidators = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     private OauthTokenIssuer oauthIssuerImpl = OAuthServerConfiguration.getInstance().getIdentityOauthTokenIssuer();
-    private boolean usePersistAccessTokenHash = OAuthServerConfiguration.getInstance().usePersistAccessTokenHash();
+    private boolean usePersistedAccessTokenAlias = OAuthServerConfiguration.getInstance().usePersistedAccessTokenAlias();
 
     private TokenValidationHandler() {
         tokenValidators.put(DefaultOAuth2TokenValidator.TOKEN_TYPE, new DefaultOAuth2TokenValidator());
@@ -462,7 +462,7 @@ public class TokenValidationHandler {
      */
     private AccessTokenDO findAccessToken(String tokenIdentifier) throws IdentityOAuth2Exception {
         try {
-            if (usePersistAccessTokenHash) {
+            if (usePersistedAccessTokenAlias) {
                 return OAuth2Util.getAccessTokenDOfromTokenIdentifier(oauthIssuerImpl.getAccessTokenHash(tokenIdentifier));
             } else {
                 return OAuth2Util.getAccessTokenDOfromTokenIdentifier(tokenIdentifier);

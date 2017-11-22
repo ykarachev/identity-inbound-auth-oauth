@@ -186,12 +186,12 @@ public class OAuth2JWTTokenValidator extends DefaultOAuth2TokenValidator {
         long currentTimeInMillis = System.currentTimeMillis();
         if ((currentTimeInMillis + timeStampSkewMillis) > expirationTimeInMillis) {
             if (log.isDebugEnabled()) {
-                log.debug("ID Token is expired." +
+                log.debug("Token is expired." +
                         ", Expiration Time(ms) : " + expirationTimeInMillis +
                         ", TimeStamp Skew : " + timeStampSkewMillis +
                         ", Current Time : " + currentTimeInMillis + ". Token Rejected and validation terminated.");
             }
-            throw new IdentityOAuth2Exception("ID token is expired.");
+            throw new IdentityOAuth2Exception("Token is expired.");
         }
 
         if (log.isDebugEnabled()) {

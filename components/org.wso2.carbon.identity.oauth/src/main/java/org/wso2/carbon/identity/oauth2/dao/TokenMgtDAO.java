@@ -81,7 +81,7 @@ public class TokenMgtDAO {
     private static final String UTC = "UTC";
     private static TokenPersistenceProcessor persistenceProcessor;
 
-    private boolean usePersistAccessTokenHash = OAuthServerConfiguration.getInstance().usePersistAccessTokenHash();
+    private boolean persistAccessTokenAlias = OAuthServerConfiguration.getInstance().usePersistedAccessTokenAlias();
     private OauthTokenIssuer oauthIssuerImpl = OAuthServerConfiguration.getInstance().getIdentityOauthTokenIssuer();
 
     private static final int DEFAULT_POOL_SIZE = 0;
@@ -289,7 +289,7 @@ public class TokenMgtDAO {
                                   Connection connection, String userStoreDomain, int retryAttempt)
             throws IdentityOAuth2Exception {
 
-        if (usePersistAccessTokenHash) {
+        if (persistAccessTokenAlias) {
             try {
                 accessToken = oauthIssuerImpl.getAccessTokenHash(accessToken);
             } catch (OAuthSystemException e) {

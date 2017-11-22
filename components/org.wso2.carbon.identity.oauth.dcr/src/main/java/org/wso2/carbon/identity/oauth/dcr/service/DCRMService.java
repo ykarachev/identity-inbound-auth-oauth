@@ -338,12 +338,14 @@ public class DCRMService {
 
         //TODO: After implement multi-urls to the oAuth application, we have to change this API call
         //TODO: need to validate before processing request
-        if (redirectUris.size() == 0 && (grantTypes.contains(
-                DCRConstants.GrantTypes.AUTHORIZATION_CODE) || grantTypes.
-                contains(DCRConstants.GrantTypes.IMPLICIT))) {
-            String errorMessage = "RedirectUris property must have at least one URI value.";
-            throw DCRMUtils.generateClientException(
-                    DCRMConstants.ErrorMessages.BAD_REQUEST_INVALID_INPUT, errorMessage);
+        if (redirectUris.size() == 0) {
+            if (isRedirectURIMandatory(grantTypes)) {
+                String errorMessage = "RedirectUris property must have at least one URI value when using " +
+                        "Authorization code or implicit grant types.";
+                throw DCRMUtils.generateClientException(DCRMConstants.ErrorMessages.BAD_REQUEST_INVALID_INPUT, errorMessage);
+            } else {
+                return StringUtils.EMPTY;
+            }
         } else if (redirectUris.size() == 1) {
             String redirectUri = redirectUris.get(0);
             if (DCRMUtils.isRedirectionUriValid(redirectUri)) {
@@ -356,6 +358,11 @@ public class DCRMService {
         } else {
             return OAuthConstants.CALLBACK_URL_REGEXP_PREFIX + createRegexPattern(redirectUris);
         }
+    }
+
+    private boolean isRedirectURIMandatory(List<String> grantTypes) {
+        return grantTypes.contains(DCRConstants.GrantTypes.AUTHORIZATION_CODE) ||
+                grantTypes.contains(DCRConstants.GrantTypes.IMPLICIT);
     }
 
     private String createRegexPattern(List<String> redirectURIs) throws DCRMException {

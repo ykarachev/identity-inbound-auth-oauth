@@ -36,7 +36,7 @@ import org.wso2.carbon.identity.oauth.util.ClaimMetaDataCache;
 import org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheEntry;
 import org.wso2.carbon.identity.oauth.util.ClaimMetaDataCacheKey;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
-import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
+import org.wso2.carbon.identity.oauth2.dao.OAuthTokenPersistenceFactory;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
 import org.wso2.carbon.user.core.UserCoreConstants;
@@ -218,7 +218,6 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
     }
 
     private boolean revokeTokens(String username, UserStoreManager userStoreManager) throws UserStoreException {
-        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
 
         String userStoreDomain = UserCoreUtil.getDomainName(userStoreManager.getRealmConfiguration());
         String tenantDomain = IdentityTenantUtil.getTenantDomain(userStoreManager.getTenantId());
@@ -242,7 +241,8 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
         Set<String> clientIds;
         try {
             // get all the distinct client Ids authorized by this user
-            clientIds = tokenMgtDAO.getAllTimeAuthorizedClientIds(authenticatedUser);
+            clientIds = OAuthTokenPersistenceFactory.getInstance()
+                    .getTokenManagementDAO().getAllTimeAuthorizedClientIds(authenticatedUser);
         } catch (IdentityOAuth2Exception e) {
             log.error("Error occurred while retrieving apps authorized by User ID : " + authenticatedUser, e);
             return true;
@@ -251,7 +251,8 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
             Set<AccessTokenDO> accessTokenDOs;
             try {
                 // retrieve all ACTIVE or EXPIRED access tokens for particular client authorized by this user
-                accessTokenDOs = tokenMgtDAO.retrieveAccessTokens(clientId, authenticatedUser, userStoreDomain, true);
+                accessTokenDOs = OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+                        .getAccessTokens(clientId, authenticatedUser, userStoreDomain, true);
             } catch (IdentityOAuth2Exception e) {
                 String errorMsg = "Error occurred while retrieving access tokens issued for " +
                         "Client ID : " + clientId + ", User ID : " + authenticatedUser;
@@ -267,9 +268,9 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
                 AccessTokenDO scopedToken = null;
                 try {
                     // retrieve latest access token for particular client, user and scope combination if its ACTIVE or EXPIRED
-                    scopedToken = tokenMgtDAO.retrieveLatestAccessToken(
-                            clientId, authenticatedUser, userStoreDomain,
-                            OAuth2Util.buildScopeString(accessTokenDO.getScope()), true);
+                    scopedToken = OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+                            .getLatestAccessToken(clientId, authenticatedUser, userStoreDomain,
+                                    OAuth2Util.buildScopeString(accessTokenDO.getScope()), true);
                 } catch (IdentityOAuth2Exception e) {
                     String errorMsg = "Error occurred while retrieving latest " +
                             "access token issued for Client ID : " +
@@ -281,7 +282,8 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
                 if (scopedToken != null) {
                     try {
                         //Revoking token from database
-                        tokenMgtDAO.revokeTokens(new String[]{scopedToken.getAccessToken()});
+                        OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+                                .revokeAccessTokens(new String[]{scopedToken.getAccessToken()});
                     } catch (IdentityOAuth2Exception e) {
                         String errorMsg = "Error occurred while revoking " +
                                 "Access Token : " + scopedToken.getAccessToken();
@@ -297,7 +299,6 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
     private void removeTokensFromCache(String userName, UserStoreManager userStoreManager) throws UserStoreException {
         String userStoreDomain = UserCoreUtil.getDomainName(userStoreManager.getRealmConfiguration());
         String tenantDomain = IdentityTenantUtil.getTenantDomain(userStoreManager.getTenantId());
-        TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         Set<String> accessTokens;
         Set<String> authorizationCodes;
         AuthenticatedUser authenticatedUser = new AuthenticatedUser();
@@ -305,8 +306,9 @@ public class IdentityOathEventListener extends AbstractIdentityUserOperationEven
         authenticatedUser.setTenantDomain(tenantDomain);
         authenticatedUser.setUserName(userName);
         try {
-            accessTokens = tokenMgtDAO.getAccessTokensForUser(authenticatedUser);
-            authorizationCodes = tokenMgtDAO.getAuthorizationCodesForUser(authenticatedUser);
+            accessTokens = OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO().getAccessTokensByUser(authenticatedUser);
+            authorizationCodes = OAuthTokenPersistenceFactory.getInstance()
+                    .getAuthorizationCodeDAO().getAuthorizationCodesByUser(authenticatedUser);
             removeAccessTokensFromCache(accessTokens);
             removeAuthzCodesFromCache(authorizationCodes);
         } catch (IdentityOAuth2Exception e) {

@@ -42,11 +42,11 @@ import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth.dto.OAuthConsumerAppDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationRequestDTO;
 import org.wso2.carbon.identity.oauth.dto.OAuthRevocationResponseDTO;
+import org.wso2.carbon.identity.oauth.dto.OAuthTokenExpiryTimeDTO;
 import org.wso2.carbon.identity.oauth.event.OAuthEventInterceptor;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
-import org.wso2.carbon.identity.oauth.dto.OAuthTokenExpiryTimeDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
@@ -281,6 +281,8 @@ public class OAuthAdminService extends AbstractAdmin {
                     app.setGrantTypes(application.getGrantTypes());
                     app.setPkceMandatory(application.getPkceMandatory());
                     app.setPkceSupportPlain(application.getPkceSupportPlain());
+                    // Validate access token expiry configurations.
+                    validateTokenExpiryConfigurations(application);
                     app.setUserAccessTokenExpiryTime(application.getUserAccessTokenExpiryTime());
                     app.setApplicationAccessTokenExpiryTime(application.getApplicationAccessTokenExpiryTime());
                     app.setRefreshTokenExpiryTime(application.getRefreshTokenExpiryTime());
@@ -361,6 +363,8 @@ public class OAuthAdminService extends AbstractAdmin {
         oauthappdo.setApplicationName(consumerAppDTO.getApplicationName());
         oauthappdo.setPkceMandatory(consumerAppDTO.getPkceMandatory());
         oauthappdo.setPkceSupportPlain(consumerAppDTO.getPkceSupportPlain());
+        // Validate access token expiry configurations.
+        validateTokenExpiryConfigurations(consumerAppDTO);
         oauthappdo.setUserAccessTokenExpiryTime(consumerAppDTO.getUserAccessTokenExpiryTime());
         oauthappdo.setApplicationAccessTokenExpiryTime(consumerAppDTO.getApplicationAccessTokenExpiryTime());
         oauthappdo.setRefreshTokenExpiryTime(consumerAppDTO.getRefreshTokenExpiryTime());
@@ -445,7 +449,8 @@ public class OAuthAdminService extends AbstractAdmin {
         }
     }
 
-    private void updateAppAndRevokeTokensAndAuthzCodes(String consumerKey, Properties properties) throws IdentityOAuthAdminException {
+    private void updateAppAndRevokeTokensAndAuthzCodes(String consumerKey,
+                                                       Properties properties) throws IdentityOAuthAdminException {
         TokenMgtDAO tokenMgtDAO = new TokenMgtDAO();
         int countToken = 0;
         try {
@@ -809,13 +814,42 @@ public class OAuthAdminService extends AbstractAdmin {
         return tokenExpiryTime;
     }
 
-
     private AuthenticatedUser buildAuthenticatedUser(String tenantAwareUser, String tenantDomain) {
         AuthenticatedUser user = new AuthenticatedUser();
         user.setUserName(UserCoreUtil.removeDomainFromName(tenantAwareUser));
         user.setTenantDomain(tenantDomain);
         user.setUserStoreDomain(IdentityUtil.extractDomainFromName(tenantAwareUser));
         return user;
+    }
+
+    private void validateTokenExpiryConfigurations(OAuthConsumerAppDTO oAuthConsumerAppDTO) {
+        if (oAuthConsumerAppDTO.getUserAccessTokenExpiryTime() == 0) {
+            oAuthConsumerAppDTO.setUserAccessTokenExpiryTime(
+                    OAuthServerConfiguration.getInstance().getUserAccessTokenValidityPeriodInSeconds());
+            logOnInvalidConfig(oAuthConsumerAppDTO.getApplicationName(), "user access token",
+                    oAuthConsumerAppDTO.getUserAccessTokenExpiryTime());
+        }
+
+        if (oAuthConsumerAppDTO.getApplicationAccessTokenExpiryTime() == 0) {
+            oAuthConsumerAppDTO.setApplicationAccessTokenExpiryTime(
+                    OAuthServerConfiguration.getInstance().getApplicationAccessTokenValidityPeriodInSeconds());
+            logOnInvalidConfig(oAuthConsumerAppDTO.getApplicationName(), "application access token",
+                    oAuthConsumerAppDTO.getApplicationAccessTokenExpiryTime());
+        }
+
+        if (oAuthConsumerAppDTO.getRefreshTokenExpiryTime() == 0) {
+            oAuthConsumerAppDTO.setRefreshTokenExpiryTime(
+                    OAuthServerConfiguration.getInstance().getRefreshTokenValidityPeriodInSeconds());
+            logOnInvalidConfig(oAuthConsumerAppDTO.getApplicationName(), "refresh token",
+                    oAuthConsumerAppDTO.getRefreshTokenExpiryTime());
+        }
+    }
+
+    private void logOnInvalidConfig(String appName, String tokenType, long defaultValue) {
+        if (log.isDebugEnabled()) {
+            log.debug("Invalid expiry time value '0' set for " + tokenType + " in ServiceProvider: " + appName + ". " +
+                    "Defaulting to expiry value: " + defaultValue + " seconds.");
+        }
     }
 }
 

@@ -42,6 +42,7 @@ import java.util.HashMap;
 /**
  * Data Access Layer functionality for Scope management. This includes storing, updating, deleting and retrieving scopes
  */
+@Deprecated
 public class ScopeMgtDAO {
     private static final Log log = LogFactory.getLog(ScopeMgtDAO.class);
 

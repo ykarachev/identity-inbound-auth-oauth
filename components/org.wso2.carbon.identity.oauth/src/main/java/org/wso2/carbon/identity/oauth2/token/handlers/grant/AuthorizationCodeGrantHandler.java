@@ -250,7 +250,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
             }
             return validationResult.getAuthzCodeDO();
         } else {
-            // This means an invalid authorization code for sent for validation. We return null since higher
+            // This means an invalid authorization code was sent for validation. We return null since higher
             // layers expect a null value for an invalid authorization code.
             return null;
         }

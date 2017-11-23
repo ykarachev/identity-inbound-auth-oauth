@@ -248,8 +248,12 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
             if (!validationResult.isActiveCode()) {
                 revokeExsistingAccessTokens(validationResult.getTokenId(), validationResult.getAuthzCodeDO());
             }
+            return validationResult.getAuthzCodeDO();
+        } else {
+            // This means an invalid authorization code for sent for validation. We return null since higher
+            // layers expect a null value for an invalid authorization code.
+            return null;
         }
-        return validationResult.getAuthzCodeDO();
     }
 
     private void revokeExsistingAccessTokens(String tokenId, AuthzCodeDO authzCodeDO) {

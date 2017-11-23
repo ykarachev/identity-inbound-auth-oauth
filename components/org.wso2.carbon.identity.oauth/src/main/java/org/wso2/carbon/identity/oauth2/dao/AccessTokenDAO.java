@@ -67,6 +67,8 @@ public interface AccessTokenDAO {
 
     void revokeAccessTokensIndividually(String[] tokens) throws IdentityOAuth2Exception;
 
+    void revokeAccessToken(String tokenId, String userId) throws IdentityOAuth2Exception;
+
     void invalidateAndCreateNewAccessToken(String oldAccessTokenId, String tokenState, String consumerKey,
                                            String tokenStateId, AccessTokenDO accessTokenDO,
                                            String userStoreDomain) throws IdentityOAuth2Exception;

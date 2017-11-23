@@ -925,7 +925,7 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
      * @param tokenId token that needs to be revoked
      * @throws IdentityOAuth2Exception if failed to revoke the access token
      */
-    private void revokeAccessToken(String tokenId, String userId) throws IdentityOAuth2Exception {
+    public void revokeAccessToken(String tokenId, String userId) throws IdentityOAuth2Exception {
 
         if (log.isDebugEnabled()) {
             log.debug("Revoking access token with id: " + tokenId + " user: " + userId);
@@ -952,6 +952,8 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
             IdentityDatabaseUtil.closeAllConnections(connection, null, ps);
         }
     }
+
+
 
     /**
      * @param authenticatedUser

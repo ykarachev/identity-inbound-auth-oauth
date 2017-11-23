@@ -28,7 +28,7 @@ paths:
     post:
       description: |
         This API is used to create an OAuth2 application. If your want to create your application to use the implicit or authorization_code 
-        grant types, you need to provide the redirect_uris field in your request.If you are using any other grant type, 
+        grant types, you need to provide the redirect_uris field in your request. If you are using any other grant type, 
         such as password, you don't need to send the redirect_uri field in the request. Check the example that is given below.
       x-wso2-request: |
         curl -X POST -H "Authorization: Basic YWRtaW46YWRtaW4=" -H

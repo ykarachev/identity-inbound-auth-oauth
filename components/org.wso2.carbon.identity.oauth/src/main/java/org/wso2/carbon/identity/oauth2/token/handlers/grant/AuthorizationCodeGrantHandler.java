@@ -256,8 +256,10 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         }
     }
 
-    private void revokeExsistingAccessTokens(String tokenId, AuthzCodeDO authzCodeDO) {
+    private void revokeExsistingAccessTokens(String tokenId, AuthzCodeDO authzCodeDO) throws IdentityOAuth2Exception {
         //revoking access token issued for authorization code as per RFC 6749 Section 4.1.2
+        OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO().revokeAccessToken(tokenId, authzCodeDO
+                .getAuthorizedUser().getUserName());
         if (log.isDebugEnabled()) {
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
                 log.debug("Validated authorization code(hashed): " + DigestUtils.sha256Hex

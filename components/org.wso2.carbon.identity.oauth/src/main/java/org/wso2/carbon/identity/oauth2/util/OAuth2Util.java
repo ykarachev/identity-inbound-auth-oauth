@@ -40,6 +40,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.message.types.ResponseType;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.wso2.carbon.core.util.KeyStoreManager;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
@@ -63,11 +64,12 @@ import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.config.SpOAuth2ExpiryTimeConfiguration;
-import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
+import org.wso2.carbon.identity.oauth2.dao.OAuthTokenPersistenceFactory;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.model.ClientCredentialDO;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
+import org.wso2.carbon.identity.openidconnect.model.Claim;
 import org.wso2.carbon.registry.core.Registry;
 import org.wso2.carbon.registry.core.Resource;
 import org.wso2.carbon.registry.core.exceptions.RegistryException;
@@ -123,6 +125,7 @@ public class OAuth2Util {
     public static final String JWT_ACCESS_TOKEN = "JWT_ACCESS_TOKEN";
     public static final String ACCESS_TOKEN_DO = "AccessTokenDo";
     public static final String OAUTH2_VALIDATION_MESSAGE_CONTEXT = "OAuth2TokenValidationMessageContext";
+    private static final String ESSENTAIL = "essential";
 
     private static final String ALGORITHM_NONE = "NONE";
     /*
@@ -189,17 +192,17 @@ public class OAuth2Util {
     /***
      * Constant for user access token expiry time.
      */
-    public static final String USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS = "userAccessTokenExpireTime";
+    public static final String USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS = "userAccessTokenExpireTime";
 
     /***
      * Constant for refresh token expiry time.
      */
-    public static final String REFRESH_TOKEN_TIME_IN_MILLISECONDS = "refreshTokenExpireTime";
+    public static final String REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS = "refreshTokenExpireTime";
 
     /***
      * Constant for application access token expiry time.
      */
-    public static final String APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS = "applicationAccessTokenExpireTime";
+    public static final String APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS = "applicationAccessTokenExpireTime";
 
     private static Log log = LogFactory.getLog(OAuth2Util.class);
     private static long timestampSkew = OAuthServerConfiguration.getInstance().getTimeStampSkewInSeconds() * 1000;
@@ -1247,7 +1250,8 @@ public class OAuth2Util {
 
         // cache miss, load the access token info from the database.
         if (accessTokenDO == null) {
-            accessTokenDO = new TokenMgtDAO().retrieveAccessToken(accessTokenIdentifier, false);
+            accessTokenDO = OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+                    .getAccessToken(accessTokenIdentifier, false);
         }
 
         if (accessTokenDO == null) {
@@ -1280,7 +1284,7 @@ public class OAuth2Util {
      */
     @Deprecated
     public static void initTokenExpiryTimesOfSps(int tenantId) {
-        try{
+        try {
             Registry registry = OAuth2ServiceComponentHolder.getRegistryService().getConfigSystemRegistry(tenantId);
             if (!registry.resourceExists(OAuthConstants.TOKEN_EXPIRE_TIME_RESOURCE_PATH)) {
                 Resource resource = registry.newResource();
@@ -1319,20 +1323,20 @@ public class OAuth2Util {
                 }
                 JSONObject spTimeObject = new JSONObject(jsonString);
                 if (spTimeObject.length() > 0) {
-                    if (spTimeObject.has(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS) &&
-                            !spTimeObject.isNull(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS)) {
+                    if (spTimeObject.has(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS) &&
+                            !spTimeObject.isNull(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS)) {
                         try {
                             spTokenTimeObject.setUserAccessTokenExpiryTime(Long.parseLong(spTimeObject
-                                    .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                                    .get(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString()));
                             if (log.isDebugEnabled()) {
                                 log.debug("The user access token expiry time :" + spTimeObject
-                                        .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        .get(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString() +
                                         "  for application id : " + consumerKey);
                             }
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as user access token expiry time for consumer key %s," +
                                     " tenant id : %d. Given value: %s, Expected a long value", consumerKey, tenantId, spTimeObject
-                                    .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString());
+                                    .get(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString());
                             log.error(errorMsg, e);
                         }
                     } else {
@@ -1340,20 +1344,20 @@ public class OAuth2Util {
                                 .getUserAccessTokenValidityPeriodInSeconds() * 1000);
                     }
 
-                    if (spTimeObject.has(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS) &&
-                            !spTimeObject.isNull(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS)) {
+                    if (spTimeObject.has(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS) &&
+                            !spTimeObject.isNull(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS)) {
                         try {
                             spTokenTimeObject.setApplicationAccessTokenExpiryTime(Long.parseLong(spTimeObject
-                                    .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                                    .get(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString()));
                             if (log.isDebugEnabled()) {
                                 log.debug("The application access token expiry time :" + spTimeObject
-                                        .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        .get(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString() +
                                         "  for application id : " + consumerKey);
                             }
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as application access token expiry time for " +
                                     "consumer key %s, tenant id : %d. Given value: %s, Expected a long value ", consumerKey, tenantId, spTimeObject
-                                    .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString());
+                                    .get(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString());
                             log.error(errorMsg, e);
                         }
                     } else {
@@ -1361,21 +1365,21 @@ public class OAuth2Util {
                                 .getApplicationAccessTokenValidityPeriodInSeconds() * 1000);
                     }
 
-                    if (spTimeObject.has(REFRESH_TOKEN_TIME_IN_MILLISECONDS) &&
-                            !spTimeObject.isNull(REFRESH_TOKEN_TIME_IN_MILLISECONDS)) {
+                    if (spTimeObject.has(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS) &&
+                            !spTimeObject.isNull(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS)) {
                         try {
                             spTokenTimeObject.setRefreshTokenExpiryTime(Long.parseLong(spTimeObject
-                                    .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                                    .get(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS).toString()));
                             if (log.isDebugEnabled()) {
                                 log.debug("The refresh token expiry time :" + spTimeObject
-                                        .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        .get(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS).toString() +
                                         " for application id : " + consumerKey);
                             }
 
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as refresh token expiry time for consumer key %s," +
                                     " tenant id : %d. Given value: %s, Expected a long value", consumerKey, tenantId, spTimeObject
-                                    .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString());
+                                    .get(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS).toString());
                             log.error(errorMsg, e);
                         }
                     } else {
@@ -1694,7 +1698,7 @@ public class OAuth2Util {
         }
     }
 
-    private static Key getPrivateKey(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
+    public static Key getPrivateKey(String tenantDomain, int tenantId) throws IdentityOAuth2Exception {
         Key privateKey;
         if (!(privateKeys.containsKey(tenantId))) {
 
@@ -1915,12 +1919,55 @@ public class OAuth2Util {
     }
 
     /**
-     * Get authorized user from the {@link AccessTokenDO}. When getting authorized user we also make sure flag to
-     * determine whether the user is federated or not is set.
+     * Validates the json provided.
      *
-     * @param accessTokenDO
-     * @return
+     * @param redirectURL redirect url
+     * @return true if a valid json
      */
+    public static boolean isValidJson(String redirectURL) {
+        try {
+            new JSONObject(redirectURL);
+        } catch (JSONException ex) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * This method returns essential:true claims list from the request parameter of OIDC authorization request
+     *
+     * @param claimRequestor                  claimrequestor is either id_token or  userinfo
+     * @param requestedClaimsFromRequestParam claims defined in the value of the request parameter
+     * @return the claim list which have attribute vale essentail :true
+     */
+    public static List<String> essentialClaimsFromRequestParam(String claimRequestor, Map<String, List<Claim>>
+            requestedClaimsFromRequestParam) {
+
+        String attributeValue = null;
+        List<String> essentialClaimsfromRequestParam = new ArrayList<>();
+        List<Claim> claimsforClaimRequestor = requestedClaimsFromRequestParam.get(claimRequestor);
+        for (Claim claimforClaimRequestor : claimsforClaimRequestor) {
+            String claim = claimforClaimRequestor.getName();
+            Map<String, String> attributesMap = claimforClaimRequestor.getClaimAttributesMap();
+            if (attributesMap != null) {
+                for (Map.Entry<String, String> attributesEntryMap : attributesMap.entrySet()) {
+                    attributeValue = attributesMap.get(attributesEntryMap.getKey());
+
+                    if (ESSENTAIL.equals(attributesEntryMap.getKey()) && Boolean.parseBoolean(attributeValue)) {
+                        essentialClaimsfromRequestParam.add(claim);
+                    }
+                }
+            }
+        }
+        return essentialClaimsfromRequestParam;
+    }
+
+    /* Get authorized user from the {@link AccessTokenDO}. When getting authorized user we also make sure flag to
+    * determine whether the user is federated or not is set.
+    *
+    * @param accessTokenDO accessTokenDO
+    * @return user
+    */
     public static AuthenticatedUser getAuthenticatedUser(AccessTokenDO accessTokenDO) {
         AuthenticatedUser authenticatedUser = accessTokenDO.getAuthzUser();
         if (authenticatedUser != null) {
@@ -1950,5 +1997,4 @@ public class OAuth2Util {
 
         return isExplicitlyFederatedUser && isFederatedUserNotMappedToLocalUser;
     }
-
 }

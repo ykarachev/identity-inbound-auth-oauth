@@ -905,7 +905,10 @@ public class SAML2BearerGrantHandler extends AbstractAuthorizationGrantHandler {
                 (subjectIdentifier)));
 
         userTenantDomain = MultitenantUtils.getTenantDomain(subjectIdentifier);
-        if (StringUtils.isEmpty(userTenantDomain)) {
+        // From above method userTenantDomain cannot be empty.
+        if (!serviceProvider.isSaasApp() && !subjectIdentifier.endsWith(MultitenantConstants
+                .SUPER_TENANT_DOMAIN_NAME) && MultitenantConstants.SUPER_TENANT_DOMAIN_NAME
+                .equalsIgnoreCase(userTenantDomain)) {
             userTenantDomain = spTenantDomain;
         }
 

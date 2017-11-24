@@ -35,6 +35,7 @@ import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.ResponseHeader;
+import org.wso2.carbon.identity.oauth2.dao.OAuthTokenPersistenceFactory;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -64,8 +65,8 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             throws IdentityOAuth2Exception {
         super.validateGrant(tokReqMsgCtx);
         OAuth2AccessTokenReqDTO tokenReq = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
-        RefreshTokenValidationDataDO validationBean = tokenMgtDAO.validateRefreshToken(
-                tokenReq.getClientId(), tokenReq.getRefreshToken());
+        RefreshTokenValidationDataDO validationBean = OAuthTokenPersistenceFactory.getInstance()
+                .getTokenManagementDAO().validateRefreshToken(tokenReq.getClientId(), tokenReq.getRefreshToken());
 
         validatePersistedAccessToken(validationBean, tokenReq.getClientId());
         validateRefreshTokenInRequest(tokenReq, validationBean);
@@ -86,8 +87,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
         OAuth2AccessTokenReqDTO tokenReq = tokReqMsgCtx.getOauth2AccessTokenReqDTO();
         // an active or expired token will be returned. since we do the validation for active or expired token in
         // validateGrant() no need to do it here again
-        RefreshTokenValidationDataDO validationBean = tokenMgtDAO.validateRefreshToken(
-                tokenReq.getClientId(), tokenReq.getRefreshToken());
+        RefreshTokenValidationDataDO validationBean = OAuthTokenPersistenceFactory.getInstance()
+                                .getTokenManagementDAO().validateRefreshToken(tokenReq.getClientId(),
+                        tokenReq.getRefreshToken());
+
         if (isRefreshTokenExpired(validationBean)) {
             return handleError(OAuth2ErrorCodes.INVALID_GRANT, "Refresh token is expired.", tokenReq);
         }
@@ -200,9 +203,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
     private List<AccessTokenDO> getAccessTokenBeans(OAuth2AccessTokenReqDTO tokenReq,
                                                     RefreshTokenValidationDataDO validationBean,
                                                     String userStoreDomain) throws IdentityOAuth2Exception {
-        List<AccessTokenDO> accessTokenBeans = tokenMgtDAO.retrieveLatestAccessTokens(tokenReq.getClientId(),
-                validationBean.getAuthorizedUser(), userStoreDomain,
-                OAuth2Util.buildScopeString(validationBean.getScope()), true, LAST_ACCESS_TOKEN_RETRIEVAL_LIMIT);
+        List<AccessTokenDO> accessTokenBeans = OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+                .getLatestAccessTokens(tokenReq.getClientId(), validationBean.getAuthorizedUser(), userStoreDomain,
+                        OAuth2Util.buildScopeString(validationBean.getScope()),
+                        true, LAST_ACCESS_TOKEN_RETRIEVAL_LIMIT);
         if (accessTokenBeans == null || accessTokenBeans.isEmpty()) {
             if (log.isDebugEnabled()) {
                 log.debug("No previous access tokens found. User: " + validationBean.getAuthorizedUser() +
@@ -268,9 +272,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
             }
         }
         // set the previous access token state to "INACTIVE" and store new access token in single db connection
-        tokenMgtDAO.invalidateAndCreateNewToken(oldAccessToken.getTokenId(),
-                OAuthConstants.TokenStates.TOKEN_STATE_INACTIVE, clientId, UUID.randomUUID().toString(),
-                accessTokenBean, userStoreDomain);
+        OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+                .invalidateAndCreateNewAccessToken(oldAccessToken.getTokenId(),
+                        OAuthConstants.TokenStates.TOKEN_STATE_INACTIVE, clientId,
+                        UUID.randomUUID().toString(), accessTokenBean, userStoreDomain);
         updateCacheIfEnabled(tokReqMsgCtx, accessTokenBean, clientId, oldAccessToken);
     }
 

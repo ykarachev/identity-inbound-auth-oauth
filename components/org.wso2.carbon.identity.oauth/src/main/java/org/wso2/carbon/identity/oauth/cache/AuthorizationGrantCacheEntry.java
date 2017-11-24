@@ -19,6 +19,7 @@
 package org.wso2.carbon.identity.oauth.cache;
 
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
+import org.wso2.carbon.identity.openidconnect.model.RequestObject;
 
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -48,6 +49,8 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     private long authTime;
 
+    private RequestObject requestObject;
+
     /*
         OIDC sub claim. This should be formatted based on the Service Provider configurations to append
         userStoreDomain and tenantDomain.
@@ -60,6 +63,14 @@ public class AuthorizationGrantCacheEntry extends CacheEntry {
 
     public void setSubjectClaim(String subjectClaim) {
         this.subjectClaim = subjectClaim;
+    }
+
+    public RequestObject getRequestObject() {
+        return requestObject;
+    }
+
+    public void setRequestObject(RequestObject requestObject) {
+        this.requestObject = requestObject;
     }
 
     public String getEssentialClaims() {

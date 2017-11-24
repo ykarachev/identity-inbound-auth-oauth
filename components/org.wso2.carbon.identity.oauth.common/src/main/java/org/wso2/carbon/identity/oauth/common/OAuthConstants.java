@@ -80,7 +80,13 @@ public final class OAuthConstants {
     public static final String CLIENT_AUTH_CREDENTIAL_VALIDATION = "StrictClientCredentialValidation";
     public static final String ACCESS_TOKEN = "accessToken";
     public static final String ID_TOKEN = "id_token";
+    public static final String USERINFO = "userinfo";
     public static final String AUTHZ_CODE = "AuthorizationCode";
+
+    //Constants for reading EndpointConfig.properties
+    public static final String CONFIG_RELATIVE_PATH = "./repository/conf/identity/EndpointConfig.properties";
+    public static final String CLIENT_TRUST_STORE_PASSWORD = "Carbon.Security.TrustStore.Password";
+    public static final String CLIENT_TRUST_STORE = "client.trustStore";
 
     //OAuth PKCE request parameters
     public static final String OAUTH_PKCE_CODE_VERIFIER = "code_verifier";

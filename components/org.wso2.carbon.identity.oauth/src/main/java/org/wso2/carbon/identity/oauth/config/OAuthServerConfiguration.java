@@ -57,6 +57,10 @@ import org.wso2.carbon.identity.oauth2.validators.grant.PasswordGrantValidator;
 import org.wso2.carbon.identity.oauth2.validators.grant.RefreshTokenGrantValidator;
 import org.wso2.carbon.identity.openidconnect.CustomClaimsCallbackHandler;
 import org.wso2.carbon.identity.openidconnect.IDTokenBuilder;
+import org.wso2.carbon.identity.openidconnect.RequestObjectBuilder;
+import org.wso2.carbon.identity.openidconnect.RequestObjectValidatorImpl;
+
+import org.wso2.carbon.identity.openidconnect.RequestObjectValidator;
 import org.wso2.carbon.utils.CarbonUtils;
 
 import java.util.ArrayList;
@@ -92,6 +96,10 @@ public class OAuthServerConfiguration {
             "org.wso2.carbon.identity.oauth2.token.handlers.grant.saml.SAML2BearerGrantHandler";
     private static final String IWA_NTLM_BEARER_GRANT_HANDLER_CLASS =
             "org.wso2.carbon.identity.oauth2.token.handlers.grant.iwa.ntlm.NTLMAuthenticationGrantHandler";
+    // Request object builder class.
+    private static final String REQUEST_PARAM_VALUE_BUILDER_CLASS =
+            "org.wso2.carbon.identity.openidconnect.RequestParamRequestObjectBuilder";
+    private static final String REQUEST_PARAM_VALUE_BUILDER = "request_param_value_builder";
     private static Log log = LogFactory.getLog(OAuthServerConfiguration.class);
     private static OAuthServerConfiguration instance;
     private static String oauth1RequestTokenUrl = null;
@@ -130,6 +138,7 @@ public class OAuthServerConfiguration {
     private Map<String, String> idTokenAllowedForGrantTypesMap = new HashMap<>();
     private Set<String> idTokenNotAllowedGrantTypesSet = new HashSet<>();
     private Map<String, AuthorizationGrantHandler> supportedGrantTypes;
+    private Map<String, RequestObjectBuilder> requestObjectBuilder;
     private Map<String, String> supportedGrantTypeValidatorNames = new HashMap<>();
     private Map<String, Class<? extends OAuthValidator<HttpServletRequest>>> supportedGrantTypeValidators;
     private Map<String, String> supportedResponseTypeClassNames = new HashMap<>();
@@ -157,8 +166,11 @@ public class OAuthServerConfiguration {
 
     // OpenID Connect configurations
     private String openIDConnectIDTokenBuilderClassName = "org.wso2.carbon.identity.openidconnect.DefaultIDTokenBuilder";
+    private String defaultRequestValidatorClassName = "org.wso2.carbon.identity.openidconnect.RequestObjectValidatorImpl";
     private String openIDConnectIDTokenCustomClaimsHanlderClassName = "org.wso2.carbon.identity.openidconnect.SAMLAssertionClaimsCallback";
     private IDTokenBuilder openIDConnectIDTokenBuilder = null;
+    private Map<String, String> requestObjectBuilderClassNames = new HashMap<>();
+    private volatile RequestObjectValidator requestObjectValidator = null;
     private CustomClaimsCallbackHandler openidConnectIDTokenCustomClaimsCallbackHandler = null;
     private String openIDConnectIDTokenIssuerIdentifier = null;
     private String openIDConnectIDTokenSubClaim = "http://wso2.org/claims/fullname";
@@ -675,6 +687,104 @@ public class OAuthServerConfiguration {
             }
         }
         return supportedResponseTypes;
+    }
+
+    private void parseRequestObjectConfig(OMElement requestObjectBuildersElem) {
+
+        if (requestObjectBuildersElem != null) {
+            Iterator<OMElement> iterator = requestObjectBuildersElem
+                    .getChildrenWithName(getQNameWithIdentityNS(ConfigElements.REQUEST_OBJECT_BUILDER));
+            while (iterator.hasNext()) {
+                OMElement requestObjectBuildersElement = iterator.next();
+                OMElement builderNameElement = requestObjectBuildersElement
+                        .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.BUILDER_NAME));
+                String builderName = null;
+                if (builderNameElement != null) {
+                    builderName = builderNameElement.getText();
+                }
+
+                OMElement requestObjectImplClassElement = requestObjectBuildersElement
+                        .getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.REQUEST_OBJECT_IMPL_CLASS));
+                String requestObjectImplClass = null;
+                if (requestObjectImplClassElement != null) {
+                    requestObjectImplClass = requestObjectImplClassElement.getText();
+                }
+                requestObjectBuilderClassNames.put(builderName, requestObjectImplClass);
+            }
+        } else {
+            // if this element is not present, assume the default case.
+            log.info("\'RequestObjectBuilders\' element not configured in identity.xml. " +
+                    "Therefore instantiating default request object builders");
+
+            Map<String, String> defaultRequestObjectBuilders = new HashMap<>();
+            defaultRequestObjectBuilders.put(REQUEST_PARAM_VALUE_BUILDER, REQUEST_PARAM_VALUE_BUILDER_CLASS);
+            requestObjectBuilderClassNames.putAll(defaultRequestObjectBuilders);
+        }
+
+        if (log.isDebugEnabled()) {
+            for (Map.Entry entry : requestObjectBuilderClassNames.entrySet()) {
+                String builderName = entry.getKey().toString();
+                String requestObjectBuilderImplClass = entry.getValue().toString();
+                log.debug(builderName + " is associated with " + requestObjectBuilderImplClass);
+            }
+        }
+    }
+
+    /**
+     * Returns an instance of RequestObjectValidator
+     *
+     * @return instance of RequestObjectValidator
+     */
+    public RequestObjectValidator getRequestObjectValidator() {
+
+        if (requestObjectValidator == null) {
+            synchronized (RequestObjectValidator.class) {
+                if (requestObjectValidator == null) {
+                    try {
+                        Class clazz =
+                                Thread.currentThread().getContextClassLoader()
+                                        .loadClass(defaultRequestValidatorClassName);
+                        requestObjectValidator = (RequestObjectValidator) clazz.newInstance();
+                    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+                        log.warn("Failed to initiate RequestObjectValidator from identity.xml. " +
+                                "Hence initiating the default implementation");
+                        requestObjectValidator = new RequestObjectValidatorImpl();
+                    }
+                }
+            }
+        }
+        return requestObjectValidator;
+    }
+
+    /**
+     * Return an instance of the RequestObjectBuilder
+     *
+     * @return instance of the RequestObjectBuilder
+     */
+    public Map<String, RequestObjectBuilder> getRequestObjectBuilders() {
+        if (requestObjectBuilder == null) {
+            synchronized (this) {
+                if (requestObjectBuilder == null) {
+                    Map<String, RequestObjectBuilder> requestBuilderTemp = new HashMap<>();
+                    for (Map.Entry<String, String> entry : requestObjectBuilderClassNames.entrySet()) {
+                        RequestObjectBuilder requestObjectBuilder = null;
+                        try {
+                            requestObjectBuilder = (RequestObjectBuilder) Class.forName(entry.getValue()).newInstance();
+                        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                            log.error("Error instantiating " + entry.getValue(), e);
+                        }
+                        if (requestObjectBuilder != null) {
+                            requestBuilderTemp.put(entry.getKey(), requestObjectBuilder);
+                        } else {
+                            log.warn("Failed to initiate request object builder class which is associated with the " +
+                                    "builder " + entry.getKey());
+                        }
+                    }
+                    requestObjectBuilder = requestBuilderTemp;
+                }
+            }
+        }
+        return requestObjectBuilder;
     }
 
     public Set<String> getSupportedResponseTypeNames() {
@@ -1857,6 +1967,13 @@ public class OAuthServerConfiguration {
                 oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT));
 
         if (openIDConnectConfigElem != null) {
+            parseRequestObjectConfig(oauthConfigElem);
+            if (openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.
+                    REQUEST_OBJECT_VALIDATOR)) != null) {
+                defaultRequestValidatorClassName =
+                        openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.
+                                REQUEST_OBJECT_VALIDATOR)).getText().trim();
+            }
             if (openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_IDTOKEN_BUILDER)) != null) {
                 openIDConnectIDTokenBuilderClassName =
                         openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT_IDTOKEN_BUILDER))
@@ -2040,6 +2157,8 @@ public class OAuthServerConfiguration {
         public static final String OPENID_CONNECT_SIGN_JWT_WITH_SP_KEY = "SignJWTWithSPKey";
         public static final String OPENID_CONNECT_IDTOKEN_CUSTOM_CLAIM_CALLBACK_HANDLER = "IDTokenCustomClaimsCallBackHandler";
         public static final String SUPPORTED_CLAIMS = "OpenIDConnectClaims";
+        public static final String REQUEST_OBJECT = "RequestObject";
+        public static final String REQUEST_OBJECT_VALIDATOR = "RequestObjectValidator";
         // Callback handler related configuration elements
         private static final String OAUTH_CALLBACK_HANDLERS = "OAuthCallbackHandlers";
         private static final String OAUTH_CALLBACK_HANDLER = "OAuthCallbackHandler";
@@ -2123,6 +2242,13 @@ public class OAuthServerConfiguration {
         // Property to decide whether to pick the user tenant domain or SP tenant domain.
         private static final String OAUTH_USE_SP_TENANT_DOMAIN = "UseSPTenantDomain";
         private static final String MAP_FED_USERS_TO_LOCAL = "MapFederatedUsersToLocal";
+
+        // Request Object Configs
+        private static final String REQUEST_OBJECT_BUILDERS = "RequestObjectBuilders";
+        private static final String REQUEST_OBJECT_BUILDER = "RequestObjectBuilder";
+        private static final String BUILDER_NAME = "BuilderName";
+        private static final String REQUEST_OBJECT_IMPL_CLASS = "RequestObjectBuilderImplClass";
+
     }
 
 }

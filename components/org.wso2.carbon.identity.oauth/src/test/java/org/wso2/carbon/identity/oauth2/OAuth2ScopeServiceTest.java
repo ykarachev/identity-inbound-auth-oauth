@@ -23,13 +23,13 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.wso2.carbon.identity.base.IdentityException;
+import org.wso2.carbon.identity.common.testng.WithCarbonHome;
+import org.wso2.carbon.identity.common.testng.WithH2Database;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.OAuthScopeCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthScopeCacheKey;
 import org.wso2.carbon.identity.oauth2.bean.Scope;
 import org.wso2.carbon.identity.oauth2.util.Oauth2ScopeUtils;
-import org.wso2.carbon.identity.test.common.testng.WithCarbonHome;
-import org.wso2.carbon.identity.test.common.testng.WithH2Database;
 import org.wso2.carbon.identity.testutil.powermock.PowerMockIdentityBaseTest;
 
 import java.util.HashMap;
@@ -38,7 +38,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 
 @WithCarbonHome
-@WithH2Database(jndiName = "jdbc/WSO2IdentityDB", files = { "dbScripts/scope.sql" })
+@WithH2Database(files = { "dbScripts/scope.sql" })
 public class OAuth2ScopeServiceTest extends PowerMockIdentityBaseTest {
 
     private OAuth2ScopeService oAuth2ScopeService;

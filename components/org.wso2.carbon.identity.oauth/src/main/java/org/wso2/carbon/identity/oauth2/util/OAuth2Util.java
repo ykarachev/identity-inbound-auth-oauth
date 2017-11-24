@@ -192,17 +192,17 @@ public class OAuth2Util {
     /***
      * Constant for user access token expiry time.
      */
-    public static final String USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS = "userAccessTokenExpireTime";
+    public static final String USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS = "userAccessTokenExpireTime";
 
     /***
      * Constant for refresh token expiry time.
      */
-    public static final String REFRESH_TOKEN_TIME_IN_MILLISECONDS = "refreshTokenExpireTime";
+    public static final String REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS = "refreshTokenExpireTime";
 
     /***
      * Constant for application access token expiry time.
      */
-    public static final String APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS = "applicationAccessTokenExpireTime";
+    public static final String APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS = "applicationAccessTokenExpireTime";
 
     private static Log log = LogFactory.getLog(OAuth2Util.class);
     private static long timestampSkew = OAuthServerConfiguration.getInstance().getTimeStampSkewInSeconds() * 1000;
@@ -1284,7 +1284,7 @@ public class OAuth2Util {
      */
     @Deprecated
     public static void initTokenExpiryTimesOfSps(int tenantId) {
-        try{
+        try {
             Registry registry = OAuth2ServiceComponentHolder.getRegistryService().getConfigSystemRegistry(tenantId);
             if (!registry.resourceExists(OAuthConstants.TOKEN_EXPIRE_TIME_RESOURCE_PATH)) {
                 Resource resource = registry.newResource();
@@ -1323,20 +1323,20 @@ public class OAuth2Util {
                 }
                 JSONObject spTimeObject = new JSONObject(jsonString);
                 if (spTimeObject.length() > 0) {
-                    if (spTimeObject.has(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS) &&
-                            !spTimeObject.isNull(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS)) {
+                    if (spTimeObject.has(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS) &&
+                            !spTimeObject.isNull(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS)) {
                         try {
                             spTokenTimeObject.setUserAccessTokenExpiryTime(Long.parseLong(spTimeObject
-                                    .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                                    .get(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString()));
                             if (log.isDebugEnabled()) {
                                 log.debug("The user access token expiry time :" + spTimeObject
-                                        .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        .get(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString() +
                                         "  for application id : " + consumerKey);
                             }
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as user access token expiry time for consumer key %s," +
                                     " tenant id : %d. Given value: %s, Expected a long value", consumerKey, tenantId, spTimeObject
-                                    .get(USER_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString());
+                                    .get(USER_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString());
                             log.error(errorMsg, e);
                         }
                     } else {
@@ -1344,20 +1344,20 @@ public class OAuth2Util {
                                 .getUserAccessTokenValidityPeriodInSeconds() * 1000);
                     }
 
-                    if (spTimeObject.has(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS) &&
-                            !spTimeObject.isNull(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS)) {
+                    if (spTimeObject.has(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS) &&
+                            !spTimeObject.isNull(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS)) {
                         try {
                             spTokenTimeObject.setApplicationAccessTokenExpiryTime(Long.parseLong(spTimeObject
-                                    .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                                    .get(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString()));
                             if (log.isDebugEnabled()) {
                                 log.debug("The application access token expiry time :" + spTimeObject
-                                        .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        .get(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString() +
                                         "  for application id : " + consumerKey);
                             }
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as application access token expiry time for " +
                                     "consumer key %s, tenant id : %d. Given value: %s, Expected a long value ", consumerKey, tenantId, spTimeObject
-                                    .get(APPLICATION_ACCESS_TOKEN_TIME_IN_MILLISECONDS).toString());
+                                    .get(APPLICATION_ACCESS_TOKEN_EXP_TIME_IN_MILLISECONDS).toString());
                             log.error(errorMsg, e);
                         }
                     } else {
@@ -1365,21 +1365,21 @@ public class OAuth2Util {
                                 .getApplicationAccessTokenValidityPeriodInSeconds() * 1000);
                     }
 
-                    if (spTimeObject.has(REFRESH_TOKEN_TIME_IN_MILLISECONDS) &&
-                            !spTimeObject.isNull(REFRESH_TOKEN_TIME_IN_MILLISECONDS)) {
+                    if (spTimeObject.has(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS) &&
+                            !spTimeObject.isNull(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS)) {
                         try {
                             spTokenTimeObject.setRefreshTokenExpiryTime(Long.parseLong(spTimeObject
-                                    .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString()));
+                                    .get(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS).toString()));
                             if (log.isDebugEnabled()) {
                                 log.debug("The refresh token expiry time :" + spTimeObject
-                                        .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString() +
+                                        .get(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS).toString() +
                                         " for application id : " + consumerKey);
                             }
 
                         } catch (NumberFormatException e) {
                             String errorMsg = String.format("Invalid value provided as refresh token expiry time for consumer key %s," +
                                     " tenant id : %d. Given value: %s, Expected a long value", consumerKey, tenantId, spTimeObject
-                                    .get(REFRESH_TOKEN_TIME_IN_MILLISECONDS).toString());
+                                    .get(REFRESH_TOKEN_EXP_TIME_IN_MILLISECONDS).toString());
                             log.error(errorMsg, e);
                         }
                     } else {

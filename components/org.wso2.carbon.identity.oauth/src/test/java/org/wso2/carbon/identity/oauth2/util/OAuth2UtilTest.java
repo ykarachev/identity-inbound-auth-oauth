@@ -32,6 +32,7 @@ import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.cache.CacheEntry;
 import org.wso2.carbon.identity.oauth.cache.OAuthCache;
 import org.wso2.carbon.identity.oauth.cache.OAuthCacheKey;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthConsumerDAO;
 import org.wso2.carbon.identity.oauth.internal.OAuthComponentServiceHolder;
@@ -47,7 +48,11 @@ import org.wso2.carbon.user.core.service.RealmService;
 import org.wso2.carbon.user.core.tenant.TenantManager;
 
 import java.sql.Timestamp;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
@@ -58,6 +63,7 @@ import static org.powermock.api.mockito.PowerMockito.mockStatic;
 import static org.powermock.api.mockito.PowerMockito.when;
 import static org.powermock.api.mockito.PowerMockito.whenNew;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
@@ -66,70 +72,56 @@ import static org.testng.Assert.assertTrue;
         OAuth2Util.class, OAuthComponentServiceHolder.class})
 public class OAuth2UtilTest extends PowerMockIdentityBaseTest {
 
-    private String scopeArraySorted[] = new String[]{"scope1", "scope2", "scope3"};
-    private String scopeArrayUnSorted[] = new String[]{"scope2", "scope3", "scope1"};
+    private String[] scopeArraySorted = new String[]{"scope1", "scope2", "scope3"};
+    private String[] scopeArrayUnSorted = new String[]{"scope2", "scope3", "scope1"};
+    private String[] scopeArray = new String[]{"openid", "scope1", "scope2"};
     private String scopeString = "scope1 scope2 scope3";
     private String clientId = "dummyClientId";
     private String clientSecret = "dummyClientSecret";
-    private String authzCode = "testAuthzCode";
-    private String tokenState = "testState";
-    private String refreshToken = "dummyRefreshToken";
-    private String tokenId = "testTokenID";
-    private String accessToken = "dummyAccessToken";
     private String authorizationCode = "testAuthorizationCode";
-    private String grantType = "testGrantType";
     private String tokenType = "testTokenType";
     private AuthenticatedUser authzUser;
-    private int tenantID = MultitenantConstants.SUPER_TENANT_ID;
     private Integer clientTenatId = 1;
     private Timestamp issuedTime;
     private Timestamp refreshTokenIssuedTime;
-    private long validityPeriod;
     private long validityPeriodInMillis;
-    private long refreshTokenValidityPeriod;
     private long refreshTokenValidityPeriodInMillis;
-    private long timestampSkew;
 
     @Mock
-    OAuthServerConfiguration oauthServerConfigurationMock;
+    private OAuthServerConfiguration oauthServerConfigurationMock;
 
     @Mock
-    OAuthAuthzReqMessageContext authAuthzReqMessageContextMock;
+    private OAuthAuthzReqMessageContext authAuthzReqMessageContextMock;
 
     @Mock
-    OAuthTokenReqMessageContext oAuthTokenReqMessageContextMock;
+    private OAuthTokenReqMessageContext oAuthTokenReqMessageContextMock;
 
     @Mock
-    OAuthCache oAuthCacheMock;
+    private OAuthCache oAuthCacheMock;
 
     @Mock
-    CacheEntry cacheEntryMock;
+    private CacheEntry cacheEntryMock;
 
     @Mock
-    TokenPersistenceProcessor tokenPersistenceProcessorMock;
+    private TokenPersistenceProcessor tokenPersistenceProcessorMock;
 
     @Mock
-    AccessTokenDO accessTokenDOMock;
+    private OAuthComponentServiceHolder oAuthComponentServiceHolderMock;
 
     @Mock
-    OAuthComponentServiceHolder oAuthComponentServiceHolderMock;
+    private RealmService realmServiceMock;
 
     @Mock
-    RealmService realmServiceMock;
-
-    @Mock
-    TenantManager tenantManagerMock;
+    private TenantManager tenantManagerMock;
 
     @BeforeMethod
     public void setUp() throws Exception {
         authzUser = new AuthenticatedUser();
         issuedTime = new Timestamp(System.currentTimeMillis());
         refreshTokenIssuedTime = new Timestamp(System.currentTimeMillis());
-        validityPeriod = 3600L;
         validityPeriodInMillis = 3600000L;
-        refreshTokenValidityPeriod = 3600L;
         refreshTokenValidityPeriodInMillis = 3600000L;
-        timestampSkew = 3600L;
+        long timestampSkew = 3600L;
         mockStatic(OAuthServerConfiguration.class);
         when(OAuthServerConfiguration.getInstance()).thenReturn(oauthServerConfigurationMock);
         when(oauthServerConfigurationMock.getTimeStampSkewInSeconds()).thenReturn(timestampSkew);
@@ -333,6 +325,8 @@ public class OAuth2UtilTest extends PowerMockIdentityBaseTest {
 
     @Test
     public void testBuildCacheKeyStringForAuthzCode() throws Exception {
+
+        String authzCode = "testAuthzCode";
         String testAuthzCode = clientId + ":" + authzCode;
         assertEquals(OAuth2Util.buildCacheKeyStringForAuthzCode(clientId, authzCode), testAuthzCode);
     }
@@ -625,8 +619,7 @@ public class OAuth2UtilTest extends PowerMockIdentityBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testGetTokenExpireTimeMillis2() throws Exception {
-        AccessTokenDO accessTokenDO = null;
-        OAuth2Util.getTokenExpireTimeMillis(accessTokenDO);
+        OAuth2Util.getTokenExpireTimeMillis(null);
     }
 
     @Test
@@ -648,8 +641,7 @@ public class OAuth2UtilTest extends PowerMockIdentityBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testGetRefreshTokenExpireTimeMillis3() throws Exception {
-        AccessTokenDO accessTokenDO = null;
-        OAuth2Util.getRefreshTokenExpireTimeMillis(accessTokenDO);
+        OAuth2Util.getRefreshTokenExpireTimeMillis(null);
     }
 
     @Test
@@ -675,6 +667,7 @@ public class OAuth2UtilTest extends PowerMockIdentityBaseTest {
         AccessTokenDO accessTokenDO = new AccessTokenDO(clientId, authzUser, scopeArraySorted, issuedTime,
                 refreshTokenIssuedTime, validityPeriodInMillis, refreshTokenValidityPeriodInMillis, tokenType,
                 authorizationCode);
+        String accessToken = "dummyAccessToken";
         accessTokenDO.setAccessToken(accessToken);
         mockStatic(IdentityUtil.class);
         when(IdentityUtil.getPrimaryDomainName()).thenReturn("PRIMARY");
@@ -684,15 +677,14 @@ public class OAuth2UtilTest extends PowerMockIdentityBaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testGetAccessTokenExpireMillis3() throws Exception {
-        AccessTokenDO accessTokenDO = null;
-        OAuth2Util.getAccessTokenExpireMillis(accessTokenDO);
+        OAuth2Util.getAccessTokenExpireMillis(null);
     }
 
     @Test
     public void testCalculateValidityInMillis() throws Exception {
         long issuedTimeInMillis = System.currentTimeMillis() - 5000;
         long validityPeriodMillis = 100000;
-        assertTrue(OAuth2Util.calculateValidityInMillis(issuedTimeInMillis, validityPeriodMillis) > 0);
+        assertTrue(OAuth2Util.getTimeToExpire(issuedTimeInMillis, validityPeriodMillis) > 0);
     }
 
     @Test
@@ -929,4 +921,145 @@ public class OAuth2UtilTest extends PowerMockIdentityBaseTest {
         when(IdentityUtil.getServerURL(anyString(), anyBoolean(), anyBoolean())).thenReturn(serverUrl);
     }
 
+    @DataProvider(name = "ScopesSet")
+    public Object[][] scopesSet() {
+        Set<String> scopesSet1 = new HashSet<>((Arrays.asList(scopeArray)));
+        Set<String> scopesSet2 = new HashSet<>((Arrays.asList(scopeArraySorted)));
+
+        return new Object[][]{
+                // scopes
+                // expected result
+                {scopesSet1, true},
+                {scopesSet2, false}
+        };
+    }
+
+    @Test(dataProvider = "ScopesSet")
+    public void testIsOIDCAuthzRequest(Set<String> scopes, boolean expectedResult) throws Exception {
+        assertEquals(OAuth2Util.isOIDCAuthzRequest(scopes), expectedResult);
+    }
+
+    @DataProvider(name = "ScopesArray")
+    public Object[][] scopesArray() {
+        return new Object[][]{
+                // scopes
+                // expected result
+                {scopeArray, true},
+                {scopeArraySorted, false}
+        };
+    }
+
+    @Test(dataProvider = "ScopesArray")
+    public void testIsOIDCAuthzRequest1(String[] scopes, boolean expectedResult) throws Exception {
+        assertEquals(OAuth2Util.isOIDCAuthzRequest(scopes), expectedResult);
+    }
+
+    @DataProvider(name = "PKCEData")
+    public Object[][] pkceData() {
+        return new Object[][]{
+                // codeVerifierLength
+                // expected result
+                {42, false},
+                {129, false},
+                {77, true}
+        };
+    }
+
+    @Test(dataProvider = "PKCEData")
+    public void testValidatePKCECodeVerifier(int codeVerifierLength, boolean expectedResult) throws Exception {
+        String codeVerifier = generateCodeVerifier(codeVerifierLength);
+        assertEquals(OAuth2Util.validatePKCECodeVerifier(codeVerifier), expectedResult);
+    }
+
+    @DataProvider(name = "PKCECodeChallengeData")
+    public Object[][] pkceCodeChallengeData() {
+        return new Object[][]{
+                // codeVerifierLength
+                // codeChallengeMethod
+                // expected result
+                {42, null, false},
+                {129, null, false},
+                {77, null, true},
+                {42, OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE, false},
+                {129, OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE, false},
+                {77, OAuthConstants.OAUTH_PKCE_PLAIN_CHALLENGE, true},
+                {77, "testCodeChallengeMethod", false},
+                {43, OAuthConstants.OAUTH_PKCE_S256_CHALLENGE, true},
+                {40, OAuthConstants.OAUTH_PKCE_S256_CHALLENGE, false}
+        };
+    }
+
+    @Test(dataProvider = "PKCECodeChallengeData")
+    public void testValidatePKCECodeChallenge(int codeVerifierLength, String codeChallengeMethod,
+                                              boolean expectedResult) throws Exception {
+        String codeChallenge = generateCodeVerifier(codeVerifierLength);
+        assertEquals(OAuth2Util.validatePKCECodeChallenge(codeChallenge, codeChallengeMethod), expectedResult);
+    }
+
+    @Test
+    public void testIsPKCESupportEnabled() throws Exception {
+        assertFalse(OAuth2Util.isPKCESupportEnabled());
+    }
+
+    @DataProvider(name = "ImplicitResponseTypeData")
+    public Object[][] implicitResponseTypeData() {
+        return new Object[][]{
+                // responseType
+                // expected result
+                {"", false},
+                {"testResponseType", false},
+                {"token", true},
+                {"id_token", true}
+        };
+    }
+
+    @Test(dataProvider = "ImplicitResponseTypeData")
+    public void testIsImplicitResponseType(String responseType, boolean expectedResult) throws Exception {
+        assertEquals(OAuth2Util.isImplicitResponseType(responseType), expectedResult);
+    }
+
+    private String generateCodeVerifier(int codeVerifierLength) {
+        StringBuilder codeVerifier = new StringBuilder();
+        Random r = new Random();
+        String subset = "0123456789abcdefghijklmnopqrstuvwxyz";
+        for (int i = 0; i < codeVerifierLength; i++) {
+            int index = r.nextInt(subset.length());
+            char c = subset.charAt(index);
+            codeVerifier.append(c);
+        }
+
+        return codeVerifier.toString();
+    }
+
+    @DataProvider(name="authzUserProvider")
+    public Object[][] providerAuthzUser() {
+        AuthenticatedUser federatedDomainUser = new AuthenticatedUser();
+        federatedDomainUser.setUserStoreDomain("FEDERATED");
+
+        AuthenticatedUser localUser = new AuthenticatedUser();
+        localUser.setFederatedUser(false);
+
+        return new Object[][] {
+                // Authenticated User, isMapFederatedUserToLocal, expectedIsFederatedValue
+                {AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier("DUMMY"), false, true},
+                {AuthenticatedUser.createFederateAuthenticatedUserFromSubjectIdentifier("DUMMY"), true, false},
+                {federatedDomainUser, false, true},
+                {federatedDomainUser, true, false},
+                {localUser, false, false},
+                {localUser, true, false}
+        };
+    }
+
+    @Test(dataProvider = "authzUserProvider")
+    public void testGetAuthenticatedUser(Object authenticatedUser,
+                                         boolean mapFederatedUserToLocal,
+                                         boolean expectedIsFederatedValue) throws Exception {
+        AccessTokenDO accessTokenDO = new AccessTokenDO();
+        accessTokenDO.setAuthzUser((AuthenticatedUser) authenticatedUser);
+
+        when(oauthServerConfigurationMock.isMapFederatedUsersToLocal()).thenReturn(mapFederatedUserToLocal);
+
+        AuthenticatedUser authzUser = OAuth2Util.getAuthenticatedUser(accessTokenDO);
+        assertEquals(authzUser.isFederatedUser(), expectedIsFederatedValue);
+    }
 }

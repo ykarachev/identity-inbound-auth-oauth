@@ -124,9 +124,9 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
     @Mock
     private OAuthCache oAuthCache;
 
-    OAuth2Service oAuth2Service;
-    static final String clientId = "IbWwXLf5MnKSY6x6gnR_7gd7f1wa";
-    TokenPersistenceProcessor persistenceProcessor = new PlainTextPersistenceProcessor();
+    private OAuth2Service oAuth2Service;
+    private static final String clientId = "IbWwXLf5MnKSY6x6gnR_7gd7f1wa";
+    private TokenPersistenceProcessor persistenceProcessor = new PlainTextPersistenceProcessor();
 
     @BeforeMethod
     public void setUp() {
@@ -293,7 +293,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         OAuthRevocationRequestDTO revokeRequestDTO = new OAuthRevocationRequestDTO();
         revokeRequestDTO.setConsumerKey("testConsumerKey");
         revokeRequestDTO.setToken("testToken");
-        revokeRequestDTO.setToken_type(grantType);
+        revokeRequestDTO.setTokenType(grantType);
         assertFalse(oAuth2Service.revokeTokenByOAuthClient(revokeRequestDTO).isError());
     }
 
@@ -315,7 +315,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
         OAuthRevocationRequestDTO revokeRequestDTO = new OAuthRevocationRequestDTO();
         revokeRequestDTO.setConsumerKey("testConsumerKey");
         revokeRequestDTO.setToken("testToken");
-        revokeRequestDTO.setToken_type(GrantType.CLIENT_CREDENTIALS.toString());
+        revokeRequestDTO.setTokenType(GrantType.CLIENT_CREDENTIALS.toString());
 
         when(oAuthCache.getValueFromCache(any(OAuthCacheKey.class))).thenReturn(accessTokenDO);
         mockStatic(OAuthCache.class);
@@ -370,7 +370,7 @@ public class OAuth2ServiceTest extends PowerMockIdentityBaseTest {
             revokeRequestDTO.setConsumerKey("testConsumerKey");
             revokeRequestDTO.setToken("testToken");
         }
-        revokeRequestDTO.setToken_type(GrantType.REFRESH_TOKEN.toString());
+        revokeRequestDTO.setTokenType(GrantType.REFRESH_TOKEN.toString());
 
         when(oAuthCache.getValueFromCache(any(OAuthCacheKey.class))).thenReturn(accessTokenDO);
         mockStatic(OAuthCache.class);

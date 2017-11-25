@@ -27,7 +27,6 @@ import org.wso2.carbon.identity.application.common.model.InboundAuthenticationCo
 import org.wso2.carbon.identity.application.common.model.InboundAuthenticationRequestConfig;
 import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.application.common.model.User;
-import org.wso2.carbon.identity.application.mgt.ApplicationManagementService;
 import org.wso2.carbon.identity.oauth.IdentityOAuthAdminException;
 import org.wso2.carbon.identity.oauth.OAuthAdminService;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
@@ -64,7 +63,7 @@ public class DCRMService {
      * @throws DCRMException
      */
     public Application getApplication(String clientId) throws DCRMException {
-        return getApplication(getApplicationById(clientId));
+        return buildResponse(getApplicationById(clientId));
     }
 
     /**
@@ -120,7 +119,7 @@ public class DCRMService {
                 appDTO.setGrantTypes(grantType);
             }
             if (!updateRequest.getRedirectUris().isEmpty()) {
-                String callbackUrl = getCallbackUrl(updateRequest.getRedirectUris(), updateRequest.getGrantTypes());
+                String callbackUrl = validateAndSetCallbackURIs(updateRequest.getRedirectUris(), updateRequest.getGrantTypes());
                 appDTO.setCallbackUrl(callbackUrl);
             }
             oAuthAdminService.updateConsumerApplication(appDTO);
@@ -129,8 +128,7 @@ public class DCRMService {
                     DCRMConstants.ErrorMessages.FAILED_TO_UPDATE_APPLICATION, clientId, e);
         }
 
-        return getApplication(getApplicationById(clientId));
-
+        return buildResponse(getApplicationById(clientId));
     }
 
     private OAuthConsumerAppDTO getApplicationById(String clientId) throws DCRMException {
@@ -159,79 +157,56 @@ public class DCRMService {
 
         String applicationOwner = PrivilegedCarbonContext.getThreadLocalCarbonContext().getUsername();
         String tenantDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
-        //Subscriber's name will append to the client application name to create unique application name.
         String spName = registrationRequest.getClientName();
-        String grantType = StringUtils.join(registrationRequest.getGrantTypes(), " ");
-        ServiceProvider clientSP;
 
-        // Check for existing service providers
-        if (!isServiceProviderExist(spName, tenantDomain)) {
-            // Create the Service Provider
-            ServiceProvider sp = new ServiceProvider();
-            sp.setApplicationName(spName);
-            User user = new User();
-            user.setUserName(applicationOwner);
-            user.setTenantDomain(tenantDomain);
-            sp.setOwner(user);
-            sp.setDescription("Service Provider for application " + spName);
-
-            createServiceProvider(sp, applicationOwner, tenantDomain);
-
-            // Get created service provider, to update with OAuth/OIDC application information.
-            clientSP = getServiceProvider(spName, tenantDomain);
-        } else {
-            throw DCRMUtils.generateClientException(
-                    DCRMConstants.ErrorMessages.CONFLICT_EXISTING_APPLICATION, spName);
+        // Check whether a service provider already exists for the name we are trying to register the OAuth app with.
+        if (isServiceProviderExist(spName, tenantDomain)) {
+            throw DCRMUtils.generateClientException(DCRMConstants.ErrorMessages.CONFLICT_EXISTING_APPLICATION, spName);
         }
 
-        if (clientSP == null) {
-            throw DCRMUtils.generateClientException(
-                    DCRMConstants.ErrorMessages.FAILED_TO_REGISTER_SP, spName);
-        }
+        // Create a service provider.
+        ServiceProvider serviceProvider = createServiceProvider(applicationOwner, tenantDomain, spName);
 
-        // Then Create OAuthApp
-        OAuthConsumerAppDTO oAuthConsumerApp = new OAuthConsumerAppDTO();
-        oAuthConsumerApp.setApplicationName(spName);
-        oAuthConsumerApp.setCallbackUrl(getCallbackUrl(registrationRequest.getRedirectUris(), registrationRequest.getGrantTypes()));
-        oAuthConsumerApp.setGrantTypes(grantType);
-        oAuthConsumerApp.setOAuthVersion(OAUTH_VERSION);
-        if (log.isDebugEnabled()) {
-            log.debug("Creating OAuth Application: " + spName + " In tenant: " + tenantDomain);
-        }
-
+        OAuthConsumerAppDTO createdApp;
         try {
-            oAuthAdminService.registerOAuthApplicationData(oAuthConsumerApp);
-        } catch (IdentityOAuthAdminException e) {
-            // Delete created service provider if error occured creating application
+            // Register the OAuth app.
+            createdApp = createOAuthApp(registrationRequest, applicationOwner, tenantDomain, spName);
+        } catch (DCRMException ex) {
             if (log.isDebugEnabled()) {
-                log.debug("Error ocured while creating OAuth application, " +
-                        "hence delete the service provider: " + spName);
+                log.debug("OAuth app: " + spName + " registration failed in tenantDomain: " + tenantDomain + ". " +
+                        "Deleting the service provider: " + spName + " to rollback.");
             }
             deleteServiceProvider(spName, tenantDomain, applicationOwner);
-
-            throw DCRMUtils.generateServerException(
-                    DCRMConstants.ErrorMessages.FAILED_TO_REGISTER_APPLICATION, spName, e);
+            throw ex;
         }
-
-        if (log.isDebugEnabled()) {
-            log.debug("Created OAuth Application: " + spName + " In tenant: " + tenantDomain);
-        }
-
-        OAuthConsumerAppDTO createdApp = null;
 
         try {
-            createdApp = oAuthAdminService
-                    .getOAuthApplicationDataByAppName(oAuthConsumerApp.getApplicationName());
-        } catch (IdentityOAuthAdminException e) {
-            throw DCRMUtils.generateServerException(
-                    DCRMConstants.ErrorMessages.FAILED_TO_GET_APPLICATION, oAuthConsumerApp.getApplicationName()
-                    , e);
+            updateServiceProviderWithOAuthAppDetails(serviceProvider, createdApp, applicationOwner, tenantDomain);
+        } catch (DCRMException ex) {
+            // Delete the OAuth app created. This will also remove the registered SP for the OAuth app.
+            deleteApplication(createdApp.getOauthConsumerKey());
+            throw ex;
         }
+        return buildResponse(createdApp);
+    }
 
-        if (log.isDebugEnabled()) {
-            log.debug("Retrieved Details for OAuth Application: " + createdApp.getApplicationName() + " In tenant: " + tenantDomain);
-        }
+    private Application buildResponse(OAuthConsumerAppDTO createdApp) {
+        Application application = new Application();
+        application.setClient_name(createdApp.getApplicationName());
+        application.setClient_id(createdApp.getOauthConsumerKey());
+        application.setClient_secret(createdApp.getOauthConsumerSecret());
 
+        List<String> redirectUrisList = new ArrayList<>();
+        redirectUrisList.add(createdApp.getCallbackUrl());
+        application.setRedirect_uris(redirectUrisList);
+
+        return application;
+    }
+
+    private void updateServiceProviderWithOAuthAppDetails(ServiceProvider serviceProvider,
+                                                          OAuthConsumerAppDTO createdApp,
+                                                          String applicationOwner,
+                                                          String tenantDomain) throws DCRMException {
         // Update created service provider, InboundAuthenticationConfig with OAuth application info.
         InboundAuthenticationConfig inboundAuthenticationConfig = new InboundAuthenticationConfig();
         List<InboundAuthenticationRequestConfig> inboundAuthenticationRequestConfigs = new ArrayList<>();
@@ -240,25 +215,83 @@ public class DCRMService {
                 new InboundAuthenticationRequestConfig();
         inboundAuthenticationRequestConfig.setInboundAuthKey(createdApp.getOauthConsumerKey());
         inboundAuthenticationRequestConfig.setInboundAuthType(AUTH_TYPE_OAUTH_2);
-//        String oauthConsumerSecret = createdApp.getOauthConsumerSecret();
-//        if (oauthConsumerSecret != null && !oauthConsumerSecret.isEmpty()) {
-//            Property property = new Property();
-//            property.setName(OAUTH_CONSUMER_SECRET);
-//            property.setValue(oauthConsumerSecret);
-//            Property[] properties = {property};
-//            inboundAuthenticationRequestConfig.setProperties(properties);
-//        }
         inboundAuthenticationRequestConfigs.add(inboundAuthenticationRequestConfig);
         inboundAuthenticationConfig.setInboundAuthenticationRequestConfigs(inboundAuthenticationRequestConfigs
                 .toArray(new InboundAuthenticationRequestConfig[inboundAuthenticationRequestConfigs
                         .size()]));
-        clientSP.setInboundAuthenticationConfig(inboundAuthenticationConfig);
+        serviceProvider.setInboundAuthenticationConfig(inboundAuthenticationConfig);
         //Set SaaS app option
-        clientSP.setSaasApp(false);
+        serviceProvider.setSaasApp(false);
 
         // Update the Service Provider app to add OAuthApp as an Inbound Authentication Config
-        updateServiceProvider(clientSP, tenantDomain, applicationOwner);
-        return getApplication(createdApp);
+        updateServiceProvider(serviceProvider, tenantDomain, applicationOwner);
+    }
+
+    private OAuthConsumerAppDTO createOAuthApp(ApplicationRegistrationRequest registrationRequest,
+                                               String applicationOwner,
+                                               String tenantDomain,
+                                               String spName) throws DCRMException {
+        // Then Create OAuthApp
+        OAuthConsumerAppDTO oAuthConsumerApp = new OAuthConsumerAppDTO();
+        oAuthConsumerApp.setApplicationName(spName);
+        oAuthConsumerApp.setCallbackUrl(
+                validateAndSetCallbackURIs(registrationRequest.getRedirectUris(), registrationRequest.getGrantTypes()));
+
+        String grantType = StringUtils.join(registrationRequest.getGrantTypes(), " ");
+        oAuthConsumerApp.setGrantTypes(grantType);
+        oAuthConsumerApp.setOAuthVersion(OAUTH_VERSION);
+        if (log.isDebugEnabled()) {
+            log.debug("Creating OAuth Application: " + spName + " in tenant: " + tenantDomain);
+        }
+        try {
+            oAuthAdminService.registerOAuthApplicationData(oAuthConsumerApp);
+        } catch (IdentityOAuthAdminException e) {
+            throw DCRMUtils.generateServerException(
+                    DCRMConstants.ErrorMessages.FAILED_TO_REGISTER_APPLICATION, spName, e);
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Created OAuth Application: " + spName + " in tenant: " + tenantDomain);
+        }
+
+        OAuthConsumerAppDTO createdApp;
+        try {
+            createdApp = oAuthAdminService.getOAuthApplicationDataByAppName(oAuthConsumerApp.getApplicationName());
+        } catch (IdentityOAuthAdminException e) {
+            throw DCRMUtils.generateServerException(
+                    DCRMConstants.ErrorMessages.FAILED_TO_GET_APPLICATION, oAuthConsumerApp.getApplicationName(), e);
+        }
+
+        if (createdApp == null) {
+            throw DCRMUtils.generateServerException(DCRMConstants.ErrorMessages.FAILED_TO_REGISTER_APPLICATION, spName);
+        }
+
+        if (log.isDebugEnabled()) {
+            log.debug("Retrieved Details of OAuth App: " + createdApp.getApplicationName() + " in tenant: " +
+                    tenantDomain);
+        }
+        return createdApp;
+    }
+
+    private ServiceProvider createServiceProvider(String applicationOwner, String tenantDomain,
+                                                  String spName) throws DCRMException {
+        // Create the Service Provider
+        ServiceProvider sp = new ServiceProvider();
+        sp.setApplicationName(spName);
+        User user = new User();
+        user.setUserName(applicationOwner);
+        user.setTenantDomain(tenantDomain);
+        sp.setOwner(user);
+        sp.setDescription("Service Provider for application " + spName);
+
+        createServiceProvider(sp, applicationOwner, tenantDomain);
+
+        // Get created service provider.
+        ServiceProvider clientSP = getServiceProvider(spName, tenantDomain);
+        if (clientSP == null) {
+            throw DCRMUtils.generateClientException(DCRMConstants.ErrorMessages.FAILED_TO_REGISTER_SP, spName);
+        }
+        return clientSP;
     }
 
     /**
@@ -293,48 +326,37 @@ public class DCRMService {
 
     private void updateServiceProvider(ServiceProvider serviceProvider, String tenantDomain, String userName) throws DCRMException {
         try {
-            DCRDataHolder.getInstance().getApplicationManagementService().updateApplication(serviceProvider, tenantDomain, userName);
+            DCRDataHolder.getInstance().getApplicationManagementService()
+                    .updateApplication(serviceProvider, tenantDomain, userName);
         } catch (IdentityApplicationManagementException e) {
             throw DCRMUtils.generateServerException(
                     DCRMConstants.ErrorMessages.FAILED_TO_UPDATE_SP, serviceProvider.getApplicationName(), e);
         }
     }
 
-    private void createServiceProvider(ServiceProvider serviceProvider, String applicationName, String tenantDomain) throws DCRMException {
+    private void createServiceProvider(ServiceProvider serviceProvider,
+                                       String applicationName, String tenantDomain) throws DCRMException {
         try {
-            DCRDataHolder.getInstance().getApplicationManagementService().createApplication(serviceProvider, tenantDomain,
-                    applicationName);
+            DCRDataHolder.getInstance().getApplicationManagementService()
+                    .createApplication(serviceProvider, tenantDomain, applicationName);
         } catch (IdentityApplicationManagementException e) {
-            String errorMessage = "Error while creating service provider: " + applicationName + " in tenant: " + tenantDomain;
+            String errorMessage =
+                    "Error while creating service provider: " + applicationName + " in tenant: " + tenantDomain;
             throw new DCRMException(ErrorCodes.BAD_REQUEST.toString(), errorMessage, e);
         }
     }
 
-    private void deleteServiceProvider(String applicationName, String tenantDomain, String userName) throws DCRMException {
+    private void deleteServiceProvider(String applicationName,
+                                       String tenantDomain, String userName) throws DCRMException {
         try {
-            DCRDataHolder.getInstance().getApplicationManagementService().deleteApplication(applicationName, tenantDomain, userName);
+            DCRDataHolder.getInstance().getApplicationManagementService()
+                    .deleteApplication(applicationName, tenantDomain, userName);
         } catch (IdentityApplicationManagementException e) {
-            throw DCRMUtils.generateServerException(
-                    DCRMConstants.ErrorMessages.FAILED_TO_DELETE_SP, applicationName, e);
-
+            throw DCRMUtils.generateServerException(DCRMConstants.ErrorMessages.FAILED_TO_DELETE_SP, applicationName, e);
         }
     }
 
-    private Application getApplication(OAuthConsumerAppDTO appDTO) {
-
-        Application application = new Application();
-        application.setClient_name(appDTO.getApplicationName());
-        application.setClient_id(appDTO.getOauthConsumerKey());
-        application.setClient_secret(appDTO.getOauthConsumerSecret());
-        List<String> redirectUrisList = new ArrayList<>();
-        redirectUrisList.add(appDTO.getCallbackUrl());
-        application.setRedirect_uris(redirectUrisList);
-
-        return application;
-
-    }
-
-    private String getCallbackUrl(List<String> redirectUris, List<String> grantTypes) throws DCRMException {
+    private String validateAndSetCallbackURIs(List<String> redirectUris, List<String> grantTypes) throws DCRMException {
 
         //TODO: After implement multi-urls to the oAuth application, we have to change this API call
         //TODO: need to validate before processing request
@@ -342,7 +364,8 @@ public class DCRMService {
             if (isRedirectURIMandatory(grantTypes)) {
                 String errorMessage = "RedirectUris property must have at least one URI value when using " +
                         "Authorization code or implicit grant types.";
-                throw DCRMUtils.generateClientException(DCRMConstants.ErrorMessages.BAD_REQUEST_INVALID_INPUT, errorMessage);
+                throw DCRMUtils.generateClientException(
+                        DCRMConstants.ErrorMessages.BAD_REQUEST_INVALID_INPUT, errorMessage);
             } else {
                 return StringUtils.EMPTY;
             }

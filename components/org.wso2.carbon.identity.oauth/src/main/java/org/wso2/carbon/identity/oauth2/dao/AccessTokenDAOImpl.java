@@ -797,8 +797,6 @@ public class AccessTokenDAOImpl extends AbstractOAuthDAO implements AccessTokenD
                     tokenId + " to Token State : " + tokenState, e);
         } finally {
             IdentityDatabaseUtil.closeStatement(prepStmt);
-            IdentityDatabaseUtil.closeConnection(connection);
-
         }
     }
 

@@ -64,13 +64,13 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         validateAuthzCodeFromRequest(authzCodeBean, tokenReq.getClientId(), tokenReq.getAuthorizationCode());
         try {
             // If redirect_uri was given in the authorization request,
-            // token request should send matching redirect_uri value
+            // token request should send matching redirect_uri value.
             validateCallbackUrlFromRequest(tokenReq.getCallbackURI(), authzCodeBean.getCallbackUrl());
             validatePKCECode(authzCodeBean, tokenReq.getPkceCodeVerifier());
             setPropertiesForTokenGeneration(tokReqMsgCtx, tokenReq, authzCodeBean);
         } finally {
             // After validating grant, authorization code is revoked. This is done to stop repetitive usage of
-            // same authorization code in erroneous token requests
+            // same authorization code in erroneous token requests.
             revokeAuthorizationCode(authzCodeBean);
         }
         if (log.isDebugEnabled()) {
@@ -423,7 +423,7 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                     OAuth2Util.buildCacheKeyStringForAuthzCode(authzCodeBean.getConsumerKey(),
                             authzCodeBean.getAuthorizationCode())));
             if (log.isDebugEnabled()) {
-                log.debug("Expired Authorization code issued for client " + authzCodeBean.getConsumerKey() +
+                log.debug("Revoked Authorization code issued for client " + authzCodeBean.getConsumerKey() +
                         " was removed from the cache.");
             }
         }

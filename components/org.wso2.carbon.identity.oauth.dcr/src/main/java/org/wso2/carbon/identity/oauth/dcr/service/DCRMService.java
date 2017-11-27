@@ -55,6 +55,7 @@ public class DCRMService {
 
     private static final String AUTH_TYPE_OAUTH_2 = "oauth2";
     private static final String OAUTH_VERSION = "OAuth-2.0";
+    private static final String GRANT_TYPE_SEPARATOR = " ";
 
     /**
      * Get OAuth2/OIDC application information with client_id
@@ -115,7 +116,7 @@ public class DCRMService {
                 appDTO.setApplicationName(updateRequest.getClientName());
             }
             if (!updateRequest.getGrantTypes().isEmpty()) {
-                String grantType = StringUtils.join(updateRequest.getGrantTypes(), " ");
+                String grantType = StringUtils.join(updateRequest.getGrantTypes(), GRANT_TYPE_SEPARATOR);
                 appDTO.setGrantTypes(grantType);
             }
             if (!updateRequest.getRedirectUris().isEmpty()) {
@@ -237,7 +238,7 @@ public class DCRMService {
         oAuthConsumerApp.setCallbackUrl(
                 validateAndSetCallbackURIs(registrationRequest.getRedirectUris(), registrationRequest.getGrantTypes()));
 
-        String grantType = StringUtils.join(registrationRequest.getGrantTypes(), " ");
+        String grantType = StringUtils.join(registrationRequest.getGrantTypes(), GRANT_TYPE_SEPARATOR);
         oAuthConsumerApp.setGrantTypes(grantType);
         oAuthConsumerApp.setOAuthVersion(OAUTH_VERSION);
         if (log.isDebugEnabled()) {

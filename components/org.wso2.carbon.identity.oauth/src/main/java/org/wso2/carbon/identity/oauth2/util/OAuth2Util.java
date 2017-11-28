@@ -1495,6 +1495,19 @@ public class OAuth2Util {
     }
 
     /**
+     * This is used to get the tenant domain of an application by clientId.
+     * @param clientId Consumer key of Application
+     * @return Tenant Domain
+     * @throws IdentityOAuth2Exception
+     * @throws InvalidOAuthClientException
+     */
+    public static String getTenantDomainOfOauthApp(String clientId)
+            throws IdentityOAuth2Exception, InvalidOAuthClientException {
+        OAuthAppDO oAuthAppDO = getAppInformationByClientId(clientId);
+        return getTenantDomainOfOauthApp(oAuthAppDO);
+    }
+
+    /**
      * This method map signature algorithm define in identity.xml to nimbus
      * signature algorithm
      *

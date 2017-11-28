@@ -62,17 +62,23 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         AuthzCodeDO authzCodeBean = getPersistedAuthzCode(tokenReq);
 
         validateAuthzCodeFromRequest(authzCodeBean, tokenReq.getClientId(), tokenReq.getAuthorizationCode());
-        // If redirect_uri was given in the authorization request,
-        // token request should send matching redirect_uri value
-        validateCallbackUrlFromRequest(tokenReq.getCallbackURI(), authzCodeBean.getCallbackUrl());
-        validatePKCECode(authzCodeBean, tokenReq.getPkceCodeVerifier());
+        try {
+            // If redirect_uri was given in the authorization request,
+            // token request should send matching redirect_uri value.
+            validateCallbackUrlFromRequest(tokenReq.getCallbackURI(), authzCodeBean.getCallbackUrl());
+            validatePKCECode(authzCodeBean, tokenReq.getPkceCodeVerifier());
+            setPropertiesForTokenGeneration(tokReqMsgCtx, tokenReq, authzCodeBean);
+        } finally {
+            // After validating grant, authorization code is revoked. This is done to stop repetitive usage of
+            // same authorization code in erroneous token requests.
+            revokeAuthorizationCode(authzCodeBean);
+        }
         if (log.isDebugEnabled()) {
             log.debug("Found Authorization Code for Client : " + tokenReq.getClientId() +
                     ", authorized user : " + authzCodeBean.getAuthorizedUser() +
                     ", scope : " + OAuth2Util.buildScopeString(authzCodeBean.getScope()));
         }
 
-        setPropertiesForTokenGeneration(tokReqMsgCtx, tokenReq, authzCodeBean);
         return true;
     }
 
@@ -305,8 +311,8 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
             throw new IdentityOAuth2Exception("Inactive authorization code received from token request");
         }
 
-        if (isAuthzCodeExpired(authzCodeBean)) {
-            throw new IdentityOAuth2Exception("Expired authorization code received from token request");
+        if (isAuthzCodeExpired(authzCodeBean) || isAuthzCodeRevoked(authzCodeBean)) {
+            throw new IdentityOAuth2Exception("Expired or Revoked authorization code received from token request");
         }
         return true;
     }
@@ -327,6 +333,17 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
             if(log.isDebugEnabled()) {
                 log.debug("Invalid access token request with Client Id : " + authzCodeBean.getConsumerKey() +
                         ", Inactive authorization code : " + authzCodeBean.getAuthorizationCode());
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isAuthzCodeRevoked(AuthzCodeDO authzCodeBean) {
+        if (OAuthConstants.AuthorizationCodeState.REVOKED.equals(authzCodeBean.getState())) {
+            if(log.isDebugEnabled()) {
+                log.debug("Invalid access token request with Client Id : " + authzCodeBean.getConsumerKey() +
+                        ", Revoked authorization code : " + authzCodeBean.getAuthorizationCode());
             }
             return true;
         }
@@ -392,6 +409,24 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
             throw new IdentityOAuth2Exception("PKCE validation failed");
         }
         return true;
+    }
+
+    private void revokeAuthorizationCode(AuthzCodeDO authzCodeBean) throws IdentityOAuth2Exception {
+        OAuthTokenPersistenceFactory.getInstance().getAuthorizationCodeDAO().updateAuthorizationCodeState(
+                authzCodeBean.getAuthorizationCode(), OAuthConstants.AuthorizationCodeState.REVOKED);
+        if (log.isDebugEnabled()) {
+            log.debug("Changed state of authorization code : " + authzCodeBean.getAuthorizationCode() + " to revoked");
+        }
+        if (cacheEnabled) {
+            // remove the authorization code from the cache
+            OAuthCache.getInstance().clearCacheEntry(new OAuthCacheKey(
+                    OAuth2Util.buildCacheKeyStringForAuthzCode(authzCodeBean.getConsumerKey(),
+                            authzCodeBean.getAuthorizationCode())));
+            if (log.isDebugEnabled()) {
+                log.debug("Revoked Authorization code issued for client " + authzCodeBean.getConsumerKey() +
+                        " was removed from the cache.");
+            }
+        }
     }
 
     private OAuthAppDO getOAuthAppDO(String clientId) throws IdentityOAuth2Exception {

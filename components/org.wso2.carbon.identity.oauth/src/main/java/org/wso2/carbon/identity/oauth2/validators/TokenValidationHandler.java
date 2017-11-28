@@ -21,10 +21,13 @@ package org.wso2.carbon.identity.oauth2.validators;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.oltu.oauth2.common.exception.OAuthSystemException;
-import org.wso2.carbon.identity.application.common.model.User;
+import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
+import org.wso2.carbon.identity.application.common.IdentityApplicationManagementException;
+import org.wso2.carbon.identity.application.common.model.ServiceProvider;
 import org.wso2.carbon.identity.base.IdentityConstants;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.oauth.common.OAuthConstants;
+import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientException;
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authcontext.AuthorizationContextTokenGenerator;
@@ -32,6 +35,7 @@ import org.wso2.carbon.identity.oauth2.dto.OAuth2ClientApplicationDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2IntrospectionResponseDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationRequestDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2TokenValidationResponseDTO;
+import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
 import org.wso2.carbon.identity.oauth2.token.OauthTokenIssuer;
 import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
@@ -51,6 +55,7 @@ public class TokenValidationHandler {
     private Map<String, OAuth2TokenValidator> tokenValidators = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     private OauthTokenIssuer oauthIssuerImpl = OAuthServerConfiguration.getInstance().getIdentityOauthTokenIssuer();
     private boolean usePersistedAccessTokenAlias = OAuthServerConfiguration.getInstance().usePersistedAccessTokenAlias();
+    private static final String BUILD_FQU_FROM_SP_CONFIG = "OAuth.BuildSubjectIdentifierFromSPConfig";
 
     private TokenValidationHandler() {
         tokenValidators.put(DefaultOAuth2TokenValidator.TOKEN_TYPE, new DefaultOAuth2TokenValidator());
@@ -336,22 +341,40 @@ public class TokenValidationHandler {
         return introResp;
     }
 
-    /**
-     * @param accessTokenDO
-     * @return
-     */
-    private String getAuthzUser(AccessTokenDO accessTokenDO) {
-        User user = accessTokenDO.getAuthzUser();
-        String userStore = user.getUserStoreDomain();
-        if (!OAuthServerConfiguration.getInstance().isMapFederatedUsersToLocal() && userStore != null && userStore
-                .startsWith(OAuthConstants.UserType.FEDERATED_USER_DOMAIN_PREFIX)) {
-            if (log.isDebugEnabled()) {
-                log.debug("User store name : " + userStore + " has federated prefix. Hence removing it");
-            }
-            userStore = null;
+    private String getAuthzUser(AccessTokenDO accessTokenDO) throws IdentityOAuth2Exception {
+
+        AuthenticatedUser user = accessTokenDO.getAuthzUser();
+
+        if (user.isFederatedUser()) {
+            return user.getAuthenticatedSubjectIdentifier();
         }
-        String authzUser = IdentityUtil.addDomainToName(user.getUserName(), userStore);
-        return UserCoreUtil.addTenantDomainToEntry(authzUser, user.getTenantDomain());
+
+        String consumerKey = accessTokenDO.getConsumerKey();
+        try {
+            boolean buildSubjectIdentifierFromSPConfig = Boolean.parseBoolean(IdentityUtil.getProperty
+                    (BUILD_FQU_FROM_SP_CONFIG));
+            if (buildSubjectIdentifierFromSPConfig) {
+                ServiceProvider serviceProvider = getServiceProvider(consumerKey);
+                boolean useTenantDomainInLocalSubjectIdentifier = serviceProvider
+                        .getLocalAndOutBoundAuthenticationConfig().isUseTenantDomainInLocalSubjectIdentifier();
+                boolean useUserStoreDomainInLocalSubjectIdentifier = serviceProvider
+                        .getLocalAndOutBoundAuthenticationConfig().isUseUserstoreDomainInLocalSubjectIdentifier();
+                return user.getUsernameAsSubjectIdentifier(useUserStoreDomainInLocalSubjectIdentifier,
+                        useTenantDomainInLocalSubjectIdentifier);
+            } else {
+                return user.toFullQualifiedUsername();
+            }
+        } catch (IdentityApplicationManagementException | InvalidOAuthClientException e) {
+            throw new IdentityOAuth2Exception("Error occurred while retrieving OAuth2 application data for client id:" +
+                    consumerKey, e);
+        }
+    }
+
+    private ServiceProvider getServiceProvider(String consumerKey) throws IdentityApplicationManagementException,
+            IdentityOAuth2Exception, InvalidOAuthClientException {
+        String spTenantDomain = OAuth2Util.getTenantDomainOfOauthApp(consumerKey);
+        return OAuth2ServiceComponentHolder.getApplicationMgtService().getServiceProviderByClientId(consumerKey,
+                OAuthConstants.Scope.OAUTH2, spTenantDomain);
     }
 
     /**

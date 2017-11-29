@@ -250,9 +250,9 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
                 .getAuthorizationCodeDAO().validateAuthorizationCode(tokenReqDTO.getClientId(),
                         tokenReqDTO.getAuthorizationCode());
         if (validationResult != null) {
-            //revoking access token issued for authorization code as per RFC 6749 Section 4.1.2
             if (!validationResult.isActiveCode()) {
-                revokeExsistingAccessTokens(validationResult.getTokenId(), validationResult.getAuthzCodeDO());
+                //revoking access token issued for authorization code as per RFC 6749 Section 4.1.2
+                revokeExistingAccessTokens(validationResult.getTokenId(), validationResult.getAuthzCodeDO());
             }
             return validationResult.getAuthzCodeDO();
         } else {
@@ -262,19 +262,18 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
         }
     }
 
-    private void revokeExsistingAccessTokens(String tokenId, AuthzCodeDO authzCodeDO) throws IdentityOAuth2Exception {
-        //revoking access token issued for authorization code as per RFC 6749 Section 4.1.2
+    private void revokeExistingAccessTokens(String tokenId, AuthzCodeDO authzCodeDO) throws IdentityOAuth2Exception {
         OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO().revokeAccessToken(tokenId, authzCodeDO
-                .getAuthorizedUser().getUserName());
+                .getAuthorizedUser().toString());
+
         if (log.isDebugEnabled()) {
             if (IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
-                log.debug("Validated authorization code(hashed): " + DigestUtils.sha256Hex
-                        (authzCodeDO.getAuthorizationCode()) + " for client: " + authzCodeDO.getConsumerKey() + " is not active. " +
-                        "So " +
-                        "revoking the access tokens issued for the authorization code.");
+                log.debug("Validated authorization code(hashed): " + DigestUtils.sha256Hex(authzCodeDO
+                        .getAuthorizationCode()) + " for client: " + authzCodeDO.getConsumerKey() + " is not active. " +
+                        "So revoking the access tokens issued for the authorization code.");
             } else {
-                log.debug("Validated authorization code for client: " + authzCodeDO.getConsumerKey() + " is not active" +
-                        ". So revoking the access tokens issued for the authorization code.");
+                log.debug("Validated authorization code for client: " + authzCodeDO.getConsumerKey() + " is not " +
+                        "active. So revoking the access tokens issued for the authorization code.");
             }
         }
     }

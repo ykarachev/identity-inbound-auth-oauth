@@ -38,7 +38,7 @@ import org.wso2.carbon.identity.oauth.common.exception.InvalidOAuthClientExcepti
 import org.wso2.carbon.identity.oauth.config.OAuthServerConfiguration;
 import org.wso2.carbon.identity.oauth.dao.OAuthAppDO;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
-import org.wso2.carbon.identity.oauth2.dao.TokenMgtDAO;
+import org.wso2.carbon.identity.oauth2.dao.OAuthTokenPersistenceFactory;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
 import org.wso2.carbon.identity.oauth2.model.AccessTokenDO;
@@ -58,7 +58,6 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
 
     private static Log log = LogFactory.getLog(AbstractAuthorizationGrantHandler.class);
     protected OauthTokenIssuer oauthIssuerImpl = OAuthServerConfiguration.getInstance().getIdentityOauthTokenIssuer();
-    protected TokenMgtDAO tokenMgtDAO;
     protected OAuthCallbackManager callbackManager;
     protected boolean cacheEnabled;
     protected OAuthCache oauthCache;
@@ -67,7 +66,6 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
 
     @Override
     public void init() throws IdentityOAuth2Exception {
-        tokenMgtDAO = new TokenMgtDAO();
         callbackManager = new OAuthCallbackManager();
         // Check whether OAuth caching is enabled.
         if (OAuthCache.getInstance().isEnabled()) {
@@ -236,7 +234,8 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
                                     AccessTokenDO newTokenBean, String newAccessToken, AccessTokenDO
                                             existingTokenBean) throws IdentityOAuth2Exception {
         try {
-            tokenMgtDAO.storeAccessToken(newAccessToken, oAuth2AccessTokenReqDTO.getClientId(),
+            OAuthTokenPersistenceFactory.getInstance().getAccessTokenDAO()
+                    .insertAccessToken(newAccessToken, oAuth2AccessTokenReqDTO.getClientId(),
                     newTokenBean, existingTokenBean, userStoreDomain);
         } catch (IdentityException e) {
             throw new IdentityOAuth2Exception(
@@ -632,7 +631,9 @@ public abstract class AbstractAuthorizationGrantHandler implements Authorization
     private AccessTokenDO getExistingTokenFromDB(OAuthTokenReqMessageContext tokenMsgCtx,
                                                  OAuth2AccessTokenReqDTO tokenReq, String scope, OAuthCacheKey cacheKey)
             throws IdentityOAuth2Exception {
-        AccessTokenDO existingToken = tokenMgtDAO.retrieveLatestAccessToken(tokenReq.getClientId(),
+        AccessTokenDO existingToken = OAuthTokenPersistenceFactory.getInstance()
+                .getAccessTokenDAO().getLatestAccessToken(tokenReq
+                        .getClientId(),
                 tokenMsgCtx.getAuthorizedUser(), getUserStoreDomain(tokenMsgCtx.getAuthorizedUser()), scope, false);
         if (existingToken != null) {
             if (log.isDebugEnabled()) {

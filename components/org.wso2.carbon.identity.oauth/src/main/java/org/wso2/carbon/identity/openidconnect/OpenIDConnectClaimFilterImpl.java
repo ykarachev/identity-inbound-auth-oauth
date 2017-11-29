@@ -23,7 +23,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.context.PrivilegedCarbonContext;
 import org.wso2.carbon.identity.core.util.IdentityTenantUtil;
+import org.wso2.carbon.identity.oauth.common.OAuthConstants;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
+import org.wso2.carbon.identity.oauth2.util.OAuth2Util;
+import org.wso2.carbon.identity.openidconnect.model.Claim;
+import org.wso2.carbon.identity.openidconnect.model.RequestObject;
 import org.wso2.carbon.registry.api.RegistryException;
 import org.wso2.carbon.registry.api.Resource;
 import org.wso2.carbon.registry.core.service.RegistryService;
@@ -123,6 +127,29 @@ public class OpenIDConnectClaimFilterImpl implements OpenIDConnectClaimFilter {
     @Override
     public int getPriority() {
         return DEFAULT_PRIORITY;
+    }
+
+    public Map<String, Object> getClaimsFilteredByEssentialClaims(Map<String, Object> userClaims,
+                                                                  String type,
+                                                                  RequestObject requestObject) {
+
+        Map<String, Object> essentialClaims = new HashMap();
+        if (isEmpty(userClaims)) {
+            // No user claims to filter.
+            if (log.isDebugEnabled()) {
+                log.debug("No user claims to filter. Returning an empty map of filtered claims.");
+            }
+            return new HashMap<>();
+        }
+        if (requestObject != null) {
+            Map<String, List<Claim>> requestParamClaims = requestObject.getClaimsforRequestParameter();
+            List<String> essentialClaimsfromRequestParam = OAuth2Util.essentialClaimsFromRequestParam(type,
+                    requestParamClaims);
+            for (String essentialClaim : essentialClaimsfromRequestParam) {
+                essentialClaims.put(essentialClaim, userClaims.get(essentialClaim));
+            }
+        }
+        return essentialClaims;
     }
 
     private Properties getOIDCScopeProperties(String spTenantDomain) {

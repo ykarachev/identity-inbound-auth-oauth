@@ -511,9 +511,12 @@ public class DCRMServiceTest extends PowerMockTestCase {
 
         oAuthConsumerApp.setGrantTypes(grantType);
         oAuthConsumerApp.setOAuthVersion(OAUTH_VERSION);
+        oAuthConsumerApp.setOauthConsumerKey("dummyConsumerKey");
 
         when(mockOAuthAdminService
                 .getOAuthApplicationDataByAppName(dummyClientName)).thenReturn(oAuthConsumerApp);
+        when(mockOAuthAdminService
+                .getOAuthApplicationData("dummyConsumerKey")).thenReturn(oAuthConsumerApp);
 
         doThrow(new IdentityApplicationManagementException("ehweh")).when(mockApplicationManagementService)
                 .updateApplication(serviceProvider, dummyTenantDomain, dummyUserName);
@@ -571,8 +574,7 @@ public class DCRMServiceTest extends PowerMockTestCase {
     }
 
     private void startTenantFlow() {
-
-        String carbonHome = Paths.get(System.getProperty("user.dir"), "target").toString();
+        String carbonHome = Paths.get(System.getProperty("user.dir"), "src", "test", "resources").toString();
         System.setProperty(CarbonBaseConstants.CARBON_HOME, carbonHome);
         PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(dummyTenantDomain);
         PrivilegedCarbonContext.getThreadLocalCarbonContext().setUsername(dummyUserName);

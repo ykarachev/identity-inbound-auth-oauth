@@ -1804,9 +1804,8 @@ public class OAuthServerConfiguration {
                 OMElement supportedClientAuthHandler = iterator.next();
                 Iterator<OMElement> confProperties = supportedClientAuthHandler
                         .getChildrenWithLocalName(ConfigElements.CLIENT_AUTH_PROPERTY);
-                Properties properties = null;
+                Properties properties = new Properties();
                 while (confProperties.hasNext()) {
-                    properties = new Properties();
                     OMElement paramElem = confProperties.next();
                     String paramName = paramElem.getAttributeValue(
                             new QName(ConfigElements.CLIENT_AUTH_NAME));
@@ -1824,12 +1823,7 @@ public class OAuthServerConfiguration {
                             + "ClientAuthHandler element. ");
                     return;
                 }
-                if (properties != null) {
-                    supportedClientAuthHandlerData.put(clientAuthHandlerImplClass, properties);
-                } else {
-                    supportedClientAuthHandlerData.put(clientAuthHandlerImplClass, new Properties());
-                }
-
+                supportedClientAuthHandlerData.put(clientAuthHandlerImplClass, properties);
             }
 
         } else {

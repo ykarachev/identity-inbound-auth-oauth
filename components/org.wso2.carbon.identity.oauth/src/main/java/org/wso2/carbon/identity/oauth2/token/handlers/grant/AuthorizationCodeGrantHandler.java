@@ -135,17 +135,16 @@ public class AuthorizationCodeGrantHandler extends AbstractAuthorizationGrantHan
     private void deactivateAuthzCode(OAuthTokenReqMessageContext tokReqMsgCtx, String tokenId,
                                      String authzCode) throws IdentityOAuth2Exception {
         try {
-            if (isExistingTokenUsed(tokReqMsgCtx)){
-                // has given an already issued access token. So the authorization code is not deactivated yet
-                AuthzCodeDO authzCodeDO = new AuthzCodeDO();
-                authzCodeDO.setAuthorizationCode(authzCode);
-                authzCodeDO.setOauthTokenId(tokenId);
-                OAuthTokenPersistenceFactory.getInstance().getAuthorizationCodeDAO()
-                        .deactivateAuthorizationCode(authzCodeDO);
-                if(log.isDebugEnabled()
-                        && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
-                    log.debug("Deactivated authorization code : " + authzCode);
-                }
+            // Here we deactivate the authorization and in the process update the tokenId against the authorization
+            // code so that we can correlate the current access token that is valid against the authorization code.
+            AuthzCodeDO authzCodeDO = new AuthzCodeDO();
+            authzCodeDO.setAuthorizationCode(authzCode);
+            authzCodeDO.setOauthTokenId(tokenId);
+            OAuthTokenPersistenceFactory.getInstance().getAuthorizationCodeDAO()
+                    .deactivateAuthorizationCode(authzCodeDO);
+            if (log.isDebugEnabled()
+                    && IdentityUtil.isTokenLoggable(IdentityConstants.IdentityTokens.AUTHORIZATION_CODE)) {
+                log.debug("Deactivated authorization code : " + authzCode);
             }
         } catch (IdentityException e) {
             throw new IdentityOAuth2Exception("Error occurred while deactivating authorization code", e);

@@ -301,6 +301,7 @@ public final class OAuthConstants {
         public static final String AT_HASH = "at_hash";
         public static final String NONCE = "nonce";
         public static final String ACR = "acr";
+        public static final String MAX_AGE = "max_age";
 
         private OIDCClaims() {}
     }

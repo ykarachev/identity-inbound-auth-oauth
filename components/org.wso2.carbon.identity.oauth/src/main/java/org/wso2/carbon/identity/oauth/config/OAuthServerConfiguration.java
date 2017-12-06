@@ -1961,7 +1961,11 @@ public class OAuthServerConfiguration {
                 oauthConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.OPENID_CONNECT));
 
         if (openIDConnectConfigElem != null) {
-            parseRequestObjectConfig(oauthConfigElem);
+
+            // Get <RequestObjectBuilders> element defined under <OpenIDConnect> config.
+            parseRequestObjectConfig(openIDConnectConfigElem.getFirstChildWithName(
+                    getQNameWithIdentityNS(ConfigElements.REQUEST_OBJECT_BUILDERS)));
+
             if (openIDConnectConfigElem.getFirstChildWithName(getQNameWithIdentityNS(ConfigElements.
                     REQUEST_OBJECT_VALIDATOR)) != null) {
                 defaultRequestValidatorClassName =

@@ -16,6 +16,7 @@
 package org.wso2.carbon.identity.openidconnect.model;
 
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,9 @@ import java.util.Map;
  *  This class is used to model the request object which comes as a parameter of the OIDC authorization request
  *
  */
-public class RequestObject {
+public class RequestObject implements Serializable {
+
+    private static final long serialVersionUID = 7180827153818376043L;
 
     private String clientId;
     private String redirectUri;

@@ -70,7 +70,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -133,10 +132,8 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             if (authzGrantCacheEntry != null) {
                 nonceValue = authzGrantCacheEntry.getNonceValue();
                 acrValue = authzGrantCacheEntry.getAcrValue();
-                if (authzGrantCacheEntry.getEssentialClaims() != null) {
-                    if (isEssentialClaim(authzGrantCacheEntry, AUTH_TIME)) {
-                        authTime = authzGrantCacheEntry.getAuthTime();
-                    }
+                if (isAuthTimeRequired(authzGrantCacheEntry)) {
+                    authTime = authzGrantCacheEntry.getAuthTime();
                 }
             }
         }
@@ -349,8 +346,13 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
 
     private boolean isEssentialClaim(AuthorizationGrantCacheEntry authorizationGrantCacheEntry,
                                      String oidcClaimUri) {
-        return OAuth2Util.getEssentialClaims(authorizationGrantCacheEntry.getEssentialClaims(), OAuthConstants.ID_TOKEN)
-                .contains(oidcClaimUri);
+        String essentialClaims = authorizationGrantCacheEntry.getEssentialClaims();
+        return StringUtils.isNotBlank(essentialClaims) &&
+                OAuth2Util.getEssentialClaims(essentialClaims, OAuthConstants.ID_TOKEN).contains(oidcClaimUri);
+    }
+
+    private boolean isMaxAgePresentInAuthzRequest(AuthorizationGrantCacheEntry authorizationGrantCacheEntry) {
+        return authorizationGrantCacheEntry.getMaxAge() != 0;
     }
 
     private boolean isUnsignedIDToken() {
@@ -554,19 +556,29 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
             AuthorizationGrantCacheEntry authzGrantCacheEntry =
                     AuthorizationGrantCache.getInstance().getValueFromCacheByToken(authzGrantCacheKey);
             if (authzGrantCacheEntry != null) {
-                if (isNotBlank(authzGrantCacheEntry.getEssentialClaims())) {
-                    if (isEssentialClaim(authzGrantCacheEntry, AUTH_TIME)) {
-                        authTime = authzReqMessageContext.getAuthorizationReqDTO().getAuthTime();
-                    }
+                if (isAuthTimeRequired(authzGrantCacheEntry)) {
+                    authTime = authzReqMessageContext.getAuthorizationReqDTO().getAuthTime();
                 }
             }
         }
         return authTime;
     }
 
+    /**
+     * Checks whether 'auth_time' claim is required to be sent in the id_token response. 'auth_time' needs to be sent
+     * in the id_token if it is requested as an essential claim or when max_age parameter is sent in the
+     * authorization request. Refer: http://openid.net/specs/openid-connect-core-1_0.html#IDToken
+     *
+     * @param authzGrantCacheEntry
+     * @return whether auth_time needs to be sent in the id_token response.
+     */
+    private boolean isAuthTimeRequired(AuthorizationGrantCacheEntry authzGrantCacheEntry) {
+        return isMaxAgePresentInAuthzRequest(authzGrantCacheEntry) || isEssentialClaim(authzGrantCacheEntry, AUTH_TIME);
+    }
+
     private boolean isAccessTokenHashApplicable(String responseType) {
         // At_hash is generated on an access token. Therefore check whether the response type returns an access_token.
-        // id_token and none response types don't return and access token
+        // id_token and none response types don't return and access token.
         return !OAuthConstants.ID_TOKEN.equalsIgnoreCase(responseType) &&
                 !OAuthConstants.NONE.equalsIgnoreCase(responseType);
     }

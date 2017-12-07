@@ -520,6 +520,10 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
         String sub = userAttributes.get(key);
 
         AccessTokenDO accessTokenDO = (AccessTokenDO)msgCtx.getProperty(OAuth2Util.ACCESS_TOKEN_DO);
+        if (accessTokenDO == null) {
+            accessTokenDO = OAuth2Util.getAccessTokenDOfromTokenIdentifier(accessToken);
+        }
+
         if (accessTokenDO != null && StringUtils.isNotBlank(accessTokenDO.getTokenId())) {
             authorizationGrantCacheEntry.setTokenId(accessTokenDO.getTokenId());
             if (StringUtils.isBlank(sub)) {

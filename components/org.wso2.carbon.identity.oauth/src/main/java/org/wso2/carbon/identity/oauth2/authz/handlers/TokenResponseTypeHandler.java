@@ -501,6 +501,18 @@ public class TokenResponseTypeHandler extends AbstractResponseTypeHandler {
             authorizationGrantCacheEntry.setEssentialClaims(authorizeReqDTO.getEssentialClaims());
         }
 
+        if (authorizeReqDTO.getRequestObject() != null) {
+            authorizationGrantCacheEntry.setRequestObject(authorizeReqDTO.getRequestObject());
+        }
+
+        if (authorizeReqDTO.getAuthTime() != 0) {
+            authorizationGrantCacheEntry.setAuthTime(authorizeReqDTO.getAuthTime());
+        }
+
+        if (authorizeReqDTO.getMaxAge() != 0) {
+            authorizationGrantCacheEntry.setMaxAge(authorizeReqDTO.getMaxAge());
+        }
+
         ClaimMapping key = new ClaimMapping();
         Claim claimOfKey = new Claim();
         claimOfKey.setClaimUri(OAuth2Util.SUB);

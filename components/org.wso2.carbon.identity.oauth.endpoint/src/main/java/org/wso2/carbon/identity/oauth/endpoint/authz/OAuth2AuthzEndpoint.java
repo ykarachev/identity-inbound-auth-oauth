@@ -1088,6 +1088,10 @@ public class OAuth2AuthzEndpoint {
 
         handleMaxAgeParameter(oauthRequest, params);
 
+        /*
+            OIDC Request object will supersede parameters sent in the OAuth Authorization request. So handling the
+            OIDC Request object needs to done after processing all request parameters.
+         */
         try {
             handleOIDCRequestObject(oauthRequest, params);
         } catch (RequestObjectException e) {
@@ -1390,8 +1394,8 @@ public class OAuth2AuthzEndpoint {
      * @param oauth2Params
      * @return
      */
-    private OAuth2AuthorizeRespDTO authorize(OAuth2Parameters oauth2Params
-            , SessionDataCacheEntry sessionDataCacheEntry) {
+    private OAuth2AuthorizeRespDTO authorize(OAuth2Parameters oauth2Params,
+                                             SessionDataCacheEntry sessionDataCacheEntry) {
 
         OAuth2AuthorizeReqDTO authzReqDTO = buildAuthRequest(oauth2Params, sessionDataCacheEntry);
         return getOAuth2Service().authorize(authzReqDTO);
@@ -1410,7 +1414,8 @@ public class OAuth2AuthzEndpoint {
         authzReqDTO.setPkceCodeChallenge(oauth2Params.getPkceCodeChallenge());
         authzReqDTO.setPkceCodeChallengeMethod(oauth2Params.getPkceCodeChallengeMethod());
         authzReqDTO.setTenantDomain(oauth2Params.getTenantDomain());
-        authzReqDTO.setAuthTime(oauth2Params.getAuthTime());
+        authzReqDTO.setAuthTime(sessionDataCacheEntry.getAuthTime());
+        authzReqDTO.setMaxAge(oauth2Params.getMaxAge());
         authzReqDTO.setEssentialClaims(oauth2Params.getEssentialClaims());
         return authzReqDTO;
     }

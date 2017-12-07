@@ -55,6 +55,7 @@ import org.wso2.carbon.identity.oauth2.IDTokenValidationFailureException;
 import org.wso2.carbon.identity.oauth2.IdentityOAuth2Exception;
 import org.wso2.carbon.identity.oauth2.authz.OAuthAuthzReqMessageContext;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AccessTokenRespDTO;
+import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeReqDTO;
 import org.wso2.carbon.identity.oauth2.dto.OAuth2AuthorizeRespDTO;
 import org.wso2.carbon.identity.oauth2.internal.OAuth2ServiceComponentHolder;
 import org.wso2.carbon.identity.oauth2.token.OAuthTokenReqMessageContext;
@@ -225,7 +226,7 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         jwtClaimsSet.setExpirationTime(getIdTokenExpiryInMillis(idTokenLifeTimeInMillis, currentTimeInMillis));
         jwtClaimsSet.setIssueTime(new Date(currentTimeInMillis));
 
-        long authTime = getAuthTime(authzReqMessageContext, accessToken);
+        long authTime = getAuthTime(authzReqMessageContext);
         if (authTime != 0) {
             jwtClaimsSet.setClaim(AUTH_TIME, authTime / 1000);
         }
@@ -344,9 +345,11 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
         return !isValidIdToken(jwtClaimsSet);
     }
 
-    private boolean isEssentialClaim(AuthorizationGrantCacheEntry authorizationGrantCacheEntry,
-                                     String oidcClaimUri) {
-        String essentialClaims = authorizationGrantCacheEntry.getEssentialClaims();
+    private boolean isEssentialClaim(AuthorizationGrantCacheEntry authorizationGrantCacheEntry, String oidcClaimUri) {
+        return isEssentialClaim(authorizationGrantCacheEntry.getEssentialClaims(), oidcClaimUri);
+    }
+
+    private boolean isEssentialClaim(String essentialClaims, String oidcClaimUri) {
         return StringUtils.isNotBlank(essentialClaims) &&
                 OAuth2Util.getEssentialClaims(essentialClaims, OAuthConstants.ID_TOKEN).contains(oidcClaimUri);
     }
@@ -549,17 +552,10 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
                 OPENID_IDP_ENTITY_ID).getValue();
     }
 
-    private long getAuthTime(OAuthAuthzReqMessageContext authzReqMessageContext, String accessToken) {
+    private long getAuthTime(OAuthAuthzReqMessageContext authzReqMessageContext) {
         long authTime = 0;
-        if (StringUtils.isNotEmpty(accessToken)) {
-            AuthorizationGrantCacheKey authzGrantCacheKey = new AuthorizationGrantCacheKey(accessToken);
-            AuthorizationGrantCacheEntry authzGrantCacheEntry =
-                    AuthorizationGrantCache.getInstance().getValueFromCacheByToken(authzGrantCacheKey);
-            if (authzGrantCacheEntry != null) {
-                if (isAuthTimeRequired(authzGrantCacheEntry)) {
-                    authTime = authzReqMessageContext.getAuthorizationReqDTO().getAuthTime();
-                }
-            }
+        if (isAuthTimeRequired(authzReqMessageContext.getAuthorizationReqDTO())) {
+            authTime = authzReqMessageContext.getAuthorizationReqDTO().getAuthTime();
         }
         return authTime;
     }
@@ -574,6 +570,11 @@ public class DefaultIDTokenBuilder implements org.wso2.carbon.identity.openidcon
      */
     private boolean isAuthTimeRequired(AuthorizationGrantCacheEntry authzGrantCacheEntry) {
         return isMaxAgePresentInAuthzRequest(authzGrantCacheEntry) || isEssentialClaim(authzGrantCacheEntry, AUTH_TIME);
+    }
+
+    private boolean isAuthTimeRequired(OAuth2AuthorizeReqDTO oAuth2AuthorizeReqDTO) {
+        return oAuth2AuthorizeReqDTO.getMaxAge() != 0 ||
+                isEssentialClaim(oAuth2AuthorizeReqDTO.getEssentialClaims(), AUTH_TIME);
     }
 
     private boolean isAccessTokenHashApplicable(String responseType) {

@@ -461,7 +461,7 @@ public class OAuthAppDAO {
                 }
 
                 if (OAuth2ServiceComponentHolder.isAudienceEnabled()) {
-                    String[] audiences = oauthAppDO.getAudiences();//StringUtils.delimitedListToStringArray(oauthAppDO.getAudiences(), " ");
+                    String[] audiences = oauthAppDO.getAudiences();
                     HashSet<String> newAudiences = new HashSet<>(Arrays.asList(audiences));
                     List<String> oidcAudienceList = getOIDCAudiences(oauthAppDO.getUser().getTenantDomain(),
                             oauthAppDO.getOauthConsumerKey());
@@ -472,25 +472,27 @@ public class OAuthAppDAO {
                     newAudiences.removeAll(currentAudiences);
                     //obtaining the audience values deleted in the list by user
                     currentAudiences.removeAll(newAudienceClone);
-                    prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.REMOVE_AUDIENCE_VALUE);
+                    PreparedStatement prepStmtAudDeleted = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries
+                            .REMOVE_AUDIENCE_VALUE);
                     for (String deleteAudience : currentAudiences) {
-                        prepStmt.setInt(1, IdentityTenantUtil.getTenantId(oauthAppDO.getUser().getTenantDomain()));
-                        prepStmt.setString(2, oauthAppDO.getOauthConsumerKey());
-                        prepStmt.setString(3, OAuth2Util.OPENID_CONNECT_AUDIENCE);
-                        prepStmt.setString(4, deleteAudience);
-                        prepStmt.addBatch();
+                        prepStmtAudDeleted.setInt(1, IdentityTenantUtil.getTenantId(oauthAppDO.getUser().getTenantDomain()));
+                        prepStmtAudDeleted.setString(2, oauthAppDO.getOauthConsumerKey());
+                        prepStmtAudDeleted.setString(3, OAuth2Util.OPENID_CONNECT_AUDIENCE);
+                        prepStmtAudDeleted.setString(4, deleteAudience);
+                        prepStmtAudDeleted.addBatch();
                     }
-                    prepStmt.executeBatch();
+                    prepStmtAudDeleted.executeBatch();
                     //add new entry in db for each new audience value
-                    prepStmt = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries.ADD_OAUTH_APP_WITH_AUDIENCES);
+                    PreparedStatement prepStmtAudAdd = connection.prepareStatement(SQLQueries.OAuthAppDAOSQLQueries
+                            .ADD_OAUTH_APP_WITH_AUDIENCES);
                     for (String addAudience : newAudiences) {
-                        prepStmt.setInt(1, IdentityTenantUtil.getTenantId(oauthAppDO.getUser().getTenantDomain()));
-                        prepStmt.setString(2, oauthAppDO.getOauthConsumerKey());
-                        prepStmt.setString(3, OAuth2Util.OPENID_CONNECT_AUDIENCE);
-                        prepStmt.setString(4, addAudience);
-                        prepStmt.addBatch();
+                        prepStmtAudAdd.setInt(1, IdentityTenantUtil.getTenantId(oauthAppDO.getUser().getTenantDomain()));
+                        prepStmtAudAdd.setString(2, oauthAppDO.getOauthConsumerKey());
+                        prepStmtAudAdd.setString(3, OAuth2Util.OPENID_CONNECT_AUDIENCE);
+                        prepStmtAudAdd.setString(4, addAudience);
+                        prepStmtAudAdd.addBatch();
                     }
-                    prepStmt.executeBatch();
+                    prepStmtAudAdd.executeBatch();
                 }
                 connection.commit();
             }

@@ -53,9 +53,9 @@ public class OAuth2ScopeService {
         }
 
         // check whether the scope description is provided
-        if (StringUtils.isBlank(scope.getDescription())) {
+        if (StringUtils.isBlank(scope.getDisplayName())) {
             throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
-                    ERROR_CODE_BAD_REQUEST_SCOPE_DESCRIPTION_NOT_SPECIFIED, null);
+                    ERROR_CODE_BAD_REQUEST_SCOPE_DISPLAY_NAME_NOT_SPECIFIED, null);
         }
 
         // check whether a scope exists with the provided scope name
@@ -231,6 +231,12 @@ public class OAuth2ScopeService {
                     ERROR_CODE_BAD_REQUEST_SCOPE_NAME_NOT_SPECIFIED, null);
         }
 
+        // check whether the scope description is provided
+        if (StringUtils.isBlank(updatedScope.getDisplayName())) {
+            throw Oauth2ScopeUtils.generateClientException(Oauth2ScopeConstants.ErrorMessages.
+                    ERROR_CODE_BAD_REQUEST_SCOPE_DISPLAY_NAME_NOT_SPECIFIED, null);
+        }
+
         // check whether a scope exists with the provided scope name which to be updated
         boolean isScopeExists = isScopeExists(updatedScope.getName());
         if (!isScopeExists) {
@@ -258,16 +264,16 @@ public class OAuth2ScopeService {
      * @return List of available scopes
      * @throws IdentityOAuth2ScopeServerException
      */
-    private Set<Scope> listScopesWithPagination(int startIndex, int count)
+    private Set<Scope> listScopesWithPagination(Integer startIndex, Integer count)
             throws IdentityOAuth2ScopeServerException {
 
         Set<Scope> scopes;
 
-        if (count < 0) {
+        if (count == null || count < 0) {
             count = Oauth2ScopeConstants.MAX_FILTER_COUNT;
         }
 
-        if (startIndex < 1) {
+        if (startIndex == null || startIndex < 1) {
             startIndex = 1;
         }
 

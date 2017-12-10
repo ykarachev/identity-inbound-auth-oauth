@@ -17,22 +17,26 @@
 package org.wso2.carbon.identity.oauth2.bean;
 
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.List;
 
 public class Scope implements Serializable {
 
     String name;
+    String displayName;
     String description;
     List<String> bindings;
 
-    public Scope(String name, String description) {
+    public Scope(String name, String displayName, String description) {
         this.name = name;
         this.description = description;
+        this.displayName = displayName;
     }
 
-    public Scope(String name, String description, List<String> bindings) {
+    public Scope(String name, String displayName, String description, List<String> bindings) {
         this.name = name;
         this.description = description;
+        this.displayName = displayName;
         this.bindings = bindings;
     }
 
@@ -45,6 +49,9 @@ public class Scope implements Serializable {
     }
 
     public List<String> getBindings() {
+        if (bindings == null) {
+            return Collections.emptyList();
+        }
         return bindings;
     }
 
@@ -60,6 +67,14 @@ public class Scope implements Serializable {
         this.bindings.add(binding);
     }
 
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    public void setDisplayName(String displayName) {
+        this.displayName = displayName;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -73,6 +88,7 @@ public class Scope implements Serializable {
         StringBuilder sb = new StringBuilder();
         sb.append("Scope {\n");
         sb.append("  name: ").append(this.name).append("\n");
+        sb.append("  displayName: ").append(this.displayName).append("\n");
         sb.append("  description: ").append(this.description).append("\n");
         sb.append("  bindings: ").append(this.bindings).append("\n");
         sb.append("}\n");

@@ -28,6 +28,7 @@
 <%@ page import="org.wso2.carbon.identity.core.util.IdentityUtil" %>
 
 <%@ page import="java.util.ResourceBundle" %>
+<%@ page import="org.wso2.carbon.identity.oauth.ui.util.OAuthUIUtil" %>
 
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
 <%@ taglib uri="http://wso2.org/projects/carbon/taglibs/carbontags.jar" prefix="carbon"%>
@@ -50,6 +51,9 @@
     String applicationName = request.getParameter("application");
     String consumersecret = request.getParameter("consumersecret");
     String oauthVersion = request.getParameter("oauthVersion");
+    String userAccessTokenExpiryTime = request.getParameter("userAccessTokenExpiryTime");
+    String applicationAccessTokenExpiryTime = request.getParameter("applicationAccessTokenExpiryTime");
+    String refreshTokenExpiryTime = request.getParameter("refreshTokenExpiryTime");
     String grants;
    	StringBuffer buff = new StringBuffer();
     boolean pkceMandatory = false;
@@ -66,50 +70,57 @@
     String BUNDLE = "org.wso2.carbon.identity.oauth.ui.i18n.Resources";
 	ResourceBundle resourceBundle = ResourceBundle.getBundle(BUNDLE, request.getLocale());
 	OAuthConsumerAppDTO app = new OAuthConsumerAppDTO();
-
+	
 	String spName = (String) session.getAttribute("application-sp-name");
 	session.removeAttribute("application-sp-name");
 	boolean isError = false;
-
+	
     try {
-
-        String cookie = (String) session.getAttribute(ServerConstants.ADMIN_SERVICE_COOKIE);
-        String backendServerURL = CarbonUIUtil.getServerURL(config.getServletContext(), session);
-        ConfigurationContext configContext =
-                (ConfigurationContext) config.getServletContext().getAttribute(CarbonConstants.CONFIGURATION_CONTEXT);
-        OAuthAdminClient client = new OAuthAdminClient(cookie, backendServerURL, configContext);
-        app.setOauthConsumerKey(consumerkey);
-        app.setOauthConsumerSecret(consumersecret);
-        app.setCallbackUrl(callback);
-        app.setApplicationName(applicationName);
-        app.setOAuthVersion(oauthVersion);
-        app.setPkceMandatory(pkceMandatory);
-        app.setPkceSupportPlain(pkceSupportPlain);
-        String[] grantTypes = client.getAllowedOAuthGrantTypes();
-        for (String grantType : grantTypes) {
-            String grant = request.getParameter("grant_" + grantType);
-            if (grant != null) {
-                buff.append(grantType + " ");
-            }
-        }
-        grants = buff.toString();
-        if(OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)){
-            app.setGrantTypes(grants);
-        }
-
-        if (Boolean.parseBoolean(request.getParameter("enableAudienceRestriction"))) {
-            String audiencesCountParameter = request.getParameter("audiencePropertyCounter");
-            if (IdentityUtil.isNotBlank(audiencesCountParameter)) {
-                int audiencesCount = Integer.parseInt(audiencesCountParameter);
-                   String[] audiences = request.getParameterValues("audiencePropertyName");
-                if (OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)) {
-                    app.setAudiences(audiences);
+        if (OAuthUIUtil.isValidURI(callback)) {
+            String cookie = (String) session.getAttribute(ServerConstants.ADMIN_SERVICE_COOKIE);
+            String backendServerURL = CarbonUIUtil.getServerURL(config.getServletContext(), session);
+            ConfigurationContext configContext =
+                    (ConfigurationContext) config.getServletContext().getAttribute(CarbonConstants.CONFIGURATION_CONTEXT);
+            OAuthAdminClient client = new OAuthAdminClient(cookie, backendServerURL, configContext);
+            app.setOauthConsumerKey(consumerkey);
+            app.setOauthConsumerSecret(consumersecret);
+            app.setCallbackUrl(callback);
+            app.setApplicationName(applicationName);
+            app.setOAuthVersion(oauthVersion);
+            app.setPkceMandatory(pkceMandatory);
+            app.setPkceSupportPlain(pkceSupportPlain);
+            app.setUserAccessTokenExpiryTime(Long.parseLong(userAccessTokenExpiryTime));
+            app.setApplicationAccessTokenExpiryTime(Long.parseLong(applicationAccessTokenExpiryTime));
+            app.setRefreshTokenExpiryTime(Long.parseLong(refreshTokenExpiryTime));
+            String[] grantTypes = client.getAllowedOAuthGrantTypes();
+            for (String grantType : grantTypes) {
+                String grant = request.getParameter("grant_" + grantType);
+                if (grant != null) {
+                    buff.append(grantType + " ");
                 }
             }
+            grants = buff.toString();
+            if (OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)) {
+                app.setGrantTypes(grants);
+            }
+            if (Boolean.parseBoolean(request.getParameter("enableAudienceRestriction"))) {
+                String audiencesCountParameter = request.getParameter("audiencePropertyCounter");
+                if (IdentityUtil.isNotBlank(audiencesCountParameter)) {
+                    int audiencesCount = Integer.parseInt(audiencesCountParameter);
+                    String[] audiences = request.getParameterValues("audiencePropertyName");
+                    if (OAuthConstants.OAuthVersions.VERSION_2.equals(oauthVersion)) {
+                        app.setAudiences(audiences);
+                    }
+                }
+            }
+            client.updateOAuthApplicationData(app);
+            String message = resourceBundle.getString("app.updated.successfully");
+            CarbonUIMessage.sendCarbonUIMessage(message, CarbonUIMessage.INFO, request);
+        } else {
+            isError = false;
+            String message = resourceBundle.getString("callback.is.not.url");
+            CarbonUIMessage.sendCarbonUIMessage(message, CarbonUIMessage.ERROR, request);
         }
-        client.updateOAuthApplicationData(app);
-        String message = resourceBundle.getString("app.updated.successfully");
-        CarbonUIMessage.sendCarbonUIMessage(message,CarbonUIMessage.INFO, request);
 
     } catch (Exception e) {
     	isError = false;

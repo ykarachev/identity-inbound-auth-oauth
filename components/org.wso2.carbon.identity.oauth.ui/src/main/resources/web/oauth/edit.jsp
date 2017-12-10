@@ -129,6 +129,7 @@
                 }
             }
         }
+
     } catch (Exception e) {
 		String message = resourceBundle.getString("error.while.loading.user.application.data");
 		CarbonUIMessage.sendCarbonUIMessage(message, CarbonUIMessage.ERROR, request);
@@ -200,6 +201,14 @@
 
                 function validate() {
                     var callbackUrl = document.getElementById('callback').value;
+                    var userTokenExpiryTime = document.getElementById("userAccessTokenExpiryTime").value;
+                    var applicationTokenExpiryTime = document.getElementById("userAccessTokenExpiryTime").value;
+                    var refreshTokenExpiryTime = document.getElementById("refreshTokenExpiryTime").value;
+
+                    if (callbackUrl.indexOf("#") !== -1) {
+                        CARBON.showWarningDialog('<fmt:message key="callback.is.fragment"/>');
+                        return false;
+                    }
                     var value = document.getElementsByName("application")[0].value;
                     if (value == '') {
                         CARBON.showWarningDialog('<fmt:message key="application.is.required"/>');
@@ -213,16 +222,38 @@
                             // This is to support providing regex patterns for callback URLs
                             if (callbackUrl.startsWith("regexp=")) {
                                 // skip validation
-                            } else if (!isWhiteListed(callbackUrl, ["url"]) || !isNotBlackListed(callbackUrl,
-                                            ["uri-unsafe-exists"])) {
+                            } else if (!isWhiteListed(callbackUrl, ["url"])) {
                                 CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
+                                return false;
+                            }
+                            if (!isWhiteListed(userTokenExpiryTime, ["digits-only"])) {
+                                CARBON.showWarningDialog('<fmt:message key="invalid.user.access.token.expiry.time"/>');
+                                return false;
+                            }
+                            if (!isWhiteListed(applicationTokenExpiryTime, ["digits-only"])) {
+                                CARBON.showWarningDialog('<fmt:message key="invalid.application.access.token.expiry.time"/>');
+                                return false;
+                            }
+                            if (!isWhiteListed(refreshTokenExpiryTime, ["digits-only"])) {
+                                CARBON.showWarningDialog('<fmt:message key="invalid.refresh.token.expiry.time"/>');
                                 return false;
                             }
                         }
                     } else {
-                        if (!isWhiteListed(callbackUrl, ["url"]) || !isNotBlackListed(callbackUrl,
-                                        ["uri-unsafe-exists"])) {
+                        if (!isWhiteListed(callbackUrl, ["url"])) {
                             CARBON.showWarningDialog('<fmt:message key="callback.is.not.url"/>');
+                            return false;
+                        }
+                        if (!isWhiteListed(userTokenExpiryTime, ["digits-only"])) {
+                            CARBON.showWarningDialog('<fmt:message key="invalid.user.access.token.expiry.time"/>');
+                            return false;
+                        }
+                        if (!isWhiteListed(applicationTokenExpiryTime, ["digits-only"])) {
+                            CARBON.showWarningDialog('<fmt:message key="invalid.application.access.token.expiry.time"/>');
+                            return false;
+                        }
+                        if (!isWhiteListed(refreshTokenExpiryTime, ["digits-only"])) {
+                            CARBON.showWarningDialog('<fmt:message key="invalid.refresh.token.expiry.time"/>');
                             return false;
                         }
                     }
@@ -348,13 +379,13 @@
 			<td class="formRow">
 				<table class="normal" cellspacing="0">
                             <tr>
-                                <td class="leftCol-small"><fmt:message key='oauth.version'/></td>
+                                <td class="leftCol-med"><fmt:message key='oauth.version'/></td>
                                 <td><%=Encode.forHtml(app.getOAuthVersion())%><input id="oauthVersion" name="oauthVersion"
                                                                         type="hidden" value="<%=Encode.forHtmlAttribute(app.getOAuthVersion())%>" /></td>
                             </tr>
                             <%if (applicationSPName ==null) { %>
 				           <tr>
-		                        <td class="leftCol-small"><fmt:message key='application.name'/><span class="required">*</span></td>
+		                        <td class="leftCol-med"><fmt:message key='application.name'/><span class="required">*</span></td>
 		                        <td><input class="text-box-big" id="application" name="application"
 		                                   type="text" value="<%=Encode.forHtmlAttribute(app.getApplicationName())%>" /></td>
 		                    </tr>
@@ -365,10 +396,11 @@
 		                    </tr>
 		                    <%} %>
 		                    <tr id="callback_row">
-		                        <td class="leftCol-small"><fmt:message key='callback'/><span class="required">*</span></td>
+		                        <td class="leftCol-med"><fmt:message key='callback'/><span class="required">*</span></td>
                                 <td><input class="text-box-big" id="callback" name="callback"
                                            type="text" value="<%=Encode.forHtmlAttribute(app.getCallbackUrl())%>"/></td>
 		                    </tr>
+
                             <script>
                                 if(<%=app.getOAuthVersion().equals(OAuthConstants.OAuthVersions.VERSION_1A)%> || <%=codeGrant%> || <%=implicitGrant%>){
                                     $(jQuery('#callback_row')).attr('style','');
@@ -378,7 +410,7 @@
                             </script>
                             <% if(app.getOAuthVersion().equals(OAuthConstants.OAuthVersions.VERSION_2)){ %>
                                  <tr id="grant_row" name="grant_row">
-                                    <td class="leftCol-small"><fmt:message key='grantTypes'/></td>
+                                    <td class="leftCol-med"><fmt:message key='grantTypes'/></td>
                                     <td>
                                     <table>
                                     <%
@@ -437,7 +469,7 @@
                                 </tr>
                                 <% if(client.isPKCESupportedEnabled()) {%>
                                 <tr id="pkce_enable">
-                                    <td class="leftcol-small">
+                                    <td class="leftCol-med">
                                         <fmt:message key='pkce.mandatory'/>
                                     </td>
                                     <td>
@@ -459,117 +491,140 @@
                                     </td>
                                 </tr>
                                 <% } %>
-                                <!-- EnableAudienceRestriction -->
-                                <%
-                                    audienceTableStyle = app.getAudiences() != null ? "" :
-                                            "display:none";
-                                    if (app.getAudiences() != null &&
-                                            StringUtils.isNotBlank(app.getAudiences())) {
-                                %>
-                                <tr id="audience-enable">
-                                    <td title="Enable Audience Restriction to restrict the audience. You may add audience members using the Audience text box and clicking the Add button"
-                                        colspan="2"><input type="checkbox"
-                                                           name="enableAudienceRestriction"
-                                                           id="enableAudienceRestriction"
-                                                           value="true" checked="checked"
-                                                           onclick="disableAudienceRestriction(this);"/>
-                                        <fmt:message
-                                                key="enable.audience.restriction"/>
-                                    </td>
-                                </tr>
-                                <tr id="audience-add">
-                                    <td
-                                            style="padding-left: 40px ! important; color: rgb(119, 119, 119); font-style: italic;">
-                                        <fmt:message key="sp.audience"/>
-                                    </td>
-                                    <td>
-                                        <input type="text" id="audience" name="audience"
-                                               class="text-box-big"/>
-                                        <input id="addAudience" name="addAudience"
-                                               type="button"
-                                               value="<fmt:message key="oauth.add.audience"/>"
-                                               onclick="return addAudienceFunc()"/>
-                                    </td>
-                                </tr>
-                                <% } else {%>
-                                <tr id="audience-enable">
-                                    <td colspan="2"
-                                        title="Enable Audience Restriction to restrict the audience. You may add audience members using the Audience text box and clicking the Add button">
-                                        <input type="checkbox"
+                            <% } %>
+
+                        <tr>
+                            <td class="leftCol-med"><fmt:message key='user.access.token.expiry.time'/></td>
+                            <td><input id="userAccessTokenExpiryTime" name="userAccessTokenExpiryTime"
+                                       type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getUserAccessTokenExpiryTime()))%>" />
+                                <fmt:message key='seconds'/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="leftCol-med"><fmt:message key='application.access.token.expiry.time'/></td>
+                            <td>
+                                <input id="applicationAccessTokenExpiryTime" name="applicationAccessTokenExpiryTime" type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getApplicationAccessTokenExpiryTime()))%>" />
+                                <fmt:message key='seconds'/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="leftCol-med"><fmt:message key='refresh.token.expiry.time'/></td>
+                            <td>
+                                <input id="refreshTokenExpiryTime" name="refreshTokenExpiryTime" type="text" value="<%=Encode.forHtmlAttribute(Long.toString(app.getRefreshTokenExpiryTime()))%>"/>
+                                <fmt:message key='seconds'/>
+                            </td>
+                        </tr>
+                    <!-- EnableAudienceRestriction -->
+                    <%
+                        audienceTableStyle = app.getAudiences() != null ? "" :
+                                "display:none";
+                        if (app.getAudiences() != null &&
+                                StringUtils.isNotBlank(app.getAudiences())) {
+                    %>
+                    <tr id="audience-enable">
+                        <td title="Enable Audience Restriction to restrict the audience. You may add audience members using the Audience text box and clicking the Add button"
+                            colspan="2"><input type="checkbox"
                                                name="enableAudienceRestriction"
                                                id="enableAudienceRestriction"
-                                               value="true"
+                                               value="true" checked="checked"
                                                onclick="disableAudienceRestriction(this);"/>
-                                        <fmt:message key="enable.audience.restriction"/>
-                                    </td>
-                                </tr>
-                                <tr id="audience-add">
-                                    <td
-                                            style="padding-left: 40px ! important; color: rgb(119, 119, 119); font-style: italic;">
-                                        <fmt:message key="sp.audience"/>
-                                    </td>
-                                    <td>
-                                        <input type="text" id="audience" name="audience"
-                                               class="text-box-big" disabled="disabled"/>
-                                        <input id="addAudience" name="addAudience"
-                                               type="button"
-                                               disabled="disabled" value="<fmt:message key="oauth.add.audience"/>"
-                                               onclick="return addAudienceFunc()"/>
-                                    </td>
-                                </tr>
-                                <%} %>
-                                <tr id="audience-table">
-                                    <td></td>
-                                    <td>
-                                        <table id="audienceTableId"
-                                               style="width: 40%; <%=audienceTableStyle%>"
-                                               class="styledInner">
-                                            <tbody id="audienceTableTbody">
-                                            <%
-                                                int j = 0;
-                                                if (app.getAudiences() != null){
+                            <fmt:message
+                                    key="enable.audience.restriction"/>
+                        </td>
+                    </tr>
+                    <tr id="audience-add">
+                        <td
+                                style="padding-left: 40px ! important; color: rgb(119, 119, 119); font-style: italic;">
+                            <fmt:message key="sp.audience"/>
+                        </td>
+                        <td>
+                            <input type="text" id="audience" name="audience"
+                                   class="text-box-big"/>
+                            <input id="addAudience" name="addAudience"
+                                   type="button"
+                                   value="<fmt:message key="oauth.add.audience"/>"
+                                   onclick="return addAudienceFunc()"/>
+                        </td>
+                    </tr>
+                    <% } else {%>
+                    <tr id="audience-enable">
+                        <td colspan="2"
+                            title="Enable Audience Restriction to restrict the audience. You may add audience members using the Audience text box and clicking the Add button">
+                            <input type="checkbox"
+                                   name="enableAudienceRestriction"
+                                   id="enableAudienceRestriction"
+                                   value="true"
+                                   onclick="disableAudienceRestriction(this);"/>
+                            <fmt:message key="enable.audience.restriction"/>
+                        </td>
+                    </tr>
+                    <tr id="audience-add">
+                        <td
+                                style="padding-left: 40px ! important; color: rgb(119, 119, 119); font-style: italic;">
+                            <fmt:message key="sp.audience"/>
+                        </td>
+                        <td>
+                            <input type="text" id="audience" name="audience"
+                                   class="text-box-big" disabled="disabled"/>
+                            <input id="addAudience" name="addAudience"
+                                   type="button"
+                                   disabled="disabled" value="<fmt:message key="oauth.add.audience"/>"
+                                   onclick="return addAudienceFunc()"/>
+                        </td>
+                    </tr>
+                    <%} %>
+                    <tr id="audience-table">
+                        <td></td>
+                        <td>
+                            <table id="audienceTableId"
+                                   style="width: 40%; <%=audienceTableStyle%>"
+                                   class="styledInner">
+                                <tbody id="audienceTableTbody">
+                                <%
+                                    int j = 0;
+                                    if (app.getAudiences() != null){
 
-                                            %>
-                                            <%
-                                                for (String audience : audiences) {
-                                                    if (audience != null &&
-                                                            !"null".equals(audience)) {
-                                            %>
-                                            <tr id="audienceRow<%=j%>">
-                                                <td style="padding-left: 40px ! important; color: rgb(119, 119, 119); font-style: italic;">
-                                                    <input type="hidden"
-                                                           name="audiencePropertyName<%=j%>"
-                                                           id="audiencePropertyName<%=j%>"
-                                                           value="<%=Encode.forHtmlAttribute(audience)%>"/>
-                                                    <%=Encode.forHtml(audience)%>
-                                                </td>
-                                                <td>
-                                                    <a onclick="removeAudience('<%=j%>');return false;"
-                                                       href="#" class="icon-link"
-                                                       style="background-image: url(../admin/images/delete.gif)">Delete
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                            <%
-                                                        j++;
-                                                    }
-                                                }
-                                            %>
-                                            <%
-                                                }
-                                            %>
-                                            <input type="hidden"
-                                                   name="audiencePropertyCounter"
-                                                   id="audiencePropertyCounter"
-                                                   value="<%=j%>"/>
-                                            </tbody>
-                                        </table>
+                                %>
+                                <%
+                                    for (String audience : audiences) {
+                                        if (audience != null &&
+                                                !"null".equals(audience)) {
+                                %>
+                                <tr id="audienceRow<%=j%>">
+                                    <td style="padding-left: 40px ! important; color: rgb(119, 119, 119); font-style: italic;">
+                                        <input type="hidden"
+                                               name="audiencePropertyName<%=j%>"
+                                               id="audiencePropertyName<%=j%>"
+                                               value="<%=Encode.forHtmlAttribute(audience)%>"/>
+                                        <%=Encode.forHtml(audience)%>
+                                    </td>
+                                    <td>
+                                        <a onclick="removeAudience('<%=j%>');return false;"
+                                           href="#" class="icon-link"
+                                           style="background-image: url(../admin/images/delete.gif)">Delete
+                                        </a>
                                     </td>
                                 </tr>
-                                <% } %>
+                                <%
+                                            j++;
+                                        }
+                                    }
+                                %>
+                                <%
+                                    }
+                                %>
+                                <input type="hidden"
+                                       name="audiencePropertyCounter"
+                                       id="audiencePropertyCounter"
+                                       value="<%=j%>"/>
+                                </tbody>
                             </table>
                         </td>
                     </tr>
+                    <% } %>
+				</table>
+			</td>
+		    </tr>
                     <tr>
                         <td class="buttonRow">
                            <input name="update"
